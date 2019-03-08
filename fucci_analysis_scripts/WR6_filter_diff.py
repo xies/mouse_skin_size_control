@@ -1,11 +1,10 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Thu Mar  7 21:14:08 2019
+Created on Thu Mar  7 21:25:12 2019
 
 @author: xies
 """
-
 
 import pandas as pd
 import numpy as np
@@ -14,7 +13,7 @@ import seaborn as sb
 from skimage import io
 import os
 
-filename = '/data/Skin/W-R2/data.csv'
+filename = '/data/Skin/W-R6/data.csv'
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
            'ActinSegmentationArea','G1MarkerInActinSegmentationArea']
@@ -111,8 +110,8 @@ for (i,c) in enumerate(collated):
 
 # Export
 for f in filtered:
-    f['Region'] = 2
-f2 = filtered
+    f['Region'] = 6
+f6 = filtered
 
 ####################################
 
@@ -134,6 +133,7 @@ plt.subplot(1,2,2); plt.pcolor(G1),plt.colorbar()
 # Plot birth size and T cell cycle
 Tcycle = [len(c)* 0.5 for c in filtered]
 Bsize = [c['ActinSegmentationArea'].iloc[0] for c in filtered]
+plt.figure()
 sb.regplot(np.array(Bsize),np.array(Tcycle))
 
 

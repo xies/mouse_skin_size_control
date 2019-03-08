@@ -14,7 +14,8 @@ import scipy.stats as stats
 import seaborn as sb
 
 # Combine all collated lists
-collated = c1 + c2 + c5 + c6
+#collated = c1 + c2 + c5 + c6
+collated = f1 + f2 + f5 + f6
 regionID = [1,2,5,6]
 Nregions = len(regionID)
 
@@ -54,26 +55,26 @@ Bsize = np.array([c['ActinSegmentationArea'].tolist()[0] for c in collated])
 Region = np.array([np.unique(c['Region'])[0] for c in collated])
 
 
-# Print the Pearson correlation coefficients (Region-specific)
 Rg1 = np.zeros(Nregions)
 Rcycle = np.zeros(Nregions)
-for i in range(Nregions):
-    I = Region == regionID[i]
-    bsize = Bsize[I,...]
-    tg1 = Tg1[I,...]
-    tlength = Tcycle[I,...]
-    Rg1[i] = stats.pearsonr(bsize,tg1)[0]
-    Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
-
 # Look at basic linear regression
 for i in range(Nregions):
     # Plot as scatter plot
     I = Region == regionID[i]
-    plt.subplot(2,2,i+1)    
+    bsize = Bsize[I,...]
+    tlength = Tcycle[I,...]
+    tg1 = Tg1[I,...]
+    ax = plt.subplot(2,2,i+1)    
     # Overlay linear regression
-    sb.regplot(Bsize[I,...],Tg1[I,...], color ='blue',marker='+',y_jitter=True)
-    plt.xlabel('Cross-section area (px^2)')
-    plt.ylabel('Cell cycle duration (days)')
+    sb.regplot(Bsize[I,...],Tg1[I,...]*0.5, color ='blue',marker='+',y_jitter=True)
+    plt.xlabel('Birth size (Crosssection area, px^2)')
+    plt.ylabel('G1 duration (days)')
+    plt.title(''.join( ('Region ',str(regionID[i])) ))
+    
+    # Get pearson corr
+    Rg1[i] = stats.pearsonr(bsize,tg1)[0]
+    Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
+    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
 
 # Look for binned birth size
 plt.figure()
@@ -149,9 +150,17 @@ for i in range(Nregions):
     tg1 = Tg1[I,...]
     [mini,maxi] = stats.mstats.mquantiles(bsize,[.05,.95])
     filtered = (bsize > mini) & (bsize < maxi)
-    plt.subplot(2,2,i+1)
-    sb.regplot(bsize[filtered],tg1[filtered])
-    plt.xlim([100,900]); plt.ylim([-.5,5])
+    ax = plt.subplot(2,2,i+1)
+    sb.regplot(bsize[filtered],tg1[filtered]*0.5)
+    plt.xlim([100,900]); plt.ylim([-.5,3])
+    plt.xlabel('Birth size (Crosssection area, px^2)')
+    plt.ylabel('G1 duration (days)')
+    plt.title(''.join( ('Region ',str(regionID[i])) ))
+    
+    # Get pearson corr
+    Rg1[i] = stats.pearsonr(bsize,tg1)[0]
+    Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
+    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
     
     Rg1[i] = stats.pearsonr(bsize[filtered],tg1[filtered])[0]
     Rcycle[i] = stats.pearsonr(bsize[filtered],tlength[filtered])[0]

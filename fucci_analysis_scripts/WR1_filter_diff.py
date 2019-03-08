@@ -133,6 +133,7 @@ plt.subplot(1,2,2); plt.pcolor(G1),plt.colorbar()
 # Plot birth size and T cell cycle
 Tcycle = [len(c)* 0.5 for c in filtered]
 Bsize = [c['ActinSegmentationArea'].iloc[0] for c in filtered]
+plt.figure()
 sb.regplot(np.array(Bsize),np.array(Tcycle))
 
 
