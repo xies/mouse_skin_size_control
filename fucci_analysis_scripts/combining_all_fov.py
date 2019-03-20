@@ -14,8 +14,8 @@ import scipy.stats as stats
 import seaborn as sb
 
 # Combine all collated lists
-#collated = c1 + c2 + c5 + c6
-collated = f1 + f2 + f5 + f6
+collated = c1 + c2 + c5 + c6
+#collated = f1 + f2 + f5 + f6
 regionID = [1,2,5,6]
 Nregions = len(regionID)
 
@@ -23,17 +23,44 @@ Nregions = len(regionID)
 max_time = max( [len(c) for c in collated] )
 Ncells = len(collated)
 
-A = np.zeros((Ncells,max_time))
-G1 = np.zeros((Ncells,max_time))
-
+A = np.empty((Ncells,max_time)) * np.nan
+G1 = np.empty((Ncells,max_time)) * np.nan
 for (i,c) in enumerate(collated):
     a = c['ActinSegmentationArea']
-    A[i,0:len(a)] = a/np.max(a)
+    A[i,0:len(a)] = a
     g1 = c['G1MarkerInActinSegmentationArea']
     g1 = g1 - g1.min()
-    G1[i,0:len(a)] = g1/np.max(g1)
-plt.subplot(1,2,1); plt.pcolor(A)
-plt.subplot(1,2,2); plt.pcolor(G1)
+    G1[i,0:len(a)] = g1/g1.max()
+plt.subplot(1,2,1); plt.pcolor(A); plt.colorbar()
+plt.subplot(1,2,2); plt.pcolor(G1); plt.colorbar()
+
+# Check when G1max occurs WRT time of division
+whenG1max = np.zeros(Ncells)
+for (i,c) in enumerate(collated):
+    divFrame = len(c)
+    g1max = np.array(c['G1MarkerInActinSegmentationArea']).argmax()
+    whenG1max[i] = (g1max - divFrame)*0.5
+plt.hist(whenG1max,len(np.unique(whenG1max)),normed=True)
+plt.xlabel('Days from division')
+plt.title('Timing when G1Marker is maximum WRT division')
+
+# Check when AreaMax occurs WRT time of division
+whenAreamax = np.zeros(Ncells)
+for (i,c) in enumerate(collated):
+    divFrame = len(c)
+    areamax = np.array(c['ActinSegmentationArea']).argmax()
+    whenAreamax[i] = (areamax - divFrame)*0.5
+weights = np.ones_like(whenAreamax) / float(len(whenAreamax))
+plt.hist(whenAreamax,len(np.unique(whenG1max)),weights=weights)
+plt.xlabel('Days from division')
+plt.title('Timing when cell area is maximum WRT division')
+
+
+# Check if Areadt is mostly positive (NTS: it's not)
+dAreadt = np.diff(A,n=1)
+plt.hist( nonans(dAreadt.flatten('F')),100,normed=True)
+plt.axvline(x=0,color='r')
+plt.xlabel('dArea/dt')
 
 # Check if G1marker signal is same in Voronoi v. segmented area
 g1Voro = []
@@ -66,9 +93,10 @@ for i in range(Nregions):
     tg1 = Tg1[I,...]
     ax = plt.subplot(2,2,i+1)    
     # Overlay linear regression
-    sb.regplot(Bsize[I,...],Tg1[I,...]*0.5, color ='blue',marker='+',y_jitter=True)
+    sb.regplot(Bsize[I,...],Tcycle[I,...],y_jitter=False,scatter_kws={'alpha':0.2})
+    plt.xlim([0,1500]),plt.ylim([0,6.5])
     plt.xlabel('Birth size (Crosssection area, px^2)')
-    plt.ylabel('G1 duration (days)')
+    plt.ylabel('Cell cycle duration (days)')
     plt.title(''.join( ('Region ',str(regionID[i])) ))
     
     # Get pearson corr
@@ -76,9 +104,9 @@ for i in range(Nregions):
     Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
     ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
 
-# Look for binned birth size
-plt.figure()
-for i in range(Nregions):
+## Look for binned birth size
+#plt.figure()
+#for i in range(Nregions):
     plt.subplot(2,2,i+1)
     I = Region == regionID[i]
     bsize = Bsize[I,...]
@@ -151,18 +179,16 @@ for i in range(Nregions):
     [mini,maxi] = stats.mstats.mquantiles(bsize,[.05,.95])
     filtered = (bsize > mini) & (bsize < maxi)
     ax = plt.subplot(2,2,i+1)
-    sb.regplot(bsize[filtered],tg1[filtered]*0.5)
-    plt.xlim([100,900]); plt.ylim([-.5,3])
+    sb.regplot(bsize[filtered],tlength[filtered],scatter_kws={'alpha':0.3})
+    plt.xlim([0,1500]); plt.ylim([-.5,6.5])
     plt.xlabel('Birth size (Crosssection area, px^2)')
-    plt.ylabel('G1 duration (days)')
+    plt.ylabel('Cell cycle duration (days)')
     plt.title(''.join( ('Region ',str(regionID[i])) ))
     
-    # Get pearson corr
-    Rg1[i] = stats.pearsonr(bsize,tg1)[0]
-    Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
-    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
     
+    # Get pearson corr
     Rg1[i] = stats.pearsonr(bsize[filtered],tg1[filtered])[0]
     Rcycle[i] = stats.pearsonr(bsize[filtered],tlength[filtered])[0]
     
+    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
     

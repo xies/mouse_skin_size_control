@@ -13,11 +13,41 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sb
 
-filename = '/data/HMEC DFB tracked data/PBS.csv'
-pbs = pd.read_csv(filename,names = ['Tg1','Bsize'])
+filename = '/Users/mimi/Box Sync/HMECs/HMEC DFB tracked data/pbs_area.csv'
+pbs = pd.read_csv(filename,names=range(59))
 
-filename = '/data/HMEC DFB tracked data/Palbo.csv'
+filename = '/Users/mimi/Box Sync/HMECs/HMEC DFB tracked data/palbo_size.csv'
 palbo = pd.read_csv(filename,names = ['Tg1','Bsize'])
+
+###### Need to decimate data by factor of 20 (with random phases)
+dec_factor = 20.
+Ttotal = len(pbs[0])
+PBS = np.zeros((59, np.ceil(Ttotal/dec_factor)))
+for i in range(59):
+    
+    x = pbs[i]
+    random_phase = random.randint(0,dec_factor-1)
+    indices = range(random_phase,Ttotal,int(dec_factor))
+    PBS[i,0:len(indices)] = x[indices]
+        
+# Re-Estimate everything
+Bsize_dec = PBS[:,0]
+Bsize = pbs.iloc[0]
+Tcycle_dec = np.zeros(59)
+Tcycle = np.zeros(59)
+for i in range(59):
+    x = PBS[i,...]
+    Tcycle_dec[i] = len(x[x>0]) * dec_factor
+    x = pbs[i]
+    Tcycle[i] = len(x[~np.isnan(x)])
+
+
+sb.regplot(Bsize,Tcycle)
+sb.regplot(Bsize_dec,Tcycle_dec)
+Rcycle = stats.pearsonr( Bsize,Tcycle)
+Rcycle_dec = stats.pearsonr( Bsize_dec,Tcycle_dec)
+
+##########
 
 # Plot the data
 plt.subplot(1,2,1)

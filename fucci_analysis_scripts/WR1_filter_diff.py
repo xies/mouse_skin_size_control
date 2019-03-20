@@ -13,7 +13,9 @@ import seaborn as sb
 from skimage import io
 import os
 
-filename = '/data/Skin/W-R1/data.csv'
+#filename = '/data/Skin/W-R1/data.csv'
+filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/data.csv'
+
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
            'ActinSegmentationArea','G1MarkerInActinSegmentationArea']
@@ -90,7 +92,7 @@ childlessdf = pd.DataFrame(data=X,columns=columns)
 # Go through dividing cells and see if there are differentiating cells within a window
 has_neighboring_diff = np.zeros(Ncells)
 windowS = 40
-windowT = 2
+windowT = 2 #frame number, i.e. 12hr per frame
 for i in range(Ncells):
     c = celldf.iloc[i]
     t0 = c['Bframe']
@@ -134,7 +136,7 @@ plt.subplot(1,2,2); plt.pcolor(G1),plt.colorbar()
 Tcycle = [len(c)* 0.5 for c in filtered]
 Bsize = [c['ActinSegmentationArea'].iloc[0] for c in filtered]
 plt.figure()
-sb.regplot(np.array(Bsize),np.array(Tcycle))
+sb.regplot(np.array(Bsize),np.array(Tcycle),scatter_kws={'alpha':0.3})
 
 
 ############################################################################

@@ -13,7 +13,8 @@ import seaborn as sb
 from skimage import io
 import os
 
-filename = '/data/Skin/W-R5/data.csv'
+#filename = '/data/Skin/W-R5/data.csv'
+filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/data.csv'
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
            'ActinSegmentationArea','G1MarkerInActinSegmentationArea']
