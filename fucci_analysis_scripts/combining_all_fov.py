@@ -12,6 +12,7 @@ from numpy import random
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sb
+plt.rcParams.update({'font.size': 16})
 
 # Combine all collated lists
 collated = c1 + c2 + c5 + c6
@@ -27,22 +28,36 @@ A = np.empty((Ncells,max_time)) * np.nan
 G1 = np.empty((Ncells,max_time)) * np.nan
 for (i,c) in enumerate(collated):
     a = c['ActinSegmentationArea']
-    A[i,0:len(a)] = a
-    g1 = c['G1MarkerInActinSegmentationArea']
-    g1 = g1 - g1.min()
-    G1[i,0:len(a)] = g1/g1.max()
-plt.subplot(1,2,1); plt.pcolor(A); plt.colorbar()
-plt.subplot(1,2,2); plt.pcolor(G1); plt.colorbar()
+    A[i,0:len(a)] = a / a.mean()
+    g1 = c['G1MarkerInVoronoiArea']
+    G1[i,0:len(a)] = g1 / g1.mean()
+
+# Plot heatmaps
+plt.clf()
+plt.subplot(1,2,1)
+plt.pcolor(A,vmin=0,vmax=2,cmap='inferno')
+plt.xlabel('Half-days')
+plt.ylabel('Individual cells')
+plt.title('Crosssection area normalized\n by single-cell-mean (px2)')
+plt.colorbar()
+plt.subplot(1,2,2)
+plt.pcolor(G1,vmin=0,vmax=2,cmap='inferno')
+plt.xlabel('Half-days')
+plt.ylabel('Individual cells')
+plt.title('FUCCI-G1 signal normalized\n by single-cell-mean (au)')
+plt.colorbar()
 
 # Check when G1max occurs WRT time of division
 whenG1max = np.zeros(Ncells)
 for (i,c) in enumerate(collated):
     divFrame = len(c)
-    g1max = np.array(c['G1MarkerInActinSegmentationArea']).argmax()
+    g1max = np.array(c['G1MarkerInVoronoiArea']).argmax()
     whenG1max[i] = (g1max - divFrame)*0.5
-plt.hist(whenG1max,len(np.unique(whenG1max)),normed=True)
+weights = np.ones_like(whenG1max) / float(len(whenG1max))
+plt.figure()
+plt.hist(whenG1max,len(np.unique(whenG1max)), weights=weights)
 plt.xlabel('Days from division')
-plt.title('Timing when G1Marker is maximum WRT division')
+plt.title('Timing when FUCCI-G1\n is maximum WRT division')
 
 # Check when AreaMax occurs WRT time of division
 whenAreamax = np.zeros(Ncells)
@@ -50,6 +65,7 @@ for (i,c) in enumerate(collated):
     divFrame = len(c)
     areamax = np.array(c['ActinSegmentationArea']).argmax()
     whenAreamax[i] = (areamax - divFrame)*0.5
+plt.figure()
 weights = np.ones_like(whenAreamax) / float(len(whenAreamax))
 plt.hist(whenAreamax,len(np.unique(whenG1max)),weights=weights)
 plt.xlabel('Days from division')
