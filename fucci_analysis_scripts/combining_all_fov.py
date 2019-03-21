@@ -69,7 +69,7 @@ plt.figure()
 weights = np.ones_like(whenAreamax) / float(len(whenAreamax))
 plt.hist(whenAreamax,len(np.unique(whenG1max)),weights=weights)
 plt.xlabel('Days from division')
-plt.title('Timing when cell area is maximum WRT division')
+plt.title('Timing when cell area\n is maximum WRT division')
 
 
 # Check if Areadt is mostly positive (NTS: it's not)
@@ -98,8 +98,8 @@ Bsize = np.array([c['ActinSegmentationArea'].tolist()[0] for c in collated])
 Region = np.array([np.unique(c['Region'])[0] for c in collated])
 
 
-Rg1 = np.zeros(Nregions)
-Rcycle = np.zeros(Nregions)
+Rg1 = np.zeros(Nregions); Rg1_censor = np.zeros(Nregions)
+Rcycle = np.zeros(Nregions); Rcycle_censor = np.zeros(Nregions)
 # Look at basic linear regression
 for i in range(Nregions):
     # Plot as scatter plot
@@ -107,10 +107,11 @@ for i in range(Nregions):
     bsize = Bsize[I,...]
     tlength = Tcycle[I,...]
     tg1 = Tg1[I,...]
-    ax = plt.subplot(2,2,i+1)    
+    ax = plt.subplot(2,2,i+1)
     # Overlay linear regression
-    sb.regplot(Bsize[I,...],Tcycle[I,...],y_jitter=False,scatter_kws={'alpha':0.2})
-    plt.xlim([0,1500]),plt.ylim([0,6.5])
+    sb.regplot(bsize,tlength,y_jitter=False,
+               scatter_kws={'alpha':0.2, 's':50})
+    plt.xlim([0,1500]),plt.ylim([-0.5,4.5])
     plt.xlabel('Birth size (Crosssection area, px^2)')
     plt.ylabel('Cell cycle duration (days)')
     plt.title(''.join( ('Region ',str(regionID[i])) ))
@@ -118,17 +119,37 @@ for i in range(Nregions):
     # Get pearson corr
     Rg1[i] = stats.pearsonr(bsize,tg1)[0]
     Rcycle[i] = stats.pearsonr(bsize,tlength)[0]
-    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
+#    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
 
+    ## Censor Birth size outliers (5% top/bottom)
+    [mini,maxi] = stats.mstats.mquantiles(bsize,[.05,.95])
+    filtered = (bsize > mini) & (bsize < maxi)
+    ax = plt.subplot(2,2,i+1)
+    sb.regplot(bsize[filtered],tlength[filtered],
+               scatter_kws={'alpha':0.1, 's':50},color='r')
+    plt.xlim([0,1500]); plt.ylim([0,6.5])
+    plt.xlabel('Birth size (Crosssection area, px^2)')
+    plt.ylabel('Cell cycle duration (days)')
+    plt.title(''.join( ('Region ',str(regionID[i])) ))
+    
+    # Get pearson corr
+    Rg1_censor[i] = stats.pearsonr(bsize[filtered],tg1[filtered])[0]
+    Rcycle_censor[i] = stats.pearsonr(bsize[filtered],tlength[filtered])[0]
+    
+#    ax.text(8,2,''.join( ('R(censored) = ', '{:04.3f}'.format(Rg1[i]) ) ))
+    
+
+    
+    
 ## Look for binned birth size
-#plt.figure()
-#for i in range(Nregions):
+plt.figure()
+for i in range(Nregions):
     plt.subplot(2,2,i+1)
     I = Region == regionID[i]
     bsize = Bsize[I,...]
     tlength =Tcycle[I,...]
     # Plot scatter
-    plt.scatter(bsize,jitter(tlength,.1),facecolor='none',edgecolor='r')
+    plt.scatter(bsize,tlength,facecolor='none',edgecolor='r')
     # Find equal-size bins
     bin_edges = stats.mstats.mquantiles(bsize, [0, 1./8, 2./8, 3./8, 4./8, 5./8,6./8,7./8,1])
     Nbins = len(bin_edges) - 1
@@ -186,25 +207,3 @@ plt.errorbar(bin_centers,means,stds)
 plt.xlabel('Cross-section area (px^2)')
 plt.ylabel('Cell cycle duration (days)')
 
-## Censor Birth size outliers (5% top/bottom)
-for i in range(Nregions):
-    I = Region == regionID[i]
-    bsize = Bsize[I,...]
-    tlength = Tcycle[I,...]
-    tg1 = Tg1[I,...]
-    [mini,maxi] = stats.mstats.mquantiles(bsize,[.05,.95])
-    filtered = (bsize > mini) & (bsize < maxi)
-    ax = plt.subplot(2,2,i+1)
-    sb.regplot(bsize[filtered],tlength[filtered],scatter_kws={'alpha':0.3})
-    plt.xlim([0,1500]); plt.ylim([-.5,6.5])
-    plt.xlabel('Birth size (Crosssection area, px^2)')
-    plt.ylabel('Cell cycle duration (days)')
-    plt.title(''.join( ('Region ',str(regionID[i])) ))
-    
-    
-    # Get pearson corr
-    Rg1[i] = stats.pearsonr(bsize[filtered],tg1[filtered])[0]
-    Rcycle[i] = stats.pearsonr(bsize[filtered],tlength[filtered])[0]
-    
-    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
-    

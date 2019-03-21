@@ -41,9 +41,11 @@ for i in range(59):
     x = pbs[i]
     Tcycle[i] = len(x[~np.isnan(x)])
 
-
-sb.regplot(Bsize,Tcycle)
-sb.regplot(Bsize_dec,Tcycle_dec)
+plt.figure()
+sb.regplot(Bsize,Tcycle * 10.0 / 60)
+sb.regplot(Bsize_dec,Tcycle_dec * 10.0 / 60,scatter_kws={'s':40,'alpha':0.5})
+plt.xlabel('Birth nuclear area (px)'),plt.xlim([0, 2500])
+plt.ylabel('Total cell cycle duration (hr)')
 Rcycle = stats.pearsonr( Bsize,Tcycle)
 Rcycle_dec = stats.pearsonr( Bsize_dec,Tcycle_dec)
 
