@@ -12,6 +12,7 @@ from numpy import random
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sb
+import pickle
 plt.rcParams.update({'font.size': 16})
 
 # Combine all collated lists
@@ -19,6 +20,11 @@ collated = c1 + c2 + c5 + c6
 #collated = f1 + f2 + f5 + f6
 regionID = [1,2,5,6]
 Nregions = len(regionID)
+
+# Save collated as bitstream
+output = open('/Users/mimi/Box Sync/Mouse/Skin/collated,pkl','wb')
+pickle.dump(collated, output)
+output.close()
 
 # Put everything into a padded array for heatmap visualization
 max_time = max( [len(c) for c in collated] )
@@ -90,12 +96,15 @@ sb.regplot(g1Voro,g1Actin) # They're not the same... use Actin!
 for c in collated:
     age_at_g1s = (np.array(c['G1MarkerInVoronoiArea']).argmax()-0.0)/2.
     c['AgeAtG1S'] = age_at_g1s
+    c['G1Growth'] = c['ActinSegmentationArea'].tolist()[np.array(c['G1MarkerInVoronoiArea']).argmax()] - \
+            c['ActinSegmentationArea'].tolist()[0]
 
 # Plot birth size and T cell cycle
 Tcycle = np.array([len(c)* 0.5 for c in collated])
 Tg1 = np.array([np.array(c['AgeAtG1S'])[0] for c in collated])
 Bsize = np.array([c['ActinSegmentationArea'].tolist()[0] for c in collated])
 Region = np.array([np.unique(c['Region'])[0] for c in collated])
+G1Growth = np.array([np.array(c['G1Growth'])[0] for c in collated])
 
 
 Rg1 = np.zeros(Nregions); Rg1_censor = np.zeros(Nregions)
@@ -187,7 +196,7 @@ for i in range(Nregions):
 
 # Look at everything together
 bsize = Bsize
-tlength = jitter(Tcycle,.1)
+#tlength = jitter(Tcycle,.1)
 # Plot scatter
 plt.scatter(bsize,tlength,facecolor='none',edgecolor='r')
 # Find equal-size bins
@@ -206,4 +215,77 @@ for b in range(Nbins):
 plt.errorbar(bin_centers,means,stds)
 plt.xlabel('Cross-section area (px^2)')
 plt.ylabel('Cell cycle duration (days)')
+
+
+plt.figure()
+# Plot amount of growth in G1 v birth size
+for i in range(Nregions):
+    # Plot as scatter plot
+    I = Region == regionID[i]
+    bsize = Bsize[I,...]
+    g1growth = G1Growth[I,...]
+    ax = plt.subplot(2,2,i+1)
+    # Overlay linear regression
+    sb.regplot(bsize,g1growth,y_jitter=False,
+               scatter_kws={'alpha':0.2, 's':50})
+    plt.xlim([0,1200]),plt.ylim([-500,1000])
+    bin_edges = stats.mstats.mquantiles(bsize,[0,.2,.4,.6,.8,1])
+    plot_bin_means(bsize,g1growth,bin_edges)
+    plt.xlabel('Birth size (Crosssection area, px^2)')
+    plt.ylabel('Amount grown in G1 (px^2)')
+    plt.title(''.join( ('Region ',str(regionID[i])) ))
+    
+    
+plt.figure()
+# Plot amount of growth in G1 v birth size
+for i in range(Nregions):
+    # Plot as scatter plot
+    I = Region == regionID[i]
+    bsize = Bsize[I,...]
+    g1growth = G1Growth[I,...]
+    ax = plt.subplot(2,2,i+1)
+    # Overlay linear regression
+    sb.regplot(bsize,g1growth+bsize,y_jitter=False,
+               scatter_kws={'alpha':0.2, 's':50})
+    bin_edges = stats.mstats.mquantiles(bsize,[0,.2,.4,.6,.8,1])
+    plot_bin_means(bsize,g1growth+bsize,bin_edges)
+    plt.xlim([0,1200]),plt.ylim([-100,2000])
+    plt.xlabel('Size at G1 (Crosssection area, px^2)')
+    plt.ylabel('Amount grown in G1 (px^2)')
+    plt.title(''.join( ('Region ',str(regionID[i])) ))
+    
+    
+    
+    
+    
+    
+    
+plot_bin_means(g1['Nuclear area'],g1['E2F total'],g2_bin_edges)
+
+
+
+
+
+def plot_bin_means(X,Y,bin_edges,color='g'):
+    """
+    Plot the mean/std values of Y given bin_edges in X
+    
+    """
+    
+    which_bin = np.digitize(X,bin_edges)
+    Nbins = len(bin_edges)-1
+    means = np.zeros(Nbins)
+    stds = np.zeros(Nbins)
+    bin_centers = np.zeros(Nbins)
+    for b in range(Nbins):
+        y = Y[which_bin == b+1]
+        bin_centers[b] = (bin_edges[b] + bin_edges[b+1]) / 2
+        means[b] = y.mean()
+        stds[b] = y.std() / np.sqrt(len(y))
+    plt.errorbar(bin_centers,means,stds,ecolor=color)
+
+
+
+
+    
 
