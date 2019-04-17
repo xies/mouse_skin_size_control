@@ -22,7 +22,7 @@ regionID = [1,2,5,6]
 Nregions = len(regionID)
 
 # Save collated as bitstream
-output = open('/Users/mimi/Box Sync/Mouse/Skin/collated,pkl','wb')
+output = open('/Users/mimi/Box Sync/Mouse/Skin/collated.pkl','wb')
 pickle.dump(collated, output)
 output.close()
 

@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sb
 from skimage import io
-import os
+import pickle, os
 
 #filename = '/data/Skin/W-R6/data.csv'
 filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R6/data.csv'
@@ -71,3 +71,8 @@ plt.scatter(Bsize,Tcycle)
 for c in collated:
     c['Region'] = 6
 c6 = collated
+
+out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )
+output = open( out_pkl, 'wb' )
+pickle.dump( c6, output )
+output.close()

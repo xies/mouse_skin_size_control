@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sb
 from skimage import io
-import os
+import os,pickle
 
 #filename = '/data/Skin/W-R2/data.csv'
 filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/data.csv'
@@ -74,4 +74,7 @@ for c in collated:
     c['Region'] = 2
 c2 = collated
 
-
+out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )
+output = open( out_pkl, 'wb' )
+pickle.dump( c2, output )
+output.close()
