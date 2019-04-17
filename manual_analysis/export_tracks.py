@@ -15,12 +15,13 @@ import os
 ####
 
 # Load the region tracked cells
-input_pkl = open('/Users/mimi/Box Sync/Mouse/Skin/W-R1/collated.pkl','rb')
+filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/collated.pkl'
+input_pkl = open(filename,'rb')
 collated = pickle.load(input_pkl)
 input_pkl.close()
 
 # Grab the coordinates for each cell trace; construct directory hierarchy
-basedir = os.path.split('/Users/mimi/Box Sync/Mouse/Skin/W-R1/collated.pkl')[0]
+basedir = os.path.split(filename)[0]
 
 basedir_ = os.path.join(basedir,'tracked_cells')
 if not os.path.exists(basedir_):
