@@ -28,6 +28,8 @@ if not os.path.exists(basedir_):
     os.mkdir( os.path.join(basedir,'tracked_cells'))
 
 for c in collated:
+    if len(c) < 2: # Don't bother with cells that are only a single time point
+        continue
     newdir = os.path.join(basedir,'tracked_cells',str(np.unique(c['CellID'])[0]))
     if not os.path.exists(newdir):
         os.mkdir(newdir)

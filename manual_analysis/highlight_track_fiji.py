@@ -101,12 +101,12 @@ for cID in celldirs:
 	gd = NonBlockingGenericDialog("Advance to next cell?")
 	gd.setOKLabel('Next')
 	gd.setCancelLabel('Completely exit')
-	gd.addCheckBox('Skip this cell?',False)
+	gd.addCheckbox('Skip this cell?',False)
 	gd.showDialog()
 	if gd.wasOKed(): # OK means 'advance'
 		imp.removeImageListener(listener)
 		if gd.getNextBoolean():
-			with open(os.path.join(newdir,'skipped.txt')) as f:
+			with open(os.path.join(thisdir,'skipped.txt'),'w') as f:
 				f.write('Skipped')
 		# Log the cell as done
 		with open(log_filename, 'a') as f:
