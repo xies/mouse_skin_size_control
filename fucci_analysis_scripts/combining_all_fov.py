@@ -38,6 +38,7 @@ for (i,c) in enumerate(collated):
     g1 = c['G1MarkerInVoronoiArea']
     G1[i,0:len(a)] = g1 / g1.mean()
 
+    
 # Plot heatmaps
 plt.clf()
 plt.subplot(1,2,1)

@@ -62,6 +62,7 @@ def txt2list(filename):
 # Load coordinates for each cell
 basedir = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/'
 celldirs = os.listdir(basedir)
+celldirs = [d for d in celldirs if os.path.isdir(os.path.join(basedir,d))]
 
 # Read in the log file
 log_filename = os.path.join(basedir, 'log.txt')
@@ -72,7 +73,6 @@ else:
 	with open(log_filename,'r') as f:
 		already_done = [line for line in f.readlines()][1:]
 		already_done = [line.strip() for line in already_done]
-	print already_done
 
 nuclei = {}
 for cID in celldirs:
@@ -81,7 +81,7 @@ for cID in celldirs:
 	if cID in already_done:
 		print 'Skipping ', cID
 		continue
-	
+
 	thisdir = os.path.join(basedir, cID)
 	os.chdir(thisdir)
 	
