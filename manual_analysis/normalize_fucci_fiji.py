@@ -2,6 +2,8 @@ import os,sys
 from mpicbg.ij.plugin import NormalizeLocalContrast
 from ij import IJ,ImagePlus
 from ij.io import FileSaver
+from ij.process import ImageStatistics as IS  
+  
 
 sourceDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R2/FUCCI_sequence"  
 targetDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R2/FUCCI_normalized"
@@ -24,7 +26,13 @@ def normalizeContrast(imp):
   # Apply contrast normalization to the copy  
   NormalizeLocalContrast().run(copy_ip, 200, 200, stds, center, stretch)  
   # Return as new image  
-  return ImagePlus(imp.getTitle(), copy_ip)  
+  
+  # Threshold image by mean
+  options = IS.MEAN
+  stats = IS.getStatistics(copy_ip, options, imp.getCalibration())
+
+  copy_ip.subtract( int(stats.mean)/2 )
+  return ImagePlus(imp.getTitle(), copy_ip)
 
 # A function that takes a file path, attempts to load it as an image,  
 # normalizes it, and saves it in a different directory  

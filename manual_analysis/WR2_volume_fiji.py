@@ -35,5 +35,4 @@ for cellID, dirs, files in os.walk( path.join(dirname,'tracked_cells') ):
                 rt.save(fucci_savename)
                 roiMan.reset()
                 rt.reset()
-
-                
+				
