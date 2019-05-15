@@ -105,22 +105,35 @@ df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
 
 # Construct histogram mins
-birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./8, 2./8, 3./8, 4./8, 5./8,6./8,7./8,1])
-g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./8, 2./8, 3./8, 4./8, 5./8,6./8,7./8,1])
+birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 
 ## Plotting
 
 ## Amt grown
+plt.figure()
 sb.set_style("darkgrid")
+
 #plt.subplot(2,1,1)
 sb.regplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
+
 #plt.subplot(2,1,2)
 sb.regplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False)
 plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('Volume at phase start (um3)')
 plt.ylabel('Volume grown during phase (um3)')
 plt.legend(['G1','SG2'])
+
+plt.figure()
+sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
+plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
+sb.regplot(data=df,x='G1 volume',y='Division volume',fit_reg=False)
+plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
+plt.xlabel('Volume at phase start (um3)')
+plt.ylabel('Volume at phase end (um3)')
+plt.legend(['G1','SG2'])
+
 
 ##
 plt.figure()
@@ -129,8 +142,12 @@ plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 
 ## Adder?
 plt.figure()
+plt.subplot(2,1,1)
 sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['Total growth'],birth_vol_bins)
+plt.subplot(2,1,2)
+sb.regplot(data=df,x='Birth volume',y='Division volume',fit_reg=False)
+plot_bin_means(df['Birth volume'],df['Division volume'],birth_vol_bins)
 
 
 ## Phase length
@@ -146,20 +163,23 @@ plt.ylabel('Phase duration (hr)')
 plt.xlabel('Volume at phase start (um^3)')
 
 
+# Plot growth curve(s)
 fig=plt.figure()
-ax1 = plt.subplot(121)
-plt.xlabel('Time (hr)')
-ax2 = plt.subplot(122, sharey = ax1)
+#ax1 = plt.subplot(121)
+plt.xlabel('Time since birth (hr)')
+#ax2 = plt.subplot(122, sharey = ax1)
 for i in range(Ncells):
     v = np.array(collated[i]['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    ax1.plot(v/v[0])
-    ax1.plot(len(v)-1, v[-1]/v[0],'ko')
+    plt.plot(x,v ,color='b') # growth curve
+#    ax1.plot(len(v)-1, v[-1]/v[0],'ko',alpha=0.5) # end of growth
 ax1.hlines(1,0,12,linestyles='dashed')
 ax1.hlines(2,0,12,linestyles='dashed')
 plt.ylabel('Fold grown since birth')
-ax2.hist(df['Fold grown'], orientation="horizontal");
 
+out = ax2.hist(df['Fold grown'], orientation="horizontal");
+
+which_bin = np.digitize(df['Fold grown'],out[1])
 
 for i in range(10):
     plt.subplot(2,5,i+1)
