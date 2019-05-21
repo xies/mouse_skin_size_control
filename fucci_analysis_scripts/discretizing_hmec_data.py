@@ -19,6 +19,21 @@ pbs = pd.read_csv(filename,names=range(59))
 filename = '/Users/mimi/Box Sync/HMECs/HMEC DFB tracked data/palbo_size.csv'
 palbo = pd.read_csv(filename,names = ['Tg1','Bsize'])
 
+####### Analyze whole data sets for sizer v adder
+Bsize = pbs.iloc[0]
+Dsize = np.zeros(59)
+for i in range(59):
+    x = pbs[i]
+    Dsize[i] = np.array(x[~np.isnan(x)])[-1]
+amtGrown = Dsize - Bsize
+plt.subplot(2,1,1)
+plt.scatter(Bsize,amtGrown)
+plt.ylabel('Amount grown')
+plt.subplot(2,1,2)
+plt.scatter(Bsize,Dsize)
+plt.ylabel('Division size')
+plt.xlabel('Birth size')
+
 ###### Need to decimate data by factor of 20 (with random phases)
 dec_factor = 20.
 Ttotal = len(pbs[0])
@@ -78,3 +93,5 @@ sb.regplot( palbo['Bsize'],palbo['Tg1 discrete'] )
 
 R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1 discrete'] )
 R_palbo = stats.pearsonr( palbo['Bsize'],palbo['Tg1 discrete'] )
+
+
