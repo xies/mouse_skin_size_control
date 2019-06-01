@@ -68,7 +68,8 @@ Tcycle = [len(c)* 0.5 for c in collated]
 Bsize = [c['ActinSegmentationArea'].tolist()[0] for c in collated]
 plt.scatter(Bsize,Tcycle)
 
-
+    
+#######################################
 # Export
 for c in collated:
     c['Region'] = 2
@@ -78,3 +79,5 @@ out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )
 output = open( out_pkl, 'wb' )
 pickle.dump( c2, output )
 output.close()
+
+

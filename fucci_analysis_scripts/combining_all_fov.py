@@ -78,7 +78,7 @@ plt.hist(whenAreamax,len(np.unique(whenG1max)),weights=weights)
 plt.xlabel('Days from division')
 plt.title('Timing when cell area\n is maximum WRT division')
 
-
+ 
 # Check if Areadt is mostly positive (NTS: it's not)
 dAreadt = np.diff(A,n=1)
 plt.hist( nonans(dAreadt.flatten('F')),100,normed=True)

@@ -60,7 +60,7 @@ def txt2list(filename):
 # --- MAIN ----
 
 # Load coordinates for each cell
-basedir = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/'
+basedir = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/repeat_tracked_cells/'
 celldirs = os.listdir(basedir)
 celldirs = [d for d in celldirs if os.path.isdir(os.path.join(basedir,d))]
 

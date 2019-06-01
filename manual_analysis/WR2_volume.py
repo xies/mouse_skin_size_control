@@ -58,7 +58,6 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 
-
 # Load hand-annotated G1/S transition frame
 g1transitions = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/g1_frame.txt')
 
@@ -108,7 +107,7 @@ df = df[~np.isnan(df['G1 grown'])]
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 
-## Plotting
+################## Plotting ##################
 
 ## Amt grown
 plt.figure()
@@ -184,4 +183,143 @@ which_bin = np.digitize(df['Fold grown'],out[1])
 for i in range(10):
     plt.subplot(2,5,i+1)
     plt.plot(collated[i]['G1'])
+    
+    
+
+#######################################
+# Grab the automatic trancked data and look at how they relate
+
+auto_tracked = c2
+autoIDs = np.array([c.CellID.iloc[0] for c in c2])
+auto = []
+for i in range(Ncells):
+    ind = np.where(autoIDs == collated[i].CellID[0])[0][0]
+    auto.append(auto_tracked[ind])
+
+indices = np.arange(15,20,1)
+for i in range(5):
+    idx = indices[i]
+    plt.subplot(2,5,i+1)
+    plt.plot(auto[idx].Timeframe,auto[idx].ActinSegmentationArea,marker='o')
+    plt.title(''.join( ('Cell #', str(auto[idx].CellID.iloc[0])) ))
+    plt.ylabel('Cross section area')
+    plt.subplot(2,5,i+6)
+    plt.plot(collated[idx].Frame,collated[idx].Volume,color='g',marker='o')
+    plt.ylabel('Volume')
+    
+
+Ncells = len(ucellIDs)
+Aauto = np.empty((Ncells,10)) * np.nan
+Vmanual = np.empty((Ncells,10)) * np.nan
+for i in range(Ncells):
+    a = auto[i].ActinSegmentationArea
+    Aauto[i,0:len(a)] = a
+    v = collated[i].Volume
+    Vmanual[i,0:len(v)] = v
+    if len(a) == len(v): #Sometimes automated tracker is mis-tracked
+        print i
+        plt.scatter(a,v,color='b')
+        plt.xlabel('Cross sectional area')
+        plt.ylabel('Volume')
+        
+
+Aautodiff = np.ndarray.flatten(np.diff(Aauto))
+ax1 = plt.hist( nonans( Aautodiff/np.nanmean(Aauto) ), bins=25, histtype='step')
+plt.vlines( np.nanmean( Aautodiff/np.nanmean(Aauto) ), 0,300, linestyles='dashed')
+
+Vmanualdiff = np.ndarray.flatten(np.diff(Vmanual)) 
+plt.hist( nonans( Vmanualdiff/np.nanmean(Vmanual) ),bins = 25, histtype='step')
+plt.vlines( np.nanmean( Vmanualdiff/np.nanmean(Vmanual) ), 0,300, linestyles='dashed',color='r') 
+
+plt.legend('Area','Volume')
+plt.xlabel('dA/dt / <A> or dV/dt / <V>')
+plt.ylabel('Count')
+
+
+#######################################
+# Look at error/noise via repeat measurements
+
+repeat_dir = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/repeat_tracked_cells/'
+
+# Grab single-frame data into a dataframe
+repeat_df = pd.DataFrame()
+frames = []
+cIDs = []
+vols = []
+fucci = []
+for subdir, dirs, files in os.walk(repeat_dir):
+    for f in files:
+        fullname = os.path.join(subdir, f)
+        # Skip the log.txt or skipped.txt file
+        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt':
+            continue
+        if os.path.splitext(fullname)[1] == '.txt':
+            print fullname
+            # Grab the frame # from filename
+            frame = f.split('.')[0]
+            frame = np.int(frame[1:])
+            frames.append(frame)
+            
+            # Grab cellID from subdir name
+            cIDs.append( np.int(os.path.split(subdir)[1]) )
+            
+            # Add segmented area to get volume (um3)
+            # Add total FUCCI signal to dataframe
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            vols.append(cell['Area'].sum())
+repeat_df['Frame'] = frames
+repeat_df['CellID'] = cIDs
+repeat_df['Volume'] = vols
+
+
+# Collate cell-centric list-of-dataslices
+ucellIDs = np.unique( repeat_df['CellID'] )
+Ncells = len(ucellIDs)
+repeat = []
+comparison = []
+
+cIDs = [c.CellID[0] for c in collated]
+for c in ucellIDs:
+    this_cell = repeat_df[repeat_df['CellID'] == c].sort_values(by='Frame').copy()
+    this_cell = this_cell.reset_index()
+    repeat.append(this_cell)
+    
+    this_cell = collated[ np.where(cIDs == c)[0]]
+    comparison.append(this_cell)
+
+repeat_lengths = [len(c) for c in repeat]
+comparison_lengths = [len(c) for c in comparison]
+
+repeat_volumes = np.concatenate( [c.Volume.values for c in repeat] )
+comparison_volumes = np.concatenate( [c.Volume.values for c in comparison] )
+
+plt.scatter(repeat_volumes,comparison_volumes)
+plt.plot([4000,12000],[4000,12000])
+
+
+# Do the plotting nicely with dataframes
+comparison_df = raw_df[np.in1d(raw_df['CellID'],cIDs)].copy()
+comparison_df['CellID Frame'] = comparison_df['CellID'].astype(str) + '.'
+comparison_df['CellID Frame'] = comparison_df['CellID Frame'] + comparison_df['Frame'].astype(str)
+comparison_df.index = comparison_df['CellID Frame']
+comparison_df['Repeat'] = 1
+
+repeat_df['CellID Frame'] = repeat_df['CellID'].astype(str) + '.'
+repeat_df['CellID Frame'] = repeat_df['CellID Frame'] + repeat_df['Frame'].astype(str)
+repeat_df.index = repeat_df['CellID Frame']
+repeat_df['Repeat'] = 2
+
+repeat_df = repeat_df.join( comparison_df,lsuffix='_repeat',rsuffix='_original')
+
+repeat_df['Vol diff'] = repeat_df['Volume_repeat'] - repeat_df['Volume_original']
+repeat_df['Normed vol diff'] = np.abs(repeat_df['Vol diff'] / repeat_df['Volume_original'])
+
+
+
+sb.lmplot(data=repeat_df,x='Volume_original',y='Normed vol diff',hue='CellID_original',fit_reg=False)
+plt.ylim([0,1])
+plt.hlines(repeat_df['Normed vol diff'].mean(),4000,12000,linestyles='dashed')
+plt.ylabel('Error %')
+
+
 
