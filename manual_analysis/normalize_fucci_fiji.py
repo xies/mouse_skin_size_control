@@ -5,15 +5,15 @@ from ij.io import FileSaver
 from ij.process import ImageStatistics as IS  
   
 
-sourceDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R2/FUCCI_sequence"  
-targetDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R2/FUCCI_normalized"
+sourceDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R1/fucci_sequence"
+targetDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R1/fucci_normalized"
   
 
 # A function that takes an input image and returns a contrast-normalized one  
 def normalizeContrast(imp):  
   # The width and height of the box centered at every pixel:  
-  blockRadiusX = 200 # in pixels  
-  blockRadiusY = 200  
+  blockRadiusX = 100 # in pixels  
+  blockRadiusY = 100  
   # The number of standard deviations to expand to  
   stds = 2  
   # Whether to expand from the median value of the box or the pixel's value  
@@ -48,7 +48,8 @@ def loadProcessAndSave(sourcepath, fn):
     print "Could not load or process file:", sourcepath  
     print sys.exc_info()  
 
-# Strategy #2: let os.walk do all the work  
-for root, directories, filenames in os.walk(sourceDir):  
-  for filename in filenames:  
-    loadProcessAndSave(os.path.join(root, filename), normalizeContrast)  
+# Strategy #2: let os.walk do all the work
+print sourceDir
+for root, directories, filenames in os.walk(sourceDir):
+	for filename in filenames:
+		loadProcessAndSave(os.path.join(root, filename), normalizeContrast)  
