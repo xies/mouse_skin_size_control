@@ -15,7 +15,7 @@ roiMan = RoiManager.getInstance()
 fucci.show()
 
 # Use os.walk to iterate through individual cells
-for cellID, dirs, files in os.walk( path.join(dirname,'repeat_tracked_cells') ):
+for cellID, dirs, files in os.walk( path.join(dirname,'tracked_cells') ):
     this_celldir = path.join(dirname,cellID)
     # Check if skipped.txt exists
     if path.exists( path.join(this_celldir,'skipped.txt') ):

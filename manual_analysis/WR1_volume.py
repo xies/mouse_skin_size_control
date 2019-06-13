@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import os
 from scipy import stats
+import pickle as pkl
 
 dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/'
 
@@ -47,7 +48,6 @@ raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
 
-
 # Collate cell-centric list-of-dataslices
 ucellIDs = np.unique( raw_df['CellID'] )
 Ncells = len(ucellIDs)
@@ -60,6 +60,9 @@ for c in ucellIDs:
 ##### Export growth traces in CSV ######
 pd.concat(collated).to_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/growth_curves.csv',
                         index=False)
+
+f = open('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/collated.pkl','w')
+pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
 g1transitions = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/g1_frame.txt',)
@@ -106,9 +109,19 @@ df['Fold grown'] = df['Division volume'] / df['Birth volume']
 df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
 
-# Construct histogram mins
+# Construct histogram bins
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+
+df['Region'] = 'M1R1'
+r1 = df
+
+#Pickle the dataframe
+dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/'
+r1.to_pickle(path.join(dirname,'dataframe.pkl'))
+
+#Load from pickle
+r1 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
 
@@ -167,14 +180,14 @@ plt.xlabel('Volume at phase start (um^3)')
 
 # Plot growth curve(s)
 fig=plt.figure()
-#ax1 = plt.subplot(121)
+ax1 = plt.subplot(121)
 plt.xlabel('Time since birth (hr)')
-#ax2 = plt.subplot(122, sharey = ax1)
+ax2 = plt.subplot(122, sharey = ax1)
 for i in range(Ncells):
     v = np.array(collated[i]['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    plt.plot(x,v ,color='b') # growth curve
-#    ax1.plot(len(v)-1, v[-1]/v[0],'ko',alpha=0.5) # end of growth
+#    plt.plot(x,v ,color='b') # growth curve
+    ax1.plot(len(v)-1, v[-1]/v[0],'ko',alpha=0.5) # end of growth
 ax1.hlines(1,0,12,linestyles='dashed')
 ax1.hlines(2,0,12,linestyles='dashed')
 plt.ylabel('Fold grown since birth')

@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
 import os
+import pickle as pkl
 from scipy import stats
 
 dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/'
@@ -61,6 +62,9 @@ for c in ucellIDs:
 pd.concat(collated).to_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/growth_curves.csv',
                         index=False)
 
+f = open('/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/collated.pkl','w')
+pkl.dump(collated,f)
+
 # Load hand-annotated G1/S transition frame
 g1transitions = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/g1_frame.txt',)
 
@@ -106,9 +110,19 @@ df['Fold grown'] = df['Division volume'] / df['Birth volume']
 df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
 
-# Construct histogram mins
+# Construct histogram bins
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+
+df['Region'] = 'M1R2'
+r2 = df
+
+#Pickle the dataframe
+dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/tracked_cells/'
+r2.to_pickle(path.join(dirname,'dataframe.pkl'))
+
+#Load from pickle
+r2 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
 
@@ -192,8 +206,9 @@ for i in range(10):
 #######################################
 # Grab the automatic trancked data and look at how they relate
 
-auto_tracked = c2
-autoIDs = np.array([c.CellID.iloc[0] for c in c2])
+with open('/Users/mimi/Box Sync/Mouse/Skin/W-R2/collated.pkl','rb') as f:
+    auto_tracked = pkl.load(f)
+autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
 auto = []
 for i in range(Ncells):
     ind = np.where(autoIDs == collated[i].CellID[0])[0][0]
@@ -297,7 +312,9 @@ repeat_volumes = np.concatenate( [c.Volume.values for c in repeat] )
 comparison_volumes = np.concatenate( [c.Volume.values for c in comparison] )
 
 plt.scatter(repeat_volumes,comparison_volumes)
-plt.plot([4000,12000],[4000,12000])
+plt.plot([100,800],[100,800])
+plt.xlabel('Original volume')
+plt.ylabel('Repeat volume')
 
 
 # Do the plotting nicely with dataframes
@@ -315,14 +332,15 @@ repeat_df['Repeat'] = 2
 repeat_df = repeat_df.join( comparison_df,lsuffix='_repeat',rsuffix='_original')
 
 repeat_df['Vol diff'] = repeat_df['Volume_repeat'] - repeat_df['Volume_original']
-repeat_df['Normed vol diff'] = np.abs(repeat_df['Vol diff'] / repeat_df['Volume_original'])
+repeat_df['Normed vol diff'] = abs(repeat_df['Vol diff'] / repeat_df['Volume_original']) * 100
 
 
+sb.lmplot(data=repeat_df,x='Volume_original',y='Volume_repeat',hue='CellID_original',fit_reg=False)
+plt.plot([100,800],[100,800])
 
 sb.lmplot(data=repeat_df,x='Volume_original',y='Normed vol diff',hue='CellID_original',fit_reg=False)
-plt.ylim([0,1])
-plt.hlines(repeat_df['Normed vol diff'].mean(),4000,12000,linestyles='dashed')
-plt.ylabel('Error %')
+plt.hlines(repeat_df['Normed vol diff'].mean(),100,800,linestyles='dashed')
+plt.ylabel('Absolute Error %')
 
 
 
