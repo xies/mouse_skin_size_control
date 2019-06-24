@@ -68,10 +68,10 @@ Rcycle_dec = stats.pearsonr( Bsize_dec,Tcycle_dec)
 
 # Plot the data
 plt.subplot(1,2,1)
-sb.regplot( pbs['Bsize'],pbs['Tg1'] )
+sb.regplot( pbs['Bsize'],pbs['Tg1'],scatter_kws={'alpha':0.2})
 plt.ylim([0,35])
 plt.subplot(1,2,2)
-sb.regplot( palbo['Bsize'],palbo['Tg1'] )
+sb.regplot( palbo['Bsize'],palbo['Tg1'],scatter_kws={'alpha':0.2})
 plt.ylim([0,35])
 
 R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1'] )
@@ -87,9 +87,9 @@ palbo['Tg1 discrete'] = Tbins[which_bin-1]
 
 # Re-plot the data
 plt.subplot(1,2,1)
-sb.regplot( pbs['Bsize'],pbs['Tg1 discrete'] )
+sb.regplot( pbs['Bsize'],pbs['Tg1 discrete'],scatter_kws={'alpha':0.2})
 plt.subplot(1,2,2)
-sb.regplot( palbo['Bsize'],palbo['Tg1 discrete'] )
+sb.regplot( palbo['Bsize'],palbo['Tg1 discrete'],scatter_kws={'alpha':0.2})
 
 R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1 discrete'] )
 R_palbo = stats.pearsonr( palbo['Bsize'],palbo['Tg1 discrete'] )

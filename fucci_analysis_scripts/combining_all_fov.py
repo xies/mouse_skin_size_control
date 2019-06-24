@@ -119,9 +119,14 @@ for i in range(Nregions):
     tg1 = Tg1[I,...]
     ax = plt.subplot(2,2,i+1)
     # Overlay linear regression
+<<<<<<< Updated upstream
     sb.regplot(bsize,tlength,y_jitter=False,
                scatter_kws={'alpha':0.2, 's':50})
     plt.xlim([0,1500]),plt.ylim([-0.5,4.5])
+=======
+    sb.regplot(Bsize[I,...],Tg1[I,...],y_jitter=False,scatter_kws={'alpha':0.1})
+    plt.xlim([100,1500]); plt.ylim([-0.5,5])
+>>>>>>> Stashed changes
     plt.xlabel('Birth size (Crosssection area, px^2)')
     plt.ylabel('Cell cycle duration (days)')
     plt.title(''.join( ('Region ',str(regionID[i])) ))
@@ -218,24 +223,34 @@ plt.xlabel('Cross-section area (px^2)')
 plt.ylabel('Cell cycle duration (days)')
 
 
+<<<<<<< Updated upstream
 plt.figure()
 # Plot amount of growth in G1 v birth size
+=======
+## Censor Birth size outliers (5% top/bottom)
+>>>>>>> Stashed changes
 for i in range(Nregions):
     # Plot as scatter plot
     I = Region == regionID[i]
     bsize = Bsize[I,...]
     g1growth = G1Growth[I,...]
     ax = plt.subplot(2,2,i+1)
+<<<<<<< Updated upstream
     # Overlay linear regression
     sb.regplot(bsize,g1growth,y_jitter=False,
                scatter_kws={'alpha':0.2, 's':50})
     plt.xlim([0,1200]),plt.ylim([-500,1000])
     bin_edges = stats.mstats.mquantiles(bsize,[0,.2,.4,.6,.8,1])
     plot_bin_means(bsize,g1growth,bin_edges)
+=======
+    sb.regplot(bsize[filtered],tg1[filtered])
+    plt.xlim([100,900]); plt.ylim([-.5,5])
+>>>>>>> Stashed changes
     plt.xlabel('Birth size (Crosssection area, px^2)')
     plt.ylabel('Amount grown in G1 (px^2)')
     plt.title(''.join( ('Region ',str(regionID[i])) ))
     
+<<<<<<< Updated upstream
     
 plt.figure()
 # Plot amount of growth in G1 v birth size
@@ -270,6 +285,13 @@ plot_bin_means(g1['Nuclear area'],g1['E2F total'],g2_bin_edges)
 def plot_bin_means(X,Y,bin_edges,color='g'):
     """
     Plot the mean/std values of Y given bin_edges in X
+=======
+    # Get pearson corr
+    Rg1[i] = stats.pearsonr(bsize[filtered],tg1[filtered])[0]
+    Rcycle[i] = stats.pearsonr(bsize[filtered],tlength[filtered])[0]
+    
+    ax.text(6,2,''.join( ('R = ', '{:04.3f}'.format(Rg1[i]) ) ))
+>>>>>>> Stashed changes
     
     """
     

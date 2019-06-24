@@ -94,9 +94,9 @@ windowS = 40
 windowT = 2
 for i in range(Ncells):
     c = celldf.iloc[i]
-    t0 = c['Bframe']
-    x0 = c['Bx']
-    y0 = c['By']
+    t0 = c['Divframe']
+    x0 = c['Dx']
+    y0 = c['Dy']
     
     neighbor_diff = find_dividing_cells_within_neighborhood(childlessdf,[t0,x0,y0],
                                                             35,2)
