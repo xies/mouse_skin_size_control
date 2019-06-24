@@ -60,7 +60,7 @@ def txt2list(filename):
 # --- MAIN ----
 
 # Load coordinates for each cell
-basedir = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/'
+basedir = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/'
 celldirs = os.listdir(basedir)
 celldirs = [d for d in celldirs if os.path.isdir(os.path.join(basedir,d))]
 
@@ -69,6 +69,7 @@ log_filename = os.path.join(basedir, 'log.txt')
 if not os.path.exists(log_filename):
 	with open(log_filename,'w') as f:
 		f.write("cIDs already done\n")
+		already_done = []
 else:
 	with open(log_filename,'r') as f:
 		already_done = [line for line in f.readlines()][1:]
