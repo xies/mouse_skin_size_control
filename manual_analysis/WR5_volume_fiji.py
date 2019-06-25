@@ -7,10 +7,10 @@ from util.opencsv import CSVWriter
 import os
 from os import path
 
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/'
+dirname = '/home/xies/Desktop/Mouse/W-R5/'
 
 # Open FUCCI image
-fucci = IJ.openImage(path.join(dirname,'FUCCI_sequence.tif'))
+fucci = IJ.openImage(path.join(dirname,'fucci_sequence.tif'))
 roiMan = RoiManager.getInstance()
 fucci.show()
 

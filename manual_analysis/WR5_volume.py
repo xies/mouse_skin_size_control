@@ -15,7 +15,7 @@ import os.path as path
 import pickle as pkl
 from scipy import stats
 
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/'
+dirname = '/home/xies/Desktop/Mouse/W-R5/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -49,7 +49,6 @@ raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
 
-
 # Collate cell-centric list-of-dataslices
 ucellIDs = np.unique( raw_df['CellID'] )
 Ncells = len(ucellIDs)
@@ -60,14 +59,14 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
-pd.concat(collated).to_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/growth_curves.csv',
+pd.concat(collated).to_csv('/home/xies/Desktop/Mouse/W-R5/tracked_cells/growth_curves.csv',
                         index=False)
 
-f = open('/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/collated.pkl','w')
+f = open('/home/xies/Desktop/Mouse/W-R5/tracked_cells/collated.pkl','w')
 pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/g1_frame.txt',)
+g1transitions = pd.read_csv('/home/xies/Desktop/Mouse/W-R5/tracked_cells/g1_frame.txt',)
 
 
 # Collapse into single cell v. measurement DataFrame
@@ -119,7 +118,7 @@ df['Region'] = 'M2R5'
 r5 = df
 
 #Pickle the dataframe
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/tracked_cells/'
+dirname = '/home/xies/Desktop/Mouse/W-R5/tracked_cells/'
 r5.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle
@@ -182,25 +181,26 @@ plt.xlabel('Volume at phase start (um^3)')
 
 # Plot growth curve(s)
 fig=plt.figure()
-#ax1 = plt.subplot(121)
+ax1 = plt.subplot(121)
 plt.xlabel('Time since birth (hr)')
-#ax2 = plt.subplot(122, sharey = ax1)
+ax2 = plt.subplot(122, sharey = ax1)
 for i in range(Ncells):
     v = np.array(collated[i]['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    plt.plot(x,v ,color='b') # growth curve
-#    ax1.plot(len(v)-1, v[-1]/v[0],'ko',alpha=0.5) # end of growth
+    ax1.plot(x,v/v[0] ,color='b') # growth curve
+    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
 ax1.hlines(1,0,12,linestyles='dashed')
 ax1.hlines(2,0,12,linestyles='dashed')
 plt.ylabel('Fold grown since birth')
-
 out = ax2.hist(df['Fold grown'], orientation="horizontal");
 
 which_bin = np.digitize(df['Fold grown'],out[1])
 
-for i in range(10):
+I = np.arange(50,54)
+for (i,idx) in enumerate(I):
     plt.subplot(2,5,i+1)
-    plt.plot(collated[i]['G1'])
+    v = collated[idx]['Volume']
+    plt.plot(v/v[0])
     
     
 
