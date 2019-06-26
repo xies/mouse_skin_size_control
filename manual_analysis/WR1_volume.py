@@ -15,7 +15,7 @@ import os.path as path
 from scipy import stats
 import pickle as pkl
 
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/'
+dirname = '/data/Skin/W-R1/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -59,16 +59,16 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
-pd.concat(collated).to_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/growth_curves.csv',
+pd.concat(collated).to_csv('/data/Skin/W-R1/tracked_cells/growth_curves.csv',
                         index=False)
 
-f = open('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/collated.pkl','w')
+f = open('/data/Skin/W-R1/tracked_cells/collated_manual.pkl','w')
 pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/g1_frame.txt',)
+g1transitions = pd.read_csv('/data/Skin/W-R1/tracked_cells/g1_frame.txt',)
 # Load mitosis frame
-mitosis_in_frame = pd.read_csv('/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/mitosis_in_frame.txt',)
+mitosis_in_frame = pd.read_csv('/data/Skin/W-R1/tracked_cells/mitosis_in_frame.txt',)
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)
@@ -122,13 +122,15 @@ df['Region'] = 'M1R1'
 r1 = df
 
 #Pickle the dataframe
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R1/tracked_cells/'
+dirname = '/data/Skin/W-R1/tracked_cells/'
 r1.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle
 r1 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
+# DF to plot
+df = df_trunc
 
 ## Amt grown
 plt.figure()
@@ -155,12 +157,12 @@ plt.ylabel('Volume at phase end (um3)')
 plt.legend(['G1','SG2'])
 
 
-##
+## G1 sizer
 plt.figure()
 sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 
-## Adder?
+## Adder/sizer?
 plt.figure()
 plt.subplot(2,1,1)
 sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
@@ -206,3 +208,4 @@ for i in range(10):
     plt.plot(collated[i]['G1'])
     
     
+

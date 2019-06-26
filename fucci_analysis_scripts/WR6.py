@@ -13,8 +13,8 @@ import seaborn as sb
 from skimage import io
 import pickle, os
 
-#filename = '/data/Skin/W-R6/data.csv'
-filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R6/data.csv'
+filename = '/data/Skin/W-R6/data.csv'
+#filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R6/data.csv'
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
            'ActinSegmentationArea','G1MarkerInActinSegmentationArea']

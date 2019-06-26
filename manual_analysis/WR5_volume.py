@@ -15,7 +15,7 @@ import os.path as path
 import pickle as pkl
 from scipy import stats
 
-dirname = '/home/xies/Desktop/Mouse/W-R5/tracked_cells/'
+dirname = '/data/Skin/W-R5/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -59,14 +59,14 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
-pd.concat(collated).to_csv('/home/xies/Desktop/Mouse/W-R5/tracked_cells/growth_curves.csv',
+pd.concat(collated).to_csv('/data/Skin/W-R5/tracked_cells/growth_curves.csv',
                         index=False)
 
-f = open('/home/xies/Desktop/Mouse/W-R5/tracked_cells/collated.pkl','w')
+f = open('/data/Skin/W-R5/tracked_cells/collated_manual.pkl','w')
 pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv('/home/xies/Desktop/Mouse/W-R5/tracked_cells/g1_frame.txt',)
+g1transitions = pd.read_csv('/data/Skin/W-R5/tracked_cells/g1_frame.txt',)
 
 
 # Collapse into single cell v. measurement DataFrame
@@ -111,14 +111,15 @@ df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
 
 # Construct histogram bins
-birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
-g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+nbins = 4
+birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'],  np.arange(0,nbins+1,dtype=np.float)/nbins)
+g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], np.arange(0,nbins+1,dtype=np.float)/nbins)
 
 df['Region'] = 'M2R5'
 r5 = df
 
 #Pickle the dataframe
-dirname = '/home/xies/Desktop/Mouse/W-R5/tracked_cells/'
+dirname = '/data/Skin/W-R5/tracked_cells/'
 r5.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle
@@ -149,12 +150,6 @@ plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
 plt.xlabel('Volume at phase start (um3)')
 plt.ylabel('Volume at phase end (um3)')
 plt.legend(['G1','SG2'])
-
-
-##
-plt.figure()
-sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
-plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 
 ## Adder?
 plt.figure()
@@ -203,54 +198,4 @@ for (i,idx) in enumerate(I):
     plt.plot(v/v[0])
     
     
-
 #######################################
-# Grab the automatic trancked data and look at how they relate
-
-with open('/Users/mimi/Box Sync/Mouse/Skin/W-R5/collated.pkl','rb') as f:
-    auto_tracked = pkl.load(f)
-autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
-auto = []
-for i in range(Ncells):
-    ind = np.where(autoIDs == collated[i].CellID[0])[0][0]
-    auto.append(auto_tracked[ind])
-
-indices = np.arange(15,20,1)
-for i in range(5):
-    idx = indices[i]
-    plt.subplot(2,5,i+1)
-    plt.plot(auto[idx].Timeframe,auto[idx].ActinSegmentationArea,marker='o')
-    plt.title(''.join( ('Cell #', str(auto[idx].CellID.iloc[0])) ))
-    plt.ylabel('Cross section area')
-    plt.subplot(2,5,i+6)
-    plt.plot(collated[idx].Frame,collated[idx].Volume,color='g',marker='o')
-    plt.ylabel('Volume')
-    
-
-Ncells = len(ucellIDs)
-Aauto = np.empty((Ncells,10)) * np.nan
-Vmanual = np.empty((Ncells,10)) * np.nan
-for i in range(Ncells):
-    a = auto[i].ActinSegmentationArea
-    Aauto[i,0:len(a)] = a
-    v = collated[i].Volume
-    Vmanual[i,0:len(v)] = v
-    if len(a) == len(v): #Sometimes automated tracker is mis-tracked
-        print i
-        plt.scatter(a,v,color='b')
-        plt.xlabel('Cross sectional area')
-        plt.ylabel('Volume')
-        
-
-Aautodiff = np.ndarray.flatten(np.diff(Aauto))
-ax1 = plt.hist( nonans( Aautodiff/np.nanmean(Aauto) ), bins=25, histtype='step')
-plt.vlines( np.nanmean( Aautodiff/np.nanmean(Aauto) ), 0,300, linestyles='dashed')
-
-Vmanualdiff = np.ndarray.flatten(np.diff(Vmanual)) 
-plt.hist( nonans( Vmanualdiff/np.nanmean(Vmanual) ),bins = 25, histtype='step')
-plt.vlines( np.nanmean( Vmanualdiff/np.nanmean(Vmanual) ), 0,300, linestyles='dashed',color='r') 
-
-plt.legend('Area','Volume')
-plt.xlabel('dA/dt / <A> or dV/dt / <V>')
-plt.ylabel('Count')
-
