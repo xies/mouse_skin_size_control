@@ -5,8 +5,8 @@ from ij.io import FileSaver
 from ij.process import ImageStatistics as IS  
   
 
-sourceDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R1/fucci_sequence"
-targetDir = "/Users/mimi/Box Sync/Mouse/Skin/W-R1/fucci_normalized"
+sourceDir = "/data/Skin/W-R5/seq"
+targetDir = "/data/Skin/W-R5/normalized"
   
 
 # A function that takes an input image and returns a contrast-normalized one  
