@@ -15,7 +15,7 @@ import os.path as path
 import pickle as pkl
 from scipy import stats
 
-dirname = '/data/Skin/W-R2/tracked_cells/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -207,7 +207,7 @@ for i in range(10):
 #######################################
 # Grab the automatic trancked data and look at how they relate
 
-with open('/Users/mimi/Box Sync/Mouse/Skin/W-R2/collated.pkl','rb') as f:
+with open(path.join(dirname,'collated.pkl'),'rb') as f:
     auto_tracked = pkl.load(f)
 autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
 auto = []
@@ -258,7 +258,7 @@ plt.ylabel('Count')
 #######################################
 # Look at error/noise via repeat measurements
 
-repeat_dir = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/repeat_tracked_cells/'
+repeat_dir = '/Users/xies/Box/Mouse/Skin/W-R2/repeat_tracked_cells/'
 
 # Grab single-frame data into a dataframe
 repeat_df = pd.DataFrame()

@@ -15,7 +15,7 @@ import os.path as path
 import pickle as pkl
 from scipy import stats
 
-dirname = '/data/Skin/W-R5/tracked_cells/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -59,14 +59,14 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
-pd.concat(collated).to_csv('/data/Skin/W-R5/tracked_cells/growth_curves.csv',
+pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
                         index=False)
 
-f = open('/data/Skin/W-R5/tracked_cells/collated_manual.pkl','w')
+f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv('/data/Skin/W-R5/tracked_cells/g1_frame.txt',)
+g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),'rb')
 
 
 # Collapse into single cell v. measurement DataFrame
@@ -119,7 +119,6 @@ df['Region'] = 'M2R5'
 r5 = df
 
 #Pickle the dataframe
-dirname = '/data/Skin/W-R5/tracked_cells/'
 r5.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle

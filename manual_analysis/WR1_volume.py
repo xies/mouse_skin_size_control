@@ -15,7 +15,7 @@ import os.path as path
 from scipy import stats
 import pickle as pkl
 
-dirname = '/data/Skin/W-R1/tracked_cells/'
+dirname = '/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/'
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
@@ -59,16 +59,16 @@ for c in ucellIDs:
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
-pd.concat(collated).to_csv('/data/Skin/W-R1/tracked_cells/growth_curves.csv',
+pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
                         index=False)
 
-f = open('/data/Skin/W-R1/tracked_cells/collated_manual.pkl','w')
+f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
 
 # Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv('/data/Skin/W-R1/tracked_cells/g1_frame.txt',)
+g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),)
 # Load mitosis frame
-mitosis_in_frame = pd.read_csv('/data/Skin/W-R1/tracked_cells/mitosis_in_frame.txt',)
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),'rb')
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)
@@ -122,7 +122,6 @@ df['Region'] = 'M1R1'
 r1 = df
 
 #Pickle the dataframe
-dirname = '/data/Skin/W-R1/tracked_cells/'
 r1.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle
