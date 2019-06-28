@@ -15,7 +15,7 @@ import os
 ####
 
 # Load the region tracked cells
-filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/collated.pkl'
+filename = '/data/Skin/W-R6/collated.pkl'
 input_pkl = open(filename,'rb')
 collated = pickle.load(input_pkl)
 input_pkl.close()
