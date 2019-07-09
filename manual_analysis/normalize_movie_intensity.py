@@ -5,8 +5,8 @@ from ij.io import FileSaver
 from ij.process import ImageStatistics as IS  
   
 
-sourceDir = "/data/Skin/W-R5/seq"
-targetDir = "/data/Skin/W-R5/normalized"
+sourceDir = "/Users/xies/Box/Mouse/Skin/W-R1/dapi_sequence"
+targetDir = "/Users/xies/Box/Mouse/Skin/W-R1/dapi_normalized"
   
 
 # A function that takes an input image and returns a contrast-normalized one  
@@ -53,3 +53,4 @@ print sourceDir
 for root, directories, filenames in os.walk(sourceDir):
 	for filename in filenames:
 		loadProcessAndSave(os.path.join(root, filename), normalizeContrast)  
+print 'Done'

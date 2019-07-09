@@ -27,7 +27,31 @@ for subdir, dirs, files in os.walk(dirname):
     for f in files:
         fullname = os.path.join(subdir, f)
         # Skip the log.txt or skipped.txt file
-        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt':
+        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
+            continue
+        if os.path.splitext(fullname)[1] == '.txt':
+            print fullname
+            # Grab the frame # from filename
+            frame = f.split('.')[0]
+            frame = np.int(frame[1:])
+            frames.append(frame)
+            
+            # Grab cellID from subdir name
+            cIDs.append( np.int(os.path.split(subdir)[1]) )
+            
+            # Add segmented area to get volume (um3)
+            # Add total FUCCI signal to dataframe
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            vols.append(cell['Area'].sum())
+            fucci.append(cell['Mean'].mean())            
+
+man_dirname = '/Users/xies/Box/Mouse/Skin/W-R5/manual_tracking/'
+# Grab single-frame data into a dataframe
+for subdir, dirs, files in os.walk(man_dirname):
+    for f in files:
+        fullname = os.path.join(subdir, f)
+        # Skip the log.txt or skipped.txt file
+        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
         if os.path.splitext(fullname)[1] == '.txt':
             print fullname
@@ -49,13 +73,29 @@ raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
 
+# Load hand-annotated G1/S transition frame
+g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),',')
+g1transitions = pd.concat((g1transitions,pd.read_csv(path.join(man_dirname,'g1_frame.txt'),',')))
+
+# Load mitosis frame
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
+
 # Collate cell-centric list-of-dataslices
 ucellIDs = np.unique( raw_df['CellID'] )
 Ncells = len(ucellIDs)
 collated = []
 for c in ucellIDs:
     this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
+    this_cell['Region'] = 'M2R5'
     this_cell = this_cell.reset_index()
+    # Annotate cell cycle
+    transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
+    if transition_frame == '?':
+        this_cell['Phase'] = '?'
+    else:
+        this_cell['Phase'] = 'SG2'
+        iloc = np.where(this_cell.Frame == np.int(transition_frame))[0][0]
+        this_cell.loc[0:iloc,'Phase'] = 'G1'
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
@@ -64,10 +104,6 @@ pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
 
 f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
-
-# Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),'rb')
-
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)
@@ -110,6 +146,9 @@ df['Fold grown'] = df['Division volume'] / df['Birth volume']
 df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
 
+# Put in the mitosis annotation
+df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
+
 # Construct histogram bins
 nbins = 4
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'],  np.arange(0,nbins+1,dtype=np.float)/nbins)
@@ -125,6 +164,8 @@ r5.to_pickle(path.join(dirname,'dataframe.pkl'))
 r5 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
+
+df = r5[~r5.Mitosis]
 
 ## Amt grown
 plt.figure()

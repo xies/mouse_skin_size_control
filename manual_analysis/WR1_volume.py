@@ -22,6 +22,7 @@ raw_df = pd.DataFrame()
 frames = []
 cIDs = []
 vols = []
+h2b = []
 fucci = []
 for subdir, dirs, files in os.walk(dirname):
     for f in files:
@@ -29,25 +30,38 @@ for subdir, dirs, files in os.walk(dirname):
         # Skip the log.txt or skipped.txt file
         if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
+        fn, extension = os.path.splitext(fullname)
         if os.path.splitext(fullname)[1] == '.txt':
+            fn, channel = os.path.splitext(fn)
             print fullname
-            # Grab the frame # from filename
-            frame = f.split('.')[0]
-            frame = np.int(frame[1:])
-            frames.append(frame)
+            # Measure everything on DAPI channel first
+            if channel == '.h2b':
+                # Grab the frame # from filename
+                frame = f.split('.')[0]
+                frame = np.int(frame[1:])
+                frames.append(frame)
+                
+                # Grab cellID from subdir name
+                cIDs.append( np.int(os.path.split(subdir)[1]) )
+                
+                # Add segmented area to get volume (um3)
+                # Add total FUCCI signal to dataframe
+                cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+                vols.append(cell['Area'].sum())
+                h2b.append(cell['RawIntDen'].sum())
+            # Then measure on FUCCI channel
+            # Need to find cID in the collated list
+            if channel == '.fucci':
+                fucci.append(cell['Mean'].mean())
             
-            # Grab cellID from subdir name
-            cIDs.append( np.int(os.path.split(subdir)[1]) )
-            
-            # Add segmented area to get volume (um3)
-            # Add total FUCCI signal to dataframe
-            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-            vols.append(cell['Area'].sum())
-            fucci.append(cell['Mean'].mean())       
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
+raw_df['H2B'] = h2b
+
+# Load hand-annotated G1/S transition frame
+g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),',')
 
 # Collate cell-centric list-of-dataslices
 ucellIDs = np.unique( raw_df['CellID'] )
@@ -55,9 +69,18 @@ Ncells = len(ucellIDs)
 collated = []
 for c in ucellIDs:
     this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
+    this_cell['Region'] = 'M1R1'
     this_cell = this_cell.reset_index()
+    # Annotate cell cycle
+    transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
+    if transition_frame == '?':
+        this_cell['Phase'] = '?'
+    else:
+        this_cell['Phase'] = 'SG2'
+        iloc = np.where(this_cell.Frame == np.int(transition_frame))[0][0]
+        this_cell.loc[0:iloc,'Phase'] = 'G1'
     collated.append(this_cell)
-
+    
 ##### Export growth traces in CSV ######
 pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
                         index=False)
@@ -65,10 +88,8 @@ pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
 f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
 
-# Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),)
 # Load mitosis frame
-mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),'rb')
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)

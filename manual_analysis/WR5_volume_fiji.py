@@ -7,7 +7,7 @@ from util.opencsv import CSVWriter
 import os
 from os import path
 
-dirname = '/data/Skin/W-R5/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R5/'
 
 # Open FUCCI image
 fucci = IJ.openImage(path.join(dirname,'fucci_sequence.tif'))

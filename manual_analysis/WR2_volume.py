@@ -27,7 +27,7 @@ for subdir, dirs, files in os.walk(dirname):
     for f in files:
         fullname = os.path.join(subdir, f)
         # Skip the log.txt or skipped.txt file
-        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt':
+        if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
         if os.path.splitext(fullname)[1] == '.txt':
             print fullname
@@ -49,6 +49,8 @@ raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
 
+# Load hand-annotated G1/S transition frame
+g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),',')
 
 # Collate cell-centric list-of-dataslices
 ucellIDs = np.unique( raw_df['CellID'] )
@@ -56,7 +58,16 @@ Ncells = len(ucellIDs)
 collated = []
 for c in ucellIDs:
     this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
+    this_cell['Region'] = 'M1R2'
     this_cell = this_cell.reset_index()
+    # Annotate cell cycle
+    transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
+    if transition_frame == '?':
+        this_cell['Phase'] = '?'
+    else:
+        this_cell['Phase'] = 'SG2'
+        iloc = np.where(this_cell.Frame == np.int(transition_frame))[0][0]
+        this_cell.loc[0:iloc,'Phase'] = 'G1'
     collated.append(this_cell)
 
 ##### Export growth traces in CSV ######
@@ -65,10 +76,6 @@ pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
 
 f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
-
-# Load hand-annotated G1/S transition frame
-g1transitions = pd.read_csv(
-        path.join(dirname,'g1_frame.txt'))
 
 
 # Collapse into single cell v. measurement DataFrame
@@ -111,6 +118,12 @@ df['Fold grown'] = df['Division volume'] / df['Birth volume']
 
 df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
+
+# Load mitosis frame
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
+# Put in the mitosis annotation
+df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
+    
 
 # Construct histogram bins
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
@@ -201,7 +214,7 @@ which_bin = np.digitize(df['Fold grown'],out[1])
 for i in range(10):
     plt.subplot(2,5,i+1)
     plt.plot(collated[i]['G1'])
-    
+
     
 
 #######################################

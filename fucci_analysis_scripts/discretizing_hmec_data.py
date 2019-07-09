@@ -14,14 +14,15 @@ import scipy.stats as stats
 import seaborn as sb
 
 dt = 1./6
+deci_factor = 20
 
-filename = '/Users/mimi/Box Sync/HMECs/HMEC DFB tracked data/pbs_growth.csv'
+filename = '/Users/xies/Box/HMECs/HMEC DFB tracked data/pbs_growth.csv'
 pbs_growth_curves = pd.read_csv(filename,names=range(59))
-filename = '/Users/mimi/Box Sync/HMECs/HMEC DFB tracked data/pbs.csv'
+filename = '/Users/xies/Box/HMECs/HMEC DFB tracked data/pbs.csv'
 pbs = pd.read_csv(filename,header=None).T
 pbs.columns = ['Birth size','G1 length']
 pbs['G1 frame'] = np.round(pbs['G1 length'].values * 6)
-g1_frame = pbs['G1 frame']
+g1_frame = pbs['G1 frame'].astype(np.int)
 Ncells = len(pbs)
 
 ###### Collate data
@@ -68,7 +69,7 @@ R_g1_growth_ = np.zeros(Niter)
 R_g2_growth_ = np.zeros(Niter)
 for i in xrange(Niter):
     # Generate decimated data
-    pbs_decimated = decimate_data(pbs_growth_curves,pbs,20,dt)
+    pbs_decimated = decimate_data(pbs_growth_curves,pbs,deci_factor,dt)
     
     df = pbs.join(pbs_decimated,lsuffix='',rsuffix=' decimated')
     birth_vol_bins = stats.mstats.mquantiles(df['Birth size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
@@ -87,7 +88,6 @@ for i in xrange(Niter):
 
 ## Compare statistics
 plt.figure()
-<<<<<<< HEAD
 sb.regplot(Bsize,Tcycle * 10.0 / 60)
 sb.regplot(Bsize_dec,Tcycle_dec * 10.0 / 60,scatter_kws={'s':40,'alpha':0.5})
 plt.xlabel('Birth nuclear area (px)'),plt.xlim([0, 2500])
@@ -125,13 +125,11 @@ sb.regplot( palbo['Bsize'],palbo['Tg1 discrete'],scatter_kws={'alpha':0.2})
 R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1 discrete'] )
 R_palbo = stats.pearsonr( palbo['Bsize'],palbo['Tg1 discrete'] )
 
-=======
 plt.hist(R_g1_len_)
 plt.hist(R_g2_len_)
 plt.legend(('G1','S/G2/M'))
 plt.vlines((R_g1_len,R_g2_len),ymin=0,ymax=25)
 plt.xlabel('Correlation between entry size and phase duration')
->>>>>>> master
 
 plt.figure()
 plt.hist(R_g1_growth_)
