@@ -7,7 +7,7 @@ from util.opencsv import CSVWriter
 import os
 from os import path
 
-dirname = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/'
 
 # Open FUCCI image
 fucci = IJ.openImage(path.join(dirname,'FUCCI_normalized.tif'))

@@ -29,21 +29,26 @@ for subdir, dirs, files in os.walk(dirname):
         # Skip the log.txt or skipped.txt file
         if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
+        fn, extension = os.path.splitext(fullname)
         if os.path.splitext(fullname)[1] == '.txt':
+            fn, channel = os.path.splitext(fn)
             print fullname
-            # Grab the frame # from filename
-            frame = f.split('.')[0]
-            frame = np.int(frame[1:])
-            frames.append(frame)
+            # Measure everything on DAPI channel first
+            if channel == '.fucci':
+                # Grab the frame # from filename
+                frame = f.split('.')[0]
+                frame = np.int(frame[1:])
+                frames.append(frame)
+                
+                # Grab cellID from subdir name
+                cIDs.append( np.int(os.path.split(subdir)[1]) )
+                
+                # Add segmented area to get volume (um3)
+                # Add total FUCCI signal to dataframe
+                cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+                vols.append(cell['Area'].sum())
+                fucci.append(cell['Mean'].mean())
             
-            # Grab cellID from subdir name
-            cIDs.append( np.int(os.path.split(subdir)[1]) )
-            
-            # Add segmented area to get volume (um3)
-            # Add total FUCCI signal to dataframe
-            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-            vols.append(cell['Area'].sum())
-            fucci.append(cell['Mean'].mean())            
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
@@ -76,7 +81,6 @@ pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
 
 f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
-
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)

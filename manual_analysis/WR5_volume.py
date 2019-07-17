@@ -23,27 +23,32 @@ frames = []
 cIDs = []
 vols = []
 fucci = []
+method = []
 for subdir, dirs, files in os.walk(dirname):
     for f in files:
         fullname = os.path.join(subdir, f)
         # Skip the log.txt or skipped.txt file
         if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
+        fn, extension = os.path.splitext(fullname)
         if os.path.splitext(fullname)[1] == '.txt':
+            fn, channel = os.path.splitext(fn)
             print fullname
-            # Grab the frame # from filename
-            frame = f.split('.')[0]
-            frame = np.int(frame[1:])
-            frames.append(frame)
-            
-            # Grab cellID from subdir name
-            cIDs.append( np.int(os.path.split(subdir)[1]) )
-            
-            # Add segmented area to get volume (um3)
-            # Add total FUCCI signal to dataframe
-            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-            vols.append(cell['Area'].sum())
-            fucci.append(cell['Mean'].mean())            
+            # Measure everything on DAPI channel first
+            if channel == '.fucci':
+                # Grab the frame # from filename
+                frame = f.split('.')[0]
+                frame = np.int(frame[1:])
+                frames.append(frame)
+                
+                # Grab cellID from subdir name
+                cIDs.append( np.int(os.path.split(subdir)[1]) )
+                
+                # Add segmented area to get volume (um3)
+                # Add total FUCCI signal to dataframe
+                cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+                vols.append(cell['Area'].sum())
+                fucci.append(cell['Mean'].mean())
 
 man_dirname = '/Users/xies/Box/Mouse/Skin/W-R5/manual_tracking/'
 # Grab single-frame data into a dataframe
@@ -53,21 +58,26 @@ for subdir, dirs, files in os.walk(man_dirname):
         # Skip the log.txt or skipped.txt file
         if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
             continue
+        fn, extension = os.path.splitext(fullname)
         if os.path.splitext(fullname)[1] == '.txt':
+            fn, channel = os.path.splitext(fn)
             print fullname
-            # Grab the frame # from filename
-            frame = f.split('.')[0]
-            frame = np.int(frame[1:])
-            frames.append(frame)
-            
-            # Grab cellID from subdir name
-            cIDs.append( np.int(os.path.split(subdir)[1]) )
-            
-            # Add segmented area to get volume (um3)
-            # Add total FUCCI signal to dataframe
-            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-            vols.append(cell['Area'].sum())
-            fucci.append(cell['Mean'].mean())            
+            # Measure everything on DAPI channel first
+            if channel == '.fucci':
+                # Grab the frame # from filename
+                frame = f.split('.')[0]
+                frame = np.int(frame[1:])
+                frames.append(frame)
+                
+                # Grab cellID from subdir name
+                cIDs.append( np.int(os.path.split(subdir)[1]) )
+                
+                # Add segmented area to get volume (um3)
+                # Add total FUCCI signal to dataframe
+                cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+                vols.append(cell['Area'].sum())
+                fucci.append(cell['Mean'].mean())  
+
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
@@ -112,6 +122,7 @@ DivSize = np.zeros(Ncells)
 G1duration = np.zeros(Ncells)
 G1size = np.zeros(Ncells)
 cIDs = np.zeros(Ncells)
+method = np.zeros(Ncells)
 for i,c in enumerate(collated):
     cIDs[i] = c['CellID'][0]
     Bsize[i] = c['Volume'][0]
@@ -142,6 +153,9 @@ df['SG2 length'] = df['Cycle length'] - df['G1 length']
 df['G1 grown'] = df['G1 volume'] - df['Birth volume']
 df['SG2 grown'] = df['Total growth'] - df['G1 grown']
 df['Fold grown'] = df['Division volume'] / df['Birth volume']
+method = np.array(['Auto' for x in range(len(df))])
+method[df['CellID'] < 100] = 'Manual'
+df['Method'] = method
 
 df_nans = df
 df = df[~np.isnan(df['G1 grown'])]
@@ -172,11 +186,11 @@ plt.figure()
 sb.set_style("darkgrid")
 
 #plt.subplot(2,1,1)
-sb.regplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False,hue='Method')
 plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
 
 #plt.subplot(2,1,2)
-sb.regplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False)
+sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False,hue='Method')
 plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('Volume at phase start (um3)')
 plt.ylabel('Volume grown during phase (um3)')
@@ -186,15 +200,15 @@ plt.figure()
 sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 sb.regplot(data=df,x='G1 volume',y='Division volume',fit_reg=False)
-plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
 plt.xlabel('Volume at phase start (um3)')
+plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
 plt.ylabel('Volume at phase end (um3)')
 plt.legend(['G1','SG2'])
 
-## Adder?
 plt.figure()
+## Adder?
 plt.subplot(2,1,1)
-sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='Total growth',fit_reg=False,hue='Method')
 plot_bin_means(df['Birth volume'],df['Total growth'],birth_vol_bins)
 plt.subplot(2,1,2)
 sb.regplot(data=df,x='Birth volume',y='Division volume',fit_reg=False)
@@ -214,6 +228,7 @@ plt.ylabel('Phase duration (hr)')
 plt.xlabel('Volume at phase start (um^3)')
 
 
+
 # Plot growth curve(s)
 fig=plt.figure()
 ax1 = plt.subplot(121)
@@ -231,7 +246,7 @@ out = ax2.hist(df['Fold grown'], orientation="horizontal");
 
 which_bin = np.digitize(df['Fold grown'],out[1])
 
-I = np.arange(50,54)
+I = np.arange(50,60)
 for (i,idx) in enumerate(I):
     plt.subplot(2,5,i+1)
     v = collated[idx]['Volume']

@@ -22,7 +22,6 @@ raw_df = pd.DataFrame()
 frames = []
 cIDs = []
 vols = []
-h2b = []
 fucci = []
 for subdir, dirs, files in os.walk(dirname):
     for f in files:
@@ -35,7 +34,7 @@ for subdir, dirs, files in os.walk(dirname):
             fn, channel = os.path.splitext(fn)
             print fullname
             # Measure everything on DAPI channel first
-            if channel == '.h2b':
+            if channel == '.fucci':
                 # Grab the frame # from filename
                 frame = f.split('.')[0]
                 frame = np.int(frame[1:])
@@ -48,17 +47,12 @@ for subdir, dirs, files in os.walk(dirname):
                 # Add total FUCCI signal to dataframe
                 cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
                 vols.append(cell['Area'].sum())
-                h2b.append(cell['RawIntDen'].sum())
-            # Then measure on FUCCI channel
-            # Need to find cID in the collated list
-            if channel == '.fucci':
                 fucci.append(cell['Mean'].mean())
             
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
 raw_df['G1'] = fucci
-raw_df['H2B'] = h2b
 
 # Load hand-annotated G1/S transition frame
 g1transitions = pd.read_csv(path.join(dirname,'g1_frame.txt'),',')
@@ -150,7 +144,7 @@ r1 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
 # DF to plot
-df = df_trunc
+df = r1
 
 ## Amt grown
 plt.figure()
