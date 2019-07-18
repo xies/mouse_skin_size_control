@@ -10,7 +10,7 @@ from os import path
 dirname = '/Users/xies/Box/Mouse/Skin/W-R5/'
 
 # Open FUCCI image
-fucci = IJ.openImage(path.join(dirname,'h2b_cropped.tif'))
+fucci = IJ.openImage(path.join(dirname,'fucci_cropped.tif'))
 roiMan = RoiManager.getInstance()
 fucci.show()
 
@@ -31,7 +31,7 @@ for cellID, dirs, files in os.walk( path.join(dirname,'tracked_cells') ):
                 roiMan.runCommand('Select All')
                 roiMan.runCommand('Measure')
                 rt = ResultsTable.getResultsTable()
-                fucci_savename = ''.join( (path.splitext(fullname)[0],'.h2b.txt') )
+                fucci_savename = ''.join( (path.splitext(fullname)[0],'.fucci.txt') )
                 rt.save(fucci_savename)
                 roiMan.reset()
                 rt.reset()

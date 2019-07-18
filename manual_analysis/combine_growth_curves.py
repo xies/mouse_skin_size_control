@@ -55,11 +55,6 @@ for i,c in enumerate(collated_filtered):
     this_sg2_vol = c[this_phase == 'SG2']['Volume']
     g1exit_aligned[i,g1_aligned_frame-len(this_g1_vol):g1_aligned_frame] = this_g1_vol
     g1exit_aligned[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_vol
-    # H2B
-    this_g1_h2b = c[this_phase == 'G1']['H2B']
-    this_sg2_h2b = c[this_phase == 'SG2']['H2B']
-    g1exit_h2b[i,g1_aligned_frame-len(this_g1_vol):g1_aligned_frame] = this_g1_h2b
-    g1exit_h2b[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_h2b
     # FUCCI
     this_g1_fucci = c[this_phase == 'G1']['G1']
     this_sg2_fucci = c[this_phase == 'SG2']['G1']
@@ -86,8 +81,8 @@ mean_curve[Ncell_in_bin < 10] = np.nan
 std_curve = np.nanstd(g1exit_aligned,axis=0)
 std_curve[Ncell_in_bin < 10] = np.nan
 plt.plot(t, mean_curve, color='r')
-plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
-                 color='r',alpha=0.1)
+#plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+#                 color='r',alpha=0.1)
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Cell volume (um3)')
 
@@ -100,6 +95,15 @@ cv = stats.variation(g1exit_aligned,axis=0,nan_policy='omit')
 cv[Ncell_in_bin < 10] = np.nan
 plt.plot(t,cv)
 
+# Heatmap
+# Contatenate curves for heatmap
+t = np.arange(max_g1 + max_sg2 - 1) * 12
+[X,Y] = np.meshgrid(t,np.arange(Ncells))
+GC = np.empty(X.shape) * np.nan
+for i,c in enumerate(collated):
+    V = c[c['Daughter'] == 'None'].Volume
+    GC[i,0:len(V)] = V
+    
 
 # Plot growth curve(s): Region 1
 fig=plt.figure()
@@ -108,7 +112,8 @@ plt.xlabel('Time since birth (hr)')
 plt.ylabel('Volume (um3)')
 ax2 = plt.subplot(122)
 curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
-for c in c1+c2+c5:
+for c in collated:
+    c = c[c['Daughter'] == 'None']
     v = np.array(c['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
     ax1.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve

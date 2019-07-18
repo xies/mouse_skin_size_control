@@ -26,6 +26,7 @@ with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','r
     c2 = pkl.load(f)
 with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
     c5 = pkl.load(f)
+collated = c1+c2+c5
 
 df = df[~df.Mitosis]
 

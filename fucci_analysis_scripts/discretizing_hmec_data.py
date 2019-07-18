@@ -55,11 +55,13 @@ pbs['SG2 length'] = g2len
 pbs['Total length'] = totalT
 pbs['G1 growth'] = pbs['G1 size'] - pbs['Birth size']
 pbs['SG2 growth'] = pbs['Division size'] - pbs['G1 size']
+pbs['Total growth'] = pbs['Division size'] - pbs['Birth size']
 
 R_g1_len = np.corrcoef(pbs['Birth size'],pbs['G1 length'])[0,1]
 R_g2_len = np.corrcoef(pbs['G1 size'],pbs['SG2 length'])[0,1]
 R_g1_growth = np.corrcoef(pbs['Birth size'],pbs['G1 growth'])[0,1]
 R_g2_growth = np.corrcoef(pbs['G1 size'],pbs['SG2 growth'])[0,1]
+R_total_growth = np.corrcoef(pbs['Birth size'],pbs['Total growth'])[0,1]
 
 # Collect statistics
 Niter = 100
@@ -67,6 +69,7 @@ R_g1_len_ = np.zeros(Niter)
 R_g2_len_ = np.zeros(Niter)
 R_g1_growth_ = np.zeros(Niter)
 R_g2_growth_ = np.zeros(Niter)
+R_total_growth_ = np.zeros(Niter)
 for i in xrange(Niter):
     # Generate decimated data
     pbs_decimated = decimate_data(pbs_growth_curves,pbs,deci_factor,dt)
@@ -79,52 +82,27 @@ for i in xrange(Niter):
     R_g2_len_[i] = np.corrcoef(pbs_decimated['G1 size'],pbs_decimated['SG2 length'])[0,1]
     R_g1_growth_[i] = np.corrcoef(pbs_decimated['Birth size'],pbs_decimated['G1 growth'])[0,1]
     R_g2_growth_[i] = np.corrcoef(pbs_decimated['G1 size'],pbs_decimated['SG2 growth'])[0,1]
+    R_total_growth_[i] = np.corrcoef(pbs_decimated['Birth size'],pbs_decimated['Total growth'])[0,1]
     
-#    ####### Plot analysis
-#    plt.figure(1)
-#    plot_size_v_duration(pbs_decimated,color='k',scatter_kws={'alpha':0.1})
-#    plt.figure(2)
-#    plot_size_v_growth(pbs_decimated,color='k',scatter_kws={'alpha':0.1})
+#    ####### Plot decimated data
+    plt.figure(1)
+    plot_size_v_duration(pbs_decimated,color='k',scatter_kws={'alpha':0.1})
+    plt.figure(2)
+    plot_size_v_growth(pbs_decimated,color='k',scatter_kws={'alpha':0.1})
+    plt.figure(3)
+    plot_overall_growth(pbs_decimated,color='k',scatter_kws={'alpha':0.1})
 
-## Compare statistics
-plt.figure()
-sb.regplot(Bsize,Tcycle * 10.0 / 60)
-sb.regplot(Bsize_dec,Tcycle_dec * 10.0 / 60,scatter_kws={'s':40,'alpha':0.5})
-plt.xlabel('Birth nuclear area (px)'),plt.xlim([0, 2500])
-plt.ylabel('Total cell cycle duration (hr)')
-Rcycle = stats.pearsonr( Bsize,Tcycle)
-Rcycle_dec = stats.pearsonr( Bsize_dec,Tcycle_dec)
+# Plot real data
+plt.figure(1)
+plot_size_v_duration(pbs,color='r')
+plt.figure(2)
+plot_size_v_growth(pbs,color='r')
+plt.figure(3)
+plot_overall_growth(pbs,color='r')
 
 ##########
 
-# Plot the data
-plt.subplot(1,2,1)
-sb.regplot( pbs['Bsize'],pbs['Tg1'],scatter_kws={'alpha':0.2})
-plt.ylim([0,35])
-plt.subplot(1,2,2)
-sb.regplot( palbo['Bsize'],palbo['Tg1'],scatter_kws={'alpha':0.2})
-plt.ylim([0,35])
-
-R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1'] )
-R_palbo = stats.pearsonr( palbo['Bsize'],palbo['Tg1'] )
-
-# Discretize Tg1 into %-iles
-Tbins = np.linspace(0.,27., 10)
-which_bin = np.digitize(pbs['Tg1'],Tbins)
-pbs['Tg1 discrete'] = Tbins[which_bin-1]
-which_bin = np.digitize(palbo['Tg1'],Tbins)
-palbo['Tg1 discrete'] = Tbins[which_bin-1]
-
-
-# Re-plot the data
-plt.subplot(1,2,1)
-sb.regplot( pbs['Bsize'],pbs['Tg1 discrete'],scatter_kws={'alpha':0.2})
-plt.subplot(1,2,2)
-sb.regplot( palbo['Bsize'],palbo['Tg1 discrete'],scatter_kws={'alpha':0.2})
-
-R_pbs = stats.pearsonr( pbs['Bsize'],pbs['Tg1 discrete'] )
-R_palbo = stats.pearsonr( palbo['Bsize'],palbo['Tg1 discrete'] )
-
+plt.figure()
 plt.hist(R_g1_len_)
 plt.hist(R_g2_len_)
 plt.legend(('G1','S/G2/M'))
@@ -132,11 +110,13 @@ plt.vlines((R_g1_len,R_g2_len),ymin=0,ymax=25)
 plt.xlabel('Correlation between entry size and phase duration')
 
 plt.figure()
+plt.hist(R_total_growth_)
 plt.hist(R_g1_growth_)
 plt.hist(R_g2_growth_)
-plt.legend(('G1','S/G2/M'))
-plt.vlines((R_g1_growth,R_g2_growth),ymin=0,ymax=30)
-plt.xlabel('Correlation between entry size and growth in phase')
+plt.legend(('G1','S/G2/M','Total'))
+plt.vlines((R_g1_growth,R_g2_growth,R_total_growth),ymin=0,ymax=30)
+plt.ylim([0,30])
+plt.xlabel('Correlation between entry size and growth during indicated phase')
 
 
 ####### Plot analysis
@@ -144,7 +124,6 @@ plt.figure(1)
 plot_size_v_duration(pbs,color='r')
 plt.figure(2)
 plot_size_v_growth(pbs,color='r')
-
 
 #####
 
@@ -154,7 +133,7 @@ def decimate_data(growth_curves,df,dec_factor,dt):
     g1len_ = np.zeros(Ncells)
     dsize_ = np.zeros(Ncells)
     bsize_ = np.zeros(Ncells)
-    g1frame_ = np.zeros(Ncells)
+    g1frame_ = np.zeros(Ncells,dtype=np.int)
     g2len_ = np.zeros(Ncells)
     g1size_ = np.zeros(Ncells)
     totalT_ = np.zeros(Ncells)
@@ -167,7 +146,7 @@ def decimate_data(growth_curves,df,dec_factor,dt):
         indices = range(random_phase,Tx,int(dec_factor))
         x_decimated = x[indices]
         # Grab the nearest G1 frame estimate as last decimated frame before "real" G1/S
-        g1frame_[i] = np.where(df.iloc[i]['G1 frame'] > indices)[0].max() + 1
+        g1frame_[i] = int(np.where(df.iloc[i]['G1 frame'] > indices)[0].max() + 1)
         g1len_[i] = g1frame_[i]* dt * dec_factor
         # Grab birth size
         bsize_[i] = x_decimated[0]
@@ -191,14 +170,15 @@ def decimate_data(growth_curves,df,dec_factor,dt):
     decimated['Total length'] = totalT_
     decimated['G1 growth'] = decimated['G1 size'] - decimated['Birth size']
     decimated['SG2 growth'] = decimated['Division size'] - decimated['G1 size']
+    decimated['Total growth'] = decimated['Division size'] - decimated['Birth size']
 
     return decimated
     
     
-    
 def plot_size_v_duration(df,color='k',scatter_kws={}):
     ####### Analyze for phase duration
-    
+    birth_vol_bins = stats.mstats.mquantiles(df['Birth size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+    g1_vol_bins = stats.mstats.mquantiles(df['G1 size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
     # G1
     plt.subplot(2,1,1)
 #    sb.regplot(data=df, x = 'Birth size decimated', y = 'G1 length decimated', fit_reg=False,color='b')
@@ -219,7 +199,8 @@ def plot_size_v_duration(df,color='k',scatter_kws={}):
 
 def plot_size_v_growth(df,color='k',scatter_kws={}):
     ####### Analyze for phase growth
-    
+    birth_vol_bins = stats.mstats.mquantiles(df['Birth size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+    g1_vol_bins = stats.mstats.mquantiles(df['G1 size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
     # G1
 #    plt.subplot(2,1,1)
 #    sb.regplot(data=df, x = 'Birth size decimated', y = 'G1 growth decimated', fit_reg=False,color='b')
@@ -237,5 +218,15 @@ def plot_size_v_growth(df,color='k',scatter_kws={}):
     sb.regplot(data=df, x = 'G1 size', y = 'SG2 growth', fit_reg=False, color=color,
                scatter_kws=scatter_kws)
     plot_bin_means(df['G1 size'],df['SG2 growth'],g1_vol_bins)
+
+
+def plot_overall_growth(df,color='k',scatter_kws={}):
+    ####### Analyze for overall growth
+    birth_vol_bins = stats.mstats.mquantiles(df['Birth size'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
+    
+    sb.regplot(data=df, x = 'Birth size', y = 'Total growth', fit_reg=False, color=color,
+               scatter_kws=scatter_kws, y_jitter=True)
+    plot_bin_means(df['Birth size'],df['Total growth'],birth_vol_bins)
+
 
     
