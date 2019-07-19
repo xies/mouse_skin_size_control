@@ -23,6 +23,7 @@ cIDs = []
 vols = []
 fucci = []
 daughter = []
+nuclei = []
 
 filelist = glob(path.join(dirname,'*/*.txt'))
 for fullname in filelist:
@@ -62,6 +63,8 @@ for fullname in filelist:
                 frame = np.int(frame[1:-1])
                 frames.append(frame)
                 daughter.append(daughter_name)
+        elif channel == 'h2b':
+            h2b.append()
                 
             
 raw_df['Frame'] = frames
