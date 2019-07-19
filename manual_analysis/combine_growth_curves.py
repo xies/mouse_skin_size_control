@@ -45,6 +45,7 @@ max_sg2 = int(sg2lengths[g1lengths != '?'].max().values[0])
 g1exit_aligned = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 g1exit_h2b = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 g1exit_fucci = np.empty((Ncells,max_g1+max_sg2)) * np.nan
+g1exit_nuc = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 collated_filtered = [c for c in collated if c['Phase'].iloc[0] != '?']
 
 g1_aligned_frame = max_g1
@@ -55,15 +56,22 @@ for i,c in enumerate(collated_filtered):
     this_sg2_vol = c[this_phase == 'SG2']['Volume']
     g1exit_aligned[i,g1_aligned_frame-len(this_g1_vol):g1_aligned_frame] = this_g1_vol
     g1exit_aligned[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_vol
+    # Nuclear volume
+    this_g1_nuc = c[this_phase == 'G1']['Nucleus']
+    this_sg2_nuc = c[this_phase == 'SG2']['Nucleus']
+    g1exit_nuc[i,g1_aligned_frame-len(this_g1_vol):g1_aligned_frame] = this_g1_nuc
+    g1exit_nuc[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_nuc
+
     # FUCCI
     this_g1_fucci = c[this_phase == 'G1']['G1']
     this_sg2_fucci = c[this_phase == 'SG2']['G1']
     g1exit_fucci[i,g1_aligned_frame-len(this_g1_vol):g1_aligned_frame] = this_g1_fucci
     g1exit_fucci[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_fucci
 
+t = np.arange(-max_g1 + 1 ,max_sg2 + 1) * 12
+
 ####################################
 
-t = np.arange(-max_g1 + 1 ,max_sg2 + 1) * 12
 # Plot G1-aligned growth curves
 X,Y = np.meshgrid(t,np.arange(1,Ncells + 1))
 plt.pcolor(X,Y,g1exit_aligned) # Heatmap ->need to control meshgrid
@@ -104,8 +112,9 @@ for i,c in enumerate(collated):
     V = c[c['Daughter'] == 'None'].Volume
     GC[i,0:len(V)] = V
     
-
-# Plot growth curve(s): Region 1
+################################################
+    
+##### Plot growth curve(s)
 fig=plt.figure()
 ax1 = plt.subplot(121)
 plt.xlabel('Time since birth (hr)')
@@ -120,6 +129,35 @@ for c in collated:
 #    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
 out = ax2.hist(df['Fold grown'], orientation="vertical")
 plt.xlabel('Fold grown from birth to division')
+
+################################################
+# Plot nuclear growth
+plt.figure()
+
+for i in xrange(Ncells):
+    plt.plot(t,g1exit_nuc[i,:],color='b',alpha=0.2)
+Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
+mean_curve = np.nanmean(g1exit_nuc,axis=0)
+mean_curve[Ncell_in_bin < 10] = np.nan
+
+plt.plot(t, mean_curve, color='r')
+plt.xlabel('Time since G1 exit (hr)')
+plt.ylabel('Nuclear volume (um3)')
+
+# Plot N:C ratio
+plt.figure()
+
+for i in xrange(Ncells):
+    plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],color='b',alpha=0.2)
+Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
+mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
+mean_curve[Ncell_in_bin < 10] = np.nan
+
+plt.plot(t, mean_curve, color='r')
+plt.xlabel('Time since G1 exit (hr)')
+plt.ylabel('Nuclear : cytoplasmic ratio')
+
+
 
 
 

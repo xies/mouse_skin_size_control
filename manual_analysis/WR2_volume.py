@@ -10,9 +10,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
-import os
 import os.path as path
 import pickle as pkl
+import re
+from glob import glob
 from scipy import stats
 
 dirname = '/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/'
@@ -24,6 +25,8 @@ vols = []
 fucci = []
 daughter = []
 nuclei = []
+
+dx = 0.25 # um per px
 
 filelist = glob(path.join(dirname,'*/*.txt'))
 for fullname in filelist:
@@ -63,13 +66,15 @@ for fullname in filelist:
                 frame = np.int(frame[1:-1])
                 frames.append(frame)
                 daughter.append(daughter_name)
-        elif channel == 'h2b':
-            h2b.append()
-                
+        elif channel == '.h2b':
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
+            
             
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
+raw_df['Nucleus'] = nuclei
 raw_df['G1'] = fucci
 raw_df['Daughter'] = daughter
 
@@ -260,7 +265,6 @@ which_bin = np.digitize(df['Fold grown'],out[1])
 for i in range(10):
     plt.subplot(2,5,i+1)
     plt.plot(collated[i]['G1'])
-
     
 
 #######################################

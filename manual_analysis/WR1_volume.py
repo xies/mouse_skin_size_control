@@ -25,6 +25,7 @@ cIDs = []
 vols = []
 fucci = []
 daughter = []
+nuclei = []
 
 filelist = glob(path.join(dirname,'*/*.txt'))
 for fullname in filelist:
@@ -64,11 +65,16 @@ for fullname in filelist:
                 frame = np.int(frame[1:-1])
                 frames.append(frame)
                 daughter.append(daughter_name)
+        elif channel == '.h2b':
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
+            
                 
             
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
+raw_df['Nucleus'] = nuclei
 raw_df['G1'] = fucci
 raw_df['Daughter'] = daughter
 
@@ -162,7 +168,6 @@ df['G1 grown'] = df['G1 volume'] - df['Birth volume']
 df['SG2 grown'] = df['Total growth'] - df['G1 grown']
 df['Fold grown'] = df['Division volume'] / df['Birth volume']
 df['Total growth interpolated'] = df['Division volume interpolated'] - df['Birth volume']
-
 
 # Put in the mitosis annotation
 df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
@@ -271,19 +276,23 @@ for i in range(10):
     plt.plot(collated[i]['G1'])
     
 # Plot daughter growth curves
-    
 has_daughter = df[~np.isnan(df['Daughter a volume'])]
+plt.hist(nonans(df['Daughter ratio']))
+plt.xlabel('Daughter volume ratio')
+plt.ylabel('Frequency')
+
 for i in has_daughter.CellID.values:
     I = np.where(ucellIDs == i)[0][0]
     c = collated[I]
     mainC = c[c['Daughter'] == 'None']
-    t = mainC.Frame - mainC.iloc[0].Frame
+    t = (mainC.Frame - mainC.iloc[0].Frame)*12
     daughters = c[c['Daughter'] != 'None']
-    plt.plot(t,mainC.Volume)
+    plt.plot(t,mainC.Volume,'b')
     if daughters.iloc[0].Frame == 2:
         print i
-    plt.plot([t.iloc[-1], t.iloc[-1] + 1],
+    plt.plot([t.iloc[-1], t.iloc[-1] + 6],
              [mainC.iloc[-1].Volume,daughters.Volume.sum()],
-             marker='o',linestyle='dashed')
-    
+             marker='o',linestyle='dashed',color='r')
+    plt.xlabel('Time since birth (hr)')
+    plt.ylabel('Cell volume')
     

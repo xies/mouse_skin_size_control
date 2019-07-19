@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
-import os
+import re
+from glob import glob
 import os.path as path
 import pickle as pkl
 from scipy import stats
@@ -24,7 +25,10 @@ cIDs = []
 vols = []
 fucci = []
 method = []
+nuclei = []
 daughter = []
+
+dx = 0.25 # um per px
 
 filelist = glob(path.join(dirname,'*/*.txt'))
 for fullname in filelist:
@@ -64,6 +68,10 @@ for fullname in filelist:
                 frame = np.int(frame[1:-1])
                 frames.append(frame)
                 daughter.append(daughter_name)
+        elif channel == '.h2b':
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
+            
 
 man_dirname = '/Users/xies/Box/Mouse/Skin/W-R5/manual_tracking/'
 # Grab single-frame data into a dataframe
@@ -105,11 +113,15 @@ for fullname in filelist:
                 frame = np.int(frame[1:-1])
                 frames.append(frame)
                 daughter.append(daughter_name)
+        elif channel == '.h2b':
+            cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
+            nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
 
 
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
+raw_df['Nucleus'] = nuclei
 raw_df['G1'] = fucci
 raw_df['Daughter'] = daughter
 

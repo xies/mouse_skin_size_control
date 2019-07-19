@@ -12,7 +12,7 @@ import pandas as pd
 import os.path as path
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/Box/Mouse/Skin/W-R1/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R5/'
 
 h2b = io.imread(path.join(dirname,'h2b_sequence.tif'))
 T,Z,X,Y = h2b.shape
@@ -31,12 +31,15 @@ for t in xrange(T):
         
         print 'Done with t= ',t,', z = ',z 
 
-mask = mask.astype(np.int8)
+mask = io.imread(path.join(dirname,'h2b_mask.tif'))
+
 # Do some clean up
 for t in xrange(T):
     for z in xrange(Z):
         m = mask[t,z,...]
-        
-        
+        m = morphology.binary_opening(m)
+        m = morphology.binary_closing(m)
+        mask[t,z,...] = m
 
-io.imsave(path.join(dirname,'h2b_mask.tif'),mask.astype(np.int8))
+io.imsave(path.join(dirname,'h2b_mask_clean.tif'),mask.astype(np.int8))
+
