@@ -11,10 +11,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sb
 from skimage import io
-import os,pickle
+import os
+import pickle as pkl
 
 #filename = '/data/Skin/W-R2/data.csv'
-filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R2/data.csv'
+filename = '/Users/xies/Box/Mouse/Skin/W-R2/data.csv'
 
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
@@ -26,7 +27,7 @@ has_parent = df['ParentID'] != 0
 
 # Filter for cells that also have 'children' i.e cells were born in the movie
 parentIDu = np.unique(df['ParentID'])
-I = np.array(ismember(df['CellID'],parentIDu))
+I = np.array(np.in1d(df['CellID'],parentIDu))
 has_children = I > 0
 
 # Cells now are born and divide within movie
@@ -77,7 +78,7 @@ c2 = collated
 
 out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )
 output = open( out_pkl, 'wb' )
-pickle.dump( c2, output )
+pkl.dump( c2, output )
 output.close()
 
 

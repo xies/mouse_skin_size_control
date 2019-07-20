@@ -80,8 +80,9 @@ plt.xlabel('Individual cells')
 plt.colorbar
 
 plt.figure()
+colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_aligned[i,:],color='b',alpha=0.2)
+    plt.plot(t,g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
 # plot mean/error as shade
 Ncell_in_bin = (~np.isnan(g1exit_aligned)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_aligned,axis=0)
@@ -134,8 +135,10 @@ plt.xlabel('Fold grown from birth to division')
 # Plot nuclear growth
 plt.figure()
 
+colors = {'M1R1':'b','M1R2':'g','M2R5':'r'}
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_nuc[i,:],color='b',alpha=0.2)
+    plt.plot(t,g1exit_nuc[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
+    
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan
@@ -148,7 +151,7 @@ plt.ylabel('Nuclear volume (um3)')
 plt.figure()
 
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],color='b',alpha=0.2)
+    plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan

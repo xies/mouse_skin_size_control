@@ -50,6 +50,7 @@ plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
 plt.ylabel('Amount grown in S/G2 (um3)')
 
+
 sb.lmplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -76,6 +77,10 @@ plot_bin_means(df['Birth volume'],df['Division volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
 plt.ylabel('Division volume (um3)')
 
+Rtotalgrowth = np.corrcoef(df['Birth volume'],df['Total growth'])
+Rdivisionvol = np.corrcoef(df['Birth volume'],df['Division volume'])
+print 'Correlation of total growth: ', Rtotalgrowth[0,1]
+print 'Correlation of division volume: ', Rdivisionvol[0,1]
 
 
 ## Phase length
@@ -95,6 +100,8 @@ Rsg2length = np.corrcoef(df['G1 volume'],df['SG2 length'])
 print 'Correlation of G1 length: ', Rg1length[0,1]
 print 'Correlation of S/G2 length: ', Rsg2length[0,1]
 
+################################
+
 # Plot CV/variation
 # Fraction of growth in G1
 plt.figure()
@@ -103,14 +110,28 @@ plt.xlabel('Fraction of growth occuring in G1')
 plt.ylabel('Frequency')
 
 # Calculate CVs
-birthCV = stats.variation(df['Birth volume'])
-g1CV = stats.variation(df['G1 volume'])
-divisionCV = stats.variation(df['Division volume'])
+[birthCV,bCV_lcl,bCV_ucl] = cvariation_ci(df['Birth volume'])
+bCV_lci = birthCV - bCV_lcl; bCV_uci = bCV_ucl - birthCV
+[g1CV,gCV_lcl,gCV_ucl] = cvariation_ci(df['G1 volume'])
+gCV_lci = g1CV - gCV_lcl; gCV_uci = gCV_ucl - g1CV
+[divisionCV,dCV_lcl,dCV_ucl] = cvariation_ci(df['Division volume'])
+dCV_lci = divisionCV - dCV_lcl; dCV_uci = dCV_ucl - divisionCV
+
+hmecCV = [0.31836487251259843, 0.2656214990138843, 0.398415581739395] # See decimate_hmec
+hmecLCI = 0.31836487251259843 - 0.2656214990138843
+hmecUCI = 0.398415581739395 - 0.31836487251259843
+errors = np.array(((bCV_lci,bCV_uci),(gCV_lci,gCV_uci),(dCV_lci,dCV_uci),(hmecLCI,hmecUCI))).T
+plt.figure()
+plt.errorbar([1,2,3,4],[birthCV,g1CV,divisionCV,hmecCV[0]],
+             yerr=errors,fmt='o',ecolor='orangered',
+            color='steelblue', capsize=5)
+plt.xticks([1,2,3,4],['Birth volume','G1 volume','Division volume','HMEC G1 size'])
+plt.ylabel('Coefficient of variation')
 
 # Calculate dispersion index
-birthFano = np.var(df['Birth volume']) / np.mean(df['Birth volume'])
-g1Fano = np.var(df['G1 volume']) / np.mean(df['G1 volume'])
-divisionFano = np.var(df['Division volume']) / np.mean(df['Division volume'])
+#birthFano = np.var(df['Birth volume']) / np.mean(df['Birth volume'])
+#g1Fano = np.var(df['G1 volume']) / np.mean(df['G1 volume'])
+#divisionFano = np.var(df['Division volume']) / np.mean(df['Division volume'])
 
 # Calculate skew
 birthSkew = stats.skew(df['Birth volume'])

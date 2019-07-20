@@ -269,16 +269,17 @@ for i in range(10):
 
 #######################################
 # Grab the automatic trancked data and look at how they relate
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/'
 
 with open(path.join(dirname,'collated.pkl'),'rb') as f:
     auto_tracked = pkl.load(f)
 autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
 auto = []
 for i in range(Ncells):
-    ind = np.where(autoIDs == collated[i].CellID[0])[0][0]
+    ind = np.where(autoIDs == collated[i].CellID.iloc[0])[0][0]
     auto.append(auto_tracked[ind])
 
-indices = np.arange(15,20,1)
+indices = np.random.randint(len(auto),size=5)
 for i in range(5):
     idx = indices[i]
     plt.subplot(2,5,i+1)
