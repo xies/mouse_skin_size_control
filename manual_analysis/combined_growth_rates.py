@@ -54,9 +54,14 @@ for c in collated:
         c['Sm Growth rate'] = np.nan
     
 ########## Plot histogram across growth curves ############
+        
 df = pd.concat(collated)
 df = df[df['Phase'] != '?']
 df.groupby('Phase')['Growth rate'].hist(stacked=True)
 plt.xlabel('Growth rate (um3 / hr)')
 
-sb.lmplot(data=df,y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=False)
+g = sb.lmplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=False)
+sb.regplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume', scatter=False, ax=g.axes[0, 0])
+
+
+

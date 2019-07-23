@@ -17,6 +17,7 @@ from scipy import stats
 import pickle as pkl
 
 dirname = '/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/'
+dx = 0.25
 
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()

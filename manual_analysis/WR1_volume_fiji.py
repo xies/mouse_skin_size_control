@@ -8,10 +8,9 @@ import os
 from os import path
 
 dirname = '/Users/xies/Box/Mouse/Skin/W-R1/'
-print 'Opening ' + path.join(dirname,'h2b_sequence.tif')
 
 # Open single-channel image
-image = IJ.openImage(path.join(dirname,'fucci_sequence.tif'))
+image = IJ.openImage(path.join(dirname,'h2b_mask_clean.tif'))
 roiMan = RoiManager.getInstance()
 image.show()
 
@@ -32,7 +31,7 @@ for cellID, dirs, files in os.walk( path.join(dirname,'tracked_cells') ):
                 roiMan.runCommand('Select All')
                 roiMan.runCommand('Measure')
                 rt = ResultsTable.getResultsTable()
-                image_savename = ''.join( (path.splitext(fullname)[0],'.fucci.txt') )
+                image_savename = ''.join( (path.splitext(fullname)[0],'.h2b.txt') )
                 rt.save(image_savename)
                 roiMan.reset()
                 rt.reset()

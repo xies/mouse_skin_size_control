@@ -75,7 +75,7 @@ for fullname in filelist:
 
 man_dirname = '/Users/xies/Box/Mouse/Skin/W-R5/manual_tracking/'
 # Grab single-frame data into a dataframe
-filelist = glob(path.join(man_dirname,'*/*.txt'))
+filelist = glob(path.join(man_dirname,'1/*.txt'))
 for fullname in filelist:
     subdir,f = path.split(fullname)
     # Skip the log.txt or skipped.txt file

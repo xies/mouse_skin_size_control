@@ -49,8 +49,12 @@ g1exit_nuc = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 collated_filtered = [c for c in collated if c['Phase'].iloc[0] != '?']
 
 g1_aligned_frame = max_g1
+g1_notaligned = np.empty((Ncells,10)) * np.nan
+
 for i,c in enumerate(collated_filtered):
     this_phase = c['Phase']
+    v = c[c.Daughter == 'None'].Volume
+    g1_notaligned[i,0:len(v)] = v
     # Volume
     this_g1_vol = c[this_phase == 'G1']['Volume']
     this_sg2_vol = c[this_phase == 'SG2']['Volume']
@@ -69,8 +73,14 @@ for i,c in enumerate(collated_filtered):
     g1exit_fucci[i,g1_aligned_frame:g1_aligned_frame+len(this_sg2_vol)] = this_sg2_fucci
 
 t = np.arange(-max_g1 + 1 ,max_sg2 + 1) * 12
+t_birth = np.arange(10) * 12
 
 ####################################
+
+X,Y = np.meshgrid(t_birth,np.arange(1,Ncells+1))
+plt.pcolor(X,Y,g1_notaligned,cmap='magma')
+plt.xlabel('Time since birth (hr)')
+plt.colorbar()
 
 # Plot G1-aligned growth curves
 X,Y = np.meshgrid(t,np.arange(1,Ncells + 1))
@@ -80,7 +90,7 @@ plt.xlabel('Individual cells')
 plt.colorbar
 
 plt.figure()
-colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
+colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
 for i in xrange(Ncells):
     plt.plot(t,g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
 # plot mean/error as shade
@@ -90,8 +100,8 @@ mean_curve[Ncell_in_bin < 10] = np.nan
 std_curve = np.nanstd(g1exit_aligned,axis=0)
 std_curve[Ncell_in_bin < 10] = np.nan
 plt.plot(t, mean_curve, color='r')
-#plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
-#                 color='r',alpha=0.1)
+plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+                 color='k',alpha=0.5)
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Cell volume (um3)')
 
@@ -121,7 +131,7 @@ ax1 = plt.subplot(121)
 plt.xlabel('Time since birth (hr)')
 plt.ylabel('Volume (um3)')
 ax2 = plt.subplot(122)
-curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
+curve_colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
 for c in collated:
     c = c[c['Daughter'] == 'None']
     v = np.array(c['Volume'],dtype=np.float)
@@ -135,19 +145,23 @@ plt.xlabel('Fold grown from birth to division')
 # Plot nuclear growth
 plt.figure()
 
-colors = {'M1R1':'b','M1R2':'g','M2R5':'r'}
+colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
 for i in xrange(Ncells):
     plt.plot(t,g1exit_nuc[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
     
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan
-
+std_curve = np.nanstd(g1exit_nuc,axis=0)
+std_curve[Ncell_in_bin < 10] = np.nan
+plt.plot(t, mean_curve, color='r')
+plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+                 color='k',alpha=0.5)
 plt.plot(t, mean_curve, color='r')
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear volume (um3)')
 
-# Plot N:C ratio
+# Plot N:C ratio wrt time
 plt.figure()
 
 for i in xrange(Ncells):
@@ -155,12 +169,44 @@ for i in xrange(Ncells):
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan
+std_curve = np.nanstd(g1exit_nuc/g1exit_aligned,axis=0)
+std_curve[Ncell_in_bin < 10] = np.nan
+plt.plot(t, mean_curve, color='r')
+plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+                 color='k',alpha=0.5)
+plt.plot(t, mean_curve, color='r')
+plt.xlabel('Time since G1 exit (hr)')
+plt.ylabel('Nuclear : cytoplasmic ratio')
 
+# Plot N:C ratio wrt size
+
+for c in collated_filtered:
+    c = c[c['Daughter'] == 'None']
+    plt.plot(c.Volume,c.Nucleus/c.Volume,color='b')
+Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
+mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
+mean_curve[Ncell_in_bin < 10] = np.nan
+std_curve = np.nanstd(g1exit_nuc/g1exit_aligned,axis=0)
+std_curve[Ncell_in_bin < 10] = np.nan
+plt.plot(t, mean_curve, color='r')
+plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+                 color='k',alpha=0.5)
 plt.plot(t, mean_curve, color='r')
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear : cytoplasmic ratio')
 
 
+plt.figure()
+V = np.hstack([c[c['Daughter'] == 'None'].Volume.values for c in collated_filtered])
+nV = np.hstack([c[c['Daughter'] == 'None'].Nucleus.values for c in collated_filtered])
+phases = np.hstack([c[c['Daughter'] == 'None'].Phase.values for c in collated_filtered])
+
+x = pd.DataFrame(np.vstack((V,nV/V)).T,columns=['Volume','Ratio'])
+x['Phase'] = phases
+sb.lmplot(data = x, x='Volume',y='Ratio',hue='Phase',fit_reg=False)
+sb.regplot(data = x, x='Volume',y='Ratio',scatter=False)
+plt.xlabel('Cell volume (um3)')
+plt.ylabel('N:C ratio')
 
 
 
