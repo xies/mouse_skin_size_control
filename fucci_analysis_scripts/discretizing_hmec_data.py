@@ -64,7 +64,7 @@ R_g2_growth = np.corrcoef(pbs['G1 size'],pbs['SG2 growth'])[0,1]
 R_total_growth = np.corrcoef(pbs['Birth size'],pbs['Total growth'])[0,1]
 
 # Collect statistics
-Niter = 100
+Niter = 1
 R_g1_len_ = np.zeros(Niter)
 R_g2_len_ = np.zeros(Niter)
 R_g1_growth_ = np.zeros(Niter)
@@ -110,22 +110,24 @@ plt.vlines((R_g1_len,R_g2_len),ymin=0,ymax=25)
 plt.xlabel('Correlation between entry size and phase duration')
 
 plt.figure()
-plt.hist(R_total_growth_)
-plt.hist(R_g1_growth_)
-plt.hist(R_g2_growth_)
+plt.hist(R_g1_growth_,histtype='step')
+plt.hist(R_g2_growth_,histtype='step')
+plt.hist(R_total_growth_,histtype='step')
 plt.legend(('G1','S/G2/M','Total'))
 plt.vlines((R_g1_growth,R_g2_growth,R_total_growth),ymin=0,ymax=30)
 plt.ylim([0,30])
 plt.xlabel('Correlation between entry size and growth during indicated phase')
 
 
-####### Plot analysis
-plt.figure(1)
-plot_size_v_duration(pbs,color='r')
-plt.figure(2)
-plot_size_v_growth(pbs,color='r')
+##### Histogram of phase durations
+bins = np.arange(0,180/6.,15/6.)
+plt.hist( pbs_decimated['G1 length'] ,histtype='step',stacked=True)
+plt.hist( (pbs_decimated['Total length'] - pbs_decimated['G1 length']),bins = bins,histtype='step',stacked=True)
+plt.xlabel('Phase duration (hr)')
+plt.ylabel('Frequency')
+plt.legend(['G1','S/G2/M'])
 
-#####
+
 
 def decimate_data(growth_curves,df,dec_factor,dt):
     ###### Need to decimate data by factor of 20 (with random phases)
@@ -155,7 +157,7 @@ def decimate_data(growth_curves,df,dec_factor,dt):
         # Grab division size
         dsize_[i] = x_decimated[-1]
         # Grab total cell cycle length
-        totalT_[i] = len(indices) * dt
+        totalT_[i] = len(indices) * dt * dec_factor
         # Grab SG2M duration
         g2len_[i] = (len(indices) - g1frame_[i]) * dec_factor * dt
     
@@ -191,11 +193,11 @@ def plot_size_v_duration(df,color='k',scatter_kws={}):
     plt.subplot(2,1,1)
     sb.regplot(data=df, x = 'Birth size', y = 'G1 length', fit_reg=False, color=color,
                scatter_kws=scatter_kws, y_jitter=True)
-    plot_bin_means(df['Birth size'],df['G1 length'],birth_vol_bins)
+    plot_bin_means(df['Birth size'],df['G1 length'],birth_vol_bins,color=color)
     plt.subplot(2,1,2)
     sb.regplot(data=df, x = 'G1 size', y = 'SG2 length', fit_reg=False, color=color,
                scatter_kws=scatter_kws, y_jitter=True)
-    plot_bin_means(df['G1 size'],df['SG2 length'],g1_vol_bins)
+    plot_bin_means(df['G1 size'],df['SG2 length'],g1_vol_bins,color=color)
 
 def plot_size_v_growth(df,color='k',scatter_kws={}):
     ####### Analyze for phase growth
@@ -213,11 +215,11 @@ def plot_size_v_growth(df,color='k',scatter_kws={}):
     plt.subplot(2,1,1)
     sb.regplot(data=df, x = 'Birth size', y = 'G1 growth', fit_reg=False, color=color,
                scatter_kws=scatter_kws)
-    plot_bin_means(df['Birth size'],df['G1 growth'],birth_vol_bins)
+    plot_bin_means(df['Birth size'],df['G1 growth'],birth_vol_bins,color=color)
     plt.subplot(2,1,2)
     sb.regplot(data=df, x = 'G1 size', y = 'SG2 growth', fit_reg=False, color=color,
                scatter_kws=scatter_kws)
-    plot_bin_means(df['G1 size'],df['SG2 growth'],g1_vol_bins)
+    plot_bin_means(df['G1 size'],df['SG2 growth'],g1_vol_bins,color=color)
 
 
 def plot_overall_growth(df,color='k',scatter_kws={}):
@@ -226,7 +228,7 @@ def plot_overall_growth(df,color='k',scatter_kws={}):
     
     sb.regplot(data=df, x = 'Birth size', y = 'Total growth', fit_reg=False, color=color,
                scatter_kws=scatter_kws, y_jitter=True)
-    plot_bin_means(df['Birth size'],df['Total growth'],birth_vol_bins)
+    plot_bin_means(df['Birth size'],df['Total growth'],birth_vol_bins,color=color)
 
 
     

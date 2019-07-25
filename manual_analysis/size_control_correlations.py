@@ -117,9 +117,13 @@ print 'Correlation of S/G2 length: ', Rsg2length[0,1]
 
 # Print histogram of durations
 bins = np.arange(11) - 0.5
-plt.hist((df['G1 length'])/12,bins)
+plt.hist((df['G1 length'])/12,bins,histtype='step')
 plt.hist((df['Cycle length'] - df['G1 length'])/12,bins,histtype='step')
 plt.xlabel('Phase duration (frames)')
+
+plt.hist((df['G1 length']),histtype='step')
+plt.hist((df['Cycle length'] - df['G1 length']),histtype='step')
+plt.xlabel('Phase duration (hr)')
 
 ################################
 

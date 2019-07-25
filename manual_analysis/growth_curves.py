@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
-from scipy import stats, signal
 import pickle as pkl
 
 #Load df from pickle
@@ -18,6 +17,9 @@ r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl
 r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
 r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
 df = pd.concat((r1,r2,r5))
+
+df = df[~df.Mitosis]
+Ncells = len(df)
 
 # Load growth curves from pickle
 with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
@@ -86,11 +88,11 @@ plt.colorbar()
 X,Y = np.meshgrid(t,np.arange(1,Ncells + 1))
 plt.pcolor(X,Y,g1exit_aligned) # Heatmap ->need to control meshgrid
 plt.xlabel('Time since G1 exit (hr)')
-plt.xlabel('Individual cells')
+plt.ylabel('Individual cells')
 plt.colorbar
 
 plt.figure()
-colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
+colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
 for i in xrange(Ncells):
     plt.plot(t,g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
 # plot mean/error as shade
@@ -100,8 +102,8 @@ mean_curve[Ncell_in_bin < 10] = np.nan
 std_curve = np.nanstd(g1exit_aligned,axis=0)
 std_curve[Ncell_in_bin < 10] = np.nan
 plt.plot(t, mean_curve, color='r')
-plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
-                 color='k',alpha=0.5)
+#plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+#                 color='k',alpha=0.5)
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Cell volume (um3)')
 
@@ -116,10 +118,11 @@ plt.plot(t,cv)
 
 # Heatmap
 # Contatenate curves for heatmap
-t = np.arange(max_g1 + max_sg2 - 1) * 12
+t = np.arange(max_g1 + max_sg2 - 3) * 12
+Ncells = len(collated_filtered)
 [X,Y] = np.meshgrid(t,np.arange(Ncells))
 GC = np.empty(X.shape) * np.nan
-for i,c in enumerate(collated):
+for i,c in enumerate(collated_filtered):
     V = c[c['Daughter'] == 'None'].Volume
     GC[i,0:len(V)] = V
     
@@ -127,19 +130,28 @@ for i,c in enumerate(collated):
     
 ##### Plot growth curve(s)
 fig=plt.figure()
-ax1 = plt.subplot(121)
+#ax1 = plt.subplot(121)
 plt.xlabel('Time since birth (hr)')
 plt.ylabel('Volume (um3)')
-ax2 = plt.subplot(122)
-curve_colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
+#ax2 = plt.subplot(122)
+curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
 for c in collated:
     c = c[c['Daughter'] == 'None']
     v = np.array(c['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    ax1.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve
+    plt.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve
 #    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
 out = ax2.hist(df['Fold grown'], orientation="vertical")
 plt.xlabel('Fold grown from birth to division')
+
+# Heatmap of birth-aligned growth curves
+# Sort by length of cell cycle
+t = np.arange(max_g1 + max_sg2 - 3) * 12
+X,Y = np.meshgrid(t,np.arange(1,Ncells+1))
+I = np.argsort(np.apply_along_axis(lambda x: len(nonans(x)),1,GC))
+plt.pcolor(X,Y,GC[I,:])
+plt.colorbar()
+plt.xlabel('Time since birth (hr)')
 
 ################################################
 # Plot nuclear growth
@@ -196,15 +208,16 @@ plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear : cytoplasmic ratio')
 
 
-plt.figure()
 V = np.hstack([c[c['Daughter'] == 'None'].Volume.values for c in collated_filtered])
 nV = np.hstack([c[c['Daughter'] == 'None'].Nucleus.values for c in collated_filtered])
 phases = np.hstack([c[c['Daughter'] == 'None'].Phase.values for c in collated_filtered])
 
+bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
 x = pd.DataFrame(np.vstack((V,nV/V)).T,columns=['Volume','Ratio'])
 x['Phase'] = phases
 sb.lmplot(data = x, x='Volume',y='Ratio',hue='Phase',fit_reg=False)
-sb.regplot(data = x, x='Volume',y='Ratio',scatter=False)
+plot_bin_means(x['Volume'],x['Ratio'],bins,color='r',error='std')
+#sb.regplot(data = x, x='Volume',y='Ratio',scatter=False)
 plt.xlabel('Cell volume (um3)')
 plt.ylabel('N:C ratio')
 

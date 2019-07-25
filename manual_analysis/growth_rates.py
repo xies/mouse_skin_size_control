@@ -60,8 +60,10 @@ df = df[df['Phase'] != '?']
 df.groupby('Phase')['Growth rate'].hist(stacked=True)
 plt.xlabel('Growth rate (um3 / hr)')
 
+
+x = df[df['Phase'] != 'Daughter G1']
 g = sb.lmplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=False)
-sb.regplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume', scatter=False, ax=g.axes[0, 0])
-
-
+#sb.regplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume', scatter=False, ax=g.axes[0, 0])
+bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
+plot_bin_means(x['Volume'],x['Growth rate'],bins,color='r', error='std')
 

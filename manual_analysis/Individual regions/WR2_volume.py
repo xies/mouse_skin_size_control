@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 11 21:47:07 2019
+Created on Sun May  5 02:02:05 2019
 
 @author: mimi
 """
@@ -10,15 +10,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
-from glob import glob
 import os.path as path
-import re
-from scipy import stats
 import pickle as pkl
+import re
+from glob import glob
+from scipy import stats
 
-dirname = '/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/'
-dx = 0.25
-
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/'
 # Grab single-frame data into a dataframe
 raw_df = pd.DataFrame()
 frames = []
@@ -27,6 +25,8 @@ vols = []
 fucci = []
 daughter = []
 nuclei = []
+
+dx = 0.25 # um per px
 
 filelist = glob(path.join(dirname,'*/*.txt'))
 for fullname in filelist:
@@ -71,7 +71,6 @@ for fullname in filelist:
             nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
             
                 
-            
 raw_df['Frame'] = frames
 raw_df['CellID'] = cIDs
 raw_df['Volume'] = vols
@@ -88,7 +87,7 @@ Ncells = len(ucellIDs)
 collated = []
 for c in ucellIDs:
     this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
-    this_cell['Region'] = 'M1R1'
+    this_cell['Region'] = 'M1R2'
     this_cell = this_cell.reset_index()
     # Annotate cell cycle of parent cell
     transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
@@ -170,6 +169,7 @@ df['SG2 grown'] = df['Total growth'] - df['G1 grown']
 df['Fold grown'] = df['Division volume'] / df['Birth volume']
 df['Total growth interpolated'] = df['Division volume interpolated'] - df['Birth volume']
 
+
 # Put in the mitosis annotation
 df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
     
@@ -180,18 +180,16 @@ df = df[~np.isnan(df['G1 grown'])]
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], [0, 1./6, 2./6, 3./6, 4./6, 6./6, 1])
 
-df['Region'] = 'M1R1'
-r1 = df
+df['Region'] = 'M1R2'
+r2 = df
 
 #Pickle the dataframe
-r1.to_pickle(path.join(dirname,'dataframe.pkl'))
+r2.to_pickle(path.join(dirname,'dataframe.pkl'))
 
 #Load from pickle
-r1 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
+r2 = pd.read_pickle(path.join(dirname,'dataframe.pkl'))
 
 ################## Plotting ##################
-# DF to plot
-df = r1
 
 ## Amt grown
 plt.figure()
@@ -202,7 +200,7 @@ sb.regplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
 
 #plt.subplot(2,1,2)
-sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False,hue='Mitosis')
+sb.regplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False)
 plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('Volume at phase start (um3)')
 plt.ylabel('Volume grown during phase (um3)')
@@ -218,13 +216,12 @@ plt.ylabel('Volume at phase end (um3)')
 plt.legend(['G1','SG2'])
 
 
-## G1 sizer
+##
 plt.figure()
 sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 
-
-## Adder/sizer?
+## Adder?
 plt.figure()
 plt.subplot(2,1,1)
 sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
@@ -233,13 +230,6 @@ plt.subplot(2,1,2)
 sb.regplot(data=df,x='Birth volume',y='Division volume',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['Division volume'],birth_vol_bins)
 
-plt.subplot(2,1,1)
-sb.regplot(data=df,x='Birth volume',y='Total growth interpolated',fit_reg=False)
-plot_bin_means(df['Birth volume'],df['Total growth interpolated'],birth_vol_bins)
-plt.subplot(2,1,2)
-sb.regplot(data=df,x='Birth volume',y='Division volume interpolated',fit_reg=False)
-plot_bin_means(df['Birth volume'],df['Division volume interpolated'],birth_vol_bins)
-
 
 ## Phase length
 plt.figure()
@@ -247,7 +237,7 @@ plt.figure()
 sb.regplot(data=df,x='Birth volume',y='G1 length',y_jitter=True,fit_reg=False)
 plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins)
 #plt.subplot(2,1,2)
-sb.lmplot(data=df,x='G1 volume',y='SG2 length',y_jitter=False,fit_reg=False,hue='Mitosis')
+sb.regplot(data=df,x='G1 volume',y='SG2 length',y_jitter=False,fit_reg=False)
 plot_bin_means(df['G1 volume'],df['SG2 length'],g1_vol_bins)
 plt.legend(['G1','SG2'])
 plt.ylabel('Phase duration (hr)')
@@ -262,8 +252,8 @@ ax2 = plt.subplot(122, sharey = ax1)
 for i in range(Ncells):
     v = np.array(collated[i]['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-#    plt.plot(x,v ,color='b') # growth curve
-    ax1.plot(len(v)-1, v[-1]/v[0],'ko',alpha=0.5) # end of growth
+    ax1.plot(x,v/v[0],color='b') # growth curve
+    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
 ax1.hlines(1,0,12,linestyles='dashed')
 ax1.hlines(2,0,12,linestyles='dashed')
 plt.ylabel('Fold grown since birth')
@@ -276,24 +266,68 @@ for i in range(10):
     plt.subplot(2,5,i+1)
     plt.plot(collated[i]['G1'])
     
-# Plot daughter growth curves
-has_daughter = df[~np.isnan(df['Daughter a volume'])]
-plt.hist(nonans(df['Daughter ratio']))
-plt.xlabel('Daughter volume ratio')
-plt.ylabel('Frequency')
 
-for i in has_daughter.CellID.values:
-    I = np.where(ucellIDs == i)[0][0]
-    c = collated[I]
-    mainC = c[c['Daughter'] == 'None']
-    t = (mainC.Frame - mainC.iloc[0].Frame)*12
-    daughters = c[c['Daughter'] != 'None']
-    plt.plot(t,mainC.Volume,'b')
-    if daughters.iloc[0].Frame == 2:
-        print i
-    plt.plot([t.iloc[-1], t.iloc[-1] + 6],
-             [mainC.iloc[-1].Volume,daughters.Volume.sum()],
-             marker='o',linestyle='dashed',color='r')
+#######################################
+# Grab the automatic trancked data and look at how they relate
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/'
+
+with open(path.join(dirname,'collated.pkl'),'rb') as f:
+    auto_tracked = pkl.load(f)
+autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
+auto = []
+for i in range(Ncells):
+    ind = np.where(autoIDs == collated[i].CellID.iloc[0])[0][0]
+    auto.append(auto_tracked[ind])
+
+# Plot individual curves
+# NB: picked example cells by hand where there is no tracking error in auto-tracker
+vcellIDs = np.unique( np.array([c.iloc[0]['CellID'] for c in auto]) )
+ucellIDs = np.unique( np.array([c.iloc[0]['CellID'] for c in collated]) )
+
+#indices = np.random.randint(len(auto),size=5)
+indices = np.where( np.in1d(vcellIDs,[380,376,639,602,730]) )[0]
+for i,idx in enumerate(indices):
+
+    plt.figure(1)
+    plt.subplot(2,5,i+1)
+    plt.plot(np.arange(len(auto[idx]))*12,auto[idx].ActinSegmentationArea * dx**2,marker='o')
+    plt.title(''.join( ('Cell #', str(auto[idx].CellID.iloc[0])) ))
     plt.xlabel('Time since birth (hr)')
-    plt.ylabel('Cell volume')
+    plt.ylabel('Cross section area')
     
+    c = collated[np.where(auto[idx].iloc[0]['CellID'] == ucellIDs)[0][0]]
+    plt.subplot(2,5,i+6)
+    plt.plot(np.arange(len(collated[idx]))*12,collated[idx].Volume,color='g',marker='o')
+    plt.title(''.join( ('Cell #', str(c.CellID.iloc[0])) ))
+    plt.xlabel('Time since birth (hr)')
+    plt.ylabel('Volume')
+    
+
+Ncells = len(ucellIDs)
+Aauto = np.empty((Ncells,10)) * np.nan
+Vmanual = np.empty((Ncells,10)) * np.nan
+for i in range(Ncells):
+    a = auto[i].ActinSegmentationArea
+    Aauto[i,0:len(a)] = a
+    v = collated[i].Volume
+    Vmanual[i,0:len(v)] = v
+    if len(a) == len(v): #Sometimes automated tracker is mis-tracked
+        print i
+        plt.scatter(a,v,color='b')
+        plt.xlabel('Cross sectional area')
+        plt.ylabel('Volume')
+        
+
+plt.figure()
+Aautodiff = np.ndarray.flatten(np.diff(Aauto))
+ax1 = plt.hist( nonans( Aautodiff/np.nanmean(Aauto) ), bins=25, histtype='step')
+plt.vlines( np.nanmean( Aautodiff/np.nanmean(Aauto) ), 0,300, linestyles='dashed')
+
+Vmanualdiff = np.ndarray.flatten(np.diff(Vmanual)) 
+plt.hist( nonans( Vmanualdiff/np.nanmean(Vmanual) ),bins = 25, histtype='step')
+plt.vlines( np.nanmean( Vmanualdiff/np.nanmean(Vmanual) ), 0,300, linestyles='dashed',color='r') 
+
+plt.legend('Area','Volume')
+plt.xlabel('dA/dt / <A> or dV/dt / <V>')
+plt.ylabel('Count')
+
