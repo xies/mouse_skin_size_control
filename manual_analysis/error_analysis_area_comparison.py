@@ -15,11 +15,14 @@ import pickle as pkl
 from scipy import optimize
 from scipy.interpolate import UnivariateSpline
 
-#Load df from pickle
-r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
-r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
-r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
-df = pd.concat((r1,r2,r5))
+# Load growth curves from pickle
+with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
+    c1 = pkl.load(f)
+with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','rb') as f:
+    c2 = pkl.load(f)
+with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
+    c5 = pkl.load(f)
+collated = c1 + c2 + c5
 
 # Load growth curves from pickle
 with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
@@ -29,6 +32,30 @@ with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','r
 with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
     c5 = pkl.load(f)
 collated = c1 + c2 + c5
+
+dx = 0.25
+
+#######################################
+# Grab the automatic trancked data and look at how they relate
+dirname = '/Users/xies/Box/Mouse/Skin/W-R1/'
+with open(path.join(dirname,'collated.pkl'),'rb') as f:
+    a1 = pkl.load(f)
+
+dirname = '/Users/xies/Box/Mouse/Skin/W-R2/'
+with open(path.join(dirname,'collated.pkl'),'rb') as f:
+    a2 = pkl.load(f)
+
+dirname = '/Users/xies/Box/Mouse/Skin/W-R5/'
+with open(path.join(dirname,'collated.pkl'),'rb') as f:
+    a5 = pkl.load(f)
+auto_tracked = a1+a2+a5    
+autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
+auto = []
+
+for i in range(Ncells):
+    ind = np.where(autoIDs == collated[i].CellID.iloc[0])[0][0]
+    auto.append(auto_tracked[ind])
+
 
 ###### Models + spline fit
 
@@ -47,14 +74,11 @@ yhat_spl = []
 
 #counter = 0
 # Fit Exponential & linear models to growth curves
-for c in collated:
-    if c.iloc[0]['Phase'] == '?':
-        continue
-    c = c[ c['Daughter'] == 'None' ]
+for c in auto_tracked:
     if len(c) > 4:
 #        t = np.arange(-g1sframe + 1,len(c) - g1sframe + 1) * 12 # In hours
         t = np.arange(len(c)) * 12
-        v = c.Volume.values
+        v = c.ActinSegmentationArea.values * dx**2
         # Construct initial guess for growth rate
 
         try:
@@ -93,57 +117,33 @@ for c in collated:
             print 'Fitting failed for ', c.iloc[0].CellID
             
 
-all_res_exp = np.hstack(res_exp)
-all_res_lin = np.hstack(res_lin)
-all_res_spl = np.hstack(res_spl)
+auto_res_exp = np.hstack(res_exp)
+auto_res_lin = np.hstack(res_lin)
+auto_res_spl = np.hstack(res_spl)
+
+#plt.figure(1)
+#bins = np.linspace(-200,200,25)
+#plt.hist(all_res_exp,bins,histtype='step',density=True,stacked=True)
+#plt.xlabel('Fitting residuals (um3)')
+#plt.ylabel('Frequency')
+
 
 plt.figure(1)
-bins = np.linspace(-200,200,25)
-plt.hist(all_res_exp,bins,histtype='step',density=True,stacked=True)
+bins = np.linspace(-1,1,25)
+plt.hist(auto_res_exp,bins,histtype='step',density=True,stacked=True)
 plt.xlabel('Fitting residuals (um3)')
 plt.ylabel('Frequency')
 
 plt.figure(1)
-bins = np.linspace(-200,200,25)
-N,bins,p = plt.hist(all_res_lin,bins,histtype='step',density=True,stacked=True)
-plt.xlabel('Fitting residuals (um3)')
+bins = np.linspace(-1,1,25)
+N,bins,p = plt.hist(all_res_exp,bins,histtype='step',density=True,stacked=True)
+plt.xlabel('Normalized residuals (um3)')
 plt.ylabel('Frequency')
 
-plt.figure(1)
-bins = np.linspace(-200,200,25)
-N,bins,p = plt.hist(all_res_spl,bins,histtype='step',density=True,stacked=True)
-plt.xlabel('Fitting residuals (um3)')
-plt.ylabel('Frequency')
+plt.legend(('Area','Volume'))
 
-
-plt.figure(2)
-bins = np.linspace(0,250,25)
-plt.hist(np.abs(all_res_exp),bins,cumulative=True,normed=True,histtype='step')
-plt.xlabel('Absolute residuals (um3)')
-plt.ylabel('Frequency')
-
-plt.figure(2)
-bins = np.linspace(0,250,25)
-plt.hist(np.abs(all_res_lin),bins,histtype='step',normed=True,cumulative=True)
-plt.xlabel('Absolute residuals (um3)')
-plt.ylabel('Frequency')
-
-plt.figure(2)
-bins = np.linspace(0,250,25)
-plt.hist(np.abs(all_res_spl),bins,histtype='step',normed=True,cumulative=True)
-plt.xlabel('Absolute residuals (um3)')
-plt.ylabel('Frequency')
-
-### Estimate growth rate from spline fit
-growth_rates = [np.dot(backward_difference(len(x)),x)[1:-1] for x in yhat_spl]
-volumes = [x[1:-1] for x in yhat_spl]
-
-plt.scatter(np.hstack(volumes),
-            np.hstack(growth_rates))
-plt.ylabel('Growth rate (spline smoothed) (um3/hr)')
-plt.xlabel('Cell volume (spline smoothed)')
-bins = stats.mstats.mquantiles(np.hstack(volumes),np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
-plot_bin_means(np.hstack(volumes),np.hstack(growth_rates),bins,color='r', error='std')
-
-
-
+#plt.figure(1)
+#bins = np.linspace(-200,200,25)
+#N,bins,p = plt.hist(all_res_spl,bins,histtype='step',density=True,stacked=True)
+#plt.xlabel('Fitting residuals (um3)')
+#plt.ylabel('Frequency')

@@ -71,12 +71,6 @@ plt.ylabel('Division volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([250,650])
 
-# Pearson correlation
-Rg1growth = np.corrcoef(df['Birth volume'],df['G1 grown'])
-Rsg2growth = np.corrcoef(df['G1 volume'],df['SG2 grown'])
-print 'Correlation of G1 growth: ', Rg1growth[0,1]
-print 'Correlation of S/G2 growth: ', Rsg2growth[0,1]
-
 ## Overall Adder?
 sb.lmplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
 plot_bin_means(df['Birth volume'],df['Total growth'],birth_vol_bins)
@@ -91,11 +85,6 @@ plt.xlabel('Birth volume (um3)')
 plt.ylabel('Division volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
-
-Rtotalgrowth = np.corrcoef(df['Birth volume'],df['Total growth'])
-Rdivisionvol = np.corrcoef(df['Birth volume'],df['Division volume'])
-print 'Correlation of total growth: ', Rtotalgrowth[0,1]
-print 'Correlation of division volume: ', Rdivisionvol[0,1]
 
 
 ## Phase length
@@ -124,6 +113,37 @@ plt.xlabel('Phase duration (frames)')
 plt.hist((df['G1 length']),histtype='step')
 plt.hist((df['Cycle length'] - df['G1 length']),histtype='step')
 plt.xlabel('Phase duration (hr)')
+
+########
+plt.hist(df['Cycle length'],9)
+plt.vlines(df['Cycle length'].mean(),0,45)
+plt.ylim([0,45])
+plt.xlabel('Cell cycle duration (hr)')
+
+################################################
+# Correlations / linear regression slopes
+
+# Pearson correlation
+Rg1growth = np.corrcoef(df['Birth volume'],df['G1 grown'])
+Rsg2growth = np.corrcoef(df['G1 volume'],df['SG2 grown'])
+print 'Correlation of G1 growth: ', Rg1growth[0,1]
+print 'Correlation of S/G2 growth: ', Rsg2growth[0,1]
+
+Rtotalgrowth = np.corrcoef(df['Birth volume'],df['Total growth'])
+Rdivisionvol = np.corrcoef(df['Birth volume'],df['Division volume'])
+print 'Correlation of total growth: ', Rtotalgrowth[0,1]
+print 'Correlation of division volume: ', Rdivisionvol[0,1]
+
+# Linear regression
+Pg1growth = np.polyfit(df['Birth volume'],df['G1 grown'],1)
+Psg2growth = np.polyfit(df['G1 volume'],df['SG2 grown'],1)
+print 'Slope of G1 growth: ', Pg1growth[0]
+print 'Slope of S/G2 growth: ', Psg2growth[0]
+
+Ptotalgrowth = np.polyfit(df['Birth volume'],df['Total growth'],1)
+Pdivisionvol = np.polyfit(df['Birth volume'],df['Division volume'],1)
+print 'Slope of total growth: ', Ptotalgrowth[0]
+print 'Slope of division volume: ', Pdivisionvol[0]
 
 ################################
 

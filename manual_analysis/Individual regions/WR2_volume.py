@@ -128,7 +128,7 @@ for i,c in enumerate(collated):
     cIDs[i] = c['CellID'].iloc[0]
     Bsize[i] = c['Volume'].iloc[0]
     Bframe[i] = c['Frame'].iloc[0]
-    DivSize[i] = c['Volume'][len(c)-1]
+    DivSize[i] = c['Volume'].iloc[len(c)-1]
     Tcycle[i] = len(c) * 12
     # Find manual G1 annotation
     thisg1frame = g1transitions[g1transitions['CellID'] == c['CellID'].iloc[0]]['Frame'].values[0]

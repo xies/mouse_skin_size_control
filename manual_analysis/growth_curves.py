@@ -30,9 +30,50 @@ with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','r
     c5 = pkl.load(f)
 collated = c1 + c2 + c5
 
-####################################
+collated_filtered = [c for c in collated if c['Phase'].iloc[0] != '?']
 
+sb.set_style('darkgrid')
+plt.set_cmap('inferno')
+################################################
+# Concatenate growth curves into heatmap
+
+# Heatmap
+# Contatenate curves for heatmap
+Ncells = len(collated_filtered)
+[X,Y] = np.meshgrid(t,np.arange(Ncells))
+GC = np.empty(X.shape) * np.nan
+for i,c in enumerate(collated_filtered):
+    V = c[c['Daughter'] == 'None'].Volume
+    GC[i,0:len(V)] = V
+    
+##### Plot growth curve(s) without alignment
+fig=plt.figure()
+#ax1 = plt.subplot(121)
+plt.xlabel('Time since birth (hr)')
+plt.ylabel('Volume (um3)')
+#ax2 = plt.subplot(122)
+curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
+for c in collated:
+    c = c[c['Daughter'] == 'None']
+    v = np.array(c['Volume'],dtype=np.float)
+    x = np.array(xrange(len(v))) * 12
+    plt.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve
+#    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
+out = ax2.hist(df['Fold grown'], orientation="vertical")
+plt.xlabel('Fold grown from birth to division')
+
+# Heatmap of birth-aligned growth curves
+# Sort by length of cell cycle
+t = np.arange(15 - 3) * 12
+X,Y = np.meshgrid(t,np.arange(1,Ncells+1))
+I = np.argsort(np.apply_along_axis(lambda x: len(nonans(x)),1,GC))
+plt.pcolor(X,Y,GC[I,:])
+plt.colorbar()
+plt.xlabel('Time since birth (hr)')
+
+####################################
 # construct growth curves aligned at g1/s
+
 g1lengths = pd.DataFrame([len(c[c['Phase'] == 'G1']) for c in collated])
 sg2lengths = pd.DataFrame([len(c[c['Phase'] == 'SG2']) for c in collated])
 phase_ambiguous = np.array([c['Phase'].iloc[0] == '?' for c in collated])
@@ -48,7 +89,6 @@ g1exit_aligned = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 g1exit_h2b = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 g1exit_fucci = np.empty((Ncells,max_g1+max_sg2)) * np.nan
 g1exit_nuc = np.empty((Ncells,max_g1+max_sg2)) * np.nan
-collated_filtered = [c for c in collated if c['Phase'].iloc[0] != '?']
 
 g1_aligned_frame = max_g1
 g1_notaligned = np.empty((Ncells,10)) * np.nan
@@ -78,6 +118,7 @@ t = np.arange(-max_g1 + 1 ,max_sg2 + 1) * 12
 t_birth = np.arange(10) * 12
 
 ####################################
+#Plot aligned curves
 
 X,Y = np.meshgrid(t_birth,np.arange(1,Ncells+1))
 plt.pcolor(X,Y,g1_notaligned,cmap='magma')
@@ -115,44 +156,7 @@ Ncell_in_bin = (~np.isnan(g1exit_aligned)).sum(axis=0)
 cv = stats.variation(g1exit_aligned,axis=0,nan_policy='omit')
 cv[Ncell_in_bin < 10] = np.nan
 plt.plot(t,cv)
-
-# Heatmap
-# Contatenate curves for heatmap
-t = np.arange(max_g1 + max_sg2 - 3) * 12
-Ncells = len(collated_filtered)
-[X,Y] = np.meshgrid(t,np.arange(Ncells))
-GC = np.empty(X.shape) * np.nan
-for i,c in enumerate(collated_filtered):
-    V = c[c['Daughter'] == 'None'].Volume
-    GC[i,0:len(V)] = V
     
-################################################
-    
-##### Plot growth curve(s)
-fig=plt.figure()
-#ax1 = plt.subplot(121)
-plt.xlabel('Time since birth (hr)')
-plt.ylabel('Volume (um3)')
-#ax2 = plt.subplot(122)
-curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
-for c in collated:
-    c = c[c['Daughter'] == 'None']
-    v = np.array(c['Volume'],dtype=np.float)
-    x = np.array(xrange(len(v))) * 12
-    plt.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve
-#    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
-out = ax2.hist(df['Fold grown'], orientation="vertical")
-plt.xlabel('Fold grown from birth to division')
-
-# Heatmap of birth-aligned growth curves
-# Sort by length of cell cycle
-t = np.arange(max_g1 + max_sg2 - 3) * 12
-X,Y = np.meshgrid(t,np.arange(1,Ncells+1))
-I = np.argsort(np.apply_along_axis(lambda x: len(nonans(x)),1,GC))
-plt.pcolor(X,Y,GC[I,:])
-plt.colorbar()
-plt.xlabel('Time since birth (hr)')
-
 ################################################
 # Plot nuclear growth
 plt.figure()
