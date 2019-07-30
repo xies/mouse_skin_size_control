@@ -19,13 +19,12 @@ import pickle as pkl
 
 
 dx = 0.25
-dirnames = ['/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/',
-            '/Users/xies/box/Mouse/Skin/W-R2/tracked_cells/',
-            '/Users/xies/box/Mouse/Skin/W-R5/tracked_cells/',
-            '/Users/xies/box/Mouse/Skin/W-R5-full/tracked_cells/']
+regions = {'/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/':'M1R1',
+            '/Users/xies/box/Mouse/Skin/W-R2/tracked_cells/':'M1R2',
+            '/Users/xies/box/Mouse/Skin/W-R5/tracked_cells/':'M2R5',
+            '/Users/xies/box/Mouse/Skin/W-R5-full/tracked_cells/':'M2R5'}
 
-
-for regiondir in dirnames:
+for regiondir in regions.iterkeys():
     # Grab single-frame data into a dataframe
     raw_df = pd.DataFrame()
     frames = []
@@ -93,7 +92,7 @@ for regiondir in dirnames:
     collated = []
     for c in ucellIDs:
         this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
-        this_cell['Region'] = 'M1R1'
+        this_cell['Region'] = regions[regiondir]
         this_cell = this_cell.reset_index()
         # Annotate cell cycle of parent cell
         transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
@@ -187,7 +186,7 @@ for regiondir in dirnames:
     # Filter out cells with no phase information        
     df_nans = df
     df = df[~np.isnan(df['G1 grown'])]    
-    df['Region'] = 'M1R1'
+    df['Region'] = regions[regiondir]
     
     #Pickle the dataframe
     df.to_pickle(path.join(regiondir,'dataframe.pkl'))

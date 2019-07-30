@@ -18,7 +18,8 @@ import pickle as pkl
 r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
 r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
 r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
-df = pd.concat((r1,r2,r5))
+r5f = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5-full/tracked_cells/dataframe.pkl')
+df = pd.concat((r1,r2,r5,r5f))
 
 # Load growth curves from pickle
 with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
@@ -27,7 +28,9 @@ with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','r
     c2 = pkl.load(f)
 with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
     c5 = pkl.load(f)
-collated = c1+c2+c5
+with open('/Users/xies/Box/Mouse/Skin/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
+    c5f = pkl.load(f)
+collated = c1+c2+c5+c5f
 
 df = df[~df.Mitosis]
 Ncells = len(df)
