@@ -101,7 +101,14 @@ for c in ucellIDs:
     # Annotate cell cycle of daughter cell
     this_cell.loc[this_cell['Daughter'] != 'None','Phase'] = 'Daughter G1'
     collated.append(this_cell)
-    
+
+# Load mitosis frame
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
+# Annotate mitosis as 'M' in 'Phase'
+for i,mitosis in mitosis_in_frame.iterrows():
+    c = collated[np.where(ucellIDs == mitosis.CellID)[0][0]]
+    c.loc[c.Frame == mitosis.mitosis_frame,'Phase'] = 'M'
+
 ##### Export growth traces in CSV ######
 pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
                         index=False)
@@ -109,8 +116,6 @@ pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
 f = open(path.join(dirname,'collated_manual.pkl'),'w')
 pkl.dump(collated,f)
 
-# Load mitosis frame
-mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
 
 # Collapse into single cell v. measurement DataFrame
 Tcycle = np.zeros(Ncells)

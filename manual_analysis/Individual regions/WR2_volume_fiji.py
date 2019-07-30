@@ -37,4 +37,4 @@ for chan_name in channels.iterkeys():
 				rt.save(fucci_savename)
 				roiMan.reset()
 				rt.reset()
- 				
+	im.close()

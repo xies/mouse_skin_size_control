@@ -48,19 +48,14 @@ for i,c in enumerate(collated_filtered):
     
 ##### Plot growth curve(s) without alignment
 fig=plt.figure()
-#ax1 = plt.subplot(121)
-plt.xlabel('Time since birth (hr)')
-plt.ylabel('Volume (um3)')
-#ax2 = plt.subplot(122)
-curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
+curve_colors = {'M1R1':'b','M1R2':'b','M2R5':'g'}
 for c in collated:
     c = c[c['Daughter'] == 'None']
     v = np.array(c['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    plt.plot(x,v,alpha=0.2,color=curve_colors[c.iloc[0].Region]) # growth curve
-#    ax1.plot(x[-1], v[-1]/v[0],'ko',alpha=0.5) # end of growth
-out = ax2.hist(df['Fold grown'], orientation="vertical")
-plt.xlabel('Fold grown from birth to division')
+    plt.plot(x,v,color=curve_colors[c.iloc[0].Region],marker='o') # growth curve
+plt.xlabel('Time since birth (hr)')
+plt.ylabel('Volume (um3)')
 
 # Heatmap of birth-aligned growth curves
 # Sort by length of cell cycle

@@ -101,6 +101,14 @@ for c in ucellIDs:
     this_cell.loc[this_cell['Daughter'] != 'None','Phase'] = 'Daughter G1'
     collated.append(this_cell)
     
+# Load mitosis frame
+mitosis_in_frame = pd.read_csv(path.join(dirname,'mitosis_in_frame.txt'),',')
+# Annotate mitosis as 'M' in 'Phase'
+for i,mitosis in mitosis_in_frame.iterrows():
+    c = collated[np.where(ucellIDs == mitosis.CellID)[0][0]]
+    c.loc[c.Frame == mitosis.mitosis_frame,'Phase'] = 'M'
+
+    
 ##### Export growth traces in CSV ######
 pd.concat(collated).to_csv(path.join(dirname,'growth_curves.csv'),
                         index=False)

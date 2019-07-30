@@ -74,16 +74,15 @@ for i,cellID in enumerate(yhat_spl.keys()):
     div_vol_interp[i] = c[c['Daughter'] != 'None']['Volume'].sum()
 
 plt.figure()
-
+nbins = 5
 g1_vol_bins = stats.mstats.mquantiles(g1exit_vol, np.arange(0,nbins+1,dtype=np.float)/nbins)
 
 plt.scatter(g1exit_vol,div_vol-g1exit_vol)
-plt.scatter(g1exit_vol,div_vol_interp-g1exit_vol)
+#plt.scatter(g1exit_vol,div_vol_interp-g1exit_vol)
 plot_bin_means(g1exit_vol,div_vol-g1exit_vol,g1_vol_bins)
 
 plt.xlabel('Spline-smoothed G1 exit volume (um3)')
 plt.ylabel('S/G2/M volume (um3)')
-plt.legend(('Division volume','Interpolated division volume'))
 plt.gca().set_aspect('equal', adjustable='box')
 
 
