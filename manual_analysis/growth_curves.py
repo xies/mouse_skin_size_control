@@ -12,30 +12,10 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import pickle as pkl
 
-#Load df from pickle
-r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
-r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
-r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
-df = pd.concat((r1,r2,r5))
 
-df = df[~df.Mitosis]
-Ncells = len(df)
-
-# Load growth curves from pickle
-with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
-    c1 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','rb') as f:
-    c2 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f)
-collated = c1 + c2 + c5
-
-collated_filtered = [c for c in collated if c['Phase'].iloc[0] != '?']
-
-sb.set_style('darkgrid')
-plt.set_cmap('inferno')
 ################################################
 # Concatenate growth curves into heatmap
+t = np.arange(15 - 3) * 12
 
 # Heatmap
 # Contatenate curves for heatmap
@@ -48,12 +28,14 @@ for i,c in enumerate(collated_filtered):
     
 ##### Plot growth curve(s) without alignment
 fig=plt.figure()
-curve_colors = {'M1R1':'b','M1R2':'b','M2R5':'g'}
+curve_colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
 for c in collated:
     c = c[c['Daughter'] == 'None']
     v = np.array(c['Volume'],dtype=np.float)
     x = np.array(xrange(len(v))) * 12
-    plt.plot(x,v,color=curve_colors[c.iloc[0].Region],marker='o') # growth curve
+    plt.plot(x,v,color=curve_colors[c.iloc[0].Region]) # growth curve
+    if any(v>1000):
+        print c
 plt.xlabel('Time since birth (hr)')
 plt.ylabel('Volume (um3)')
 
@@ -65,6 +47,20 @@ I = np.argsort(np.apply_along_axis(lambda x: len(nonans(x)),1,GC))
 plt.pcolor(X,Y,GC[I,:])
 plt.colorbar()
 plt.xlabel('Time since birth (hr)')
+
+
+####################################
+# Plot histogram of fold grown
+plt.hist(df['Fold grown'])
+plt.vlines(df['Fold grown'].mean(),0,50)
+plt.ylim([0,50])
+plt.xlabel('Division volume / Birth volume')
+
+# Plot histogram of fold grown
+plt.hist(df['G1 grown'] / df['Total growth'])
+plt.vlines((df['G1 grown'] / df['Total growth']).mean(),0,50)
+plt.ylim([0,50])
+plt.xlabel('G1 growth / Total growth')
 
 ####################################
 # construct growth curves aligned at g1/s
@@ -116,13 +112,13 @@ t_birth = np.arange(10) * 12
 #Plot aligned curves
 
 X,Y = np.meshgrid(t_birth,np.arange(1,Ncells+1))
-plt.pcolor(X,Y,g1_notaligned,cmap='magma')
+plt.pcolor(X,Y,g1_notaligned,cmap='inferno')
 plt.xlabel('Time since birth (hr)')
 plt.colorbar()
 
 # Plot G1-aligned growth curves
 X,Y = np.meshgrid(t,np.arange(1,Ncells + 1))
-plt.pcolor(X,Y,g1exit_aligned) # Heatmap ->need to control meshgrid
+plt.pcolor(X,Y,g1exit_aligned,cmap='inferno') # Heatmap ->need to control meshgrid
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Individual cells')
 plt.colorbar
@@ -130,7 +126,8 @@ plt.colorbar
 plt.figure()
 colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
+    plt.plot(t,g1exit_aligned[i,:],
+    color=colors[collated_filtered[i].iloc[0].Region],alpha=0.2)
 # plot mean/error as shade
 Ncell_in_bin = (~np.isnan(g1exit_aligned)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_aligned,axis=0)
@@ -158,7 +155,8 @@ plt.figure()
 
 colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_nuc[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
+    plt.plot(t,g1exit_nuc[i,:],
+             colors[collated_filtered[i].iloc[0].Region],alpha=0.2)
     
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc,axis=0)
@@ -176,7 +174,8 @@ plt.ylabel('Nuclear volume (um3)')
 plt.figure()
 
 for i in xrange(Ncells):
-    plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],color=colors[df.iloc[i].Region],alpha=0.2)
+    plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],
+             colors[collated_filtered[i].iloc[0].Region],alpha=0.2)
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan
@@ -190,7 +189,6 @@ plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear : cytoplasmic ratio')
 
 # Plot N:C ratio wrt size
-
 for c in collated_filtered:
     c = c[c['Daughter'] == 'None']
     plt.plot(c.Volume,c.Nucleus/c.Volume,color='b')
@@ -215,7 +213,7 @@ bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
 x = pd.DataFrame(np.vstack((V,nV/V)).T,columns=['Volume','Ratio'])
 x['Phase'] = phases
 sb.lmplot(data = x, x='Volume',y='Ratio',hue='Phase',fit_reg=False)
-plot_bin_means(x['Volume'],x['Ratio'],bins,color='r',error='std')
+plot_bin_means(x['Volume'],x['Ratio'],bins,color='r',error='std',style='fill')
 #sb.regplot(data = x, x='Volume',y='Ratio',scatter=False)
 plt.xlabel('Cell volume (um3)')
 plt.ylabel('N:C ratio')

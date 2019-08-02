@@ -65,25 +65,44 @@ ucellIDs = [ c.iloc[0]['Region CellID'] for c in collated ]
 
 for i,cellID in enumerate(yhat_spl.keys()):
     
+    yhat = yhat_spl[cellID]
     c = collated[ np.where(np.array([c == cellID for c in ucellIDs]))[0][0] ]
     birth_vol[i] = c.iloc[0].Volume
     g1exitframe = np.where(c['Phase'] == 'G1')[0][-1]
-    g1exit_vol[i] = c.iloc[g1exitframe]['Volume']
+    g1exit_vol[i] = yhat[g1exitframe]
     div_vol[i] = c[c['Daughter'] == 'None'].iloc[-1]['Volume']
     div_vol[i] = c[c['Daughter'] == 'None'].iloc[-1]['Volume']
     div_vol_interp[i] = c[c['Daughter'] != 'None']['Volume'].sum()
 
+
+##### Plotting 
 plt.figure()
 nbins = 5
 g1_vol_bins = stats.mstats.mquantiles(g1exit_vol, np.arange(0,nbins+1,dtype=np.float)/nbins)
 
-plt.scatter(g1exit_vol,div_vol-g1exit_vol)
-#plt.scatter(g1exit_vol,div_vol_interp-g1exit_vol)
-plot_bin_means(g1exit_vol,div_vol-g1exit_vol,g1_vol_bins)
-
-plt.xlabel('Spline-smoothed G1 exit volume (um3)')
-plt.ylabel('S/G2/M volume (um3)')
+sb.regplot(data = df, x= 'G1 volume',y='SG2 grown',fit_reg=False)
+plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
+sb.regplot(df['G1 volume interpolated'],df['Division volume'] - df['G1 volume interpolated'],fit_reg=False)
+plot_bin_means(df['G1 volume interpolated'],df['Division volume'] - df['G1 volume interpolated'],g1_vol_bins)
+plt.xlabel('G1 exit volume (original/interp) (um3)')
+plt.ylabel('S/G2/M growth (original/interp) (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
+plt.legend(('Original data','Spline-smoothed'))
+
+plt.figure()
+nbins = 5
+birth_vol_bins = stats.mstats.mquantiles(birth_vol, np.arange(0,nbins+1,dtype=np.float)/nbins)
+
+plt.scatter(df['Birth volume'],df['G1 grown'])
+plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
+plt.scatter(df['Birth volume'],df['G1 volume interpolated'] - df['Birth volume'])
+plot_bin_means(df['Birth volume'],df['G1 volume interpolated'] - df['Birth volume'],birth_vol_bins)
+
+plt.xlabel('Birth volume (original) (um3)')
+plt.ylabel('G1 growth (original/interp) (um3)')
+plt.gca().set_aspect('equal', adjustable='box')
+plt.legend(('Original data','Spline-smoothed'))
+
 
 
 

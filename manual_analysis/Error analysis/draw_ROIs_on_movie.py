@@ -17,27 +17,27 @@ with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','r
     c2 = pkl.load(f)
 collated = c2
 
-dirname = '/Users/xies/Box/Mouse/Skin/W-R1/'
+dirname = '/Users/xies/Box/Mouse/Skin/W-R1/Color ROIs/'
 X = 460; Y= 460; Z = 72; T = 15;
 
 # Load px, py, framne, zpos as exported by export_ROIs.py
 px = []
-with open(path.join(dirname,'ROIs/polygon_x.csv')) as csvfile:
+with open(path.join(dirname,'polygon_x.csv')) as csvfile:
     reader = csv.reader(csvfile,delimiter=',')
     for x in reader:
         x = np.array([int(a) for a in x])
         px.append(x)
         
 py = []
-with open(path.join(dirname,'ROIs/polygon_y.csv')) as csvfile:
+with open(path.join(dirname,'polygon_y.csv')) as csvfile:
     reader = csv.reader(csvfile,delimiter=',')
     for y in reader:
         y = np.array([int(a) for a in y])
         py.append(y)
 
-frame = np.genfromtxt(path.join(dirname,'ROIs/frame.csv'), delimiter=',',dtype=np.int) - 1
-zpos = np.genfromtxt(path.join(dirname,'ROIs/zpos.csv'), delimiter=',',dtype=np.int) - 1
-cellIDs = np.genfromtxt(path.join(dirname,'ROIs/cellIDs.csv'), delimiter=',',dtype=np.int)
+frame = np.genfromtxt(path.join(dirname,'frame.csv'), delimiter=',',dtype=np.int) - 1
+zpos = np.genfromtxt(path.join(dirname,'zpos.csv'), delimiter=',',dtype=np.int) - 1
+cellIDs = np.genfromtxt(path.join(dirname,'cellIDs.csv'), delimiter=',',dtype=np.int)
 
 ROIs = zip(px,py,frame,zpos,cellIDs)
 
@@ -99,7 +99,7 @@ verdana = ImageFont.truetype('/Library/Fonts/Verdana.ttf',size=8)
 for t in range(T):
     for z in range(Z):
         filebase = 'mask_t%03d_z%03d.tif' % (t,z);
-        filename = path.join(dirname,'ROIs/images/',filebase)
+        filename = path.join(dirname,'images/',filebase)
         im = im_tzstack[t][z]
         im.save( filename, format='tiff')
         

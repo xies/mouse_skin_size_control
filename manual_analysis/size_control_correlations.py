@@ -14,75 +14,60 @@ from scipy import stats
 from numpy import random
 import pickle as pkl
 
-#Load df from pickle
-r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
-r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
-r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
-r5f = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5-full/tracked_cells/dataframe.pkl')
-df = pd.concat((r1,r2,r5,r5f))
-
-# Load growth curves from pickle
-with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
-    c1 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','rb') as f:
-    c2 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
-    c5f = pkl.load(f)
-collated = c1+c2+c5+c5f
-
-df = df[~df.Mitosis]
-Ncells = len(df)
 
 ################## Plotting ##################
 
 # Construct histogram bins
+# By by cohort
 nbins = 5
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'],  np.arange(0,nbins+1,dtype=np.float)/nbins)
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], np.arange(0,nbins+1,dtype=np.float)/nbins)
+
+# By by fix-width
+#birth_vol_bins = np.linspace(df['Birth volume'].min(),df['Birth volume'].max() , nbins+1)
+#g1_vol_bins = np.linspace(df['G1 volume'].min(),df['G1 volume'].max() , nbins+1)
 
 
 ## Amt grown
 sb.set_style("darkgrid")
 
-sb.lmplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
 plt.ylabel('Amount grown in G1 (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
-sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=False)
+sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=True,ci=None)
 plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
 plt.ylabel('Amount grown in S/G2 (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
-plt.xlim([250,850])
+plt.xlim([250,700])
 
-sb.lmplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
 plt.ylabel('G1 exit volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
-sb.lmplot(data=df,x='G1 volume',y='Division volume',fit_reg=False)
+sb.lmplot(data=df,x='G1 volume',y='Division volume',fit_reg=True,ci=None)
 plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
 plt.ylabel('Division volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
-plt.xlim([250,650])
+plt.xlim([250,700])
 
 ## Overall Adder?
-sb.lmplot(data=df,x='Birth volume',y='Total growth',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='Total growth',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['Total growth'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
 plt.ylabel('Total growth (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
-sb.lmplot(data=df,x='Birth volume',y='Division volume',fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='Division volume',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['Division volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
 plt.ylabel('Division volume (um3)')
@@ -91,21 +76,15 @@ plt.xlim([200,550])
 
 
 ## Phase length
-sb.lmplot(data=df,x='Birth volume',y='G1 length',y_jitter=True,fit_reg=False)
+sb.lmplot(data=df,x='Birth volume',y='G1 length',y_jitter=True,fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins)
 plt.ylabel('G1 duration (hr)')
 plt.xlabel('Volume at birth (um^3)')
 
-sb.lmplot(data=df,x='G1 volume',y='SG2 length',y_jitter=True,fit_reg=False)
+sb.lmplot(data=df,x='G1 volume',y='SG2 length',y_jitter=True,fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['G1 volume'],df['SG2 length'],g1_vol_bins)
 plt.ylabel('S/G2/M duration (hr)')
 plt.xlabel('Volume at S phase entry (um^3)')
-
-# Pearson correlation
-Rg1length = np.corrcoef(df['Birth volume'],df['G1 length'])
-Rsg2length = np.corrcoef(df['G1 volume'],df['SG2 length'])
-print 'Correlation of G1 length: ', Rg1length[0,1]
-print 'Correlation of S/G2 length: ', Rsg2length[0,1]
 
 # Print histogram of durations
 bins = np.arange(11) - 0.5
@@ -137,16 +116,32 @@ Rdivisionvol = np.corrcoef(df['Birth volume'],df['Division volume'])
 print 'Correlation of total growth: ', Rtotalgrowth[0,1]
 print 'Correlation of division volume: ', Rdivisionvol[0,1]
 
+
+Rg1length = np.corrcoef(df['Birth volume'],df['G1 length'])
+Rsg2length = np.corrcoef(df['G1 volume'],df['SG2 length'])
+print 'Correlation of G1 length: ', Rg1length[0,1]
+print 'Correlation of S/G2 length: ', Rsg2length[0,1]
+
 # Linear regression
 Pg1growth = np.polyfit(df['Birth volume'],df['G1 grown'],1)
 Psg2growth = np.polyfit(df['G1 volume'],df['SG2 grown'],1)
 print 'Slope of G1 growth: ', Pg1growth[0]
 print 'Slope of S/G2 growth: ', Psg2growth[0]
 
+
+# Linear regression
+Pbg1volume = np.polyfit(df['Birth volume'],df['G1 volume'],1)
+print 'Slope of birth volume v G1 volume: ', Pbg1volume[0]
+Pg2divvolume = np.polyfit(df['G1 volume'],df['Division volume'],1)
+print 'Slope of G1 volume v division volume: ', Pg2divvolume[0]
+
+
 Ptotalgrowth = np.polyfit(df['Birth volume'],df['Total growth'],1)
 Pdivisionvol = np.polyfit(df['Birth volume'],df['Division volume'],1)
 print 'Slope of total growth: ', Ptotalgrowth[0]
 print 'Slope of division volume: ', Pdivisionvol[0]
+
+
 
 ################################
 

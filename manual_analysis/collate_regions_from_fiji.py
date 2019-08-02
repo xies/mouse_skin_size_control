@@ -15,6 +15,7 @@ from glob import glob
 import os.path as path
 import re
 from scipy import stats
+from scipy.interpolate import UnivariateSpline
 import pickle as pkl
 
 
@@ -121,7 +122,7 @@ for regiondir in regions.iterkeys():
     f = open(path.join(regiondir,'collated_manual.pkl'),'w')
     pkl.dump(collated,f)
     
-    
+    # Cell-centric data frame construction
     # Collapse into single cell v. measurement DataFrame
     Tcycle = np.zeros(Ncells)
     Bsize = np.zeros(Ncells)
@@ -129,6 +130,7 @@ for regiondir in regions.iterkeys():
     DivSize = np.zeros(Ncells)
     G1duration = np.zeros(Ncells)
     G1size = np.zeros(Ncells)
+    G1size_interp = np.zeros(Ncells)
     cIDs = np.zeros(Ncells)
     daughterSizes = np.zeros((2,Ncells))
     for i,c in enumerate(collated):
@@ -155,6 +157,8 @@ for regiondir in regions.iterkeys():
             daughterSizes[:,i] = d['Volume']
         else:
             daughterSizes[:,i] = np.nan
+        # Annotate G1 interpolated
+        G1size_interp[i] = get_interpolated_g1_volume(c)
             
     # Construct dataframe with primary data
     df = pd.DataFrame()
@@ -163,6 +167,7 @@ for regiondir in regions.iterkeys():
     df['Cycle length'] = Tcycle
     df['G1 length'] = G1duration
     df['G1 volume'] = G1size
+    df['G1 volume interpolated'] = G1size_interp
     df['Birth volume'] = Bsize
     df['Division volume'] = DivSize
     df['Daughter a volume'] = daughterSizes[0,:]
@@ -179,6 +184,7 @@ for regiondir in regions.iterkeys():
     df['SG2 grown'] = df['Total growth'] - df['G1 grown']
     df['Fold grown'] = df['Division volume'] / df['Birth volume']
     df['Total growth interpolated'] = df['Division volume interpolated'] - df['Birth volume']
+    df['SG2 grown interpolated'] = df['Total growth interpolated'] - df['G1 grown']
     
     # Put in the mitosis annotation
     df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
@@ -194,4 +200,23 @@ for regiondir in regions.iterkeys():
     print 'Done with:', regiondir
     
     
+def get_interpolated_g1_volume(c,smoothing_factor=1e5):
+
+    if c.iloc[0]['Phase'] == '?':
+        return np.nan
+
+    # Get rid of daughter cells
+    c = c[c['Daughter'] == 'None']
+    if len(c) < 4:
+        return np.nan
     
+    t = np.array(range(0,len(c))) * 12
+    v = c.Volume.values
+    # Spline smooth
+    spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
+    yhat = spl(t)
+    
+    g1exitframe = np.where(c['Phase'] == 'G1')[0][-1]
+    g1exit_vol_interp = yhat[g1exitframe]
+    return g1exit_vol_interp
+
