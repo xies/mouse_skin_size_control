@@ -14,7 +14,6 @@ from scipy import stats
 from numpy import random
 import pickle as pkl
 
-
 ################## Plotting ##################
 
 # Construct histogram bins
@@ -106,21 +105,25 @@ plt.xlabel('Cell cycle duration (hr)')
 # Correlations / linear regression slopes
 
 # Pearson correlation
-Rg1growth = np.corrcoef(df['Birth volume'],df['G1 grown'])
-Rsg2growth = np.corrcoef(df['G1 volume'],df['SG2 grown'])
-print 'Correlation of G1 growth: ', Rg1growth[0,1]
-print 'Correlation of S/G2 growth: ', Rsg2growth[0,1]
+Rg1growth,P = stats.stats.pearsonr(df['Birth volume'],df['G1 grown'])
+print 'Correlation of G1 growth: ', Rg1growth,P
+Rsg2growth,P = stats.stats.pearsonr(df['G1 volume'],df['SG2 grown'])
+print 'Correlation of S/G2 growth: ', Rsg2growth,P
 
-Rtotalgrowth = np.corrcoef(df['Birth volume'],df['Total growth'])
-Rdivisionvol = np.corrcoef(df['Birth volume'],df['Division volume'])
-print 'Correlation of total growth: ', Rtotalgrowth[0,1]
-print 'Correlation of division volume: ', Rdivisionvol[0,1]
+Rg1vol,P = stats.stats.pearsonr(df['Birth volume'],df['G1 volume'])
+print 'Correlation of G1 volume: ', Rg1vol,P
+Rsg2Rg1vol,P = stats.stats.pearsonr(df['G1 volume'],df['Division volume'])
+print 'Correlation of S/G2 volume: ', Rsg2Rg1vol,P
 
+Rtotalgrowth,P = stats.stats.pearsonr(df['Birth volume'],df['Total growth'])
+print 'Correlation of total growth: ', Rtotalgrowth, P
+Rdivisionvol,p = stats.stats.pearsonr(df['Birth volume'],df['Division volume'])
+print 'Correlation of division volume: ', Rdivisionvol,P
 
-Rg1length = np.corrcoef(df['Birth volume'],df['G1 length'])
-Rsg2length = np.corrcoef(df['G1 volume'],df['SG2 length'])
-print 'Correlation of G1 length: ', Rg1length[0,1]
-print 'Correlation of S/G2 length: ', Rsg2length[0,1]
+Rg1length = stats.stats.pearsonr(df['Birth volume'],df['G1 length'])
+print 'Correlation of G1 length: ', Rg1length,P
+Rsg2length = stats.stats.pearsonr(df['G1 volume'],df['SG2 length'])
+print 'Correlation of S/G2 length: ', Rsg2length,P
 
 # Linear regression
 Pg1growth = np.polyfit(df['Birth volume'],df['G1 grown'],1)
@@ -130,7 +133,7 @@ print 'Slope of S/G2 growth: ', Psg2growth[0]
 
 
 # Linear regression
-Pbg1volume = np.polyfit(df['Birth volume'],df['G1 volume'],1)
+mbg1volume = np.polyfit(df['Birth volume'],df['G1 volume'],1)
 print 'Slope of birth volume v G1 volume: ', Pbg1volume[0]
 Pg2divvolume = np.polyfit(df['G1 volume'],df['Division volume'],1)
 print 'Slope of G1 volume v division volume: ', Pg2divvolume[0]
@@ -140,8 +143,6 @@ Ptotalgrowth = np.polyfit(df['Birth volume'],df['Total growth'],1)
 Pdivisionvol = np.polyfit(df['Birth volume'],df['Division volume'],1)
 print 'Slope of total growth: ', Ptotalgrowth[0]
 print 'Slope of division volume: ', Pdivisionvol[0]
-
-
 
 ################################
 
@@ -160,25 +161,39 @@ gCV_lci = g1CV - gCV_lcl; gCV_uci = gCV_ucl - g1CV
 [divisionCV,dCV_lcl,dCV_ucl] = cvariation_ci(df['Division volume'])
 dCV_lci = divisionCV - dCV_lcl; dCV_uci = dCV_ucl - divisionCV
 
-# Bootstrap CVs
+# Bootstrap CVs -- bootstrap at cell level and back out diff in mean
 Nboot = 10000
 bCV_ = np.zeros(Nboot)
 gCV_ = np.zeros(Nboot)
 dCV_ = np.zeros(Nboot)
+bdCV_diff = np.zeros(Nboot)
+bgCV_diff = np.zeros(Nboot)
+gdCV_diff = np.zeros(Nboot)
 for i in xrange(Nboot):
+    # Random resample w/ replacement at cell level allows for CVs to be compared
     df_ = pd.DataFrame(df.values[random.randint(Ncells, size=Ncells)], columns=df.columns)
     bCV_[i] = stats.variation(df_['Birth volume'])
     gCV_[i] = stats.variation(df_['G1 volume'])
     dCV_[i] = stats.variation(df_['Division volume'])
+    bdCV_diff[i] = bCV_[i] - dCV_[i]
+    bgCV_diff[i] = bCV_[i] - gCV_[i]
+    gdCV_diff[i] = gCV_[i] - dCV_[i]
 
 bCV_lcl,bCV_ucl = stats.mstats.mquantiles(bCV_,prob=[0.05,0.95])
 gCV_lcl,gCV_ucl = stats.mstats.mquantiles(gCV_,prob=[0.05,0.95])
 dCV_lcl,dCV_ucl = stats.mstats.mquantiles(dCV_,prob=[0.05,0.95])
 
+plt.hist(bdCV_diff)
+plt.vlines(birthCV-divisionCV,0,2500)
+plt.figure()
+plt.hist(bgCV_diff)
+plt.vlines(birthCV-g1CV,0,2500)
 
-hmecCV = [0.31836487251259843, 0.2656214990138843, 0.398415581739395] # See decimate_hmec
-hmecLCI = 0.31836487251259843 - 0.2656214990138843
-hmecUCI = 0.398415581739395 - 0.31836487251259843
+plt.figure()
+plt.hist(gdCV_diff)
+plt.vlines(g1CV-divisionCV,0,2500)
+
+
 errors = np.array(((bCV_lci,bCV_uci),(gCV_lci,gCV_uci),(dCV_lci,dCV_uci))).T
 plt.figure()
 plt.errorbar([1,2,3],[birthCV,g1CV,divisionCV],
@@ -186,6 +201,7 @@ plt.errorbar([1,2,3],[birthCV,g1CV,divisionCV],
             color='steelblue', capsize=5)
 plt.xticks([1,2,3,4],['Birth volume','G1 volume','Division volume'])
 plt.ylabel('Coefficient of variation')
+
 
 # Calculate dispersion index
 #birthFano = np.var(df['Birth volume']) / np.mean(df['Birth volume'])
@@ -220,4 +236,5 @@ subsetIDs = [np.unique(c.CellID)[0] for c in t2]
 r2_trunc = r2[ np.in1d(r2.CellID,subsetIDs)]
 
 df = pd.concat((r1_trunc,r2_trunc,r5))
+
 

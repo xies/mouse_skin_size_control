@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
 import pickle as pkl
-from scipy import optimize
+from scipy import optimize, stats
 from scipy.interpolate import UnivariateSpline
 
 # Load growth curves from pickle
@@ -26,7 +26,7 @@ collated = c1 + c2 + c5
 dx = 0.25
 
 #######################################
-# Grab the automatic trancked data and look at how they relate
+# Grab the automatic trancked data
 dirname = '/Users/xies/Box/Mouse/Skin/W-R1/'
 with open(path.join(dirname,'collated.pkl'),'rb') as f:
     a1 = pkl.load(f)
@@ -41,6 +41,28 @@ with open(path.join(dirname,'collated.pkl'),'rb') as f:
 auto_tracked = a1+a2+a5
 autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
 
+#####
+areas = []
+volumes = []
+# Generate scatter plot of area v. volume
+aIDs = [(a.iloc[0].CellID,a.iloc[0].Region) for a in auto_tracked]
+for c in collated:
+    c = c[c['Daughter'] == 'None']
+    # Find the automatic cell corresponding to it
+    thisID = (c.iloc[0].CellID,c.iloc[0].Region)
+    if thisID in aIDs:
+        a = auto_tracked[aIDs.index(thisID)]
+        if len(c) == len(a):
+            areas += (a.ActinSegmentationArea.values * dx**2 ).tolist()
+            volumes += c.Volume.values.tolist()
+plt.scatter(volumes,areas)
+plt.xlabel('Cell volume (um3)')
+plt.ylabel('Cross sectional area (um2)')
+
+# Calculate R^2
+
+slope, intercept, r_value, p_value, std_err = stats.linregress(volumes, areas)
+
 ###### Models + spline fit
 
 sb.set_style('darkgrid')
@@ -50,17 +72,17 @@ sb.set_style('darkgrid')
 # p3 = constant offset
 exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
 
-yhat_spl = []
+#yhat_spl = []
 res_spl = []
 nknots = []
 
-counter = 0
 
 # Fit Exponential & linear models to growth curves
-vcellIDs = np.array([c.iloc[0].CellID for c in a2])
-indices = np.where( np.in1d(vcellIDs,[380,376,639,602,730]) )[0]
+# Quantify residuals
+#vcellIDs = np.array([c.iloc[0].CellID for c in a2])
+#indices = np.where( np.in1d(vcellIDs,[380,376,639,602,730]) )[0]
 
-for c in [a2[i] for i in indices]:
+for c in auto_tracked:
     if len(c) > 3:
 #        t = np.arange(-g1sframe + 1,len(c) - g1sframe + 1) * 12 # In hours
         t = np.arange(len(c)) * 12
@@ -77,23 +99,19 @@ for c in [a2[i] for i in indices]:
             
             # B-spline
             spl = UnivariateSpline(t, v, k=3, s=1e6)
-            yhat_spl.append(spl(t))
-            res_spl.append(v - spl(t))
+#            yhat_spl.append(spl(t))
+            res_spl.append( (v - spl(t)) /v)
             nknots.append(len(spl.get_knots()))
             
-            plt.subplot(2,3,counter+1)
-            plt.plot(t,spl(t),'g')
-            plt.plot(t,v,'b')
+#            plt.subplot(2,3,counter+1)
+#            plt.plot(t,spl(t),'g')
+#            plt.plot(t,v,'b')
             
         except:
             print 'Fitting failed for ', c.iloc[0].CellID
             
-            
-        counter += 1
-        if counter > 6:
-            break
-
-auto_res_exp = np.hstack(res_exp)
+#auto_res_exp = np.hstack(res_exp)
+auto_res_spl = np.hstack(res_spl)
 
 #plt.figure(1)
 #bins = np.linspace(-200,200,25)
@@ -104,13 +122,13 @@ auto_res_exp = np.hstack(res_exp)
 
 plt.figure(1)
 bins = np.linspace(-1,1,25)
-plt.hist(auto_res_exp,bins,histtype='step',density=True,stacked=True)
+plt.hist(auto_res_spl,bins,histtype='step',density=True,stacked=True)
 plt.xlabel('Fitting residuals (um3)')
 plt.ylabel('Frequency')
 
 plt.figure(1)
 bins = np.linspace(-1,1,25)
-N,bins,p = plt.hist(all_res_exp,bins,histtype='step',density=True,stacked=True)
+N,bins,p = plt.hist(all_res_spl,bins,histtype='step',density=True,stacked=True)
 plt.xlabel('Normalized residuals (um3)')
 plt.ylabel('Frequency')
 

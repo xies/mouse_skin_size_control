@@ -73,7 +73,7 @@ plt.scatter(Bsize,Tcycle)
 #######################################
 # Export
 for c in collated:
-    c['Region'] = 2
+    c['Region'] = 'M1R2'
 c2 = collated
 
 out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )

@@ -79,6 +79,7 @@ for c in ucellIDs:
     repeat.append(this_cell)
     
     this_cell = collated[ np.where(cIDs == c)[0][0] ]
+    this_cell = this_cell[this_cell['Daughter'] == 'None']
     comparison.append(this_cell)
 
 repeat_lengths = [len(c) for c in repeat]
@@ -86,6 +87,7 @@ comparison_lengths = [len(c) for c in comparison]
 
 repeat_volumes = np.concatenate( [c.Volume.values for c in repeat] )
 comparison_volumes = np.concatenate( [c.Volume.values for c in comparison] )
+
 
 plt.figure()
 plt.scatter(repeat_volumes,comparison_volumes)
@@ -102,6 +104,7 @@ plt.xlabel('Original volume')
 plt.ylabel('Absolute Error %')
 plt.ylim([0,100])
 
+print "Absolute error %:", np.mean(100 * np.abs(repeat_volumes-comparison_volumes)/comparison_volumes)
 
 # Do the plotting nicely with dataframes
 comparison_df = raw_df[np.in1d(raw_df['CellID'],cIDs)].copy()

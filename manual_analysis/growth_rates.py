@@ -42,17 +42,27 @@ for c in collated_filtered:
     
 ########## Plot histogram across growth curves ############
 
-df = pd.concat(collated_filtered)
-df = df[df['Phase'] != '?']
+dfc = pd.concat(collated_filtered)
+dfc = dfc[dfc['Phase'] != '?']
 df.groupby('Phase')['Growth rate'].hist(stacked=True)
 plt.xlabel('Growth rate (um3 / hr)')
 plt.legend(('G1','SG2','M'))
 
 
-x = df[df['Phase'] != 'Daughter G1']
-g = sb.lmplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=True,ci=None)
+x = dfc[dfc['Phase'] != 'Daughter G1']
+g = sb.lmplot(data=dfc[dfc['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=True,ci=None)
 #sb.regplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume', scatter=False, ax=g.axes[0, 0])
 bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
 bins = np.linspace(x['Volume'].min(),x['Volume'].max(),8)
 plot_bin_means(x['Volume'],x['Growth rate'],bins[:-2],color='r', error='std',style='fill')
+
+
+########## Plot geometric mean of growth curves as a function of size 
+
+gmean_gr = np.array([stats.gmean(np.abs(nonans(c['Growth rate']))) for c in collated_filtered])
+sb.regplot(df['Birth volume'],gmean_gr)
+plt.xlabel('Birth volume')
+plt.ylabel('Geometric mean of raw growth rates')
+
+
 

@@ -14,7 +14,7 @@ from skimage import io
 import os, pickle
 
 #filename = '/data/Skin/W-R5/data.csv'
-filename = '/Users/mimi/Box Sync/Mouse/Skin/W-R5/data.csv'
+filename = '/Users/xies/Box/Mouse/Skin/W-R5/data.csv'
 columns = ['Timeframe','CloneID','ParentID','CellID','PositionX',
            'PositionY','VoronoiArea','G1MarkerInVoronoiArea',
            'ActinSegmentationArea','G1MarkerInActinSegmentationArea']
@@ -25,7 +25,7 @@ has_parent = df['ParentID'] != 0
 
 # Filter for cells that also have 'children' i.e cells were born in the movie
 parentIDu = np.unique(df['ParentID'])
-I = np.array(ismember(df['CellID'],parentIDu))
+I = np.array(np.in1d(df['CellID'],parentIDu))
 has_children = I > 0
 
 # Cells now are born and divide within movie
@@ -69,7 +69,7 @@ plt.scatter(Bsize,Tcycle)
 
 # Export
 for c in collated:
-    c['Region'] = 5
+    c['Region'] = 'M2R5'
 c5 = collated
 
 out_pkl = os.path.join( os.path.split(filename)[0], 'collated.pkl' )

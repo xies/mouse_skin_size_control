@@ -48,7 +48,6 @@ plt.pcolor(X,Y,GC[I,:])
 plt.colorbar()
 plt.xlabel('Time since birth (hr)')
 
-
 ####################################
 # Plot histogram of fold grown
 plt.hist(df['Fold grown'])
@@ -148,7 +147,7 @@ Ncell_in_bin = (~np.isnan(g1exit_aligned)).sum(axis=0)
 cv = stats.variation(g1exit_aligned,axis=0,nan_policy='omit')
 cv[Ncell_in_bin < 10] = np.nan
 plt.plot(t,cv)
-    
+
 ################################################
 # Plot nuclear growth
 plt.figure()

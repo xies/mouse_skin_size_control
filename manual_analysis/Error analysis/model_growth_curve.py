@@ -6,29 +6,9 @@ Created on Mon Jul 22 19:06:55 2019
 @author: xies
 """
 
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sb
-import pickle as pkl
-from scipy import optimize
+from scipy import optimize,stats
 from scipy.interpolate import UnivariateSpline
-
-#Load df from pickle
-r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
-r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/dataframe.pkl')
-r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/dataframe.pkl')
-df = pd.concat((r1,r2,r5))
-
-# Load growth curves from pickle
-with open('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
-    c1 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R2/tracked_cells/collated_manual.pkl','rb') as f:
-    c2 = pkl.load(f)
-with open('/Users/xies/Box/Mouse/Skin/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f)
-collated = c1 + c2 + c5
 
 ###### Models + spline fit
 
@@ -42,8 +22,11 @@ exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
 res_lin = []
 res_exp = []
 res_spl = []
-exp_b = []
 yhat_spl = []
+
+# Properly store the exponential growth rate (p2)
+regionCellIDs = (df['Region'] + df['CellID'].astype(int).astype(str)).values.tolist()
+exp_b = np.empty(Ncells) * np.nan
 
 #counter = 0
 # Fit Exponential & linear models to growth curves
@@ -62,9 +45,11 @@ for c in collated:
             b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
                                          bounds = [ [0,0,v.min()],
                                                     [v.max(),np.inf,v.max()]])
-            exp_b.append(b)
             yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
             res_exp.append( (v - yhat)/v )
+            idx = regionCellIDs.index(c.iloc[0]['Region']+c.iloc[0]['CellID'].astype(str))
+            exp_b[idx] = b[0][1]
+            
     
     #            plt.subplot(2,3,counter+1)
             plt.plot(t,v,'k')
@@ -83,8 +68,8 @@ for c in collated:
             
             plt.xlabel('Time since birth (hr)')
             plt.ylabel('Cell volume')
-    #            plt.legend(('Data','Exponential model','Linear model','Cubic spline'))
-                
+#            plt.legend(('Data','Exponential model','Linear model','Cubic spline'))
+            
 #            counter += 1
 #            if counter > 5:
 #                break
@@ -144,6 +129,10 @@ plt.ylabel('Growth rate (spline smoothed) (um3/hr)')
 plt.xlabel('Cell volume (spline smoothed)')
 bins = stats.mstats.mquantiles(np.hstack(volumes),np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
 plot_bin_means(np.hstack(volumes),np.hstack(growth_rates),bins,color='r', error='std')
+
+# Extract growth rates from exponential growth
+
+sb.regplot(df['Birth volume'],exp_b)
 
 
 
