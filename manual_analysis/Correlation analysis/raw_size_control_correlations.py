@@ -11,8 +11,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
 from scipy import stats
-from numpy import random
-import pickle as pkl
 
 ################## Plotting ##################
 
@@ -27,9 +25,10 @@ g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], np.arange(0,nbins+1,dtype
 #g1_vol_bins = np.linspace(df['G1 volume'].min(),df['G1 volume'].max() , nbins+1)
 
 
-## Amt grown
+## Size control correlations
 sb.set_style("darkgrid")
 
+## G1 growth
 sb.lmplot(data=df,x='Birth volume',y='G1 grown',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 grown'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -37,13 +36,15 @@ plt.ylabel('Amount grown in G1 (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
-sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=True,ci=None)
+## SG2 growth
+sb.lmplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=True,ci=None,hue='Region')
 plot_bin_means(df['G1 volume'],df['SG2 grown'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
 plt.ylabel('Amount grown in S/G2 (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([250,700])
 
+## G1 volume
 sb.lmplot(data=df,x='Birth volume',y='G1 volume',fit_reg=False,hue='Region')
 plot_bin_means(df['Birth volume'],df['G1 volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -51,14 +52,15 @@ plt.ylabel('G1 exit volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
-sb.lmplot(data=df,x='G1 volume',y='Division volume',fit_reg=True,ci=None)
+## SG2 volume
+sb.lmplot(data=df,x='G1 volume',y='Division volume',fit_reg=True,ci=None,hue='Region')
 plot_bin_means(df['G1 volume'],df['Division volume'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
 plt.ylabel('Division volume (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([250,700])
 
-## Overall Adder?
+## Overall growth
 sb.lmplot(data=df,x='Birth volume',y='Total growth',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['Total growth'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -66,6 +68,7 @@ plt.ylabel('Total growth (um3)')
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
+## Final volume
 sb.lmplot(data=df,x='Birth volume',y='Division volume',fit_reg=False,ci=None,hue='Region')
 plot_bin_means(df['Birth volume'],df['Division volume'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -84,22 +87,6 @@ sb.lmplot(data=df,x='G1 volume',y='SG2 length',y_jitter=True,fit_reg=False,ci=No
 plot_bin_means(df['G1 volume'],df['SG2 length'],g1_vol_bins)
 plt.ylabel('S/G2/M duration (hr)')
 plt.xlabel('Volume at S phase entry (um^3)')
-
-# Print histogram of durations
-bins = np.arange(11) - 0.5
-plt.hist((df['G1 length'])/12,bins,histtype='step')
-plt.hist((df['Cycle length'] - df['G1 length'])/12,bins,histtype='step')
-plt.xlabel('Phase duration (frames)')
-
-plt.hist((df['G1 length']),histtype='step')
-plt.hist((df['Cycle length'] - df['G1 length']),histtype='step')
-plt.xlabel('Phase duration (hr)')
-
-########
-plt.hist(df['Cycle length'],9)
-plt.vlines(df['Cycle length'].mean(),0,45)
-plt.ylim([0,45])
-plt.xlabel('Cell cycle duration (hr)')
 
 ################################################
 # Correlations / linear regression slopes
@@ -120,9 +107,9 @@ print 'Correlation of total growth: ', Rtotalgrowth, P
 Rdivisionvol,p = stats.stats.pearsonr(df['Birth volume'],df['Division volume'])
 print 'Correlation of division volume: ', Rdivisionvol,P
 
-Rg1length = stats.stats.pearsonr(df['Birth volume'],df['G1 length'])
+Rg1length,P = stats.stats.pearsonr(df['Birth volume'],df['G1 length'])
 print 'Correlation of G1 length: ', Rg1length,P
-Rsg2length = stats.stats.pearsonr(df['G1 volume'],df['SG2 length'])
+Rsg2length,P = stats.stats.pearsonr(df['G1 volume'],df['SG2 length'])
 print 'Correlation of S/G2 length: ', Rsg2length,P
 
 # Linear regression
@@ -130,7 +117,6 @@ Pg1growth = np.polyfit(df['Birth volume'],df['G1 grown'],1)
 Psg2growth = np.polyfit(df['G1 volume'],df['SG2 grown'],1)
 print 'Slope of G1 growth: ', Pg1growth[0]
 print 'Slope of S/G2 growth: ', Psg2growth[0]
-
 
 # Linear regression
 mbg1volume = np.polyfit(df['Birth volume'],df['G1 volume'],1)
@@ -145,96 +131,5 @@ print 'Slope of total growth: ', Ptotalgrowth[0]
 print 'Slope of division volume: ', Pdivisionvol[0]
 
 ################################
-
-# Plot CV/variation
-# Fraction of growth in G1
-plt.figure()
-plt.hist(df['G1 grown']/df['Total growth'])
-plt.xlabel('Fraction of growth occuring in G1')
-plt.ylabel('Frequency')
-
-# Calculate CV CIs parametrically
-[birthCV,bCV_lcl,bCV_ucl] = cvariation_ci(df['Birth volume'])
-bCV_lci = birthCV - bCV_lcl; bCV_uci = bCV_ucl - birthCV
-[g1CV,gCV_lcl,gCV_ucl] = cvariation_ci(df['G1 volume'])
-gCV_lci = g1CV - gCV_lcl; gCV_uci = gCV_ucl - g1CV
-[divisionCV,dCV_lcl,dCV_ucl] = cvariation_ci(df['Division volume'])
-dCV_lci = divisionCV - dCV_lcl; dCV_uci = dCV_ucl - divisionCV
-
-# Bootstrap CVs -- bootstrap at cell level and back out diff in mean
-Nboot = 10000
-bCV_ = np.zeros(Nboot)
-gCV_ = np.zeros(Nboot)
-dCV_ = np.zeros(Nboot)
-bdCV_diff = np.zeros(Nboot)
-bgCV_diff = np.zeros(Nboot)
-gdCV_diff = np.zeros(Nboot)
-for i in xrange(Nboot):
-    # Random resample w/ replacement at cell level allows for CVs to be compared
-    df_ = pd.DataFrame(df.values[random.randint(Ncells, size=Ncells)], columns=df.columns)
-    bCV_[i] = stats.variation(df_['Birth volume'])
-    gCV_[i] = stats.variation(df_['G1 volume'])
-    dCV_[i] = stats.variation(df_['Division volume'])
-    bdCV_diff[i] = bCV_[i] - dCV_[i]
-    bgCV_diff[i] = bCV_[i] - gCV_[i]
-    gdCV_diff[i] = gCV_[i] - dCV_[i]
-
-bCV_lcl,bCV_ucl = stats.mstats.mquantiles(bCV_,prob=[0.05,0.95])
-gCV_lcl,gCV_ucl = stats.mstats.mquantiles(gCV_,prob=[0.05,0.95])
-dCV_lcl,dCV_ucl = stats.mstats.mquantiles(dCV_,prob=[0.05,0.95])
-
-plt.hist(bdCV_diff)
-plt.vlines(birthCV-divisionCV,0,2500)
-plt.figure()
-plt.hist(bgCV_diff)
-plt.vlines(birthCV-g1CV,0,2500)
-
-plt.figure()
-plt.hist(gdCV_diff)
-plt.vlines(g1CV-divisionCV,0,2500)
-
-
-errors = np.array(((bCV_lci,bCV_uci),(gCV_lci,gCV_uci),(dCV_lci,dCV_uci))).T
-plt.figure()
-plt.errorbar([1,2,3],[birthCV,g1CV,divisionCV],
-             yerr=errors,fmt='o',ecolor='orangered',
-            color='steelblue', capsize=5)
-plt.xticks([1,2,3,4],['Birth volume','G1 volume','Division volume'])
-plt.ylabel('Coefficient of variation')
-
-
-# Calculate dispersion index
-#birthFano = np.var(df['Birth volume']) / np.mean(df['Birth volume'])
-#g1Fano = np.var(df['G1 volume']) / np.mean(df['G1 volume'])
-#divisionFano = np.var(df['Division volume']) / np.mean(df['Division volume'])
-
-# Calculate skew
-birthSkew = stats.skew(df['Birth volume'])
-g1Skew = stats.skew(df['G1 volume'])
-divisionSkew = stats.skew(df['Division volume'])
-
-sb.catplot(data=df.melt(id_vars='CellID',value_vars=['Birth volume','G1 volume','Division volume'],
-                        value_name='Volume'),
-           x='variable',y='Volume')
-
-plt.figure()
-plt.plot([birthCV,g1CV,divisionCV])
-plt.xticks(np.arange(3), ['Birth volume','G1 volume','Division volume'])
-plt.ylabel('Coefficient of variation')
-
-plt.figure()
-plt.plot([birthSkew,g1Skew,divisionSkew])
-plt.xticks(np.arange(3), ['Birth volume','G1 volume','Division volume'])
-plt.ylabel('Distribution skew')
-
-########## Truncate mouse 1 ############
-t1 = [c for c in c1 if c.Frame.min() > 6]
-subsetIDs = [np.unique(c.CellID)[0] for c in t1]
-r1_trunc = r1[ np.in1d(r1.CellID,subsetIDs)]
-t2 = [c for c in c2 if c.Frame.min() > 6]
-subsetIDs = [np.unique(c.CellID)[0] for c in t2]
-r2_trunc = r2[ np.in1d(r2.CellID,subsetIDs)]
-
-df = pd.concat((r1_trunc,r2_trunc,r5))
 
 

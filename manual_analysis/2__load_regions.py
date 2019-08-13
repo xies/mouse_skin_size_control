@@ -8,6 +8,7 @@ Created on Tue Jul 30 15:57:59 2019
 
 import pandas as pd
 import pickle as pkl
+import numpy as np
 
 #Load df from pickle
 r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/W-R1/tracked_cells/dataframe.pkl')
@@ -34,3 +35,5 @@ Ncells = len(df)
 # Filter for phase-annotated cells in collated
 collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
 
+# Filter for cells that have daughter data
+df_has_daughter = df[~np.isnan(df['Division volume interpolated'])]

@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import os.path as path
 import pickle as pkl
+from scipy import stats
 from glob import glob
 
 #Load df from pickle
@@ -88,6 +89,9 @@ comparison_lengths = [len(c) for c in comparison]
 repeat_volumes = np.concatenate( [c.Volume.values for c in repeat] )
 comparison_volumes = np.concatenate( [c.Volume.values for c in comparison] )
 
+# Rsquared
+m,b,r,p,stderr = stats.linregress(comparison_volumes,repeat_volumes)
+print 'R^2: ', r**2
 
 plt.figure()
 plt.scatter(repeat_volumes,comparison_volumes)

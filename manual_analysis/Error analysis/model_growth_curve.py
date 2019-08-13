@@ -23,6 +23,7 @@ res_lin = []
 res_exp = []
 res_spl = []
 yhat_spl = []
+phases = []
 
 # Properly store the exponential growth rate (p2)
 regionCellIDs = (df['Region'] + df['CellID'].astype(int).astype(str)).values.tolist()
@@ -30,7 +31,7 @@ exp_b = np.empty(Ncells) * np.nan
 
 #counter = 0
 # Fit Exponential & linear models to growth curves
-for c in collated:
+for c in collated_filtered:
     if c.iloc[0]['Phase'] == '?':
         continue
     c = c[ c['Daughter'] == 'None' ]
@@ -40,34 +41,36 @@ for c in collated:
         v = c.Volume.values
         # Construct initial guess for growth rate
 
-        try:
+#        try:
             # Nonlinear regression
-            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
-                                         bounds = [ [0,0,v.min()],
-                                                    [v.max(),np.inf,v.max()]])
-            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
-            res_exp.append( (v - yhat)/v )
-            idx = regionCellIDs.index(c.iloc[0]['Region']+c.iloc[0]['CellID'].astype(str))
-            exp_b[idx] = b[0][1]
+#            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
+#                                         bounds = [ [0,0,v.min()],
+#                                                    [v.max(),np.inf,v.max()]])
+#            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
+#            res_exp.append( (v - yhat)/v )
+#            idx = regionCellIDs.index(c.iloc[0]['Region']+c.iloc[0]['CellID'].astype(str))
+#            exp_b[idx] = b[0][1]
             
     
     #            plt.subplot(2,3,counter+1)
-            plt.plot(t,v,'k')
-            plt.plot(t,yhat,'g')
-            
-            # LInear regression
-            p = np.polyfit(t,v,1)
-            yhat = np.polyval(p,t)
-            res_lin.append( v - yhat )
-            plt.plot(t,yhat,'r')
-            
-            # B-spline
-            spl = UnivariateSpline(t, v, k=3, s=1e6)
-            plt.plot(t,spl(t),'b')
-            yhat_spl.append(spl(t))
-            
-            plt.xlabel('Time since birth (hr)')
-            plt.ylabel('Cell volume')
+#        plt.plot(t,v,'k')
+#        plt.plot(t,yhat,'g')
+        
+#            # LInear regression
+#            p = np.polyfit(t,v,1)
+#            yhat = np.polyval(p,t)
+#            res_lin.append( v - yhat )
+#            plt.plot(t,yhat,'r')
+        
+        # B-spline
+        spl = UnivariateSpline(t, v, k=3, s=1e6)
+        plt.plot(t,spl(t),'b')
+        yhat_spl.append(spl(t))
+        res_spl.append( (v-spl(t))/v )
+        phases.append(c['Phase'])
+        
+        plt.xlabel('Time since birth (hr)')
+        plt.ylabel('Cell volume')
 #            plt.legend(('Data','Exponential model','Linear model','Cubic spline'))
             
 #            counter += 1
@@ -118,21 +121,6 @@ bins = np.linspace(0,250,25)
 plt.hist(np.abs(all_res_spl),bins,histtype='step',normed=True,cumulative=True)
 plt.xlabel('Absolute residuals (um3)')
 plt.ylabel('Frequency')
-
-### Estimate growth rate from spline fit
-growth_rates = [np.dot(backward_difference(len(x)),x)[1:-1] for x in yhat_spl]
-volumes = [x[1:-1] for x in yhat_spl]
-
-plt.scatter(np.hstack(volumes),
-            np.hstack(growth_rates))
-plt.ylabel('Growth rate (spline smoothed) (um3/hr)')
-plt.xlabel('Cell volume (spline smoothed)')
-bins = stats.mstats.mquantiles(np.hstack(volumes),np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
-plot_bin_means(np.hstack(volumes),np.hstack(growth_rates),bins,color='r', error='std')
-
-# Extract growth rates from exponential growth
-
-sb.regplot(df['Birth volume'],exp_b)
-
+=
 
 

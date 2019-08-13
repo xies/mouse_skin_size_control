@@ -73,9 +73,9 @@ sb.set_style('darkgrid')
 exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
 
 #yhat_spl = []
+res_exp = []
 res_spl = []
 nknots = []
-
 
 # Fit Exponential & linear models to growth curves
 # Quantify residuals
@@ -90,12 +90,11 @@ for c in auto_tracked:
         
         try:
             # Nonlinear regression exponential
-#            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
-#                                         bounds = [ [0,0,v.min()],
-#                                                    [v.max(),np.inf,v.max()]])
-#            exp_b.append(b)
-#            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
-#            res_exp.append( (v - yhat)/v )
+            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
+                                         bounds = [ [0,0,v.min()],
+                                                    [v.max(),np.inf,v.max()]])
+            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
+            res_exp.append( (v - yhat)/v )
             
             # B-spline
             spl = UnivariateSpline(t, v, k=3, s=1e6)
@@ -112,30 +111,20 @@ for c in auto_tracked:
             
 #auto_res_exp = np.hstack(res_exp)
 auto_res_spl = np.hstack(res_spl)
-
-#plt.figure(1)
-#bins = np.linspace(-200,200,25)
-#plt.hist(all_res_exp,bins,histtype='step',density=True,stacked=True)
-#plt.xlabel('Fitting residuals (um3)')
-#plt.ylabel('Frequency')
-
+auto_res_exp = np.hstack(res_exp)
 
 plt.figure(1)
+weights = np.ones_like(auto_res_exp)/float(len(auto_res_exp))
 bins = np.linspace(-1,1,25)
-plt.hist(auto_res_spl,bins,histtype='step',density=True,stacked=True)
+plt.hist(auto_res_exp,bins,histtype='step',density=False,stacked=True,weights=weights)
 plt.xlabel('Fitting residuals (um3)')
 plt.ylabel('Frequency')
 
 plt.figure(1)
+weights = np.ones_like(all_res_exp)/float(len(all_res_exp))
 bins = np.linspace(-1,1,25)
-N,bins,p = plt.hist(all_res_spl,bins,histtype='step',density=True,stacked=True)
+N,bins,p = plt.hist(all_res_exp,bins,histtype='step',density=False,stacked=True,weights=weights)
 plt.xlabel('Normalized residuals (um3)')
 plt.ylabel('Frequency')
 
 plt.legend(('Area','Volume'))
-
-#plt.figure(1)
-#bins = np.linspace(-200,200,25)
-#N,bins,p = plt.hist(all_res_spl,bins,histtype='step',density=True,stacked=True)
-#plt.xlabel('Fitting residuals (um3)')
-#plt.ylabel('Frequency')

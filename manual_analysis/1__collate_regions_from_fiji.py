@@ -181,10 +181,11 @@ for regiondir in regions.iterkeys():
     df['Total growth'] = df['Division volume'] - df['Birth volume']
     df['SG2 length'] = df['Cycle length'] - df['G1 length']
     df['G1 grown'] = df['G1 volume'] - df['Birth volume']
+    df['G1 grown interpolated'] = df['G1 volume interpolated'] - df['Birth volume']
     df['SG2 grown'] = df['Total growth'] - df['G1 grown']
     df['Fold grown'] = df['Division volume'] / df['Birth volume']
     df['Total growth interpolated'] = df['Division volume interpolated'] - df['Birth volume']
-    df['SG2 grown interpolated'] = df['Total growth interpolated'] - df['G1 grown']
+    df['SG2 grown interpolated'] = df['Division volume interpolated'] - df['G1 volume interpolated']
     
     # Put in the mitosis annotation
     df['Mitosis'] = np.in1d(df.CellID,mitosis_in_frame)
