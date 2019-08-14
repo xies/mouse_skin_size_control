@@ -44,6 +44,8 @@ autoIDs = np.array([c.CellID.iloc[0] for c in auto_tracked])
 #####
 areas = []
 volumes = []
+phases = []
+nuc = []
 # Generate scatter plot of area v. volume
 aIDs = [(a.iloc[0].CellID,a.iloc[0].Region) for a in auto_tracked]
 for c in collated:
@@ -55,6 +57,8 @@ for c in collated:
         if len(c) == len(a):
             areas += (a.ActinSegmentationArea.values * dx**2 ).tolist()
             volumes += c.Volume.values.tolist()
+            phases += c.Phase.values.tolist()
+            nuc += c.Nucleus.values.tolist()
 plt.scatter(volumes,areas)
 plt.xlabel('Cell volume (um3)')
 plt.ylabel('Cross sectional area (um2)')

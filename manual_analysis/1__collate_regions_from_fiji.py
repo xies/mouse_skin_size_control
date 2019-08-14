@@ -60,6 +60,7 @@ for regiondir in regions.iterkeys():
                 # Check if main lineage or daughter cells
                 framename = path.split(fn)[1]
                 match = re.search('(\D)$',framename)
+                
                 # Main cell linage
                 if match == None:
                     # Grab the frame # from filename
@@ -76,13 +77,14 @@ for regiondir in regions.iterkeys():
             elif channel == '.h2b':
                 cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
                 nuclei.append(cell['IntDen'].sum().astype(np.float) * dx**2)
-                
+        
     raw_df['Frame'] = frames
     raw_df['CellID'] = cIDs
     raw_df['Volume'] = vols
     raw_df['Nucleus'] = nuclei
     raw_df['G1'] = fucci
     raw_df['Daughter'] = daughter
+    raw_df['NC ratio'] = np.array(vols) / np.array(nuclei)
     
     # Load hand-annotated G1/S transition frame
     g1transitions = pd.read_csv(path.join(regiondir,'g1_frame.txt'),',')
@@ -92,9 +94,11 @@ for regiondir in regions.iterkeys():
     Ncells = len(ucellIDs)
     collated = []
     for c in ucellIDs:
+        # Grab data from the raw dataframe
         this_cell = raw_df[raw_df['CellID'] == c].sort_values(by='Frame').copy()
         this_cell['Region'] = regions[regiondir]
         this_cell = this_cell.reset_index()
+        
         # Annotate cell cycle of parent cell
         transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
         if transition_frame == '?':
@@ -105,6 +109,16 @@ for regiondir in regions.iterkeys():
             this_cell.loc[0:iloc,'Phase'] = 'G1'
         # Annotate cell cycle of daughter cell
         this_cell.loc[this_cell['Daughter'] != 'None','Phase'] = 'Daughter G1'
+        
+        # Store spline-fits
+        spline_fit = get_interpolated_curve(this_cell)
+        this_cell['Volume (sm)'] = spline_fit
+        
+        # Store growth rates (smoothed)
+        gr = get_growth_rate(this_cell)
+        this_cell['Growth rate (sm)'] = gr
+        
+        # Append to master list
         collated.append(this_cell)
     
     # Load mitosis frame
@@ -114,6 +128,7 @@ for regiondir in regions.iterkeys():
         for i,mitosis in mitosis_in_frame.iterrows():
             c = collated[np.where(ucellIDs == mitosis.CellID)[0][0]]
             c.loc[c.Frame == mitosis.mitosis_frame,'Phase'] = 'M'
+    
     
     ##### Export growth traces in CSV ######
     pd.concat(collated).to_csv(path.join(regiondir,'growth_curves.csv'),
@@ -152,13 +167,12 @@ for regiondir in regions.iterkeys():
             thisg1frame = np.int(thisg1frame)
             G1duration[i] = (thisg1frame - c.iloc[0]['Frame'] + 1) * 12
             G1size[i] = c[c['Frame'] == thisg1frame]['Volume']
+            G1size_interp[i] = c[c['Frame'] == thisg1frame]['Volume (sm)']
         # Annotate daughter cell data
         if len(d) > 0:
             daughterSizes[:,i] = d['Volume']
         else:
             daughterSizes[:,i] = np.nan
-        # Annotate G1 interpolated
-        G1size_interp[i] = get_interpolated_g1_volume(c)
             
     # Construct dataframe with primary data
     df = pd.DataFrame()
@@ -201,23 +215,38 @@ for regiondir in regions.iterkeys():
     print 'Done with:', regiondir
     
     
-def get_interpolated_g1_volume(c,smoothing_factor=1e5):
-
-    if c.iloc[0]['Phase'] == '?':
-        return np.nan
+def get_interpolated_curve(c,smoothing_factor=1e5):
 
     # Get rid of daughter cells
-    c = c[c['Daughter'] == 'None']
-    if len(c) < 4:
-        return np.nan
+    cf = c[c['Daughter'] == 'None']
+    if len(cf) < 4:
+        return np.empty(len(c)) * np.nan
     
-    t = np.array(range(0,len(c))) * 12
-    v = c.Volume.values
+    t = np.array(range(0,len(cf))) * 12
+    v = cf.Volume.values
     # Spline smooth
     spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
     yhat = spl(t)
     
-    g1exitframe = np.where(c['Phase'] == 'G1')[0][-1]
-    g1exit_vol_interp = yhat[g1exitframe]
-    return g1exit_vol_interp
+    if np.any( c['Phase'] == 'Daughter G1'):
+        yhat = np.append( yhat,[np.nan,np.nan] )
+    
+    return yhat
+
+
+def get_growth_rate(c):
+    
+    # Get rid of daughter cells
+    cf = c[c['Daughter'] == 'None']
+    if len(cf) < 4:
+        return np.empty(len(c)) * np.nan
+    
+    v = cf['Volume (sm)'].values
+    Tb = backward_difference(len(v))
+    gr = np.dot(Tb,v)
+    gr[0] = np.nan
+    if np.any( c['Phase'] == 'Daughter G1'):
+        gr = np.append( gr,[np.nan,np.nan] )
+    
+    return gr
 

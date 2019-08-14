@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
 from scipy import stats
+import statsmodels.api as sm
 
 ################## Plotting ##################
 
@@ -91,44 +92,74 @@ plt.xlabel('Volume at S phase entry (um^3)')
 ################################################
 # Correlations / linear regression slopes
 
-# Pearson correlation
-Rg1growth,P = stats.stats.pearsonr(df['Birth volume'],df['G1 grown'])
-print 'Correlation of G1 growth: ', Rg1growth,P
-Rsg2growth,P = stats.stats.pearsonr(df['G1 volume'],df['SG2 grown'])
-print 'Correlation of S/G2 growth: ', Rsg2growth,P
+# G1 growth
+x = df['Birth volume']
+x_const = sm.add_constant(x)
+y = df['G1 grown']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of G1 grown: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of G1 grown: ', R,P
 
-Rg1vol,P = stats.stats.pearsonr(df['Birth volume'],df['G1 volume'])
-print 'Correlation of G1 volume: ', Rg1vol,P
-Rsg2Rg1vol,P = stats.stats.pearsonr(df['G1 volume'],df['Division volume'])
-print 'Correlation of S/G2 volume: ', Rsg2Rg1vol,P
+# G1 exit volume
+x = df['Birth volume']
+x_const = sm.add_constant(x)
+y = df['G1 volume']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of G1 volume: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of G1 volume: ', R,P
 
-Rtotalgrowth,P = stats.stats.pearsonr(df['Birth volume'],df['Total growth'])
-print 'Correlation of total growth: ', Rtotalgrowth, P
-Rdivisionvol,p = stats.stats.pearsonr(df['Birth volume'],df['Division volume'])
-print 'Correlation of division volume: ', Rdivisionvol,P
+ 
+# SG2 growth
+x = df['G1 volume']
+x_const = sm.add_constant(x)
+y = df['SG2 grown']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of SG2 grown: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of SG2 grown: ', R,P
 
-Rg1length,P = stats.stats.pearsonr(df['Birth volume'],df['G1 length'])
-print 'Correlation of G1 length: ', Rg1length,P
-Rsg2length,P = stats.stats.pearsonr(df['G1 volume'],df['SG2 length'])
-print 'Correlation of S/G2 length: ', Rsg2length,P
-
-# Linear regression
-Pg1growth = np.polyfit(df['Birth volume'],df['G1 grown'],1)
-Psg2growth = np.polyfit(df['G1 volume'],df['SG2 grown'],1)
-print 'Slope of G1 growth: ', Pg1growth[0]
-print 'Slope of S/G2 growth: ', Psg2growth[0]
-
-# Linear regression
-mbg1volume = np.polyfit(df['Birth volume'],df['G1 volume'],1)
-print 'Slope of birth volume v G1 volume: ', Pbg1volume[0]
-Pg2divvolume = np.polyfit(df['G1 volume'],df['Division volume'],1)
-print 'Slope of G1 volume v division volume: ', Pg2divvolume[0]
+# SG2 exit volume
+x = df['G1 volume']
+x_const = sm.add_constant(x)
+y = df['Division volume']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of SG2 volume: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of SG2 volume: ', R,P
 
 
-Ptotalgrowth = np.polyfit(df['Birth volume'],df['Total growth'],1)
-Pdivisionvol = np.polyfit(df['Birth volume'],df['Division volume'],1)
-print 'Slope of total growth: ', Ptotalgrowth[0]
-print 'Slope of division volume: ', Pdivisionvol[0]
+
+# Total growth
+x = df['Birth volume']
+x_const = sm.add_constant(x)
+y = df['Total growth']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of total grown: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of total grown: ', R,P
+
+# SG2 exit volume
+x = df['Birth volume']
+x_const = sm.add_constant(x)
+y = df['Division volume']
+I = ~(np.isnan(y) | np.isnan(x))
+M = sm.OLS(y,x_const,missing='drop').fit()
+print 'Slope of division volume: ', M.params[1], ' +- ', M.conf_int(0.05).values[1,1] - M.params[1]
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of division volume: ', R,P
 
 ################################
 

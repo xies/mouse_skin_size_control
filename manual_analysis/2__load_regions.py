@@ -37,3 +37,6 @@ collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
 
 # Filter for cells that have daughter data
 df_has_daughter = df[~np.isnan(df['Division volume interpolated'])]
+
+# Concatenate all collated cells into dfc
+dfc = pd.concat(collated_filtered)

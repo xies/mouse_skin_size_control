@@ -88,12 +88,12 @@ plt.xlim([200,550])
 
 ## Phase length
 sb.lmplot(data=df,x='Birth volume',y='G1 length',y_jitter=True,fit_reg=False,ci=None)
-plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins)
+means = plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins,error='std')
 plt.ylabel('G1 duration (hr)')
 plt.xlabel('Volume at birth (um^3)')
 
 sb.lmplot(data=df,x='G1 volume interpolated',y='SG2 length',y_jitter=True,fit_reg=False,ci=None)
-plot_bin_means(df['G1 volume interpolated'],df['SG2 length'],g1_vol_bins)
+means = plot_bin_means(df['G1 volume interpolated'],df['SG2 length'],g1_vol_bins,error='std')
 plt.ylabel('S/G2/M duration (hr)')
 plt.xlabel('Volume at S phase entry (um^3)')
 

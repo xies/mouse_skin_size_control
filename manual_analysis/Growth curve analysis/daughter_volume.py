@@ -25,6 +25,23 @@ plt.vlines(np.nanmean(df_has_daughter['Daughter ratio']),0,50)
 plt.xlabel('Daughter volume ratio')
 plt.ylabel('Frequency')
 
+# Histogram before and after
+mitotic = df_has_daughter[df_has_daughter.Mitosis]
+non_mitotic = df_has_daughter[~df_has_daughter.Mitosis]
+plt.figure()
+plt.hist( non_mitotic['Division volume'] )
+plt.hist( non_mitotic['Division volume interpolated'] )
+plt.vlines([np.nanmean(non_mitotic['Division volume']),
+            np.nanmean(non_mitotic['Division volume interpolated'])],0,50)
+plt.xlabel('Division volume (um3)')
+
+plt.figure()
+plt.hist( mitotic['Division volume'] )
+plt.hist( mitotic['Division volume interpolated'] )
+plt.vlines([np.nanmean(mitotic['Division volume']),
+            np.nanmean(mitotic['Division volume interpolated'])],0,3)
+plt.xlabel('Division volume (um3)')
+
 # Histogram difference
 plt.figure()
 plt.hist( nonans( (df_has_daughter['Division volume interpolated']-df_has_daughter['Division volume']) * 100 /
