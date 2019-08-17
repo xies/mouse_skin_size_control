@@ -125,9 +125,9 @@ plt.xlabel('Fitting residuals (um3)')
 plt.ylabel('Frequency')
 
 plt.figure(1)
-weights = np.ones_like(all_res_exp)/float(len(all_res_exp))
+weights = np.ones_like(auto_res_spl)/float(len(auto_res_spl))
 bins = np.linspace(-1,1,25)
-N,bins,p = plt.hist(all_res_exp,bins,histtype='step',density=False,stacked=True,weights=weights)
+N,bins,p = plt.hist(auto_res_spl,bins,histtype='step',density=False,stacked=True,weights=weights)
 plt.xlabel('Normalized residuals (um3)')
 plt.ylabel('Frequency')
 

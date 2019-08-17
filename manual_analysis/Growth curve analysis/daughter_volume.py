@@ -29,15 +29,15 @@ plt.ylabel('Frequency')
 mitotic = df_has_daughter[df_has_daughter.Mitosis]
 non_mitotic = df_has_daughter[~df_has_daughter.Mitosis]
 plt.figure()
-plt.hist( non_mitotic['Division volume'] )
-plt.hist( non_mitotic['Division volume interpolated'] )
+plt.hist( non_mitotic['Division volume'] ,histtype='step')
+plt.hist( non_mitotic['Division volume interpolated'] ,histtype='step')
 plt.vlines([np.nanmean(non_mitotic['Division volume']),
             np.nanmean(non_mitotic['Division volume interpolated'])],0,50)
 plt.xlabel('Division volume (um3)')
 
 plt.figure()
-plt.hist( mitotic['Division volume'] )
-plt.hist( mitotic['Division volume interpolated'] )
+plt.hist( mitotic['Division volume'],histtype='step')
+plt.hist( mitotic['Division volume interpolated'],histtype='step')
 plt.vlines([np.nanmean(mitotic['Division volume']),
             np.nanmean(mitotic['Division volume interpolated'])],0,3)
 plt.xlabel('Division volume (um3)')
@@ -69,7 +69,7 @@ X = df_has_daughter.iloc[df_has_daughter.groupby('Mitosis').indices[True]]['Divi
 Y = df_has_daughter.iloc[df_has_daughter.groupby('Mitosis').indices[True]]['Division volume interpolated'].values
 plot_slopegraph(X,Y,names=['Final volume','Interpolated final volume'],color='orange')
 
-plt.plot([1,2],[X.mean(),Y.mean()],color='k')
+plt.errorbar([1,2],[X.mean(),Y.mean()], yerr = [stats.sem(X),stats.sem(Y)],color='k')
 plt.xlim([0,3])
 
 
