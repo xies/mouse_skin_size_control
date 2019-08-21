@@ -44,7 +44,7 @@ for c in collated_filtered:
 
 dfc = pd.concat(collated_filtered)
 dfc = dfc[dfc['Phase'] != '?']
-df.groupby('Phase')['Growth rate'].hist(stacked=True)
+dfc.groupby('Phase')['Growth rate'].hist(stacked=True)
 plt.xlabel('Growth rate (um3 / hr)')
 plt.legend(('G1','SG2','M'))
 

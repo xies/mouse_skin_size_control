@@ -48,7 +48,7 @@ phases = []
 nuc = []
 # Generate scatter plot of area v. volume
 aIDs = [(a.iloc[0].CellID,a.iloc[0].Region) for a in auto_tracked]
-for c in collated:
+for c in collated_filtered:
     c = c[c['Daughter'] == 'None']
     # Find the automatic cell corresponding to it
     thisID = (c.iloc[0].CellID,c.iloc[0].Region)

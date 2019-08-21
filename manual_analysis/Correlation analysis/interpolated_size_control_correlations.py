@@ -32,7 +32,8 @@ g1_vol_bins = stats.mstats.mquantiles(nonans(df['G1 volume interpolated']), np.a
 sb.set_style("darkgrid")
 
 ## Birth size G1 growth
-sb.regplot(data=df,x='Birth volume',y='G1 grown',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='Birth volume',y='G1 grown',fit_reg=True,ci=None)
 sb.regplot(data=df,x='Birth volume',y='G1 grown interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['Birth volume'],df['G1 grown interpolated'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -41,7 +42,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
 ## G1 exit volume SG2 growth
-sb.regplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='G1 volume',y='SG2 grown',fit_reg=True,ci=None)
 sb.regplot(data=df,x='G1 volume',y='SG2 grown interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['G1 volume'],df['SG2 grown interpolated'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
@@ -50,7 +52,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([250,700])
 
 ## Birth size v G1 exit volume
-sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='Birth volume',y='G1 volume',fit_reg=True,ci=None)
 sb.regplot(data=df,x='Birth volume',y='G1 volume interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['Birth volume'],df['G1 volume interpolated'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -59,7 +62,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
 ## G1 exit volume v division volume
-sb.regplot(data=df,x='G1 volume',y='Division volume',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='G1 volume',y='Division volume',fit_reg=True,ci=None)
 sb.regplot(data=df,x='G1 volume interpolated',y='Division volume interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['G1 volume interpolated'],df['Division volume interpolated'],g1_vol_bins)
 plt.xlabel('G1 exit volume (um3)')
@@ -68,7 +72,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([250,700])
 
 ## Birth volume v total growth
-sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='Birth volume',y='Total growth',fit_reg=True,ci=None)
 sb.regplot(data=df,x='Birth volume',y='Total growth interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['Birth volume'],df['Total growth interpolated'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -77,7 +82,8 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlim([200,550])
 
 ## Final volume
-sb.regplot(data=df,x='Birth volume',y='Division volume',fit_reg=True,ci=None)
+plt.figure()
+#sb.regplot(data=df,x='Birth volume',y='Division volume',fit_reg=True,ci=None)
 sb.regplot(data=df,x='Birth volume',y='Division volume interpolated',fit_reg=True,ci=None)
 plot_bin_means(df['Birth volume'],df['Division volume interpolated'],birth_vol_bins)
 plt.xlabel('Birth volume (um3)')
@@ -88,12 +94,12 @@ plt.xlim([200,550])
 
 ## Phase length
 sb.lmplot(data=df,x='Birth volume',y='G1 length',y_jitter=True,fit_reg=False,ci=None)
-means = plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins,error='std')
+means = plot_bin_means(df['Birth volume'],df['G1 length'],birth_vol_bins,error='sem')
 plt.ylabel('G1 duration (hr)')
 plt.xlabel('Volume at birth (um^3)')
 
 sb.lmplot(data=df,x='G1 volume interpolated',y='SG2 length',y_jitter=True,fit_reg=False,ci=None)
-means = plot_bin_means(df['G1 volume interpolated'],df['SG2 length'],g1_vol_bins,error='std')
+means = plot_bin_means(df['G1 volume interpolated'],df['SG2 length'],g1_vol_bins,error='sem')
 plt.ylabel('S/G2/M duration (hr)')
 plt.xlabel('Volume at S phase entry (um^3)')
 
@@ -171,5 +177,23 @@ R,P = stats.stats.pearsonr(x[I],y[I])
 print 'Correlation of division volume: ', R,P
 
 
+### correlation for durations
+
+
+# G1 duration
+x = df['Birth volume']
+y = df['G1 length']
+I = ~(np.isnan(y) | np.isnan(x))
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of G1 duration: ', R,P
+
+# SG2 duration
+x = df['G1 volume interpolated']
+y = df['SG2 length']
+I = ~(np.isnan(y) | np.isnan(x))
+# Pearson
+R,P = stats.stats.pearsonr(x[I],y[I])
+print 'Correlation of SG2 duration: ', R,P
 
 

@@ -220,19 +220,20 @@ def get_interpolated_curve(c,smoothing_factor=1e5):
     # Get rid of daughter cells
     cf = c[c['Daughter'] == 'None']
     if len(cf) < 4:
-        return np.empty(len(c)) * np.nan
-    
-    t = np.array(range(0,len(cf))) * 12
-    v = cf.Volume.values
-    # Spline smooth
-    spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
-    yhat = spl(t)
-    
-    if np.any( c['Phase'] == 'Daughter G1'):
+        yhat = cf.Volume.values
+        
+    else:
+        t = np.array(range(0,len(cf))) * 12
+        v = cf.Volume.values
+        # Spline smooth
+        spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
+        yhat = spl(t)
+
+    if np.any(c['Phase'] == 'Daughter G1'):
         yhat = np.append( yhat,[np.nan,np.nan] )
     
     return yhat
-
+    
 
 def get_growth_rate(c):
     

@@ -67,7 +67,8 @@ plt.xlim([0,3])
 
 X = df_has_daughter.iloc[df_has_daughter.groupby('Mitosis').indices[True]]['Division volume'].values
 Y = df_has_daughter.iloc[df_has_daughter.groupby('Mitosis').indices[True]]['Division volume interpolated'].values
-plot_slopegraph(X,Y,names=['Final volume','Interpolated final volume'],color='orange')
+Y = Y + (Y-X)
+plot_slopegraph(X,Y,names=['Final volume','Total daughter volume'],color='orange')
 
 plt.errorbar([1,2],[X.mean(),Y.mean()], yerr = [stats.sem(X),stats.sem(Y)],color='k')
 plt.xlim([0,3])
