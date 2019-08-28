@@ -99,6 +99,9 @@ for regiondir in regions.iterkeys():
         this_cell['Region'] = regions[regiondir]
         this_cell = this_cell.reset_index()
         
+        # Annotate age in hours
+        this_cell['Age'] = (this_cell['Frame'] - this_cell['Frame'].min()) * 12
+        
         # Annotate cell cycle of parent cell
         transition_frame = g1transitions[g1transitions.CellID == this_cell.CellID[0]].iloc[0].Frame
         if transition_frame == '?':
@@ -114,7 +117,7 @@ for regiondir in regions.iterkeys():
         spline_fit = get_interpolated_curve(this_cell)
         this_cell['Volume (sm)'] = spline_fit
         
-        # Store growth rates (smoothed)
+        # Store pointwise growth rates (smoothed)
         gr = get_growth_rate(this_cell)
         this_cell['Growth rate (sm)'] = gr
         
@@ -148,6 +151,7 @@ for regiondir in regions.iterkeys():
     G1size_interp = np.zeros(Ncells)
     cIDs = np.zeros(Ncells)
     daughterSizes = np.zeros((2,Ncells))
+    expGR = np.zeros(Ncells)
     for i,c in enumerate(collated):
         # Break out the daughter cells
         d = c[c['Daughter'] != 'None']
@@ -173,7 +177,10 @@ for regiondir in regions.iterkeys():
             daughterSizes[:,i] = d['Volume']
         else:
             daughterSizes[:,i] = np.nan
-            
+        
+        # Store exponential growth rate from fit
+        expGR[i] = get_exponential_growth_rate(c)
+        
     # Construct dataframe with primary data
     df = pd.DataFrame()
     df['CellID'] = cIDs
@@ -186,6 +193,7 @@ for regiondir in regions.iterkeys():
     df['Division volume'] = DivSize
     df['Daughter a volume'] = daughterSizes[0,:]
     df['Daughter b volume'] = daughterSizes[1,:]
+    df['Exponential growth rate'] = expGR
     
     # Derive data
     df['Daughter total volume'] = df['Daughter a volume'] + df['Daughter b volume']
@@ -250,4 +258,24 @@ def get_growth_rate(c):
         gr = np.append( gr,[np.nan,np.nan] )
     
     return gr
+
+def get_exponential_growth_rate(c):
+    # Return the exponential fit growth rate parameter
+    from scipy import optimize
+    exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
+
+    t = c.Age.values
+    v = c.Volume.values
+    # Construct initial guess for growth rate
+    
+    try:
+        # Nonlinear regression
+        b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
+                                 bounds = [ [0,0,v.min()],
+                                            [v.max(),np.inf,v.max()]])
+        return b[0][1]
+    
+    except:
+        return np.nan
+        print 'Fitting failed for ', c.iloc[0].CellID
 
