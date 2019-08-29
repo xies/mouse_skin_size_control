@@ -18,16 +18,16 @@ from scipy import stats, signal
 nbins = 5
 birth_vol_bins = stats.mstats.mquantiles(df['Birth volume'],  np.arange(0,nbins+1,dtype=np.float)/nbins)
 g1_vol_bins = stats.mstats.mquantiles(df['G1 volume'], np.arange(0,nbins+1,dtype=np.float)/nbins)
-
-################## Calculate growth rates ##################
-#No smoothing
-for c in collated_filtered:
-    V = c.Volume
-    Tb = backward_difference(len(V)) # Generate Toeplitz matrix
-    dV = np.dot(Tb,V)
-    dV[0] = np.nan # first element is not meaningful
-    dV[c['Daughter'] != 'None'] = np.nan
-    c['Growth rate'] = dV / 12 #normalize to 12hrs
+#
+################### Calculate growth rates ##################
+##No smoothing
+#for c in collated_filtered:
+#    V = c.Volume
+#    Tb = backward_difference(len(V)) # Generate Toeplitz matrix
+#    dV = np.dot(Tb,V)
+#    dV[0] = np.nan # first element is not meaningful
+#    dV[c['Daughter'] != 'None'] = np.nan
+#    c['Growth rate'] = dV / 12 #normalize to 12hrs
     
 ##smoothing
 #for c in collated_filtered:
@@ -49,10 +49,31 @@ plt.xlabel('Growth rate (um3 / hr)')
 plt.legend(('G1','SG2','M'))
 
 
-x = dfc[dfc['Phase'] != 'Daughter G1']
-g = sb.lmplot(data=dfc[dfc['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume',hue='Phase',fit_reg=True,ci=None)
-#sb.regplot(data=df[df['Phase'] != 'Daughter G1'],y = 'Growth rate',x = 'Volume', scatter=False, ax=g.axes[0, 0])
+########## Scatter plot across smoothed growth curves ############
+x = dfc[dfc['Phase'] == 'G1']
+g = sb.regplot(data=x,y = 'Growth rate (sm)',x = 'Volume (sm)',fit_reg=False,ci=None)
 bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
+bins = np.linspace(x['Volume (sm)'].min(),x['Volume (sm)'].max(),8)
+plot_bin_means(x['Volume'],x['Growth rate (sm)'],bins[:-2],color='b', error='std',style='fill')
+x = dfc[dfc['Phase'] == 'SG2']
+g = sb.regplot(data=x,y = 'Growth rate (sm)',x = 'Volume (sm)',fit_reg=False,ci=None)
+bins = np.linspace(x['Volume'].min(),x['Volume (sm)'].max(),8)
+plot_bin_means(x['Volume'],x['Growth rate (sm)'],bins[:-2],color='r', error='std',style='fill')
+
+# Get fitting statistics
+x = dfc[dfc['Phase'] != 'Daughter G1']['Volume (sm)']
+x = dfc[dfc['Phase'] != 'Daughter G1']['Growth rate (sm)']
+I = (~np.isnan(x)) & (~np.isnan(y))
+slope, intercept, _,_,_ = stats.linregress(x[I],y[I])
+
+########## Scatter plot across raw growth curves ############
+x = dfc[dfc['Phase'] == 'G1']
+g = sb.regplot(data=x,y = 'Growth rate',x = 'Volume',fit_reg=False,ci=None)
+bins = stats.mstats.mquantiles(x['Volume'],np.array([0,1.,2.,3.,4.,5.,6.,7.])/7)
+bins = np.linspace(x['Volume'].min(),x['Volume'].max(),8)
+plot_bin_means(x['Volume'],x['Growth rate'],bins[:-2],color='b', error='std',style='fill')
+x = dfc[dfc['Phase'] == 'SG2']
+g = sb.regplot(data=x,y = 'Growth rate',x = 'Volume',fit_reg=False,ci=None)
 bins = np.linspace(x['Volume'].min(),x['Volume'].max(),8)
 plot_bin_means(x['Volume'],x['Growth rate'],bins[:-2],color='r', error='std',style='fill')
 

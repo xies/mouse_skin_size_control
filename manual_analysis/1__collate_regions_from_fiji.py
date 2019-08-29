@@ -118,8 +118,9 @@ for regiondir in regions.iterkeys():
         this_cell['Volume (sm)'] = spline_fit
         
         # Store pointwise growth rates (smoothed)
-        gr = get_growth_rate(this_cell)
-        this_cell['Growth rate (sm)'] = gr
+        gr,gr_sm = get_growth_rate(this_cell)
+        this_cell['Growth rate'] = gr / 12.0
+        this_cell['Growth rate (sm)'] = gr_sm / 12.0
         
         # Append to master list
         collated.append(this_cell)
@@ -247,17 +248,20 @@ def get_growth_rate(c):
     
     # Get rid of daughter cells
     cf = c[c['Daughter'] == 'None']
-    if len(cf) < 4:
-        return np.empty(len(c)) * np.nan
-    
-    v = cf['Volume (sm)'].values
+
+    v = cf['Volume'].values
+    v_sm = cf['Volume (sm)'].values
     Tb = backward_difference(len(v))
     gr = np.dot(Tb,v)
+    Tb = backward_difference(len(v_sm))
+    gr_sm = np.dot(Tb,v)
     gr[0] = np.nan
+    gr_sm[0] = np.nan
     if np.any( c['Phase'] == 'Daughter G1'):
         gr = np.append( gr,[np.nan,np.nan] )
+        gr_sm = np.append( gr_sm,[np.nan,np.nan] )
     
-    return gr
+    return gr,gr_sm
 
 def get_exponential_growth_rate(c):
     # Return the exponential fit growth rate parameter

@@ -123,7 +123,7 @@ plt.ylabel('Individual cells')
 plt.colorbar
 
 plt.figure()
-colors = {'M1R1':'b','M1R2':'r','M2R5':'g'}
+colors = {'M1R1':'b','M1R2':'b','M2R5':'b'}
 for i in xrange(Ncells):
     plt.plot(t,g1exit_aligned[i,:],
     color=colors[collated_filtered[i].iloc[0].Region],alpha=0.2)
@@ -138,6 +138,12 @@ plt.plot(t, mean_curve, color='r')
 #                 color='k',alpha=0.5)
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Cell volume (um3)')
+
+# Boxplots
+mask = ~np.isnan(g1exit_aligned)
+filtered_data = [d[m] for d, m in zip(g1exit_aligned.T, mask.T)]
+plt.boxplot(filtered_data)
+
 
 # Plot G1-aligned CV
 plt.figure()
