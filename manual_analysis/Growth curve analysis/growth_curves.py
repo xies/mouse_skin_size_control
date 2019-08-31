@@ -175,9 +175,9 @@ plt.plot(t, mean_curve, color='r')
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear volume (um3)')
 
+
 # Plot N:C ratio wrt time
 plt.figure()
-
 for i in xrange(Ncells):
     plt.plot(t,g1exit_nuc[i,:]/g1exit_aligned[i,:],
              colors[collated_filtered[i].iloc[0].Region],alpha=0.2)
@@ -193,24 +193,25 @@ plt.plot(t, mean_curve, color='r')
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear : cytoplasmic ratio')
 
+
 # Plot N:C ratio wrt size
 for c in collated_filtered:
     c = c[c['Daughter'] == 'None']
-    plt.plot(c.Volume,c.Nucleus/c.Volume,color='b')
+    plt.scatter(c['Volume (sm)'],c.Nucleus/c['Volume (sm)'],color='b')
 Ncell_in_bin = (~np.isnan(g1exit_nuc)).sum(axis=0)
 mean_curve = np.nanmean(g1exit_nuc/g1exit_aligned,axis=0)
 mean_curve[Ncell_in_bin < 10] = np.nan
 std_curve = np.nanstd(g1exit_nuc/g1exit_aligned,axis=0)
 std_curve[Ncell_in_bin < 10] = np.nan
 plt.plot(t, mean_curve, color='r')
-plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
-                 color='k',alpha=0.5)
+#plt.fill_between(t, mean_curve-std_curve, mean_curve+std_curve,
+#                 color='k',alpha=0.5)
 plt.plot(t, mean_curve, color='r')
 plt.xlabel('Time since G1 exit (hr)')
 plt.ylabel('Nuclear : cytoplasmic ratio')
 
 
-V = np.hstack([c[c['Daughter'] == 'None'].Volume.values for c in collated_filtered])
+V = np.hstack([c[c['Daughter'] == 'None']['Volume (sm)'].values for c in collated_filtered])
 nV = np.hstack([c[c['Daughter'] == 'None'].Nucleus.values for c in collated_filtered])
 phases = np.hstack([c[c['Daughter'] == 'None'].Phase.values for c in collated_filtered])
 

@@ -49,11 +49,19 @@ est = smf.ols(formula="gr_sm ~  vol_sm + Phase", data=dfc).fit()
 est.summary()
 
 
+#
+## Predict nuclear vol with cell phase or cell vol
+#
+## Curate early v late G1
+#est = smf.ols(formula="gr_sm ~  vol_sm + Phase", data=dfc).fit()
+#est.summary()
+#
+#
 
 
 
 ## NC ratio regression: time v. phase v. current volume
-est = smf.ols(formula="nuc ~ phase + vol_sm", data=dfc).fit()
+est = smf.ols(formula="nuc ~ phase + Volume", data=dfc).fit()
 est.summary()
 #
 #est = smf.ols(formula="nuc ~ index + vol_sm", data=dfc).fit()
