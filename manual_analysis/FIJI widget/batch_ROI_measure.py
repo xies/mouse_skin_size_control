@@ -7,10 +7,10 @@ from util.opencsv import CSVWriter
 from glob import glob
 from os import path
 
-dirnames = ['/Users/xies/Box/Mouse/Skin/W-R1/',
-			'/Users/xies/Box/Mouse/Skin/W-R2/',
-			'/Users/xies/Box/Mouse/Skin/W-R5/',
-			'/Users/xies/Box/Mouse/Skin/W-R5-full/']
+dirnames = ['/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/',
+			'/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/',
+			'/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5/',
+			'/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5-full/']
 channels = {'h2b':'h2b_mask.tif',
 			'fucci':'fucci_sequence.tif'}
 

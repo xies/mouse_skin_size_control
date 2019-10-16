@@ -14,6 +14,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.special import expit
 
+from numpy import random
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import scale 
 from sklearn.cross_decomposition import PLSCanonical
@@ -65,6 +66,39 @@ plt.figure(1)
 plt.plot(fpr,tpr)
 plt.xlim([0,1])
 
+# Error propagation for dx ~ 10%
+a = model.params.Intercept
+b = model.params.vol_sm
+
+x0 = mdpoint
+dModel = (b/(np.exp(a+b*x0)+1)**2 - b/(np.exp(a+b*x0)+1))* x0 *0.1
+
+
+#----- Bootstrap with 10% relative error in volume est.------
+
+Nboot = 1000
+mp_bs = np.zeros(Nboot)
+for i in range(Nboot):
+    df_bs = dfc_g1.copy()
+    df_bs['vol_sm'] = df_bs['vol_sm'] + df_bs['vol_sm']*random.randn(len(df_bs))*.1
+    m = smf.logit('G1S_logistic ~ vol_sm', data=df_bs).fit()
+    mp_bs[i] = - m.params['Intercept'] / m.params['vol_sm']
+
+sb.regplot(data = dfc_g1,x='vol_sm',y='G1S_logistic',logistic=True,scatter=True)
+
+#----- Bootstrap ------
+
+Ncells = len(dfc_g1)
+Nboot = 1000
+mp_bs = np.zeros(Nboot)
+for i in range(Nboot):
+#    df_bs = pd.DataFrame(dfc_g1.values[random.randint(Ncells, size=Ncells)], columns=dfc_g1.columns)
+    df_bs = dfc_g1.iloc[random.randint(Ncells,size=Ncells)]
+    m = smf.logit('G1S_logistic ~ vol_sm', data=df_bs).fit()
+    mp_bs[i] = - m.params['Intercept'] / m.params['vol_sm']
+
+sb.regplot(data = dfc_g1,x='vol_sm',y='G1S_logistic',logistic=True,scatter=True)
+
 
 ############### G1S logistic as function of age ###############
 model = smf.logit('G1S_logistic ~ Age',data=dfc_g1).fit()
@@ -95,6 +129,16 @@ plt.xlim([0,1])
 plt.gca().set_aspect('equal', adjustable='box')
 
 
+Ncells = len(dfc_g1)
+Nboot = 1000
+mp_bs = np.zeros(Nboot)
+for i in range(Nboot):
+#    df_bs = pd.DataFrame(dfc_g1.values[random.randint(Ncells, size=Ncells)], columns=dfc_g1.columns)
+    df_bs = dfc_g1.iloc[random.randint(Ncells,size=Ncells)]
+    m = smf.logit('G1S_logistic ~ Age', data=df_bs).fit()
+    mp_bs[i] = - m.params['Intercept'] / m.params['Age']
+
+sb.regplot(data = dfc_g1,x='Age',y='G1S_logistic',logistic=True,scatter=True)
 
 
 ############### G1S logistic multiregression with: vol, gr, Age ###############

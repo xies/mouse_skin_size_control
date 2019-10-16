@@ -9,6 +9,8 @@ Created on Mon Jul 22 19:06:55 2019
 import seaborn as sb
 from scipy import optimize,stats
 from scipy.interpolate import UnivariateSpline
+import pwlf
+import RegscorePy
 
 ###### Models + spline fit
 
@@ -21,9 +23,13 @@ exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
 
 res_lin = []
 res_exp = []
+res_bilin = []
 res_spl = []
 yhat_spl = []
 phases = []
+bic_lin = []
+bic_bilin = []
+bic_exp = []
 
 # Properly store the exponential growth rate (p2)
 regionCellIDs = (df['Region'] + df['CellID'].astype(int).astype(str)).values.tolist()
@@ -41,36 +47,43 @@ for c in collated_filtered:
         v = c.Volume.values
         # Construct initial guess for growth rate
 
-#        try:
+        try:
             # Nonlinear regression
-#            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
-#                                         bounds = [ [0,0,v.min()],
-#                                                    [v.max(),np.inf,v.max()]])
-#            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
-#            res_exp.append( (v - yhat)/v )
-#            idx = regionCellIDs.index(c.iloc[0]['Region']+c.iloc[0]['CellID'].astype(str))
-#            exp_b[idx] = b[0][1]
+            b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
+                                         bounds = [ [0,0,v.min()],
+                                                    [v.max(),np.inf,v.max()]])
+            yhat = exp_model(t,b[0][0],b[0][1],b[0][2])
+            res_exp.append( (v - yhat)/v )
+            idx = regionCellIDs.index(c.iloc[0]['Region']+c.iloc[0]['CellID'].astype(str))
+            exp_b[idx] = b[0][1]
             
-    
-    #            plt.subplot(2,3,counter+1)
-#        plt.plot(t,v,'k')
-#        plt.plot(t,yhat,'g')
-        
+            bic_exp.append(RegscorePy.bic.bic(v,yhat,3))
+            
 #            # LInear regression
-#            p = np.polyfit(t,v,1)
-#            yhat = np.polyval(p,t)
-#            res_lin.append( v - yhat )
-#            plt.plot(t,yhat,'r')
-        
-        # B-spline
-        spl = UnivariateSpline(t, v, k=3, s=1e6)
-        plt.plot(t,spl(t),'b')
-        yhat_spl.append(spl(t))
-        res_spl.append( (v-spl(t))/v )
-        phases.append(c['Phase'])
-        
-        plt.xlabel('Time since birth (hr)')
-        plt.ylabel('Cell volume')
+            p = np.polyfit(t,v,1)
+            yhat = np.polyval(p,t)
+            res_lin.append( v - yhat )
+            
+            bic_lin.append(RegscorePy.bic.bic(v,yhat,2))
+            
+            # Bilinear regression
+            bilin_model = pwlf.PiecewiseLinFit(t,v)
+            res = bilin_model.fit(2)
+            yhat = bilin_model.predict(t)
+            res_bilin.append( (v-yhat)/v )
+            
+            bic_bilin.append(RegscorePy.bic.bic(v,yhat,5))
+            
+            # B-spline fits
+            spl = UnivariateSpline(t, v, k=3, s=1e6)
+            yhat_spl.append(spl(t))
+            res_spl.append( (v-spl(t))/v )
+            
+            # calculate BIC scores
+
+            
+#            plt.xlabel('Time since birth (hr)')
+#            plt.ylabel('Cell volume')
 #            plt.legend(('Data','Exponential model','Linear model','Cubic spline'))
             
 #            counter += 1
@@ -80,6 +93,9 @@ for c in collated_filtered:
         except:
             print 'Fitting failed for ', c.iloc[0].CellID
             
+
+bic_exp = np.array(bic_exp)
+bic_lin = np.array(bic_lin)
 
 all_res_exp = np.hstack(res_exp)
 all_res_lin = np.hstack(res_lin)

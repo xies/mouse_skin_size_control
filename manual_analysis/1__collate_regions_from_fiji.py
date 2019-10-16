@@ -20,10 +20,10 @@ import pickle as pkl
 
 
 dx = 0.25
-regions = {'/Users/xies/box/Mouse/Skin/W-R1/tracked_cells/':'M1R1',
-            '/Users/xies/box/Mouse/Skin/W-R2/tracked_cells/':'M1R2',
-            '/Users/xies/box/Mouse/Skin/W-R5/tracked_cells/':'M2R5',
-            '/Users/xies/box/Mouse/Skin/W-R5-full/tracked_cells/':'M2R5'}
+regions = {'/Users/xies/box/Mouse/Skin/Mesa et al//W-R1/tracked_cells/':'M1R1',
+            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/':'M1R2',
+            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/':'M2R5',
+            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/':'M2R5'}
 
 for regiondir in regions.iterkeys():
     # Grab single-frame data into a dataframe
@@ -152,11 +152,14 @@ for regiondir in regions.iterkeys():
     G1size_interp = np.zeros(Ncells)
     cIDs = np.zeros(Ncells)
     daughterSizes = np.zeros((2,Ncells))
+    daughterGR = np.zeros(Ncells) * np.nan
+    finalGR = np.zeros(Ncells) * np.nan
     expGR = np.zeros(Ncells)
-    for i,c in enumerate(collated):
+    for i,cf in enumerate(collated):
         # Break out the daughter cells
-        d = c[c['Daughter'] != 'None']
-        c = c[c['Daughter'] == 'None']
+        d = cf[cf['Daughter'] != 'None']
+        d = d.iloc[0:2]
+        c = cf[cf['Daughter'] == 'None']
         
         cIDs[i] = c['CellID'].iloc[0]
         Bsize[i] = c['Volume'].iloc[0]
@@ -173,14 +176,21 @@ for regiondir in regions.iterkeys():
             G1duration[i] = (thisg1frame - c.iloc[0]['Frame'] + 1) * 12
             G1size[i] = c[c['Frame'] == thisg1frame]['Volume']
             G1size_interp[i] = c[c['Frame'] == thisg1frame]['Volume (sm)']
+
         # Annotate daughter cell data
         if len(d) > 0:
-            daughterSizes[:,i] = d['Volume']
+            daughterSizes[0,i] = d.iloc[0]['Volume']
+            daughterSizes[1,i] = d.iloc[1]['Volume']
+            daughterGR[i] = np.sum(d['Growth rate'])
+            if np.isnan(d.iloc[0]['Growth rate']):
+                daughterGR[i] = np.nan
         else:
             daughterSizes[:,i] = np.nan
         
         # Store exponential growth rate from fit
         expGR[i] = get_exponential_growth_rate(c)
+        # Store final Growth rate
+        finalGR[i] = c.iloc[-1]['Growth rate']
         
     # Construct dataframe with primary data
     df = pd.DataFrame()
@@ -195,6 +205,8 @@ for regiondir in regions.iterkeys():
     df['Daughter a volume'] = daughterSizes[0,:]
     df['Daughter b volume'] = daughterSizes[1,:]
     df['Exponential growth rate'] = expGR
+    df['Final growth rate'] = finalGR
+    df['Combined daughter growth rate'] = daughterGR
     
     # Derive data
     df['Daughter total volume'] = df['Daughter a volume'] + df['Daughter b volume']
@@ -224,6 +236,7 @@ for regiondir in regions.iterkeys():
     print 'Done with:', regiondir
     
     
+    
 def get_interpolated_curve(c,smoothing_factor=1e5):
 
     # Get rid of daughter cells
@@ -238,8 +251,11 @@ def get_interpolated_curve(c,smoothing_factor=1e5):
         spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
         yhat = spl(t)
 
-    if np.any(c['Phase'] == 'Daughter G1'):
-        yhat = np.append( yhat,[np.nan,np.nan] )
+    # if cell had daughter points bit
+    ndaughters = (c['Phase'] == 'Daughter G1').sum()
+    if ndaughters > 0:
+        nan_padding = np.ones((1,ndaughters)) * np.nan
+        yhat = np.append( yhat, nan_padding )
     
     return yhat
     
@@ -257,9 +273,24 @@ def get_growth_rate(c):
     gr_sm = np.dot(Tb,v)
     gr[0] = np.nan
     gr_sm[0] = np.nan
-    if np.any( c['Phase'] == 'Daughter G1'):
+
+    # Calculate daughter growth rate if available
+    ndaughters = (c['Phase'] == 'Daughter G1').sum()
+    if ndaughters == 2:
+        # Can't calculate daughter G1 growth rate
         gr = np.append( gr,[np.nan,np.nan] )
         gr_sm = np.append( gr_sm,[np.nan,np.nan] )
+    
+    elif ndaughters == 4:
+        # Separate daughter a + daughter b
+        daughter_a = c[c['Daughter'] == 'a']
+        daughter_b = c[c['Daughter'] == 'b']
+        
+        gra = daughter_a.iloc[-1].Volume - daughter_a.iloc[0].Volume
+        grb = daughter_b.iloc[-1].Volume - daughter_b.iloc[0].Volume
+        
+        gr = np.append(gr, [gra,grb,np.nan,np.nan])
+        gr_sm = np.append(gr_sm, [gra,grb,np.nan,np.nan])
     
     return gr,gr_sm
 
