@@ -18,13 +18,96 @@ from scipy import stats
 from scipy.interpolate import UnivariateSpline
 import pickle as pkl
 
+#%%
+    
+def get_interpolated_curve(c,smoothing_factor=1e5):
+
+    # Get rid of daughter cells
+    cf = c[c['Daughter'] == 'None']
+    if len(cf) < 4:
+        yhat = cf.Volume.values
+        
+    else:
+        t = np.array(range(0,len(cf))) * 12
+        v = cf.Volume.values
+        # Spline smooth
+        spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
+        yhat = spl(t)
+
+    # if cell had daughter points bit
+    ndaughters = (c['Phase'] == 'Daughter G1').sum()
+    if ndaughters > 0:
+        nan_padding = np.ones((1,ndaughters)) * np.nan
+        yhat = np.append( yhat, nan_padding )
+    
+    return yhat
+    
+
+def get_growth_rate(c):
+    
+    # Get rid of daughter cells
+    cf = c[c['Daughter'] == 'None']
+
+    v = cf['Volume'].values
+    v_sm = cf['Volume (sm)'].values
+    Tb = backward_difference(len(v))
+    gr = np.dot(Tb,v)
+    Tb = backward_difference(len(v_sm))
+    gr_sm = np.dot(Tb,v)
+    gr[0] = np.nan
+    gr_sm[0] = np.nan
+
+    # Calculate daughter growth rate if available
+    ndaughters = (c['Phase'] == 'Daughter G1').sum()
+    if ndaughters == 2:
+        # Can't calculate daughter G1 growth rate
+        gr = np.append( gr,[np.nan,np.nan] )
+        gr_sm = np.append( gr_sm,[np.nan,np.nan] )
+    
+    elif ndaughters == 4:
+        # Separate daughter a + daughter b
+        daughter_a = c[c['Daughter'] == 'a']
+        daughter_b = c[c['Daughter'] == 'b']
+        
+        gra = daughter_a.iloc[-1].Volume - daughter_a.iloc[0].Volume
+        grb = daughter_b.iloc[-1].Volume - daughter_b.iloc[0].Volume
+        
+        gr = np.append(gr, [gra,grb,np.nan,np.nan])
+        gr_sm = np.append(gr_sm, [gra,grb,np.nan,np.nan])
+    
+    return gr,gr_sm
+
+def get_exponential_growth_rate(c):
+    # Return the exponential fit growth rate parameter
+    from scipy import optimize
+    exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
+
+    t = c.Age.values
+    v = c.Volume.values
+    # Construct initial guess for growth rate
+    
+    try:
+        # Nonlinear regression
+        b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
+                                 bounds = [ [0,0,v.min()],
+                                            [v.max(),np.inf,v.max()]])
+        return b[0][1]
+    
+    except:
+        return np.nan
+        print 'Fitting failed for ', c.iloc[0].CellID
+
+
+#%%
 
 dx = 0.25
-regions = {'/Users/xies/box/Mouse/Skin/Mesa et al//W-R1/tracked_cells/':'M1R1',
-            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/':'M1R2',
-            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/':'M2R5',
-            '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/':'M2R5'}
+regions = {'/Users/xies/box/Mouse/Skin/Mesa et al//W-R1/tracked_cells/':'M1R1'}
+            # '/Users/xies/box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/':'M1R2',
+            # '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/':'M2R5',
+            # '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/':'M2R5'}
 
+
+#%%
 for regiondir in regions.iterkeys():
     # Grab single-frame data into a dataframe
     raw_df = pd.DataFrame()
@@ -89,6 +172,7 @@ for regiondir in regions.iterkeys():
     # Load hand-annotated G1/S transition frame
     g1transitions = pd.read_csv(path.join(regiondir,'g1_frame.txt'),',')
     
+    
     # Collate cell-centric list-of-dataslices
     ucellIDs = np.unique( raw_df['CellID'] )
     Ncells = len(ucellIDs)
@@ -147,6 +231,7 @@ for regiondir in regions.iterkeys():
     Bsize = np.zeros(Ncells)
     Bframe = np.zeros(Ncells)
     DivSize = np.zeros(Ncells)
+    G1frame = np.zeros(Ncells)
     G1duration = np.zeros(Ncells)
     G1size = np.zeros(Ncells)
     G1size_interp = np.zeros(Ncells)
@@ -236,81 +321,3 @@ for regiondir in regions.iterkeys():
     print 'Done with:', regiondir
     
     
-    
-def get_interpolated_curve(c,smoothing_factor=1e5):
-
-    # Get rid of daughter cells
-    cf = c[c['Daughter'] == 'None']
-    if len(cf) < 4:
-        yhat = cf.Volume.values
-        
-    else:
-        t = np.array(range(0,len(cf))) * 12
-        v = cf.Volume.values
-        # Spline smooth
-        spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
-        yhat = spl(t)
-
-    # if cell had daughter points bit
-    ndaughters = (c['Phase'] == 'Daughter G1').sum()
-    if ndaughters > 0:
-        nan_padding = np.ones((1,ndaughters)) * np.nan
-        yhat = np.append( yhat, nan_padding )
-    
-    return yhat
-    
-
-def get_growth_rate(c):
-    
-    # Get rid of daughter cells
-    cf = c[c['Daughter'] == 'None']
-
-    v = cf['Volume'].values
-    v_sm = cf['Volume (sm)'].values
-    Tb = backward_difference(len(v))
-    gr = np.dot(Tb,v)
-    Tb = backward_difference(len(v_sm))
-    gr_sm = np.dot(Tb,v)
-    gr[0] = np.nan
-    gr_sm[0] = np.nan
-
-    # Calculate daughter growth rate if available
-    ndaughters = (c['Phase'] == 'Daughter G1').sum()
-    if ndaughters == 2:
-        # Can't calculate daughter G1 growth rate
-        gr = np.append( gr,[np.nan,np.nan] )
-        gr_sm = np.append( gr_sm,[np.nan,np.nan] )
-    
-    elif ndaughters == 4:
-        # Separate daughter a + daughter b
-        daughter_a = c[c['Daughter'] == 'a']
-        daughter_b = c[c['Daughter'] == 'b']
-        
-        gra = daughter_a.iloc[-1].Volume - daughter_a.iloc[0].Volume
-        grb = daughter_b.iloc[-1].Volume - daughter_b.iloc[0].Volume
-        
-        gr = np.append(gr, [gra,grb,np.nan,np.nan])
-        gr_sm = np.append(gr_sm, [gra,grb,np.nan,np.nan])
-    
-    return gr,gr_sm
-
-def get_exponential_growth_rate(c):
-    # Return the exponential fit growth rate parameter
-    from scipy import optimize
-    exp_model = lambda x,p1,p2,p3 : p1 * np.exp(p2 * x) + p3
-
-    t = c.Age.values
-    v = c.Volume.values
-    # Construct initial guess for growth rate
-    
-    try:
-        # Nonlinear regression
-        b = optimize.curve_fit(exp_model,t,v,p0 = [v[0],1,v.min()],
-                                 bounds = [ [0,0,v.min()],
-                                            [v.max(),np.inf,v.max()]])
-        return b[0][1]
-    
-    except:
-        return np.nan
-        print 'Fitting failed for ', c.iloc[0].CellID
-
