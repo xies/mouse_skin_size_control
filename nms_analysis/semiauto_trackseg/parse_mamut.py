@@ -62,6 +62,7 @@ for i in range(len(cycling_tracks)):
     spots['Y'] = spots_['POSITION_Y']
     spots['Z'] = spots_['POSITION_Z']
     spots['T'] = spots_['POSITION_T']
+    spots['TrackID'] = spots_['TRACK_ID']
     spots['Left'] = None
     spots['Right'] = None
     spots['Division'] = False
