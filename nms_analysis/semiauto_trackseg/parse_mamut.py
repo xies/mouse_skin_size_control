@@ -61,7 +61,7 @@ for i in range(len(cycling_tracks)):
     spots['X'] = spots_['POSITION_X']
     spots['Y'] = spots_['POSITION_Y']
     spots['Z'] = spots_['POSITION_Z']
-    spots['T'] = spots_['POSITION_T']
+    spots['Frame'] = spots_['POSITION_T']
     spots['TrackID'] = spots_['TRACK_ID']
     spots['Left'] = None
     spots['Right'] = None
@@ -90,7 +90,7 @@ for i in range(len(cycling_tracks)):
     # If Terminus, delete current Track object
     
     divisions = spots[ spots['Division'] == True ]
-    first_division = divisions.sort_values('T').iloc[0]
+    first_division = divisions.sort_values('Frame').iloc[0]
     
     daughter_a = spots[spots['ID'] == first_division['Left']]
     daughter_b = spots[spots['ID'] == first_division['Right']]

@@ -41,3 +41,5 @@ for t,Gslice in enumerate(G):
 # io.imsave(path.join(dirname,'KO_R1_Rc.tif'),util.img_as_uint(R_/R_.max()))
 io.imsave(path.join(dirname,'R1_Gc.tif'),util.img_as_uint(G_/G_.max()))
 
+
+
