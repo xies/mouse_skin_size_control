@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 18 13:02:36 2021
+Created on Wed Jul  7 14:12:25 2021
 
 @author: xies
 """
+
 
 import numpy as np
 from skimage import io, util
 from os import path
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1/stitched'
-
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/06-27-2021 WT/M6 No Tam/stitching'
 
 #%%
 
-R = io.imread(path.join(dirname,'current_r.tif'))
-G = io.imread(path.join(dirname,'current_g.tif'))
-B = io.imread(path.join(dirname,'current_b.tif'))
+R = io.imread(path.join(dirname,'R.tif'))
+G = io.imread(path.join(dirname,'G.tif'))
+B = io.imread(path.join(dirname,'B.tif'))
 
-
+#%% Normalize
 
 R_ = R.copy().astype(np.float64)
 for t,Rslice in enumerate(R):
@@ -39,7 +39,9 @@ for t,Bslice in enumerate(B):
     
     Bslice = Bslice/Bslice.mean()
     Bslice = Bslice
-    B_[t,:,:,:] = Bslice    
+    B_[t,:,:,:] = Bslice
+    
+    
 
 #%%
 

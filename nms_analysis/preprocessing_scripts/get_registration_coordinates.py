@@ -29,10 +29,10 @@ for i,row in enumerate(x_zeros):
     if len(row) == 0:
         continue
     if np.any( row == 0 ):
-        shift = max(row)+1
+        shift = -)max(row)+1)
     else:
         shift = 1023-min(row)
-    x_transl[i] = -shift
+    x_transl[i] = shift
 
 
 # See if up or down shifted
@@ -41,10 +41,10 @@ for i,row in enumerate(y_zeros):
     if len(row) == 0:
         continue
     if np.any( row == 0 ):
-        shift = max(row)+1
+        shift = -(max(row)+1)
     else:
         shift = 1023-min(row)
-    y_transl[i] = -shift
+    y_transl[i] = shift
 
 #%% Transform other image
 
@@ -58,4 +58,4 @@ for i,transl in enumerate(translations):
     T = transform.SimilarityTransform(translation = transl)
     G_reg[i,...] = transform.warp(im_G[i,...], T)
                  
-io.imsave(path.join(dirname,'G_reg.tif'),util.img_as_uint(G_reg))
+io.imsave(path.join('/Users/xies/Desktop/','G_reg.tif'),util.img_as_uint(G_reg))
