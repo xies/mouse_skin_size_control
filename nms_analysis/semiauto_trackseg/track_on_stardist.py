@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io
+from skimage import io, morphology
+from scipy.ndimage import convolve
 import seaborn as sb
 from os import path
 
@@ -24,16 +25,22 @@ dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M1 WT/R1/'
 
 #%% Load data
 
-with open(path.join(dirname,'complete_cycles.pkl'),'rb') as file:
+with open(path.join(dirname,'tracking','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Load prediction by stardist
-# seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
+seg = io.imread(path.join(dirname,'stardist/prediction1.tif'))
 
-#%% Use tracks and extract segmentation
+#%% Use tracks and extract segmentation; generate a filtered segmentation image
+# where only tracked spots are shown + put 3D markers on un-segmented spots
 
+radius = 5
+
+[T,Z,X,Y] = seg.shape
+seg_filt = np.zeros_like(seg,dtype=np.int16)
 for track in tracks:
     
+
     for idx,spot in track.iterrows():
         
         x = int(spot['X'])
@@ -41,12 +48,27 @@ for track in tracks:
         z = int(spot['Z'])
         t = int(spot['Frame'])
         
-        label = seg[t,z,y,x]
+        label = this_seg[z,y,x]
         
         track.at[idx,'Segmentation'] = label
-    
+        
+        this_seg = seg[t,...]
+        this_seg_filt = seg_filt[t,...]
+        
+        if label > 0:
+            # filter¸segmentation image to only include tracked spots
+            this_seg_filt[this_seg == label] = spot['TrackID']
+        else:
+            # Create a 'ball' around spots missing
+            x_low = max(0,x - radius); x_high = min(X,x + radius)
+            y_low = max(0,y - radius); y_high = min(Y,y + radius)
+            z_low = max(0,z - radius); z_high = min(Z,z + radius)
+            this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = spot['TrackID']
+            
+io.imsave(path.join(dirname,'stardist/seg_filt.tif'),seg_filt)
 
 #%% Make measurements from segmentation
+
 
 for track in tracks:
     for idx,spot in track.iterrows():
@@ -54,13 +76,17 @@ for track in tracks:
         segID = spot['Segmentation']
         if segID > 0:
             t = int(spot['Frame'])
-            volume = (seg[t,...] == segID).sum()
+            volume = (seg[t,...] == segID).sum() ]
+            
         else:
             volume = np.nan
             
         track.at[idx,'Volume'] = volume
-    # Pad out last time point for plotting ease
-    track.loc['padding',:] = np.nan
+        # Pad out last time point for plotting ease
+        track.loc['padding',:] = np.nan
+        
+        
+    
 ts = pd.concat(tracks)
 
 

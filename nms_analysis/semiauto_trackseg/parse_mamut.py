@@ -54,7 +54,7 @@ for i in range(len(cycling_tracks)):
     
     link = cycling_links[i]
     spots_ = cycling_spots[i]
-    
+        
     spots = pd.DataFrame()
     # Construct a cleaned-up dataframe
     spots['ID'] = spots_['ID']

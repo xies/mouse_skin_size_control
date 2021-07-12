@@ -16,7 +16,7 @@ from os import path
 from glob import glob
 
 import pickle as pkl
-B+B
+
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M1 WT/R1/'
 
 #%% Generate masks
@@ -52,6 +52,7 @@ for fname, img in zip(tiff_list,training):
     io.imsave(path.join( path.dirname(fname), f'{path.splitext(path.basename(fname))[0]}_dist.tif'), D.astype(np.int16))
     
     seg  = segmentation.watershed(-D,seeds)
+    seg[~mask] = 0
     
     io.imsave(path.join( path.dirname(fname), f'{path.splitext(path.basename(fname))[0]}_seg.tif'), seg.astype(np.int16))
     
