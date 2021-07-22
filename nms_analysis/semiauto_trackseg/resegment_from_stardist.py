@@ -3,6 +3,8 @@
 """
 Created on Thu Jun 24 17:00:09 2021
 
+Using stardist as seeds, re-segment nuclei using 3D watershed on threshold
+
 @author: xies
 """
 

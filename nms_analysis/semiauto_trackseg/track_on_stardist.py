@@ -6,7 +6,6 @@ Created on Fri Jun 18 17:41:36 2021
 @author: xies
 """
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -38,37 +37,47 @@ radius = 5
 
 [T,Z,X,Y] = seg.shape
 seg_filt = np.zeros_like(seg,dtype=np.int16)
+
+
 for track in tracks:
     
 
     for idx,spot in track.iterrows():
-        
         x = int(spot['X'])
         y = int(spot['Y'])
         z = int(spot['Z'])
         t = int(spot['Frame'])
         
+        this_seg = seg[t,...]
+        this_seg_filt = seg_filt[t,...]
+        
         label = this_seg[z,y,x]
         
         track.at[idx,'Segmentation'] = label
         
-        this_seg = seg[t,...]
-        this_seg_filt = seg_filt[t,...]
         
         if label > 0:
             # filter¸segmentation image to only include tracked spots
-            this_seg_filt[this_seg == label] = spot['TrackID']
+            this_seg_filt[this_seg == label] = spot.ID
         else:
             # Create a 'ball' around spots missing
-            x_low = max(0,x - radius); x_high = min(X,x + radius)
             y_low = max(0,y - radius); y_high = min(Y,y + radius)
+            x_low = max(0,x - radius); x_high = min(X,x + radius)
             z_low = max(0,z - radius); z_high = min(Z,z + radius)
-            this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = spot['TrackID']
-            
-io.imsave(path.join(dirname,'stardist/seg_filt.tif'),seg_filt)
+            this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = spot.ID
+
+for t in range(T):
+    this_seg_filt = seg_filt[t,...]
+    # Reindex from 1
+    uniqueIDs = np.unique(this_seg_filt)
+    for i,ID in enumerate(uniqueIDs):
+        this_seg_filt[this_seg_filt == ID] = i
+        
+        print(f'Time {t} -- {i}: {ID}')
+        
+    # io.imsave(path.join('/Users/xies/Desktop/',f'seg_filt_t{t}.tif'),this_seg_filt)
 
 #%% Make measurements from segmentation
-
 
 for track in tracks:
     for idx,spot in track.iterrows():
