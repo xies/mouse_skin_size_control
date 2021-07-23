@@ -14,6 +14,7 @@ from skimage import io, morphology
 from scipy.ndimage import convolve
 import seaborn as sb
 from os import path
+from glob import glob
 
 import pickle as pkl
 
@@ -38,10 +39,12 @@ radius = 5
 [T,Z,X,Y] = seg.shape
 seg_filt = np.zeros_like(seg,dtype=np.int16)
 
-
+# Filter segmentation based on complete tracks
+trackID = 1
 for track in tracks:
     
-
+    track['TrackID'] = trackID
+    trackID += 1
     for idx,spot in track.iterrows():
         x = int(spot['X'])
         y = int(spot['Y'])
@@ -66,6 +69,7 @@ for track in tracks:
             z_low = max(0,z - radius); z_high = min(Z,z + radius)
             this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = spot.ID
 
+#Re-index each segmentation from 1 onwards (labkit tries to generate labels in between integers if labels are sparse
 for t in range(T):
     this_seg_filt = seg_filt[t,...]
     # Reindex from 1
@@ -77,40 +81,68 @@ for t in range(T):
         
     # io.imsave(path.join('/Users/xies/Desktop/',f'seg_filt_t{t}.tif'),this_seg_filt)
 
-#%% Make measurements from segmentation
+#%% Load and collate manual track+segmentations ()
+
+# Dictionary of manual segmentation (there should be no first or last time point)
+filtered = {}
+for t in range(T):
+    filename = path.join(dirname,'tracking/tracked_segmentation',f't{t}.tif')
+    if path.exists(filename):
+    
+        filtered[t] = io.imread(filename)
+
 
 for track in tracks:
-    for idx,spot in track.iterrows():
+    for _,spot in track.iterrows():
+        x = int(spot['X'])
+        y = int(spot['Y'])
+        z = int(spot['Z'])
+        t = int(spot['Frame'])
         
-        segID = spot['Segmentation']
-        if segID > 0:
-            t = int(spot['Frame'])
-            volume = (seg[t,...] == segID).sum() ]
-            
+        this_seg = stack[t,...]
+        label = this_seg[z,y,x]
+        if label == 0:
+            print(f'Error at t = {t}, ID = {track.ID}')
         else:
-            volume = np.nan
+            this_seg[this_seg == label] = track.iloc[0]['TrackID']
+            stack[t,...] = this_seg
+        
+
+
+# #%% Make measurements from segmentation
+
+# for track in tracks:
+#     for idx,spot in track.iterrows():
+        
+#         segID = spot['Segmentation']
+#         if segID > 0:
+#             t = int(spot['Frame'])
+#             volume = (seg[t,...] == segID).sum() ]
             
-        track.at[idx,'Volume'] = volume
-        # Pad out last time point for plotting ease
-        track.loc['padding',:] = np.nan
+#         else:
+#             volume = np.nan
+            
+#         track.at[idx,'Volume'] = volume
+#         # Pad out last time point for plotting ease
+#         track.loc['padding',:] = np.nan
         
         
     
-ts = pd.concat(tracks)
+# ts = pd.concat(tracks)
 
 
-with open(path.join(dirname,'complete_cycles_seg.pkl'),'wb') as file:
-    pkl.dump(tracks,file)
+# with open(path.join(dirname,'complete_cycles_seg.pkl'),'wb') as file:
+#     pkl.dump(tracks,file)
 
-#%% Pull out the segmentation that are used in tracks and write new image stack
+# #%% Pull out the segmentation that are used in tracks and write new image stack
 
-track_seg = np.zeros(seg.shape)
-for track in tracks:
-    for _,spot in track.iterrows():
+# track_seg = np.zeros(seg.shape)
+# for track in tracks:
+#     for _,spot in track.iterrows():
         
-        segID = spot['Segmentation']
-        if segID > 0:
-            t = int(spot['Frame'])
-            track_seg[t, seg[t,...] == segID] = spot['TrackID']
+#         segID = spot['Segmentation']
+#         if segID > 0:
+#             t = int(spot['Frame'])
+#             track_seg[t, seg[t,...] == segID] = spot['TrackID']
 
-io.imsave(path.join(dirname,'tracked.tif'),track_seg.astype(np.int16))
+# io.imsave(path.join(dirname,'tracked.tif'),track_seg.astype(np.int16))
