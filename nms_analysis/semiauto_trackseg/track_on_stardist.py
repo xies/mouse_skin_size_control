@@ -84,65 +84,58 @@ for t in range(T):
 #%% Load and collate manual track+segmentations ()
 
 # Dictionary of manual segmentation (there should be no first or last time point)
-filtered = {}
+manual_segs = np.zeros((17,69,1024,1024),dtype=np.int16)
 for t in range(T):
-    filename = path.join(dirname,'tracking/tracked_segmentation',f't{t}.tif')
+    filename = path.join(dirname,'tracking/tracked_segmentation/manual/tif',f't{t}.tif')
     if path.exists(filename):
     
-        filtered[t] = io.imread(filename)
+        manual_segs[t,...] = io.imread(filename)
 
+#%%
 
-for track in tracks:
-    for _,spot in track.iterrows():
+corrected_segs = np.zeros_like(manual_segs)
+for trackID,track in enumerate(tracks):
+    for i,spot in track.iterrows():
         x = int(spot['X'])
         y = int(spot['Y'])
         z = int(spot['Z'])
         t = int(spot['Frame'])
         
-        this_seg = stack[t,...]
+        this_seg = manual_segs[t,...]
         label = this_seg[z,y,x]
         if label == 0:
-            print(f'Error at t = {t}, ID = {track.ID}')
+            print(f'Error at t = {t}, ID = {spot.ID}, segID = {label}')
         else:
-            this_seg[this_seg == label] = track.iloc[0]['TrackID']
-            stack[t,...] = this_seg
+            corrected_segs[t,this_seg == label] = trackID+1
+            track.at[i, 'CorrID'] = trackID+1
+
+
+# io.imsave('/Users/xies/Desktop/manual_seg.tif', corrected_segs.astype(np.int8))
+
+#%% Make measurements from segmentation
+
+for track in tracks:
+    for idx,spot in track.iterrows():
         
-
-
-# #%% Make measurements from segmentation
-
-# for track in tracks:
-#     for idx,spot in track.iterrows():
-        
-#         segID = spot['Segmentation']
-#         if segID > 0:
-#             t = int(spot['Frame'])
-#             volume = (seg[t,...] == segID).sum() ]
+        segID = spot['CorrID']
+        if segID > 0:
+            t = int(spot['Frame'])
+            volume = (corrected_segs[t,...] == segID).sum()
             
-#         else:
-#             volume = np.nan
+        else:
+            volume = np.nan
             
-#         track.at[idx,'Volume'] = volume
-#         # Pad out last time point for plotting ease
-#         track.loc['padding',:] = np.nan
+        track.at[idx,'Volume'] = volume
+        # Pad out last time point for plotting ease
+        track.loc['padding',:] = np.nan
         
+
+# Calculate time since birth
+for track in tracks:
+    track['Time'] =( track['Frame'] - track.iloc[0]['Frame'])*12
         
-    
-# ts = pd.concat(tracks)
+ts = pd.concat(tracks)
 
+with open(path.join(dirname,'complete_cycles_seg.pkl'),'wb') as file:
+    pkl.dump(tracks,file)
 
-# with open(path.join(dirname,'complete_cycles_seg.pkl'),'wb') as file:
-#     pkl.dump(tracks,file)
-
-# #%% Pull out the segmentation that are used in tracks and write new image stack
-
-# track_seg = np.zeros(seg.shape)
-# for track in tracks:
-#     for _,spot in track.iterrows():
-        
-#         segID = spot['Segmentation']
-#         if segID > 0:
-#             t = int(spot['Frame'])
-#             track_seg[t, seg[t,...] == segID] = spot['TrackID']
-
-# io.imsave(path.join(dirname,'tracked.tif'),track_seg.astype(np.int16))
