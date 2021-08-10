@@ -12,7 +12,7 @@ from skimage import io, transform, util
 
 from os import path
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/06-27-2021 WT/M6 No Tam/Day 2.5/'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/07-15-2021/WT Breeder/Day 5.5'
 
 #%%
 
@@ -29,7 +29,7 @@ for i,row in enumerate(x_zeros):
     if len(row) == 0:
         continue
     if np.any( row == 0 ):
-        shift = -)max(row)+1)
+        shift = -(max(row)+1)
     else:
         shift = 1023-min(row)
     x_transl[i] = shift

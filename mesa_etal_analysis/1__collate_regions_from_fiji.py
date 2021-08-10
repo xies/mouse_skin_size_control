@@ -95,7 +95,7 @@ def get_exponential_growth_rate(c):
     
     except:
         return np.nan
-        print 'Fitting failed for ', c.iloc[0].CellID
+        print(f'Fitting failed for {c.iloc[0].CellID}')
 
 
 #%%

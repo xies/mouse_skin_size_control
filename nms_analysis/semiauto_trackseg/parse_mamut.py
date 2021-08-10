@@ -24,13 +24,13 @@ import pickle as pkl
 # Avoid parsing XML
 # import xml.etree.ElementTree as ET
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M1 WT/R1/'
+dirname = '/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/'
 
 #%% Load CSV mamut exports
 
-raw_spots = pd.read_csv(path.join(dirname,'spots.csv'))
-raw_links = pd.read_csv(path.join(dirname,'linkage.csv'))
-raw_tracks = pd.read_csv(path.join(dirname,'tracks.csv'))
+raw_spots = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/spots.csv'))
+raw_links = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/linkage.csv'))
+raw_tracks = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/tracks.csv'))
 
 # Do pre-filtering
 # Filter out tracks with fewer than 2 splits (i.e. no complete cell cycles)
@@ -121,6 +121,6 @@ for i in range(len(cycling_tracks)):
 
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
-with open(path.join(dirname,'complete_cycles.pkl'),'wb') as file:
+with open(path.join(dirname,'manual_nuclear_tracking/complete_cycles.pkl'),'wb') as file:
     pkl.dump(tracks,file)
 
