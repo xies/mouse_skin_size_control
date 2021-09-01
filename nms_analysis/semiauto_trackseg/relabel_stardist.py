@@ -18,24 +18,25 @@ from glob import glob
 
 import pickle as pkl
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/06-27-2021 WT/M6 No Tam'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/stardist_training/05-03-2021/round2'
 
 #%% Reindex stardist labels
 
-# tiff_list = glob(path.join(dirname,'stardist/prediction/[1-9].tif'))
-# training = map(io.imread, tiff_list )
+tiff_list = glob(path.join(dirname,'labels/1.tif'))
+training = map(io.imread, tiff_list )
 
-# for fname, img in zip(tiff_list,training):
-#     print(f'{fname}')
-#     labels = img
+for fname, img in zip(tiff_list,training):
+    print(f'{fname}')
+    labels = img
     
-#     all_labels = np.unique(labels)
-#     all_labels = all_labels[all_labels > 0]
+    all_labels = np.unique(labels)
+    all_labels = all_labels[all_labels > 0]
     
-#     for i,l in enumerate(all_labels):
-#         labels[labels == l] = i
+    for i,l in enumerate(all_labels):
+        labels[labels == l] = i
         
-#     io.imsave(path.join( path.dirname(fname), f'{path.splitext(path.basename(fname))[0]}_idx.tif'), labels.astype(np.int16))
+    io.imsave(path.join( path.dirname(fname), f'{path.splitext(path.basename(fname))[0]}_idx.tif'),
+              labels.astype(np.int16))
     
 
 #%% Convert indexed label images into fore/background labels

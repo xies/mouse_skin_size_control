@@ -22,16 +22,20 @@ import pickle as pkl
 # import xml.etree.ElementTree as ET
 
 dirname = '/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/07-15-2021/WT Breeder'
 
-dx = 0.25
+dx = 0.2920097
 
 #%% Load data
 
-with open(path.join(dirname,'manual_nuclear_tracking','complete_cycles.pkl'),'rb') as file:
+with open(path.join(dirname,'tracking','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Load prediction by stardist
 seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
+
+with open(path.join(dirname,'tracking','complete_cycles_seg.pkl'),'rb') as file:
+    cells = pkl.load(file)
 
 #%% Use tracks and extract segmentation; generate a filtered segmentation image
 # where only tracked spots are shown + put 3D markers on un-segmented spots
@@ -90,7 +94,7 @@ io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
 
 #%% Load and collate manual track+segmentations ()
 # Dictionary of manual segmentation (there should be no first or last time point)
-manual_segs = io.imread(path.join(dirname,'tracking/manual_fix/manual_segmentation.tif'))
+manual_segs = io.imread(path.join(dirname,'manual_nuclear_tracking/manual_seg.tif'))
 # io.imsave('/Users/xies/Desktop/test.tif',manual_segs.astype(np.uint8))
 
 #%%
@@ -110,7 +114,6 @@ for trackID,track in enumerate(tracks):
         else:
             print('Good')
             track.at[i, 'CorrID'] = label
-
 
 # # io.imsave('/Users/xies/Desktop/manual_seg.tif', corrected_segs.astype(np.int8))
 
@@ -138,6 +141,6 @@ for track in tracks:
         
 ts = pd.concat(tracks)
 
-with open(path.join(dirname,'complete_cycles_seg.pkl'),'wb') as file:
+with open(path.join(dirname,'manual_nuclear_tracking/complete_cycles_seg.pkl'),'wb') as file:
     pkl.dump(tracks,file)
 
