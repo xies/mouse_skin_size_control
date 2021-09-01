@@ -12,11 +12,12 @@ from skimage import io, transform, util
 
 from os import path
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/07-15-2021/WT Breeder/Day 5.5'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/08-29-2021/F1 left ear RB KO/R1/Day 3'
 
 #%%
 
 im = io.imread(path.join(dirname,'B_reg.tif'))
+[X,Y] = im.shape
 
 # Go through all z positions and find rows/cols that are all 0
 x_zeros = [ np.where(np.all( z_slice == 0 , axis=0))[0] for z_slice in im]
@@ -31,7 +32,7 @@ for i,row in enumerate(x_zeros):
     if np.any( row == 0 ):
         shift = -(max(row)+1)
     else:
-        shift = 1023-min(row)
+        shift = X-1-min(row)
     x_transl[i] = shift
 
 
@@ -43,7 +44,7 @@ for i,row in enumerate(y_zeros):
     if np.any( row == 0 ):
         shift = -(max(row)+1)
     else:
-        shift = 1023-min(row)
+        shift = Y-1-min(row)
     y_transl[i] = shift
 
 #%% Transform other image
