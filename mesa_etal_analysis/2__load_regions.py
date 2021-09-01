@@ -22,13 +22,13 @@ df.to_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/cell_summary.pkl')
 
 # Load growth curves from pickle
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/tracked_cells/collated_manual_nuc.pkl','rb') as f:
-    c1 = pkl.load(f)
+    c1 = pkl.load(f,encoding='latin-1')
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/collated_manual_nuc.pkl','rb') as f:
-    c2 = pkl.load(f)
+    c2 = pkl.load(f,encoding='latin-1')
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f)
+    c5 = pkl.load(f,encoding='latin-1')
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
-    c5f = pkl.load(f)
+    c5f = pkl.load(f,encoding='latin-1')
 collated = c1+c2+c5+c5f
 
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/time_series.pkl','wb') as f:
