@@ -12,12 +12,12 @@ from skimage import io, transform, util
 
 from os import path
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/08-29-2021/F1 left ear RB KO/R1/Day 3'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/RB-KO/R3/Day 9.5'
 
 #%%
 
 im = io.imread(path.join(dirname,'B_reg.tif'))
-[X,Y] = im.shape
+[_,X,Y] = im.shape
 
 # Go through all z positions and find rows/cols that are all 0
 x_zeros = [ np.where(np.all( z_slice == 0 , axis=0))[0] for z_slice in im]
@@ -60,3 +60,4 @@ for i,transl in enumerate(translations):
     G_reg[i,...] = transform.warp(im_G[i,...], T)
                  
 io.imsave(path.join('/Users/xies/Desktop/','G_reg.tif'),util.img_as_uint(G_reg))
+
