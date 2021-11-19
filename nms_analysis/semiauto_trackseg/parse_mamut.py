@@ -24,19 +24,36 @@ import pickle as pkl
 # Avoid parsing XML
 # import xml.etree.ElementTree as ET
 
-dirname = '/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
 
 #%% Load CSV mamut exports
 
-raw_spots = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/spots.csv'))
-raw_links = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/linkage.csv'))
-raw_tracks = pd.read_csv(path.join(dirname,'manual_nuclear_tracking/tracks.csv'))
+raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'))
+raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
+raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
+raw_links = pd.read_csv(path.join(dirname,'MaMuT/linkage.csv'))
+raw_tracks = pd.read_csv(path.join(dirname,'MaMuT/tracks.csv'))
 
 # Do pre-filtering
 # Filter out tracks with fewer than 2 splits (i.e. no complete cell cycles)
-
 cycling_tracks = raw_tracks[raw_tracks['NUMBER_SPLITS'] > 1]
 num_tracks = len(cycling_tracks)
+
+def sort_links_by_time(links,spots):
+    for idx,link in links.iterrows():
+        
+        source = spots[spots['ID'] == link['SPOT_SOURCE_ID']].iloc[0]
+        target = spots[spots['ID'] == link['SPOT_TARGET_ID']].iloc[0]
+        
+        if source['FRAME'] >= target['FRAME']:
+            # Need to swap the source and target
+            links.at[idx,'SPOT_SOURCE_ID'] = target['ID']
+            links.at[idx,'SPOT_TARGET_ID'] = source['ID']
+            
+    return links
+
+raw_links = sort_links_by_time(raw_links,raw_spots)
+
 
 # Separate all spots/linkage into lists of dfs pertaining to only a single track
 cycling_spots = []
@@ -45,11 +62,13 @@ for tID in cycling_tracks['TRACK_ID'].values:
     cycling_spots.append(raw_spots[raw_spots['TRACK_ID'] == tID])
     cycling_links.append(raw_links[raw_links['TRACK_ID'] == tID])
     
+
 #%% Traverse linkage trees to prune out the complete cycles
 
 #NB: Spots and links are chronologically sorted (descending)
 
 tracks = []
+
 for i in range(len(cycling_tracks)):
     
     link = cycling_links[i]
@@ -121,6 +140,6 @@ for i in range(len(cycling_tracks)):
 
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
-with open(path.join(dirname,'manual_nuclear_tracking/complete_cycles.pkl'),'wb') as file:
+with open(path.join(dirname,'MaMuT/complete_cycles.pkl'),'wb') as file:
     pkl.dump(tracks,file)
 

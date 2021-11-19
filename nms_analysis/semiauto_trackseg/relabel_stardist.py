@@ -18,11 +18,11 @@ from glob import glob
 
 import pickle as pkl
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/stardist_training/05-03-2021/round2'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/RB-KO/R3/'
 
 #%% Reindex stardist labels
 
-tiff_list = glob(path.join(dirname,'labels/1.tif'))
+tiff_list = glob(path.join(dirname,'stitched/stardist/*.tif'))
 training = map(io.imread, tiff_list )
 
 for fname, img in zip(tiff_list,training):

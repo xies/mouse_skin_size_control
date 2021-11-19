@@ -21,21 +21,25 @@ import pickle as pkl
 # Avoid parsing XML
 # import xml.etree.ElementTree as ET
 
-dirname = '/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/'
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/07-15-2021/WT Breeder'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
 
-dx = 0.2920097
+# dx = 0.2920097
+dx = 1
 
 #%% Load data
 
-with open(path.join(dirname,'tracking','complete_cycles.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Load prediction by stardist
-seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
+filenames = [path.join(dirname,f'stardist/{t+1}.tif') for t in range(17)]
+    
+seg = np.array([ io.imread(f) for f in filenames ])
 
-with open(path.join(dirname,'tracking','complete_cycles_seg.pkl'),'rb') as file:
-    cells = pkl.load(file)
+# seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
+
+# with open(path.join(dirname,'MaMuT','complete_cycles_seg.pkl'),'rb') as file:
+#     cells = pkl.load(file)
 
 #%% Use tracks and extract segmentation; generate a filtered segmentation image
 # where only tracked spots are shown + put 3D markers on un-segmented spots
@@ -54,7 +58,7 @@ for track in tracks:
     for idx,spot in track.iterrows():
         x = int(spot['X']/dx)
         y = int(spot['Y']/dx)
-        z = int(spot['Z'])
+        z = int(np.round(spot['Z']))
         t = int(spot['Frame'])
         
         this_seg = seg[t,...]
@@ -76,25 +80,29 @@ for track in tracks:
             z_low = max(0,z - radius); z_high = min(Z,z + radius)
             this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = trackID
 
+
 io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
-          seg_filt.astype(np.int8))
+      seg_filt.astype(np.int8))
+
+#%%
+
 
 # #Re-index each segmentation from 1 onwards (labkit tries to generate labels in between integers if labels are sparse
 # for t in range(T):
 #     this_seg_filt = seg_filt[t,...]
 #     # Reindex from 1
-#     # uniqueIDs = np.unique(this_seg_filt)
-#     # for i,ID in enumerate(uniqueIDs):
-#     #     this_seg_filt[this_seg_filt == ID] = i
+#     uniqueIDs = np.unique(this_seg_filt)
+#     for i,ID in enumerate(uniqueIDs):
+#         this_seg_filt[this_seg_filt == ID] = i
         
-#     #     print(f'Time {t} -- {i}: {ID}')
+#         print(f'Time {t} -- {i}: {ID}')
         
 #     io.imsave(path.join('/Users/xies/Desktop/',f'seg_filt_t{t}.tif'),this_seg_filt.astype(np.int16))
 
 
 #%% Load and collate manual track+segmentations ()
 # Dictionary of manual segmentation (there should be no first or last time point)
-manual_segs = io.imread(path.join(dirname,'manual_nuclear_tracking/manual_seg.tif'))
+# manual_segs = io.imread(path.join(dirname,'manual_nuclear_tracking/manual_seg.tif'))
 # io.imsave('/Users/xies/Desktop/test.tif',manual_segs.astype(np.uint8))
 
 #%%

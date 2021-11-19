@@ -21,16 +21,27 @@ flist = glob(path.join(dirname,'*/*_c.tif'))
 
 #%% Normalize
 
-for f in flist[0:1]:
+for f in flist:
     im = io.imread(f).astype(float)
     print(f'Loaded {f}')
     # Convert all 0 into NaN
     im[ im == 0] = np.nan
+    
     equalized = np.zeros_like(im)
     
     for c in range(im.shape[3]):
-        # Run CLAHE
-        equalized[:,:,:,c] = equalize_adapthist(this_channel,128)
+        
+        this_channel = im[...,c]
+        # Rectify to non-NaN zero
+        min_int = np.nanmin(this_channel)
+        this_channel[ np.isnan(this_channel) ] = 0
+        this_channel -= min_int
+        this_channel[ this_channel < 0 ] = 0
+        
+        # Run CLAHE slice-wize
+        for z in range(im.shape[0]):
+            equalized[z,:,:,c] = equalize_adapthist(this_channel[z,...].astype(np.int16),256)
+            
     print(f'Equalized {f}')
 
     # save
