@@ -12,7 +12,7 @@ from skimage import io, transform, util
 
 from os import path
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1/Day 1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1/Day 2'
 
 #%%
 

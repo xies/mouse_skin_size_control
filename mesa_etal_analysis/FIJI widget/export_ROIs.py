@@ -10,8 +10,7 @@ from glob import glob
 from array import zeros
 import csv
 
-region_names = ['/Users/xies/Box/Mouse/Skin/W-R1/',
-				'/Users/xies/Box/Mouse/Skin/W-R2/']
+region_names = ['/Users/xies/Box/Mouse/Skin/W-R1/']
 
 for dirname in region_names:
 	filelist = glob(path.join(dirname,'tracked_cells/*/t*[!a!b].zip'))

@@ -26,7 +26,7 @@ flist = glob(path.join(dirname,'*/*_c.tif'))
 #%% Normalize (adaptive hist / CLAHE) 3D
 
 for f in flist:
-    im = io.imread(f)[:,:,:,1].astype(float)
+    im = io.imread(f)[:,:,:,0].astype(float)
     im = im.transpose() # Reorder to XYZ
     [X,Y,Z] = im.shape
     
@@ -44,7 +44,7 @@ for f in flist:
     
     equalized = equalized-equalized.min()
     
-    io.imsave(path.splitext(f)[0] + '_eq.tif',util.img_as_uint(equalized))
+    io.imsave(path.splitext(f)[0] + '_R_eq.tif',util.img_as_uint(equalized))
     print(f'Saved {f}')
 
 # #%% Normalize (2D)

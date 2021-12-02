@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io, morphology, util
+from skimage import io, morphology, util, measure
 from scipy.ndimage import convolve
 import seaborn as sb
 from os import path
@@ -23,23 +23,27 @@ import pickle as pkl
 
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
 
-# dx = 0.2920097
-dx = 1
+dx = 0.2920097
+# dx = 1
 
 #%% Load data
 
+# Load preliminary tracks
 with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Load prediction by stardist
 filenames = [path.join(dirname,f'stardist/{t+1}.tif') for t in range(17)]
-    
 seg = np.array([ io.imread(f) for f in filenames ])
 
 # seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
 
 # with open(path.join(dirname,'MaMuT','complete_cycles_seg.pkl'),'rb') as file:
 #     cells = pkl.load(file)
+
+# Load final tracks
+# with open(path.join(dirname,'manual_track','complete_cycles_seg.pkl'),'rb') as file:
+#     tracks = pkl.load(file)
 
 #%% Use tracks and extract segmentation; generate a filtered segmentation image
 # where only tracked spots are shown + put 3D markers on un-segmented spots
@@ -81,74 +85,94 @@ for track in tracks:
             this_seg_filt[z_low:z_high, y_low:y_high, x_low:x_high] = trackID
 
 
-io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
-      seg_filt.astype(np.int8))
-
-#%%
-
-
-# #Re-index each segmentation from 1 onwards (labkit tries to generate labels in between integers if labels are sparse
-# for t in range(T):
-#     this_seg_filt = seg_filt[t,...]
-#     # Reindex from 1
-#     uniqueIDs = np.unique(this_seg_filt)
-#     for i,ID in enumerate(uniqueIDs):
-#         this_seg_filt[this_seg_filt == ID] = i
-        
-#         print(f'Time {t} -- {i}: {ID}')
-        
-#     io.imsave(path.join('/Users/xies/Desktop/',f'seg_filt_t{t}.tif'),this_seg_filt.astype(np.int16))
-
+# io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
+#       seg_filt.astype(np.int8))
 
 #%% Load and collate manual track+segmentations ()
 # Dictionary of manual segmentation (there should be no first or last time point)
-# manual_segs = io.imread(path.join(dirname,'manual_nuclear_tracking/manual_seg.tif'))
-# io.imsave('/Users/xies/Desktop/test.tif',manual_segs.astype(np.uint8))
+manual_segs = io.imread(path.join(dirname,'manual_track/manual_fix.tif'))
 
-#%%
+# # Re-index all the trackIDs to go from 1 to N
+# for trackID, index in enumerate(np.unique(manual_segs)):
+#     manual_segs[ manual_segs == index ] = trackID
+    
+# io.imsave('/Users/xies/Desktop/manual_seg.tif',manual_segs.astype(np.uint8))
 
-for trackID,track in enumerate(tracks):
-    for i,spot in track.iterrows():
-        x = int(spot['X']/dx)
-        y = int(spot['Y']/dx)
-        z = int(spot['Z'])
-        t = int(spot['Frame'])
+#%% Re-construct tracks with manually fixed tracking/segmentation
+
+trackIDs = np.unique(manual_segs)
+
+tracks = []
+for trackID in trackIDs[1:]:
+    
+    track = pd.DataFrame()
+    
+    mask = manual_segs == trackID
+    frames_with_this_track = np.where(np.any(np.any(np.any(mask,axis=1),axis=1), axis=1))[0]
+    
+    for frame in frames_with_this_track:
         
-        this_seg = manual_segs[t,...]
-        label = this_seg[z,y,x]
-        if label == 0:
-            print(f'Error at t = {t}, ID = {spot.ID}, trackID = {spot.TrackID}')
-            track.at[i, 'CorrID'] = np.nan
-        else:
-            print('Good')
-            track.at[i, 'CorrID'] = label
-
-# # io.imsave('/Users/xies/Desktop/manual_seg.tif', corrected_segs.astype(np.int8))
-
-#%% Make measurements from segmentation
-
-for track in tracks:
-    for idx,spot in track.iterrows():
+        this_frame = mask[frame,...]
+        props = measure.regionprops(this_frame*1)
+        Z,X,Y = props[0]['Centroid']
+        volume = props[0]['Area']
         
-        segID = spot['CorrID']
-        if segID > 0:
-            t = int(spot['Frame'])
-            volume = (manual_segs[t,...] == segID).sum()
-            
-        else:
-            volume = np.nan
-            
-        track.at[idx,'Volume'] = volume
-        # Pad out last time point for plotting ease
-        track.loc['padding',:] = np.nan
+        track = track.append(pd.Series({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume}),ignore_index=True)
         
+    track['CorrID'] = trackID
+    track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
+    
+    tracks.append(track)
+    print(f'{trackID}')
 
-# Calculate time since birth, total duration
-for track in tracks:
-    track['Time'] =( track['Frame'] - track.iloc[0]['Frame'])*12
-        
-ts = pd.concat(tracks)
-
-with open(path.join(dirname,'manual_nuclear_tracking/complete_cycles_seg.pkl'),'wb') as file:
+with open(path.join(dirname,'manual_track/complete_cycles_fixed.pkl'),'wb') as file:
     pkl.dump(tracks,file)
+
+#%% Make volume measurements from segmentation
+
+
+# for trackID,track in enumerate(tracks):
+#     for i,spot in track.iterrows():
+#         if ~np.isnan(spot['ID']):
+#             x = int(spot['X']/dx)
+#             y = int(spot['Y']/dx)
+#             z = int(spot['Z'])
+#             t = int(spot['Frame'])
+            
+#             this_seg = manual_segs[t,...]
+#             label = this_seg[z,y,x]
+#             if label == 0:
+#                 print(f'Error at t = {t}, ID = {spot.ID}, trackID = {spot.TrackID}')
+#                 track.at[i, 'CorrID'] = np.nan
+#             else:
+#                 print('Good')
+#                 track.at[i, 'CorrID'] = label
+
+# io.imsave('/Users/xies/Desktop/manual_seg.tif', corrected_segs.astype(np.int8))
+
+# for track in tracks:
+#     for idx,spot in track.iterrows():
+        
+#         segID = spot['CorrID']
+#         if segID > 0:
+#             t = int(spot['Frame'])
+#             volume = (manual_segs[t,...] == segID).sum()
+            
+#         else:
+#             volume = np.nan
+            
+#         track.at[idx,'Volume'] = volume
+
+# # Calculate time since birth, total duration
+# for track in tracks:
+#     track['Time'] =( track['Frame'] - track.iloc[0]['Frame'])*12.
+
+
+# def pad_with_nan(tracks):
+    
+        # Pad out last time point for plotting ease
+        # track.loc['padding',:] = np.nan
+
+
+# ts = pd.concat(tracks)
 
