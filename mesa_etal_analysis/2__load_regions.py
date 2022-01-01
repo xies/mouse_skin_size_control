@@ -12,8 +12,8 @@ import numpy as np
 
 
 #Load df from pickle
-r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/tracked_cells/dataframe_nuc.pkl')
-r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/dataframe_nuc.pkl')
+r1 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/tracked_cells/dataframe.pkl')
+r2 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/cropped/tracked_cells/dataframe.pkl')
 r5 = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/dataframe.pkl')
 r5f = pd.read_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/dataframe.pkl')
 df = pd.concat((r1,r2,r5,r5f))
@@ -21,9 +21,9 @@ df = pd.concat((r1,r2,r5,r5f))
 df.to_pickle('/Users/xies/Box/Mouse/Skin/Mesa et al/cell_summary.pkl')
 
 # Load growth curves from pickle
-with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/tracked_cells/collated_manual_nuc.pkl','rb') as f:
+with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R1/tracked_cells/collated_manual.pkl','rb') as f:
     c1 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/tracked_cells/collated_manual_nuc.pkl','rb') as f:
+with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/cropped/tracked_cells/collated_manual.pkl','rb') as f:
     c2 = pkl.load(f,encoding='latin-1')
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/collated_manual.pkl','rb') as f:
     c5 = pkl.load(f,encoding='latin-1')
