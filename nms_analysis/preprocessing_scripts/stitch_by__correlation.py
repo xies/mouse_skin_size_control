@@ -18,12 +18,15 @@ from pystackreg import StackReg
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
 
 #%% Functions
-def find_max_corr(z_reg,consecutive_frames):
 
+def find_max_corr(z_reg,consecutive_frames):
+# Could be improved by using DFT estimation
     max_corr = dict()
     T = len(z_reg)
     
     for t in range(T-1):
+        
+        print(f'Finding ref z for t = {t}')
         
         #Make sure z is first dim for list comp
         this_frame = z_reg[t]
@@ -36,13 +39,14 @@ def find_max_corr(z_reg,consecutive_frames):
         C = np.zeros((this_frame.shape[0],next_frame.shape[0]))
     
         for z,ref_z in enumerate(this_frame):
-            ref_z = this_frame[z,...]
+            ref_z = this_frame[z,:,:,1]
         
             for i,current_slice in enumerate(next_frame):
-                C[z,i] = signal.correlate2d(ref_z, current_slice, mode='valid')
+                C[z,i] = signal.correlate2d(ref_z[:,:], current_slice[:,:,1], mode='valid')
     
         [source_z, target_z] = np.unravel_index(C.argmax(),C.shape)
         max_corr[consecutive_frames[t]] = (source_z,target_z)
+        
 
     return max_corr
 
@@ -84,13 +88,13 @@ def collate_z_registration(filelist,max_corr=None,ref_z=None):
 
 def stack_reg_consecutive_frames(z_reg,top_Z):
     T = len(z_reg)
-    Z,_,_ = z_reg[0].shape
+    Z,_,_,C = z_reg[0].shape
     
     for t in range(T-1):
         print(f'XY registering t = {t}')
         
-        ref = z_reg[t][top_Z,:,:,2]
-        target_img = z_reg[t+1][top_Z,:,:,2]
+        ref = z_reg[0][top_Z,:,:,1]
+        target_img = z_reg[t+1][top_Z,:,:,1]
         
         sr = StackReg(StackReg.RIGID_BODY)
         reg_matrix = sr.register(ref,target_img)
@@ -108,9 +112,13 @@ def stack_reg_consecutive_frames(z_reg,top_Z):
 filelist = glob(path.join(dirname,'Day */day*.tif'))
 T = len(filelist)
 
-z_reg = list(map(io.imread,filelist))
-z_reg = [im[:,:,:,2] for im in z_reg]
+# z_stack = list(map(io.imread,filelist))
+# z_stack = [im[:,:,:,2] for im in z_stack]
 consecutive_frames = list(zip(np.arange(0,T-1),np.arange(1,T)))
+
+# ref_z = [4,6,8,3,9,7,12,10,7,9,5,5,2,8,6,5,4,5,6]
+ref_z = [17,18,16,10,23,19,22,25,17,22,15,14,18,24,19,20,15,20,22]
+
 
 #%% Automatic iterative registration
 """ 1) First find the most similar z-slice between pairs of stacks
@@ -120,21 +128,25 @@ consecutive_frames = list(zip(np.arange(0,T-1),np.arange(1,T)))
     Repeat for Niters
 """
 
-Niters = 1
-ref_z = [4,6,8,3,9,7,12,10,7,9,5,3,2,8,6,5,4,5,6]
+# Niters = 2
 
-for i in range(Niters):
-    print(f'--- Iteration {i} ---')
-    # max_corr = find_max_corr(z_reg,consecutive_frames)
-    # z_reg,top_Z,ref_z = collate_z_registration(filelist,max_corr=max_corr)
-    z_reg,top_Z,ref_z = collate_z_registration(filelist,ref_z=ref_z)
+z_stack,top_Z,ref_z = collate_z_registration(filelist,ref_z=list(ref_z))
+
+z_reg = stack_reg_consecutive_frames(z_stack,top_Z)
+
+# for i in range(Niters):
+#     print(f'--- Iteration {i} ---')
+#     max_corr = find_max_corr(z_reg,consecutive_frames)
+#     z_reg,top_Z,ref_z = collate_z_registration(filelist,max_corr=max_corr)
+#     # z_stack,top_Z,ref_z = collate_z_registration(filelist,ref_z=ref_z)
     
-    z_reg = stack_reg_consecutive_frames(z_reg[:10],top_Z)
-    
-    
+#     z_reg = stack_reg_consecutive_frames(z_reg,top_Z)
+
+z_stack
+
 #%% Save stack
 
-for idx,img in enumerate(z_reg):
+for idx,img in enumerate(z_stack):
     io.imsave(f'/Users/xies/Desktop/z_reg_t{idx}.tif',img.astype(np.int16))
 
 #%% Manual adjustment
@@ -154,5 +166,22 @@ plt.figure(); io.imshow(target_reg-target_reg.min())
 #     z_reg[t][z,...] = sr.transform( z_reg[t][z,...])
     
 # io.imsave(f'/Users/xies/Desktop/z_reg_t{t}.tif',z_reg[t].astype(np.int16))
+
+#%% Try Optic flow
+
+from skimage import registration
+from skimage import transform
+
+v,u = registration.optical_flow_ilk(ref_img,moving_img)
+X, Y = ref_img.shape
+row_coords, col_coords = np.meshgrid(np.arange(X), np.arange(Y),
+                                     indexing='ij')
+
+moving_reg = transform.warp(moving_img, np.array([row_coords + v, col_coords + u]),
+                   mode='edge')
+
+plt.figure(); io.imshow(ref_img[25,...])
+plt.figure(); io.imshow(moving_reg[25,...])
+
 
 
