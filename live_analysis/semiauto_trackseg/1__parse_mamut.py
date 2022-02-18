@@ -24,15 +24,15 @@ import pickle as pkl
 # Avoid parsing XML
 # import xml.etree.ElementTree as ET
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
 
 #%% Load CSV mamut exports
 
-raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'))
+raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'),skiprows=[1,2,3],header=0)
 raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
 raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
-raw_links = pd.read_csv(path.join(dirname,'MaMuT/linkage.csv'))
-raw_tracks = pd.read_csv(path.join(dirname,'MaMuT/tracks.csv'))
+raw_links = pd.read_csv(path.join(dirname,'MaMuT/linkage.csv'),skiprows=[1,2,3],header=0)
+raw_tracks = pd.read_csv(path.join(dirname,'MaMuT/tracks.csv'),skiprows=[1,2,3],header=0)
 
 # Do pre-filtering
 # Filter out tracks with fewer than 2 splits (i.e. no complete cell cycles)

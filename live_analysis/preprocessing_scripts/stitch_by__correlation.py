@@ -47,7 +47,6 @@ def find_max_corr(z_reg,consecutive_frames):
         [source_z, target_z] = np.unravel_index(C.argmax(),C.shape)
         max_corr[consecutive_frames[t]] = (source_z,target_z)
         
-
     return max_corr
 
 

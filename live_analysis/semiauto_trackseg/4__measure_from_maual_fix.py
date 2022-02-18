@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov 29 12:22:31 2021
+Created on Fri Jan 28 14:03:48 2022
 
 @author: xies
 """
@@ -17,22 +17,25 @@ from glob import glob
 
 import pickle as pkl
 
+
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1/'
 dx = 0.2920097
 
 # Load final tracks
-with open(path.join(dirname,'manual_track','complete_cycles_fixed.pkl'),'rb') as file:
+with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
     tracks = pkl.load(file)
     
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/Pickled/cell_summary.pkl','rb') as file:
     wt_cells = pkl.load(file, encoding='latin1')
 
 with open('/Users/xies/Box/Mouse/Skin/Mesa et al/Pickled/time_series.pkl','rb') as file:
-    wt_ts = pkl.load(file, encoding='latin1')
+    wt_ts = pkl.load(file, encoding='latin1')#
+
 
 #%% Collate G1 annotations
 
-g1_annotation = pd.read_excel(path.join(dirname,'manual_track','g1_annotation.xlsx'))
+g1_annotation = pd.read_excel(path.join(dirname,'manual_tracking','g1_annotation.xlsx'))
 g1_annotation['G1 exit'] = g1_annotation['G1 exit frame'].astype(float)
 
 for track in tracks:
@@ -41,8 +44,7 @@ for track in tracks:
     if ~np.isnan(corrID):
     
         # Find same corrID in annotation
-        track['G1 exit'] = g1_annotation[g1_annotation['CorrID'] == corrID]['G1 exit'].values[0]
-    
+        track['G1 exit'] = g1_annotation[g1_annotation['CorrID'] == corrID]['G1 exit'].values[0]-1
 
 ts = pd.concat(tracks)
 
@@ -83,7 +85,6 @@ for track in tracks:
 df['SG2 length'] = df['Cycle length'] - df['G1 length']
 df['SG2 growth'] = df['Total growth'] - df['G1 growth']
 
-with open(path.join(dirname,
 
 #%% Plot cell cycle times
 
@@ -120,9 +121,11 @@ def slope(x,y):
     
 # G1 exit
 plt.figure()
-sb.regplot(data = df, x='Birth size', y = 'G1 growth')
-plt.xlim([-100,500])
-plt.ylim([-100,500])
+sb.regplot(data = df_rb, x='Birth size', y = 'G1 growth')
+sb.regplot(data = df_wt, x='Birth size', y = 'G1 growth')
+plt.xlim([0,500])
+plt.ylim([0,500])
+plt.legend(['Rb-KO','RB-WT'])
 
 R = pearson_r(df['Birth size'],df['G1 growth'])
 print(f'G1 Pearson R = {R}')
@@ -137,9 +140,10 @@ plt.xlim([-100,500])
 plt.ylim([-100,500])
 
 R = pearson_r(df['Birth size'],df['Total growth'])
-print(f'Pearson R = {R}')
+print(f'Total Pearson R = {R}')
 
 p = slope(df['Birth size'],df['Total growth'])
-print(f'Slope m = {p}')
+print(f'Total Slope m = {p}')
 
-    
+
+  
