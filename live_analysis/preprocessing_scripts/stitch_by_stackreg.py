@@ -15,7 +15,7 @@ from os import path
 from glob import glob
 from pystackreg import StackReg
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area1'
 
 #%% Functions
 
@@ -84,16 +84,18 @@ def collate_z_registration(filelist,max_corr=None,ref_z=None):
         z_reg.append(this_reg)
         
     return z_reg, top_Z, ref_z
+ 
+def stack_reg_consecutive_frames(z_stack,top_Z):
 
-def stack_reg_consecutive_frames(z_reg,top_Z):
-    T = len(z_reg)
-    Z,_,_,C = z_reg[0].shape
+    T = len(z_stack)
+    Z,_,_,C = z_stack[0].shape
     
+    z_reg = z_stack.copy()
     for t in range(T-1):
         print(f'XY registering t = {t}')
         
-        ref = z_reg[0][top_Z,:,:,1]
-        target_img = z_reg[t+1][top_Z,:,:,1]
+        ref = z_stack[0][top_Z,:,:,2]
+        target_img = z_stack[t+1][top_Z,:,:,2]
         
         sr = StackReg(StackReg.RIGID_BODY)
         reg_matrix = sr.register(ref,target_img)
@@ -101,22 +103,21 @@ def stack_reg_consecutive_frames(z_reg,top_Z):
         # # Use registration matrix on whole stack
         
         for z in range(Z):
-            for c in range(3):
+            for c in range(C):
                 z_reg[t+1][z,:,:,c] = sr.transform( z_reg[t+1][z,:,:,c] )
         
     return z_reg
 
 #%% Load filelist
 
-filelist = glob(path.join(dirname,'Day */day*.tif'))
+filelist = glob(path.join(dirname,'*-Day*.tif'))
 T = len(filelist)
 
 # z_stack = list(map(io.imread,filelist))
 # z_stack = [im[:,:,:,2] for im in z_stack]
 consecutive_frames = list(zip(np.arange(0,T-1),np.arange(1,T)))
 
-# ref_z = [4,6,8,3,9,7,12,10,7,9,5,5,2,8,6,5,4,5,6]
-ref_z = [17,18,16,10,23,19,22,25,17,22,15,14,18,24,19,20,15,20,22]
+ref_z = np.array([24,27,30,36,32,33,35,28,28])
 
 
 #%% Automatic iterative registration
@@ -131,7 +132,7 @@ ref_z = [17,18,16,10,23,19,22,25,17,22,15,14,18,24,19,20,15,20,22]
 
 z_stack,top_Z,ref_z = collate_z_registration(filelist,ref_z=list(ref_z))
 
-z_reg = stack_reg_consecutive_frames(z_stack,top_Z)
+# z_reg = stack_reg_consecutive_frames(z_stack,top_Z)
 
 # for i in range(Niters):
 #     print(f'--- Iteration {i} ---')
@@ -141,11 +142,10 @@ z_reg = stack_reg_consecutive_frames(z_stack,top_Z)
     
 #     z_reg = stack_reg_consecutive_frames(z_reg,top_Z)
 
-z_stack
 
 #%% Save stack
 
-for idx,img in enumerate(z_stack):
+for idx,img in enumerate(z_reg):
     io.imsave(f'/Users/xies/Desktop/z_reg_t{idx}.tif',img.astype(np.int16))
 
 #%% Manual adjustment
