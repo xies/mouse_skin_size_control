@@ -14,15 +14,17 @@ from os import path
 
 #%%
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area1/reg'
 
 imgfiles = glob(path.join(dirname,'*.tif'))
 
 for f in imgfiles:
     im = io.imread(f)
-    channel = im[...,2]
+    channel = im[...,0]
     
     path.splitext(f)
     
-    io.imsave(path.splitext(f)[0]+'_chan3.tif',channel)
+    io.imsave(path.splitext(f)[0]+'_chan1.tif',channel)
+    
+    
     
