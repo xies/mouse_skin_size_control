@@ -19,23 +19,20 @@ import pickle as pkl
 
 
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M1 WT/R1'
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1/'
+
 dx = 0.2920097
-
-# Load final tracks
-with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
-    tracks = pkl.load(file)
-    
-with open('/Users/xies/Box/Mouse/Skin/Mesa et al/Pickled/cell_summary.pkl','rb') as file:
-    wt_cells = pkl.load(file, encoding='latin1')
-
-with open('/Users/xies/Box/Mouse/Skin/Mesa et al/Pickled/time_series.pkl','rb') as file:
-    wt_ts = pkl.load(file, encoding='latin1')#
-
 
 #%% Collate G1 annotations
 
-g1_annotation = pd.read_excel(path.join(dirname,'manual_tracking','g1_annotation.xlsx'))
+# with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+#     pkl.dump(tracks,file)
+
+with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
+    tracks = pkl.load(file)
+
+g1_annotation = pd.read_excel(path.join(dirname,'manual_tracking','g1_annotations.xlsx'))
 g1_annotation['G1 exit'] = g1_annotation['G1 exit frame'].astype(float)
 
 for track in tracks:
@@ -45,9 +42,26 @@ for track in tracks:
     
         # Find same corrID in annotation
         track['G1 exit'] = g1_annotation[g1_annotation['CorrID'] == corrID]['G1 exit'].values[0]-1
+        
+        
+        frames = track['Frame']
+        first_frame = frames.min()
+        track['t'] = (track['Frame'] - first_frame) / 2.0 # half-day
+        
+        g1_exit_frame = track.iloc[0]['G1 exit']
+        track['Phase'] = 'NA'
+        if ~np.isnan(g1_exit_frame):
+            # Annotate cell cycle phase on time-series
+            track['Phase'] = 'G1'
+            track.at[track['Frame'] >= track.iloc[0]['G1 exit'],'Phase'] = 'SG2'
+    
 
 ts = pd.concat(tracks)
 
+# Save to the manual folder    
+with open(path.join(dirname,'final_trackseg/complete_cycles_final.pkl'),'wb') as file:
+    pkl.dump(tracks,file)
+    
 #%% Start cell-centric dataframe with cell-level data:
 
 df = pd.DataFrame()
@@ -56,7 +70,7 @@ for track in tracks:
     
     corrID = track.iloc[0]['CorrID']
     
-    if ~np.isnan(corrID):
+    if ~np.isnan(corrID) and len(track) > 1:
     
         cycle_length = track['Age'].max()
         birth_size = track.iloc[0]['Volume'] * dx**2
@@ -85,65 +99,7 @@ for track in tracks:
 df['SG2 length'] = df['Cycle length'] - df['G1 length']
 df['SG2 growth'] = df['Total growth'] - df['G1 growth']
 
-
-#%% Plot cell cycle times
-
-plt.hist(df['Cycle length'])
-plt.vlines(df['Cycle length'].mean(),ymin=0,ymax=5,color='r')
-plt.xlabel('Cell cycle duration (h)')
-
-plt.figure()
-plt.hist(df['G1 length'])
-plt.xlabel('G1 duration (h)')
-
-#%%  Plot size control (time)
-
-plt.figure()
-sb.regplot(data = df, x='Birth size', y = 'Cycle length', y_jitter=True)
-plt.figure()
-sb.scatterplot(data = df, x='Birth size', y = 'G1 length', y_jitter=True) 
-    
-#%%  Plot size control (time)
-
-def nonans(x,y):
-    I = ~np.isnan(x)
-    I = I & ~np.isnan(y)
-    return x[I],y[I]
-
-def pearson_r(x,y):
-    x,y = nonans(x,y)
-    return np.corrcoef(x,y)[0,1]
-
-def slope(x,y):
-    x,y = nonans(x,y)
-    p = np.polyfit(x,y,1)
-    return p[0]
-    
-# G1 exit
-plt.figure()
-sb.regplot(data = df_rb, x='Birth size', y = 'G1 growth')
-sb.regplot(data = df_wt, x='Birth size', y = 'G1 growth')
-plt.xlim([0,500])
-plt.ylim([0,500])
-plt.legend(['Rb-KO','RB-WT'])
-
-R = pearson_r(df['Birth size'],df['G1 growth'])
-print(f'G1 Pearson R = {R}')
-
-p = slope(df['Birth size'],df['G1 growth'])
-print(f'G1 Slope m = {p}')
-
-# Whole cycle
-plt.figure()
-sb.regplot(data = df, x='Birth size', y = 'Total growth')
-plt.xlim([-100,500])
-plt.ylim([-100,500])
-
-R = pearson_r(df['Birth size'],df['Total growth'])
-print(f'Total Pearson R = {R}')
-
-p = slope(df['Birth size'],df['Total growth'])
-print(f'Total Slope m = {p}')
+# Save
+df.to_csv(path.join(dirname,'final_trackseg','cell_dataframe.pkl'))
 
 
-  

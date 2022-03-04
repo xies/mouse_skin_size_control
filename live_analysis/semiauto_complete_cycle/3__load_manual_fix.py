@@ -10,25 +10,27 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io
+from skimage import io, measure
 import seaborn as sb
 from os import path
 from glob import glob
 
 import pickle as pkl
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M1 WT/R1'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-03-2021 Rb-fl/M2 RB-KO/R1/'
 
 # dx = 0.2920097
 dx = 1
 
-#%% Load and collate manual track+segmentations ()
+#%% Load and collate manual track+segmentations
 
 # Dictionary of manual segmentation (there should be no first or last time point)
-manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking.tif'))
+manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_seg.tif'))
 
 # Resave as 16-bit
-# io.imsave(path.join(dirname,'manual_tracking/manual_tracking_8bit.tif'),manual_segs.astype(np.int8))
+io.imsave(path.join(dirname,'manual_tracking/manual_tracking_8bit.tif'),manual_segs.astype(np.int8))
 
 filename = glob(path.join(dirname,'reg/*.tif'))
 imstack = list(map(io.imread,filename))
@@ -46,7 +48,6 @@ for trackID in trackIDs[1:]:
     frames_with_this_track = np.where(np.any(np.any(np.any(mask,axis=1),axis=1), axis=1))[0]
     
     
-    
     for frame in frames_with_this_track:
         
         # Measurements from segmentation/ label iamge
@@ -57,11 +58,11 @@ for trackID in trackIDs[1:]:
         volume = props[0]['Area']
         
         # Measurement from intensity image(s)
-        fucci_this_frame = imstack[frame][:,:,:,0]
-        props = measure.regionprops(this_frame*1, intensity_image = fucci_this_frame)
-        fucci_mean = props[0]['mean_intensity']
+        # fucci_this_frame = imstack[frame][:,:,:,0]
+        # props = measure.regionprops(this_frame*1, intensity_image = fucci_this_frame)
+        # fucci_mean = props[0]['mean_intensity']
         
-        track = track.append(pd.Series({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume,'FUCCI':fucci_mean}),
+        track = track.append(pd.Series({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume}),
                              ignore_index=True)
         
     track['CorrID'] = trackID
@@ -73,11 +74,11 @@ for trackID in trackIDs[1:]:
 
 
 # Save to the manual folder    
-with open(path.join(dirname,'manual_tracking/complete_cycles_fixed.pkl'),'wb') as file:
+with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
     pkl.dump(tracks,file)
 
-
-
-
 ts = pd.concat(tracks)
+
+
+
   
