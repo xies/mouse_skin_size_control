@@ -8,8 +8,9 @@ Created on Mon Jun 21 17:38:58 2021
 
 import numpy as np
 import pandas as pd
-
+from os import path
 import pickle as pkl
+import seaborn as sb
 
 #%%
 
@@ -83,12 +84,12 @@ ts_g1 = ts[ts['Phase'] == 'G1']
 ts_sg2 = ts[ts['Phase'] == 'SG2']
 
 sb.catplot(data = ts_g1, x = 'Genotype', y = 'Volume',kind='violin')
-plt.ylabel('Nuclear volume averaged over whole cell cycle')
+plt.ylabel('Nuclear volume averaged over G1')
 print('Size over G1')
 print(ts_g1.groupby('Genotype').mean()['Volume'] * 0.2920097**2)
 
 sb.catplot(data = ts_sg2, x = 'Genotype', y = 'Volume',kind='violin')
-plt.ylabel('Nuclear volume averaged over whole cell cycle')
+plt.ylabel('Nuclear volume averaged over SG2')
 print('Size over SG2')
 print(ts_sg2.groupby('Genotype').mean()['Volume'] * 0.2920097**2)
 
