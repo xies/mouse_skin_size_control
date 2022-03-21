@@ -15,7 +15,7 @@ from pystackreg import StackReg
 from re import findall
 
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-03-2022/M8 WT/R3 pw 250/'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-03-2022/M8 WT/R3 pw 250'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -23,12 +23,10 @@ dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-03-2022/M8 WT/R3 pw 250/
 
 subfolders = glob(path.join(dirname,'Day*/ZSeries*/'))
 
-channel_names = ['G','B']
-
 header_ome_h2b = []
 header_ome_fucci = []
 for d in subfolders:
-    ome_tifs = glob(path.join(d,'*.tif'))
+    ome_tifs = glob(path.join(d,'*.ome.tif'))
     if len(ome_tifs) < 30:
         print(f'Skipping {d}')
     else:
@@ -40,7 +38,15 @@ for d in subfolders:
 
 #%% Register the B/G channels (using B as reference)
 
+
+channel_names = ['G','B']
 for header_ome in header_ome_h2b:
+    
+    d = path.dirname(header_ome)
+    # Make sure we haven't already processed this stack
+    if path.exists(path.join(d,'B_reg.tif')):
+        print(f'Skipping {d}')
+        continue
     
     # Load ome-tif
     stack = io.imread(header_ome)
@@ -53,12 +59,43 @@ for header_ome in header_ome_h2b:
     B_reg = sr.transform_stack(B,tmats=T) # Apply to both channels
     G_reg = sr.transform_stack(G,tmats=T)
     
-    output_path = path.join( path.dirname(header_ome),'B_reg.tif')
+    output_path = path.join( d,'B_reg.tif')
     io.imsave(output_path,B_reg.astype(np.int16))
-    output_path = path.join( path.dirname(header_ome),'G_reg.tif')
+    output_path = path.join( d,'G_reg.tif')
     io.imsave(output_path,G_reg.astype(np.int16))
     
     print(f'Saved with {output_path}')
+
+#%% Register the FUCCI (R) channels
+
+
+channel_names = ['R','R_shg']
+for header_ome in header_ome_fucci:
+    
+    d = path.dirname(header_ome)
+    # Make sure we haven't already processed this stack
+    # if path.exists(path.join(d,'R_reg.tif')):
+    #     print(f'Skipping {d}')
+    #     continue
+    
+    # Load ome-tif
+    stack = io.imread(header_ome)
+    R = stack[0,...]
+    R_shg = stack[1,...]
+    
+    # Use StackReg
+    sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
+    T = sr.register_stack(R,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
+    R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
+    R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
+    
+    output_path = path.join( d,'R_reg.tif')
+    io.imsave(output_path,R_reg.astype(np.int16))
+    output_path = path.join( d,'R_shg_reg.tif')
+    io.imsave(output_path,R_shg_reg.astype(np.int16))
+    
+    print(f'Saved with {output_path}')
+
 
 #%% Parse xml file into a dataframe organized by channel (column) and Frame (row)
 #NB: not needed for now, but working

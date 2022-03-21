@@ -47,3 +47,12 @@ df_has_daughter = df[~np.isnan(df['Division volume interpolated'])]
 # Concatenate all collated cells into dfc
 dfc = pd.concat(collated_filtered)
 
+#%% Alternatively, load all the series
+
+with open('/Users/xies/Box/Mouse/Skin/Mesa et al/tracked_data_collated/cell_summary.pkl','rb' ) as f:
+    df = pkl.load(f)
+
+with open('/Users/xies/Box/Mouse/Skin/Mesa et al/tracked_data_collated/time_series.pkl','rb' ) as f:
+    ts = pkl.load(f)
+    
+    
