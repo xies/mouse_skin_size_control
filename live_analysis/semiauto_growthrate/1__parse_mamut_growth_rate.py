@@ -81,6 +81,7 @@ for i in range(num_tracks):
     this_spots['Division'] = False
     this_spots['Terminus'] = False
     this_spots['Source'] = False
+    this_spots['UniqueID'] = i + 1
     
     # The first spots (all spots should be sorted by frame) and all subsequent result of splits are 'sources'
     this_spots.at[this_spots.index[0],'Source'] = True
@@ -147,6 +148,7 @@ for i,this_spots in enumerate(spots):
             tracks.append(track_)
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
+
 with open(path.join(dirname,'MaMut/tracks.pkl'),'wb') as file:
     pkl.dump(tracks,file)
 
