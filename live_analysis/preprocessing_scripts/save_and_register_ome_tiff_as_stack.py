@@ -15,7 +15,7 @@ from pystackreg import StackReg
 from re import findall
 
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-03-2022/M8 WT/R3 pw 250'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R5 940nm_pw150 1020nm_pw225'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -30,7 +30,7 @@ for d in subfolders:
     if len(ome_tifs) < 30:
         print(f'Skipping {d}')
     else:
-        if len(findall('1020nm',d)) == 0:
+        if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
             header_ome_h2b.append(ome_tifs[0])
         else:
             header_ome_fucci.append(ome_tifs[0])
