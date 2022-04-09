@@ -25,6 +25,7 @@ G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg.tif'))
 R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg.tif'))
 R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
 
+
 #%%
 
 
@@ -82,7 +83,7 @@ def xcorr2(template, image, mode="full"):
     # Remove any divisions by 0 or very close to 0
     out[np.where(np.logical_not(np.isfinite(out)))] = 0
 
-    return np.asb(out)
+    return np.abs(out)
 
 
 #%%
@@ -93,10 +94,17 @@ assert(len(B_tifs) == len(R_tifs))
 
 for t in range(len(B_tifs)):
     
+    output_dir = path.split(path.dirname(R_tifs[t]))[0]
+    if path.exists(path.join(output_dir,'stack_reg.tif')):
+        print(f'Skipping t = {t}')
+        continue
+    
+    print(f'--- Started t = {t} ---')
     B = io.imread(B_tifs[t])
     R_shg = io.imread(R_shg_tifs[t])
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
+    R = R - R.min()
     
     # Find the slice with maximum mean value in R_shg channel
     Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
@@ -109,7 +117,7 @@ for t in range(len(B_tifs)):
     
     for i,B_slice in enumerate(B):
         B_slice = gaussian(B_slice,sigma=0.5)
-        CC[i,...] = normxcorr2(R_ref,B_slice,mode='full')
+        CC[i,...] = xcorr2(R_ref,B_slice,mode='full')
 
     [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape)
     y_shift = XX - y_shift
@@ -123,7 +131,10 @@ for t in range(len(B_tifs)):
         B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
         G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
         
-    output_dir = path.dirname(B_tifs[0])
+    G_transformed -= G_transformed.min()
+    B_transformed -= B_transformed.min()
+    
+    output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))
     io.imsave(path.join(output_dir,'G_reg_reg.tif'),B_transformed.astype(np.int16))
     
@@ -136,14 +147,14 @@ for t in range(len(B_tifs)):
     
     top_padding = B.shape[0] - R_padded.shape[0]
     if top_padding > 0: # the needs padding
-        R_padded2 = np.concatenate( (R.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+        R_padded2 = np.concatenate( (R_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
     elif top_padding < 0: # then needs trimming
         R_padded2 = R_padded[0:top_padding,...]
     
-    output_dir = path.dirname(R_tifs[0])
+    output_dir = path.dirname(R_tifs[t])
     io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded2.astype(np.int16))
     
-    output_dir = path.split(path.dirname(R_tifs[0]))[0]
+    output_dir = path.split(path.dirname(R_tifs[t]))[0]
     stack = np.stack((R_padded2,G_transformed,B_transformed)).transpose([1,2,3,0])
     io.imsave(path.join(output_dir,'stack_reg.tif'),stack.astype(np.int16))
     
