@@ -15,6 +15,7 @@ from glob import glob
 
 dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R5 940nm_pw150 1020nm_pw225'
 
+
 #%%
 
 ########################################################################################
@@ -90,11 +91,17 @@ assert(len(B_tifs) == len(R_tifs))
 
 for t in range(len(B_tifs)):
     
+    output_dir = path.split(path.dirname(R_tifs[t]))[0]
+    if path.exists(path.join(output_dir,'stack_reg.tif')):
+        print(f'Skipping t = {t}')
+        continue
     
+    print(f'--- Started t = {t} ---')
     B = io.imread(B_tifs[t])
     R_shg = io.imread(R_shg_tifs[t])
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
+    R = R - R.min()
     
     # Find the slice with maximum mean value in R_shg channel
     Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
@@ -121,6 +128,10 @@ for t in range(len(B_tifs)):
         B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
         G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
         
+    G_transformed -= G_transformed.min()
+    B_transformed -= B_transformed.min()
+    
+
     output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))
     io.imsave(path.join(output_dir,'G_reg_reg.tif'),B_transformed.astype(np.int16))
@@ -138,17 +149,15 @@ for t in range(len(B_tifs)):
     if top_padding > 0: # the needs padding
         R_padded = np.concatenate( (R_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
         R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+
     elif top_padding < 0: # then needs trimming
         R_padded = R_padded[0:top_padding,...]
         R_shg_padded = R_shg_padded[0:top_padding,...]
     
     output_dir = path.dirname(R_tifs[t])
+
     io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.int16))
     io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.int16))
-    
-    output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    stack = np.stack((R_padded,G_transformed,B_transformed)).transpose([0,1,2,3])
-    io.imsave(path.join(output_dir,'stack_reg.tif'),stack.astype(np.int16))
     
 
 
