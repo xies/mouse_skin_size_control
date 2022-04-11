@@ -85,7 +85,7 @@ for header_ome in header_ome_fucci:
     
     # Use StackReg
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
-    T = sr.register_stack(R,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
+    T = sr.register_stack(R,reference='previous',axis=0) #Obtain the transformation matrices
     R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     

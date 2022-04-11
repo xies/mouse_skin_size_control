@@ -11,22 +11,11 @@ import pandas as pd
 from skimage import io, filters, util, transform
 from os import path
 from glob import glob
-from pystackreg import StackReg
-from re import findall
 
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-03-2022/M8 WT/R3 pw 250'
-
-#%% Reading the first ome-tiff file using imread reads entire stack
-
-# Grab all registered B/R tifs
-B_tifs = glob(path.join(dirname,'Day*/ZSeries*/B_reg.tif'))
-G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg.tif'))
-R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg.tif'))
-R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R5 940nm_pw150 1020nm_pw225'
 
 #%%
-
 
 ########################################################################################
 # Author: Ujash Joshi, University of Toronto, 2017                                     #
@@ -42,7 +31,7 @@ import numpy as np
 from skimage.filters import gaussian
 from scipy.signal import fftconvolve
 
-def xcorr2(template, image, mode="full"):
+def normxcorr2(template, image, mode="full"):
     """
     Input arrays should be floating point numbers.
     :param template: N-D array, of template or filter you are using for cross-correlation.
@@ -82,8 +71,16 @@ def xcorr2(template, image, mode="full"):
     # Remove any divisions by 0 or very close to 0
     out[np.where(np.logical_not(np.isfinite(out)))] = 0
 
-    return np.asb(out)
+    return np.abs(out)
 
+
+#%% Reading the first ome-tiff file using imread reads entire stack
+
+# Grab all registered B/R tifs
+B_tifs = glob(path.join(dirname,'Day*/ZSeries*/B_reg.tif'))
+G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg.tif'))
+R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg.tif'))
+R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
 
 #%%
 
@@ -92,6 +89,7 @@ XX = 1024
 assert(len(B_tifs) == len(R_tifs))
 
 for t in range(len(B_tifs)):
+    
     
     B = io.imread(B_tifs[t])
     R_shg = io.imread(R_shg_tifs[t])
@@ -111,7 +109,7 @@ for t in range(len(B_tifs)):
         B_slice = gaussian(B_slice,sigma=0.5)
         CC[i,...] = normxcorr2(R_ref,B_slice,mode='full')
 
-    [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape)
+    [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
     y_shift = XX - y_shift
     x_shift = XX - x_shift
     
@@ -123,29 +121,36 @@ for t in range(len(B_tifs)):
         B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
         G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
         
-    output_dir = path.dirname(B_tifs[0])
+    output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))
     io.imsave(path.join(output_dir,'G_reg_reg.tif'),B_transformed.astype(np.int16))
     
-    # Z-pad the red channel using Imax and Iz
+    # Z-pad the red + red_shg channel using Imax and Iz
     bottom_padding = Iz - Imax
     if bottom_padding > 0: # the needs padding
         R_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R), axis= 0)
+        R_shg_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_shg), axis= 0)
     elif bottom_padding < 0: # then needs trimming
         R_padded = R[bottom_padding:,...]
+        R_shg_padded = R_shg[bottom_padding:,...]
     
     top_padding = B.shape[0] - R_padded.shape[0]
     if top_padding > 0: # the needs padding
-        R_padded2 = np.concatenate( (R.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+        R_padded = np.concatenate( (R_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+        R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
     elif top_padding < 0: # then needs trimming
-        R_padded2 = R_padded[0:top_padding,...]
+        R_padded = R_padded[0:top_padding,...]
+        R_shg_padded = R_shg_padded[0:top_padding,...]
     
-    output_dir = path.dirname(R_tifs[0])
-    io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded2.astype(np.int16))
+    output_dir = path.dirname(R_tifs[t])
+    io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.int16))
+    io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.int16))
     
-    output_dir = path.split(path.dirname(R_tifs[0]))[0]
-    stack = np.stack((R_padded2,G_transformed,B_transformed)).transpose([1,2,3,0])
+    output_dir = path.split(path.dirname(R_tifs[t]))[0]
+    stack = np.stack((R_padded,G_transformed,B_transformed)).transpose([0,1,2,3])
     io.imsave(path.join(output_dir,'stack_reg.tif'),stack.astype(np.int16))
     
+
+
 
 
