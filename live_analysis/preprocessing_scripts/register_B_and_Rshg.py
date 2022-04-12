@@ -134,7 +134,7 @@ for t in range(len(B_tifs)):
 
     output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))
-    io.imsave(path.join(output_dir,'G_reg_reg.tif'),B_transformed.astype(np.int16))
+    io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16))
     
     # Z-pad the red + red_shg channel using Imax and Iz
     bottom_padding = Iz - Imax

@@ -40,7 +40,7 @@ assert(len(G_tifs) == len(R_shg_tifs))
 R_shg_ref = io.imread( R_shg_tifs[0] )
 
 # Find the slice with maximum mean value in R_shg channel
-Imax_ref = R_shg_ref.mean(axis=2).mean(axis=1).argmax()
+Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...] # Don't gaussian filter for stackreg
 Z_ref = R_shg_ref.shape[0]
 
@@ -50,7 +50,7 @@ for t in tqdm(np.arange(1,len(R_tifs) )): # 1-indexed + progress
     R_shg_target = io.imread(R_shg_tifs[t])
     
     # Find simlar in the next time point
-    Imax_target = R_shg_target.mean(axis=2).mean(axis=1).argmax()
+    Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
     target_img = R_shg_target[Imax_target,...]
     
     # Use StackReg to 'align' the two z slices
@@ -118,7 +118,7 @@ for t in tqdm(np.arange(1,len(R_tifs) )): # 1-indexed + progress
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
-T = 11
+T = 9
 # Use a function to regex the Day number and use that to sort
 def sort_by_number(filename):
     day = match('Day (\d+)',path.split(path.split(path.split(filename)[0])[0])[1])
