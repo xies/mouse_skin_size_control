@@ -7,14 +7,11 @@ Created on Sun Mar 20 21:41:31 2022
 """
 
 import numpy as np
-import pandas as pd
-from skimage import io, filters, util, transform
+from skimage import io, filters, transform
 from os import path
 from glob import glob
 
-
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R5 940nm_pw150 1020nm_pw225'
-
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
 
 #%%
 
@@ -28,7 +25,6 @@ dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h
 # http://lordsabre.blogspot.ca/2017/09/matlab-normxcorr2-implemented-in-python.html    #
 ########################################################################################
 
-import numpy as np
 from skimage.filters import gaussian
 from scipy.signal import fftconvolve
 
@@ -87,12 +83,14 @@ R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
 
 XX = 1024
 
+OVERWRITE = True
+
 assert(len(B_tifs) == len(R_tifs))
 
 for t in range(len(B_tifs)):
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(output_dir,'stack_reg.tif')):
+    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) or not OVERWRITE:
         print(f'Skipping t = {t}')
         continue
     
@@ -102,6 +100,7 @@ for t in range(len(B_tifs)):
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
     R = R - R.min()
+    print('Done reading images')
     
     # Find the slice with maximum mean value in R_shg channel
     Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
@@ -112,10 +111,12 @@ for t in range(len(B_tifs)):
     
     CC = np.zeros((B.shape[0],XX * 2 - 1,XX * 2 -1))
     
+    print('Cross correlation started')
     for i,B_slice in enumerate(B):
         B_slice = gaussian(B_slice,sigma=0.5)
         CC[i,...] = normxcorr2(R_ref,B_slice,mode='full')
-
+    print('Cross correlation done')
+    
     [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
     y_shift = XX - y_shift
     x_shift = XX - x_shift
@@ -142,8 +143,8 @@ for t in range(len(B_tifs)):
         R_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R), axis= 0)
         R_shg_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_shg), axis= 0)
     elif bottom_padding < 0: # then needs trimming
-        R_padded = R[bottom_padding:,...]
-        R_shg_padded = R_shg[bottom_padding:,...]
+        R_padded = R[-bottom_padding:,...]
+        R_shg_padded = R_shg[-bottom_padding:,...]
     
     top_padding = B.shape[0] - R_padded.shape[0]
     if top_padding > 0: # the needs padding
@@ -159,7 +160,7 @@ for t in range(len(B_tifs)):
     io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.int16))
     io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.int16))
     
-
+    
 
 
 

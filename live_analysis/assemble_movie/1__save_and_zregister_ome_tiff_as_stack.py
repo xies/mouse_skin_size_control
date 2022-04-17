@@ -7,15 +7,14 @@ Created on Tue Mar 15 17:16:59 2022
 """
 
 import numpy as np
-import pandas as pd
-from skimage import io, filters, util
+from skimage import io, filters
 from os import path
 from glob import glob
 from pystackreg import StackReg
 from re import findall
+from tqdm import tqdm
 
-
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R5 940nm_pw150 1020nm_pw225'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -33,6 +32,7 @@ for d in subfolders:
         if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
             header_ome_h2b.append(ome_tifs[0])
         else:
+            
             header_ome_fucci.append(ome_tifs[0])
 
 
@@ -40,7 +40,7 @@ for d in subfolders:
 
 
 channel_names = ['G','B']
-for header_ome in header_ome_h2b:
+for header_ome in tqdm(header_ome_h2b):
     
     d = path.dirname(header_ome)
     # Make sure we haven't already processed this stack
@@ -70,13 +70,13 @@ for header_ome in header_ome_h2b:
 
 
 channel_names = ['R','R_shg']
-for header_ome in header_ome_fucci:
+for header_ome in tqdm(header_ome_fucci):
     
     d = path.dirname(header_ome)
     # Make sure we haven't already processed this stack
-    # if path.exists(path.join(d,'R_reg.tif')):
-    #     print(f'Skipping {d}')
-    #     continue
+    if path.exists(path.join(d,'R_reg.tif')):
+        print(f'Skipping {d}')
+        continue
     
     # Load ome-tif
     stack = io.imread(header_ome)
@@ -95,6 +95,7 @@ for header_ome in header_ome_fucci:
     io.imsave(output_path,R_shg_reg.astype(np.int16))
     
     print(f'Saved with {output_path}')
+
 
 
 #%% Parse xml file into a dataframe organized by channel (column) and Frame (row)
