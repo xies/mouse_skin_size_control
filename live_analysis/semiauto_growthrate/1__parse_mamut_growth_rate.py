@@ -51,6 +51,8 @@ def sort_links_by_time(links,spots):
 
 raw_links = sort_links_by_time(raw_links,raw_spots)
 
+
+
 # Separate all spots/linkage into lists of dfs pertaining to only a single track
 tmp_spots = []
 tmp_links = []

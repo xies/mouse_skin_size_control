@@ -16,7 +16,8 @@ from os import path
 from glob import glob
 
 import pickle as pkl
-from skimage import io,util
+from skimage import io
+from tqdm import tqdm
 
 from roipoly import roipoly
 
@@ -41,12 +42,15 @@ img_stack = np.array(list(map(io.imread,filenames)))
 
 #%% Load segmented images
 
-for track in tracks:
+for track in tqdm(tracks):
     
     # Frames of interest
     framesOI = track['Frame']
     
     for i,frame in enumerate(framesOI):
+        
+        if frame > 6: # Missing last two frames
+            continue
         
         t = int(frame)
         this_seg = seg[t,...]
@@ -66,24 +70,27 @@ io.imsave(path.join(dirname,'tracked_seg','track_seg_raw.tif'), seg_tracked.asty
 
 dx = 0.25
 
-for track in tracks:
+for track in tqdm(tracks):
     
     framesOI = track['Frame']
+    num_frames_on = len(framesOI)
     
-    volumes = []
-    k10 = []
-    for frame in framesOI:
+    volumes = np.ones(num_frames_on) * np.nan
+    k10 = np.ones(num_frames_on) * np.nan
+    for i, frame in enumerate(framesOI):
+        # Missing last two frames, so filtera
         t = int(frame)
+        
+        if t > 6:
+            continue
         
         mask = seg_tracked[t,...] == track.iloc[0]['UniqueID']
         v = mask.sum()
         if v > 0:
-            volumes.append(v) #Nuc volume in pixels
-            k10.append(img_stack[t,mask,1].sum())
-        else:
-            volumes.append(np.nan)
-            k10.append(np.nan)
+            volumes[i] = v #Nuc volume in pixels
+            k10[i] = img_stack[t,mask,1].sum()
 
+    # Update in place
     track['Nuclear volume'] = np.array(volumes) * dx ** 2
     track['K10 intensity'] = k10
         
