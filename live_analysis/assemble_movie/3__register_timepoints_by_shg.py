@@ -160,7 +160,13 @@ for t in tqdm(np.arange(1,len(R_tifs) )): # 1-indexed + progress
         R_padded = R[-top_padding:,...]
         G_padded = G[-top_padding:,...]
         B_padded = B[-top_padding:,...]
-        R_padded = R_shg_target[-top_padding:,...]
+        R_shg_padded = R_shg_target[-top_padding:,...]
+        
+    elif top_padding == 0:
+        R_padded = R
+        G_padded = G
+        B_padded = B
+        R_shg_padded = R_shg_target
         
     delta_ref = Z_ref - Imax_ref
     delta_target = Z_target - Imax_target

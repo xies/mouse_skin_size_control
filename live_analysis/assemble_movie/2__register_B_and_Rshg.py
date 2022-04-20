@@ -90,7 +90,7 @@ assert(len(B_tifs) == len(R_tifs))
 for t in range(len(B_tifs)):
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) or not OVERWRITE:
+    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) and not OVERWRITE:
         print(f'Skipping t = {t}')
         continue
     

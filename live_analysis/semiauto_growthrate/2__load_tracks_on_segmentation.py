@@ -10,6 +10,7 @@ Created on Mon Mar 28 23:15:08 2022
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
+from scipy import stats
 
 import seaborn as sb
 from os import path
@@ -25,6 +26,7 @@ dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20
 
 # Load assembled tracks as pkl
 
+
 with open(path.join(dirname,'MaMut/tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
  
@@ -34,13 +36,15 @@ with open(path.join(dirname,'MaMut/tracks.pkl'),'rb') as file:
 filenames = glob(path.join(dirname,'stardist/prediction/*/*.tif'))
 
 seg = np.array(list(map(io.imread,filenames)))
-seg_tracked = np.zeros_like(seg)
 
 filenames = glob(path.join(dirname,'reg/*.tif'))
 
 img_stack = np.array(list(map(io.imread,filenames)))
 
 #%% Load segmented images
+radius = 5
+seg_tracked = np.zeros_like(seg)
+T,Z,Y,X = seg_tracked.shape
 
 for track in tqdm(tracks):
     
@@ -63,8 +67,14 @@ for track in tqdm(tracks):
             mask = this_seg == this_label
             
             seg_tracked[t,mask] = track.iloc[0]['UniqueID']
+            
+        else: # No spot found
+            y_low = max(0,y - radius); y_high = min(Y,y + radius)
+            x_low = max(0,x - radius); x_high = min(X,x + radius)
+            z_low = max(0,z - radius); z_high = min(Z,z + radius)
+            seg_tracked[t, z_low:z_high, y_low:y_high, x_low:x_high] = track.iloc[0]['UniqueID']
 
-io.imsave(path.join(dirname,'tracked_seg','track_seg_raw.tif'), seg_tracked.astype(np.int16))
+io.imsave(path.join(dirname,'tracked_seg','track_seg_raw_0_1.tif'), seg_tracked.astype(np.int16))
 
 #%% Extract segmented volume (and K10 intensity) from images
 
@@ -116,10 +126,12 @@ def get_interpolated_curve(track,smoothing_factor=1e5):
 
 for track in tracks:
     
+    track['Time'] = track['Frame'] - track.iloc[0]['Frame']
     V_sm = get_interpolated_curve(track)
     track['Nuclear volume (sm)'] = V_sm
     track['Growth rate'] = np.hstack((np.diff(track['Nuclear volume']),np.nan))
     track['Growth rate (sm)'] = np.hstack((np.diff(track['Nuclear volume (sm)']),np.nan))
+    track['Specific growth rate (sm)'] = track['Growth rate (sm)'] / track['Nuclear volume (sm)']
 
 
 # Save dataframe
@@ -146,11 +158,29 @@ I = gate_cells(ts,'Nuclear volume','K10 intensity',gate_)
 ts['Cell type'] = 'K10 neg'
 ts.loc[I,'Cell type'] = 'K10 pos'
 
+plt.figure()
+for track in tracks:
+    plt.plot(track['Time'],track['Nuclear volume'],'b')
+
 
 #%%
 
-sb.catplot(data= ts,x='Cell type',y='Nuclear volume')
-sb.catplot(data= ts,x='Cell type',y='Growth rate')
+def nonans(x):
+    return x[~np.isnan(x)]
 
+
+sb.catplot(data= ts,x='Cell type',y='Nuclear volume',kind='violin')
+sb.catplot(data= ts,x='Cell type',y='Growth rate (sm)',kind='violin')
+
+print(ts.groupby('Cell type')['Nuclear volume'].mean())
+print(ts.groupby('Cell type').count())
+
+k10_pos = ts[ts['Cell type'] == 'K10 pos']
+k10_neg = ts[ts['Cell type'] == 'K10 neg']
+
+print( stats.ttest_ind(nonans(k10_pos['Growth rate (sm)']), nonans(k10_neg['Growth rate (sm)'])) )
+
+print( ts.groupby('Cell type')['Growth rate (sm)'].mean() )
+print( ts.groupby('Cell type')['Specific growth rate (sm)'].mean())
 
 
