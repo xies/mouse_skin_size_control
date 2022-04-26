@@ -29,7 +29,7 @@ dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20
 
 with open(path.join(dirname,'MaMut/tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
- 
+
 
 #%% Load images
 
