@@ -46,7 +46,8 @@ for dirname,sub_ in dirnames.items():
         track = pd.DataFrame()
         for i, this_time in enumerate(time_points):
             
-            frame = float(match(r't(\d+).csv', path.basename(this_time) )[1])
+            frame = float(match(r't([0-9]+)', path.basename(this_time) )[1])
+            # Parse cell type
             if type_annotation == '+':
                 celltype = 'K10 pos'
             elif type_annotation == '-':
@@ -57,6 +58,17 @@ for dirname,sub_ in dirnames.items():
                 celltype = 'K10 pos'
             else:
                 break
+            # Parse cell cycle annotation (if applicable)
+            if len(this_time.split('.')) == 3:
+                if this_time.split('.')[1] == 'd':
+                    division = True
+                    birth = False
+                elif this_time.split('.')[1] == 'b':
+                    division = False
+                    birth = True
+            else:
+                birth = False
+                division = False
             
             df = pd.read_csv(this_time)
             V = df['Area'].sum()
@@ -71,10 +83,13 @@ for dirname,sub_ in dirnames.items():
                                   ,'Frame':frame
                                   ,'Volume':V
                                   ,'Cell type': celltype 
-                                  ,'Dataset':dirname})
+                                  ,'Dataset':dirname
+                                  ,'Division':division
+                                  ,'Birth':birth})
             
             track = track.append(s)
-            
+        
+        track['Divides'] = np.any(track['Division'])
         tracks.append(track)
 
 
@@ -102,7 +117,7 @@ for track in tracks:
     track['Time'] = track['Frame'] - track.iloc[0]['Frame']
     V_sm = get_interpolated_curve(track)
     track['Volume (sm)'] = V_sm
-    track['Growth rate'] = np.hstack((np.diff(track['Volume']),np.nan))
+    track['Growth rate'] = np.hstack((np.diff(track['Volume']),np.nan)) / np.hstack((np.diff(track['Frame']*24),np.nan))
     track['Growth rate (sm)'] = np.hstack((np.diff(track['Volume (sm)']),np.nan))
     track['Specific growth rate (sm)'] = track['Growth rate (sm)'] / track['Volume (sm)']
 
@@ -127,19 +142,30 @@ def nonans(x):
 
 ts = pd.concat(tracks)
 
-sb.catplot(data= ts,hue='Cell type',y='Volume',kind='strip',x='Dataset',split=True)
-sb.catplot(data= ts,hue='Cell type',y='Specific growth rate (sm)',
-           x = 'Dataset',kind='strip', split=True)
+sb.catplot(data= ts,x='Cell type',y='Volume',kind='violin',split=True)
+sb.catplot(data= ts,x='Cell type',y='Specific growth rate (sm)',
+           kind='strip', split=True)
 
 print(ts.groupby('Cell type')['Volume'].mean())
-print(ts.groupby('Cell type').count())
+# print(ts.groupby('Cell type').count())
 
 k10_pos = ts[ts['Cell type'] == 'K10 pos']
 k10_neg = ts[ts['Cell type'] == 'K10 neg']
 
+print('-----Specific growth rate------')
+print( stats.ttest_ind(nonans(k10_pos['Volume']), nonans(k10_neg['Volume'])) )
+
+
+print('-----Specific growth rate------')
 print( stats.ttest_ind(nonans(k10_pos['Specific growth rate (sm)']), nonans(k10_neg['Specific growth rate (sm)'])) )
 
-print( ts.groupby('Cell type')['Growth rate (sm)'].mean() )
-print( ts.groupby('Cell type')['Specific growth rate (sm)'].mean())
+# print( ts.groupby('Cell type')['Growth rate (sm)'].mean() )
+# print( ts.groupby('Cell type')['Specific growth rate (sm)'].mean())
+
+#%%
+
+plt.figure()
+
+plt.scatter(ts['Volume'],ts['Specific growth rate (sm)'], alpha = 0.1)
 
 
