@@ -87,12 +87,14 @@ manual_z_ref = np.array([37,34, 38, 33, 32, 32, 40, 36, 32]) - 1
 assert(len(manual_z_ref) == len(im_list))
 
 ref_img = im_list[0][manual_z_ref[0],...,2]
+ref_img = filters.gaussian(ref_img, sigma = 1)
 Z_ref = im_list[0].shape[0]
 
 for t in tqdm( np.arange(1,len(im_list)) ):
     
     print('Registering')
     target_img = im_list[t][manual_z_ref[t],...,2]
+    target_img = filters.gaussian(target_img, sigma=20) # align the "vague shapes"
 
     sr = StackReg(StackReg.RIGID_BODY)
     T = sr.register(ref_img,target_img) #Obtain the transformation matrices
