@@ -15,7 +15,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1'
 filenames = glob(path.join(dirname,'*.tif'))
 
 im_list = list(map(io.imread,filenames))
@@ -82,7 +82,7 @@ def normxcorr2(template, image, mode="full"):
 
 XX = 1024
 
-manual_z_ref = np.array([37,34, 38, 33, 32, 32, 40, 36, 32]) - 1
+manual_z_ref = np.array([33 ,33, 35, 35, 31, 38, 42, 35, 33]) - 1
 
 assert(len(manual_z_ref) == len(im_list))
 
@@ -113,7 +113,7 @@ for t in tqdm( np.arange(1,len(im_list)) ):
         padded = transformed[-top_padding:,...]
         
     elif top_padding == 0:
-        transformed = transformed
+        padded = transformed
         
     delta_ref = Z_ref - manual_z_ref[0]
     delta_target = im_list[t].shape[0] - manual_z_ref[t]
@@ -123,6 +123,7 @@ for t in tqdm( np.arange(1,len(im_list)) ):
         
     elif bottom_padding < 0: # then needs trimming
         padded = padded[0:bottom_padding,...]
+        
     
     print('Saving')
     io.imsave(path.join(dirname,'reg',f'reg_day{t}.tif'), padded.astype(np.int16))
