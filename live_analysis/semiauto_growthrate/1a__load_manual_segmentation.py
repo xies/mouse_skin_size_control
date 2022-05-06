@@ -117,11 +117,15 @@ for dirname,sub_ in dirnames.items():
                                   ,'Volume':V
                                   ,'Cell type': celltype 
                                   ,'Dataset':dirname
+                                  ,'UniqueID':dirname + '/' +cellID
                                   ,'Division':division
                                   ,'Birth':birth
                                   ,'Leaving':leaving
                                   ,'State':state
                                   ,'LineageID':lineageID
+                                  ,'DaughterID':'NA'
+                                  ,'ParentID':cellID
+                                  ,'SisterID':'NA'
                                   })
             
             track = track.append(s)
@@ -141,12 +145,16 @@ for dirname,sub_ in dirnames.items():
                                   ,'Volume': V
                                   ,'Cell type': celltype
                                   ,'Dataset':dirname
+                                  ,'UniqueID':dirname + '/' +cellID
                                   ,'Division':False
                                   ,'Birth':True
                                   ,'Leaving':False
                                   ,'State':'Born'
                                   ,'Daughter':'a'
                                   ,'LineageID':lineageID
+                                  ,'DaughterID':'NA'
+                                  ,'ParentID':cellID
+                                  ,'SisterID':cellID+'b'
                                   })
             track = track.append(s)
             
@@ -163,12 +171,16 @@ for dirname,sub_ in dirnames.items():
                                   ,'Volume': V
                                   ,'Cell type': celltype
                                   ,'Dataset':dirname
+                                  ,'UniqueID':dirname + '/' +cellID
                                   ,'Division':False
                                   ,'Birth':True
                                   ,'Leaving':False
                                   ,'State':'Born'
                                   ,'Daughter':'b'
                                   ,'LineageID':lineageID
+                                  ,'DaughterID':'NA'
+                                  ,'ParentID':cellID
+                                  ,'SisterID':cellID+'a'
                                   })
             track = track.append(s)
             
@@ -184,6 +196,53 @@ tracks_leaves = [track for track in tracks if track.iloc[0]['Leaves']]
 tracks_not_leaving = [track for track in tracks if not track.iloc[0]['Leaves']]
 
 #%% Lineage reconstruct: 1) annotate mother/daughter 2) annotate sister
+
+def return_index_of_track_in_list(tracks, trackOI):
+    
+    uIDs = np.array([track.iloc[0]['UniqueID'] for track in tracks])
+    
+    I = (uIDs == trackOI.iloc[0]['UniqueID'])
+    
+    return np.where(I)[0][0]
+    
+# Annotate all the sister_pairs and also construct sister-pair list
+# @todo: link the parent/child
+
+sisters =[]
+for dirname,sub_ in dirnames.items():
+    
+    tracks_this_area = [track for track in tracks if track.iloc[0]['Dataset'] == dirname]
+    
+    lineages = np.unique([track.iloc[0]['LineageID'] for track in tracks_this_area])
+    
+    for lin in lineages:
+        
+        this_lineage = [track for track in tracks_this_area if track.iloc[0]['LineageID'] == lin]
+        
+        # Only care if there are multiple members of lineage
+        if len(this_lineage) > 0:
+            
+            birth_frames = np.array([track.iloc[0]['Frame'] for track in this_lineage])
+            same_frame,num_times_shared = np.unique(birth_frames, return_counts=True)
+            
+            if np.any(num_times_shared == 2):
+                frame_shared = same_frame[np.where(num_times_shared == 2)]
+                # Cells born on this frame are sisters
+                I = np.where(birth_frames == frame_shared)[0]
+                #@todo: figure out how avoid 'look up' but for now it should work
+                sister_a = this_lineage[I[0]]
+                sister_b = this_lineage[I[1]]
+                tracks[return_index_of_track_in_list(tracks,sister_a)].at[:,'SisterID'] = sister_b['CellID']
+                tracks[return_index_of_track_in_list(tracks,sister_b)].at[:,'SisterID'] = sister_a['CellID']
+                
+                sisters.append([sister_a, sister_b])
+
+# Put the a/b annotated sisters into list as well
+#@todo: need to integrate
+for track in tracks:
+    # Both daughter are present
+    if np.any(track['Daughter'] == 'a') and np.any(track['Daughter'] == 'b'):
+        sisters.append([track[track['Daughter'] == 'a'], track[track['Daughter'] == 'b']])
 
 
 #%% Growth rate calculation / spline smooth
@@ -284,5 +343,25 @@ plt.figure()
 sb.lmplot(data= ts, x='Volume', y='Specific growth rate (sm)',hue='Cell type')
 
 
+#%% Sister analysis
+
+# How often are they the same cell type?
+
+fate_diff = np.zeros(len(sisters))
+size_diff = np.zeros(len(sisters))
+total_size = np.zeros(len(sisters))
+for i,pair in enumerate(sisters):
+    
+    a = pair[0]
+    b = pair[1]
+    
+    if a.iloc[0]['Cell type'] == b.iloc[0]['Cell type']:
+        fate_diff[i] = 0
+    else:
+        fate_diff[i] = 1
+        
+    size_diff[i] = abs(a.iloc[0]['Volume'] - b.iloc[0]['Volume'])
+    total_size[i] = a.iloc[0]['Volume'] + b.iloc[0]['Volume']
+        
 
 
