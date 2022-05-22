@@ -11,7 +11,7 @@ from skimage import io, filters, transform
 from os import path
 from glob import glob
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2'
 
 #%%
 
@@ -83,7 +83,7 @@ R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
 assert(len(B_tifs) == len(R_tifs))
 
@@ -131,7 +131,6 @@ for t in range(len(B_tifs)):
         
     G_transformed -= G_transformed.min()
     B_transformed -= B_transformed.min()
-    
 
     output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))

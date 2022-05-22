@@ -16,8 +16,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/03-24-2022 power series 24h/M8 WT/R6 940nm_pw150 1020nm_pw250'
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -83,12 +82,12 @@ def normxcorr2(template, image, mode="full"):
     return np.abs(out)
                   
                   
-#%% Correlate each R_shg timepoint with subsequent timepoint.
+#%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
 XX = 1024
-OVERWRITE = True
+OVERWRITE = False
 
 assert(len(B_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
@@ -195,7 +194,7 @@ for t in tqdm(np.arange(1,len(R_tifs) )): # 1-indexed + progress
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
-T = 9
+T = len(B_tifs)-1
 # Use a function to regex the Day number and use that to sort
 def sort_by_number(filename):
     day = match('Day (\d+)',path.split(path.split(path.split(filename)[0])[0])[1])
@@ -203,10 +202,10 @@ def sort_by_number(filename):
     return int(day)
 
 filelist = pd.DataFrame()
-filelist.index = np.arange(1,T)
 filelist['B'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_align.tif')), key = sort_by_number)
 filelist['G'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_align.tif')), key = sort_by_number)
 filelist['R'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_align.tif')), key = sort_by_number)
+filelist.index = np.arange(1,T+1)
 
 # t= 0 has no '_align'
 s = pd.Series({'B': glob(path.join(dirname,'Day 0/ZSeries*/B_reg_reg.tif'))[0],

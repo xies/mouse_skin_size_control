@@ -14,7 +14,7 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -26,7 +26,7 @@ header_ome_h2b = []
 header_ome_fucci = []
 for d in subfolders:
     ome_tifs = glob(path.join(d,'*.ome.tif'))
-    if len(ome_tifs) < 30:
+    if len(ome_tifs) < 40:
         print(f'Skipping {d}')
     else:
         if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
@@ -35,9 +35,7 @@ for d in subfolders:
             
             header_ome_fucci.append(ome_tifs[0])
 
-
 #%% Register the B/G channels (using B as reference)
-
 
 channel_names = ['G','B']
 for header_ome in tqdm(header_ome_h2b):
@@ -68,7 +66,6 @@ for header_ome in tqdm(header_ome_h2b):
 
 #%% Register the FUCCI (R) channels
 
-
 channel_names = ['R','R_shg']
 for header_ome in tqdm(header_ome_fucci):
     
@@ -95,7 +92,6 @@ for header_ome in tqdm(header_ome_fucci):
     io.imsave(output_path,R_shg_reg.astype(np.int16))
     
     print(f'Saved with {output_path}')
-
 
 
 #%% Parse xml file into a dataframe organized by channel (column) and Frame (row)
