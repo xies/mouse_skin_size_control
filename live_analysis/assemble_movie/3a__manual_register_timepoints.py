@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Apr 10 21:55:26 2022
+Created on Sun May 22 22:29:22 2022
 
 @author: xies
 """
@@ -16,7 +16,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -93,8 +93,11 @@ assert(len(B_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
 
 ref_T = 2
+target_T = 9
 
-R_shg_ref = io.imread( R_shg_tifs[ref_T] )
+R_shg_ref = io.imread( R_shg_tifs[3] )
+
+###
 
 # Find the slice with maximum mean value in R_shg channel
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
@@ -104,97 +107,84 @@ Z_ref = R_shg_ref.shape[0]
 CC = np.zeros(len(R_tifs))
 Iz_target_slice = np.zeros(len(R_tifs))
 
+output_dir = path.split(path.dirname(R_tifs[target_T]))[0]
 
-for t in tqdm( range(len(R_tifs) )): # 1-indexed + progress
-    
-    if t == ref_T:
-        continue
+#Load the target
+R_shg_target = io.imread(R_shg_tifs[target_T])
 
-    output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if not OVERWRITE and path.exists(path.join(path.dirname(R_tifs[t]),'R_align.tif')):
-        print(f'Skipping t = {t}')
-        continue
+# Find simlar in the next time point
+Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
+target_img = R_shg_target[Imax_target,...]
+
+print('\n Starting stackreg')
+# Use StackReg to 'align' the two z slices
+sr = StackReg(StackReg.RIGID_BODY)
+T = sr.register(ref_img,target_img) #Obtain the transformation matrices
+
+B = io.imread(B_tifs[target_T])
+G = io.imread(G_tifs[target_T])
+R = io.imread(R_tifs[target_T])
+
+T = transform.SimilarityTransform(matrix=T)
+
+print('Applying transformation matrices')
+# Apply transformation matrix to each stacks
+B_transformed = np.zeros_like(B)
+G_transformed = np.zeros_like(G)
+R_transformed = np.zeros_like(R)
+R_shg_transformed = np.zeros_like(R)
+for i, B_slice in enumerate(B):
+    B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
+    G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
+    R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
+    R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
     
-    #Load the target
-    R_shg_target = io.imread(R_shg_tifs[t])
+# Z-pad the time point in reference to t - 1
+Z_target = R_shg_target.shape[0]
+
+print('Padding')
+top_padding = Imax_ref - Imax_target
+if top_padding > 0: # the needs padding
+    R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
+    G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
+    B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
+    R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
     
-    # Find simlar in the next time point
-    Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
-    target_img = R_shg_target[Imax_target,...]
+elif top_padding < 0: # then needs trimming 
+    R_padded = R[-top_padding:,...]
+    G_padded = G[-top_padding:,...]
+    B_padded = B[-top_padding:,...]
+    R_shg_padded = R_shg_target[-top_padding:,...]
     
-    print('\n Starting stackreg')
-    # Use StackReg to 'align' the two z slices
-    sr = StackReg(StackReg.RIGID_BODY)
-    T = sr.register(ref_img,target_img) #Obtain the transformation matrices
+elif top_padding == 0:
+    R_padded = R
+    G_padded = G
+    B_padded = B
+    R_shg_padded = R_shg_target
     
-    B = io.imread(B_tifs[t])
-    G = io.imread(G_tifs[t])
-    R = io.imread(R_tifs[t])
+delta_ref = Z_ref - Imax_ref
+delta_target = Z_target - Imax_target
+bottom_padding = delta_ref - delta_target
+if bottom_padding > 0: # the needs padding
+    R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     
-    T = transform.SimilarityTransform(matrix=T)
+elif bottom_padding < 0: # then needs trimming
+    R_padded = R_padded[0:bottom_padding,...]
+    G_padded = G_padded[0:bottom_padding,...]
+    B_padded = B_padded[0:bottom_padding,...]
+    R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
-    print('Applying transformation matrices')
-    # Apply transformation matrix to each stacks
-    B_transformed = np.zeros_like(B)
-    G_transformed = np.zeros_like(G)
-    R_transformed = np.zeros_like(R)
-    R_shg_transformed = np.zeros_like(R)
-    for i, B_slice in enumerate(B):
-        B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
-        G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
-        R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
-        R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
-        
-    # Record the normalized cross correlation
-    CC[t] = normxcorr2(ref_img, R_shg_transformed[Imax_target,...]).max()
-    Iz_target_slice[t] = Imax_target
-    
-    # Z-pad the time point in reference to t - 1
-    Z_target = R_shg_target.shape[0]
-    
-    print('Padding')
-    top_padding = Imax_ref - Imax_target
-    if top_padding > 0: # the needs padding
-        R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
-        G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-        B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
-        R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
-        
-    elif top_padding < 0: # then needs trimming
-        R_padded = R[-top_padding:,...]
-        G_padded = G[-top_padding:,...]
-        B_padded = B[-top_padding:,...]
-        R_shg_padded = R_shg_target[-top_padding:,...]
-        
-    elif top_padding == 0:
-        R_padded = R
-        G_padded = G
-        B_padded = B
-        R_shg_padded = R_shg_target
-        
-    delta_ref = Z_ref - Imax_ref
-    delta_target = Z_target - Imax_target
-    bottom_padding = delta_ref - delta_target
-    if bottom_padding > 0: # the needs padding
-        R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-        G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-        B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-        R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-        
-    elif bottom_padding < 0: # then needs trimming
-        R_padded = R_padded[0:bottom_padding,...]
-        G_padded = G_padded[0:bottom_padding,...]
-        B_padded = B_padded[0:bottom_padding,...]
-        R_shg_padded = R_shg_padded[0:bottom_padding,...]
-        
-    print('Saving')
-    output_dir = path.dirname(B_tifs[t])
-    io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
-    io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
-    
-    output_dir = path.dirname(R_tifs[t])
-    io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
-    io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
+print('Saving')
+output_dir = path.dirname(B_tifs[target_T])
+io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
+io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
+
+output_dir = path.dirname(R_tifs[target_T])
+io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
+io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
     
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.

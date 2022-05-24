@@ -14,7 +14,7 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -47,11 +47,13 @@ for header_ome in tqdm(header_ome_h2b):
         continue
     
     # Load ome-tif
+    print(f'Loading {d}')
     stack = io.imread(header_ome)
     G = stack[0,...]
     B = stack[1,...]
     
     # Use StackReg
+    print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(B,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
     B_reg = sr.transform_stack(B,tmats=T) # Apply to both channels
@@ -64,7 +66,7 @@ for header_ome in tqdm(header_ome_h2b):
     
     print(f'Saved with {output_path}')
 
-#%% Register the FUCCI (R) channels
+#%% Register the FUCCI (R) channels (Using R_shg)
 
 channel_names = ['R','R_shg']
 for header_ome in tqdm(header_ome_fucci):

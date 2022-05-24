@@ -11,7 +11,7 @@ from skimage import io, filters, transform
 from os import path
 from glob import glob
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
 
 #%%
 
