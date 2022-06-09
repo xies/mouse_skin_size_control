@@ -293,6 +293,10 @@ for track in tracks:
         plt.plot(track_['Time'],track_['Volume'],'b')
     else:
         plt.plot(track_['Time'],track_['Volume'],'r')
+        
+plt.xlabel('Time (not aligned by birth) (days)')
+plt.ylabel('Cell volume (um3)')
+plt.legend(['K10 neg', 'K10 pos'])
 
 #%%
 
@@ -316,6 +320,8 @@ sb.catplot(data = na,hue='Cell type',y='Volume',kind='strip',split=True,x='Datas
 sb.catplot(data = division,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
 sb.catplot(data = birth,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
 
+sb.catplot(data = ts,x='State',y='Volume',kind='strip',hue='Cell type',split=True)
+
 # sb.catplot(data= ts,x='Cell type',y='Specific growth rate (sm)',hue='Dataset',
 #            kind='strip', split=True)
 
@@ -328,6 +334,7 @@ print(division.groupby('Cell type').count())
 print('-----Volume------')
 # print( stats.ttest_ind(nonans(k10_pos['Volume']), nonans(k10_neg['Volume'])) )
 print(groupby_ttest(birth,'Cell type','Volume'))
+print(groupby_ttest(na,'Cell type','Volume'))
 print(groupby_ttest(division,'Cell type','Volume'))
 
 print('-----Specific growth rate------')
@@ -341,7 +348,7 @@ plt.figure()
 # plt.scatter(ts['Volume'],ts['Specific growth rate (sm)'], alpha = 0.1)
 
 sb.lmplot(data= ts, x='Volume', y='Specific growth rate (sm)',hue='Cell type')
-
+plt.xlim([200,1000])
 
 #%% Sister analysis
 
