@@ -17,6 +17,9 @@ import pandas as pd
 from re import match
 import seaborn as sb
 
+# import utils
+import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
+from basic_utils import *
 
 dirnames = {}
 dirnames['/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'] = 'WT R2'
@@ -133,6 +136,7 @@ for dirname,name in dirnames.items():
             g1_growth = sphase_size - birth_size
             
             cell = pd.Series({'CellID': cellID
+                              ,'LineageID':lineageID
                                    ,'Genotype': genotype
                                    ,'Region': name
                                    ,'Directory':dirname
@@ -153,13 +157,67 @@ for dirname,name in dirnames.items():
             
             df = df.append(cell, ignore_index=True)
     
+# Check for duplicated CellIDs (manually done so there maybe some)
+print('------\n Duplicated CellIDs:')
+print(df[df.duplicated('CellID')])
 
+# Ignore when birth or S phase is denoted at frame 8, since the time before this was lost.
+# Division still OK since division annotation depends on the subsequent frame, not before.
 df['Ignore'] = False
 df.at[df['S phase frame'] == 8,'Ignore'] = True
 df.at[df['Birth frame'] == 8,'Ignore'] = True
-df.at[df['Division frame'] == 8,'Ignore'] = True
+# df.at[df['Division frame'] == 8,'Ignore'] = True
 
 df_ = df[df['Ignore'] == False]
+
+#%% Some quality control plots. Some time frames are not as good as others
+
+plt.scatter(df['Birth frame'],df['Birth size'])
+plt.scatter(df['Birth frame'],df['G1 growth'])
+
+
+plt.figure()
+plt.scatter(df['S phase frame'],df['S phase size'])
+plt.figure()
+plt.scatter(df['Division frame'],df['Division size'])
+
+
+#%% Print stats
+
+print('--- Growth, correlation')
+
+X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = g1 growth, R = {R[1]}')
+
+X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = total growth, R = {R[1]}')
+
+
+print('--- Time, correlation')
+      
+X,Y = nonan_pairs(df_['Birth size'],df_['G1 length'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = g1 length, R = {R[1]}')
+
+X,Y = nonan_pairs(df_['Birth size'],df_['Cycle length'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = cycle length, R = {R[1]}')
+
+
+print('--- Growth, regression')
+      
+X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
+
+X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = Total growth, m = {p[0]}')
+
+
+
 
 
 
