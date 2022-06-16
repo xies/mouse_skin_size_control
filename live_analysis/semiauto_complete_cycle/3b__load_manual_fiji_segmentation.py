@@ -14,19 +14,21 @@ from skimage import io
 from os import path, stat
 from glob import glob
 import pandas as pd
-from re import match
 import seaborn as sb
+from re import match
 
-# import utils
-import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
-from basic_utils import *
+# import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
+# from basic_utils import *
 
 dirnames = {}
-dirnames['/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'] = 'WT R2'
+dirnames['WT R2'] = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
+dirnames['KO R2'] = '/Users/xies/Desktop/KO R2/manual_track'
 
-dx = 0.2920097
+dx = 0.292435307476612
 
-time_stamps = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
+time_stamps = {}
+time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
+time_stamps['KO R2'] = np.linspace(0,9.5,20)
 
 #%% Parse .csv files
 '''
@@ -45,7 +47,7 @@ Folder structure
 
 df = pd.DataFrame()
 
-for dirname,name in dirnames.items():
+for name,dirname in dirnames.items():
     
     print(f'{dirname}')
     all_cells = glob(path.join(dirname,'*'))
@@ -91,19 +93,19 @@ for dirname,name in dirnames.items():
             # Birth (should always exist)
             birth = this_cell[this_cell['State'] == 'b']
             birth_frame = int(birth['Frame'].values)
-            birth_time = time_stamps[birth_frame - 1] * 12
+            birth_time = time_stamps[name][birth_frame - 1] * 24
             birth_size = birth['Volume'].values[0]
             
             # Division (may be missing)
             if (this_cell['State'] == 'd').sum() > 0:
                 division = this_cell[ this_cell['State'] == 'd']
                 division_frame = int(division['Frame'].values)
-                division_time = time_stamps[division_frame - 1] * 12
+                division_time = time_stamps[name][division_frame - 1] * 24
                 division_size = division['Volume'].values[0]
             elif (this_cell['State'] == 'sd').sum() > 0:
                 division = this_cell[ this_cell['State'] == 'sd']
                 division_frame = int(division['Frame'].values)
-                division_time = time_stamps[division_frame - 1] * 12
+                division_time = time_stamps[name][division_frame - 1] * 24
                 division_size = division['Volume'].values[0]
             else:
                 division_frame = np.nan
@@ -114,12 +116,12 @@ for dirname,name in dirnames.items():
             if (this_cell['State'] == 's').sum() > 0:
                 sphase = this_cell[ this_cell['State'] == 's']
                 sphase_frame = int(sphase['Frame'].values)
-                sphase_time = time_stamps[sphase_frame - 1] * 12
+                sphase_time = time_stamps[name][sphase_frame - 1] * 24
                 sphase_size = sphase['Volume'].values[0]
             elif (this_cell['State'] == 'sd').sum() > 0:
                 sphase = this_cell[ this_cell['State'] == 'sd']
                 sphase_frame = int(sphase['Frame'].values)
-                sphase_time = time_stamps[sphase_frame] * 12
+                sphase_time = time_stamps[name][sphase_frame] * 24
                 sphase_size = sphase['Volume'].values[0]
             else:
                 sphase_frame = np.nan
@@ -134,6 +136,20 @@ for dirname,name in dirnames.items():
             # Growth amount
             cycle_growth = division_size - birth_size
             g1_growth = sphase_size - birth_size
+            
+            # Ignore when birth or S phase is denoted at frame 8, since the time before this was lost.
+            # Division still OK since division annotation depends on the subsequent frame, not before.
+            ignore = False
+            if genotype == 'WT':
+                if sphase_frame == 8:
+                    ignore = True
+                elif birth_frame == 8:
+                    ignore = True
+            elif genotype =='KO':
+                if sphase_frame == 15:
+                    ignore = True
+                elif birth_frame == 15:
+                    ignore = True
             
             cell = pd.Series({'CellID': cellID
                               ,'LineageID':lineageID
@@ -153,6 +169,7 @@ for dirname,name in dirnames.items():
                                    ,'G1 length':g1_length
                                    ,'Total growth':cycle_growth
                                    ,'G1 growth':g1_growth
+                                   ,'Ignore': ignore
                                    })
             
             df = df.append(cell, ignore_index=True)
@@ -161,14 +178,9 @@ for dirname,name in dirnames.items():
 print('------\n Duplicated CellIDs:')
 print(df[df.duplicated('CellID')])
 
-# Ignore when birth or S phase is denoted at frame 8, since the time before this was lost.
-# Division still OK since division annotation depends on the subsequent frame, not before.
-df['Ignore'] = False
-df.at[df['S phase frame'] == 8,'Ignore'] = True
-df.at[df['Birth frame'] == 8,'Ignore'] = True
-# df.at[df['Division frame'] == 8,'Ignore'] = True
+df_raw = df
 
-df_ = df[df['Ignore'] == False]
+df = df[df['Ignore'] == False]
 
 #%% Some quality control plots. Some time frames are not as good as others
 
