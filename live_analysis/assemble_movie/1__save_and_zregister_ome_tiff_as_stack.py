@@ -14,18 +14,25 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R1'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-14-2022 beamexpander test/F1 WT 1.5x pw300 optizoom 1.41'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 # Extract the first ome.tiff file from every subfolder, load, then separate the two channels
+def sort_by_slice(filename):
+    z = findall('_(\d+).ome.tif',filename)[0]
+    return int(z)
 
-subfolders = glob(path.join(dirname,'Day*/ZSeries*/'))
+
+subfolders = glob(path.join(dirname,'ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []
 for d in subfolders:
     ome_tifs = glob(path.join(d,'*.ome.tif'))
+    ome_tifs = sorted(ome_tifs) # Sort by channel #
+    ome_tifs = sorted(ome_tifs, key = sort_by_slice) # Sort by slice #
     if len(ome_tifs) < 40:
         print(f'Skipping {d}')
     else:
@@ -48,7 +55,7 @@ for header_ome in tqdm(header_ome_h2b):
     
     # Load ome-tif
     print(f'Loading {d}')
-    stack = io.imread(header_ome)
+    stack = io.imread(header_ome,is_ome=True)
     G = stack[0,...]
     B = stack[1,...]
     
