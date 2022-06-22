@@ -18,7 +18,7 @@ import seaborn as sb
 from re import match
 
 # import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
-# from basic_utils import *
+from basic_utils import *
 
 dirnames = {}
 dirnames['WT R2'] = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
@@ -28,7 +28,8 @@ dx = 0.292435307476612
 
 time_stamps = {}
 time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
-time_stamps['KO R2'] = np.linspace(0,9.5,20)
+time_stamps['KO R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
+                        7.5,8,8.5,9,9.5,10]
 
 #%% Parse .csv files
 '''
@@ -174,25 +175,41 @@ for name,dirname in dirnames.items():
             
             df = df.append(cell, ignore_index=True)
     
-# Check for duplicated CellIDs (manually done so there maybe some)
-print('------\n Duplicated CellIDs:')
-print(df[df.duplicated('CellID')])
 
 df_raw = df
 
 df = df[df['Ignore'] == False]
+ko = df[df['Genotype'] == 'KO']
+wt = df[df['Genotype'] == 'WT']
+
+# Check for duplicated CellIDs (manually done so there maybe some)
+print('------\n Duplicated CellIDs:')
+print(wt[wt.duplicated('CellID')])
+print(ko[ko.duplicated('CellID')])
+
+#%%
+df_ = ko
 
 #%% Some quality control plots. Some time frames are not as good as others
 
-plt.scatter(df['Birth frame'],df['Birth size'])
-plt.scatter(df['Birth frame'],df['G1 growth'])
+plt.figure()
+plt.scatter(df_['Birth frame'],df_['Birth size'])
+plt.figure()
+plt.scatter(df_['S phase frame'],df_['S phase size'])
+plt.figure()
+plt.scatter(df_['Division frame'],df_['Division size'])
 
+#%%
 
 plt.figure()
-plt.scatter(df['S phase frame'],df['S phase size'])
-plt.figure()
-plt.scatter(df['Division frame'],df['Division size'])
+plt.scatter(df_['Birth size'],df_['G1 growth'])
+plt.scatter(df_['Birth size'],df_['Total growth'])
+plt.legend(['G1 growth','Total growth'])
 
+plt.figure()
+plt.scatter(df_['Birth size'],df_['G1 length'])
+plt.scatter(df_['Birth size'],df_['Cycle length'])
+plt.legend(['G1 length','Total length'])
 
 #%% Print stats
 
