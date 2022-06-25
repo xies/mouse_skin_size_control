@@ -18,7 +18,7 @@ import seaborn as sb
 from re import match
 
 # import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
-from basic_utils import *
+# from basic_utils import *
 
 dirnames = {}
 dirnames['WT R2'] = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
@@ -210,6 +210,7 @@ plt.figure()
 plt.scatter(df_['Birth size'],df_['G1 length'])
 plt.scatter(df_['Birth size'],df_['Cycle length'])
 plt.legend(['G1 length','Total length'])
+
 
 #%% Print stats
 
