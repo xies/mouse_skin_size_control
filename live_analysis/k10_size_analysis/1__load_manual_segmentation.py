@@ -20,9 +20,14 @@ from scipy import stats
 
 dirnames = {}
 # dirnames['/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area1'] = 'cell_membrane_seg'
-dirnames['/Users/xies/Box/Mouse/Skin/Two photon/Shared/20200925_F7_right ear_for Shicong/'] = '*'
-dirnames['/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3'] = 'cell_membrane_seg'
-dirnames['/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1'] = 'cell_membrane_seg'
+dirnames['/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20200925_F7_right ear_for Shicong/'] = '*'
+dirnames['/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3'] = 'cell_membrane_seg'
+dirnames['/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1'] = 'cell_membrane_seg'
+
+k10_channel = {'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20200925_F7_right ear_for Shicong/':1
+               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3':0
+               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1':0
+               }
 
 #%% Parse .csv files
 '''
@@ -47,7 +52,8 @@ for dirname,sub_ in dirnames.items():
         # skip .tif files
         if path.splitext(f)[1] == '.tif':
             continue
-        
+
+        # 1. Load all the t[*].csv files for geometry information
         subname = path.split(f)[1]
         if subname[-1] == '-' or subname[-1] == '+':
             cellID = subname[0:-1]
@@ -59,14 +65,16 @@ for dirname,sub_ in dirnames.items():
         # Parse lineage annotation
         lineageID = subname.split('.')[0]
         
-        time_points = glob(path.join(f,'t*.csv'))
+        time_points = sorted(glob(path.join(f,'t*.csv')))
         if len(time_points) == 0:
             continue
         
+        # Go through each single t[X]
         track = pd.DataFrame()
         for i, this_time in enumerate(time_points):
             
-            frame = float(match(r't([0-9]+)', path.basename(this_time) )[1])
+            frame_str = match(r't([0-9]+)', path.basename(this_time) )[1]
+            frame = float(frame_str)
             # Parse cell type
             if type_annotation == '+':
                 celltype = 'K10 pos'
@@ -109,53 +117,43 @@ for dirname,sub_ in dirnames.items():
                 
             x = df['BX'].mean()
             y = df['BY'].mean()
+            
+            # 2. Check that 'chanX' files exist and load the intensity information
+            channel_msmts = glob(path.splitext(this_time)[0] + '_chan*.txt')
+            if len(channel_msmts) > 0:
+                chan = k10_channel[dirname]
+                chan_name = path.splitext(this_time)[0] + f'_chan{chan}.txt'
+                k10_df = pd.read_csv(chan_name,sep='\t')
+                k10_tot = k10_df['RawIntDen'].sum()
+                k10_mean = k10_tot / df['Area'].sum()
+            else:
+                k10_tot = np.nan
+                k10_mean = np.nan
+            
             s = pd.Series(name = i,
-                          data = {'CellID': cellID
-                                  ,'X':x
-                                  ,'Y':y
-                                  ,'Frame':frame
-                                  ,'Volume':V
-                                  ,'Cell type': celltype 
-                                  ,'Dataset':dirname
-                                  ,'UniqueID':dirname + '/' +cellID
-                                  ,'Division':division
-                                  ,'Birth':birth
-                                  ,'Leaving':leaving
-                                  ,'State':state
-                                  ,'LineageID':lineageID
-                                  ,'DaughterID':'NA'
-                                  ,'ParentID':cellID
-                                  ,'SisterID':'NA'
+                          data = {'CellID': cellID,'X':x,'Y':y,'Frame':frame,'Volume':V
+                                  ,'Cell type': celltype ,'Dataset':dirname,'UniqueID':dirname + '/' +cellID
+                                  ,'Division':division,'Birth':birth,'Leaving':leaving,'State':state
+                                  ,'LineageID':lineageID,'DaughterID':'NA','ParentID':cellID,'SisterID':'NA'
+                                  ,'K10 total':k10_tot,'K10 mean':k10_mean
                                   })
             
             track = track.append(s)
             
         track['Daughter'] = 'NA'
-        # Load daughter cells if exists
+        # Load daughter cells if exist
         if path.exists(path.join(f,'a.csv')):
             daughter_a = pd.read_csv(path.join(f,'a.csv'))
             V = daughter_a['Area'].sum()
             if V > 2000:
                 V = V * 0.2700001**2
             s = pd.Series(name = i+1,
-                          data = {'CellID': cellID
-                                  ,'X':daughter_a['BX'].mean()
-                                  ,'Y':daughter_a['BY'].mean()
-                                  ,'Frame':frame + 1
-                                  ,'Volume': V
-                                  ,'Cell type': celltype
-                                  ,'Dataset':dirname
-                                  ,'UniqueID':dirname + '/' +cellID
-                                  ,'Division':False
-                                  ,'Birth':True
-                                  ,'Leaving':False
-                                  ,'State':'Born'
-                                  ,'Daughter':'a'
-                                  ,'LineageID':lineageID
-                                  ,'DaughterID':'NA'
-                                  ,'ParentID':cellID
-                                  ,'SisterID':cellID+'b'
-                                  })
+                          data = {'CellID': cellID,'X':daughter_a['BX'].mean(),'Y':daughter_a['BY'].mean()
+                                  ,'Frame':frame + 1,'Volume': V,'Cell type': celltype,'Dataset':dirname
+                                  ,'UniqueID':dirname + '/' +cellID,'Division':False,'Birth':True,'Leaving':False
+                                  ,'State':'Born','Daughter':'a','LineageID':lineageID,'DaughterID':'NA'
+                                  ,'ParentID':cellID,'SisterID':cellID+'b'
+                                  ,'K10 total':np.nan,'K10 mean':np.nan})
             track = track.append(s)
             
         if path.exists(path.join(f,'b.csv')):
@@ -164,24 +162,12 @@ for dirname,sub_ in dirnames.items():
             if V > 2000:
                 V = V * 0.2700001**2
             s = pd.Series(name = i+2,
-                          data = {'CellID': cellID
-                                  ,'X':daughter_a['BX'].mean()
-                                  ,'Y':daughter_a['BY'].mean()
-                                  ,'Frame':frame + 2
-                                  ,'Volume': V
-                                  ,'Cell type': celltype
-                                  ,'Dataset':dirname
-                                  ,'UniqueID':dirname + '/' +cellID
-                                  ,'Division':False
-                                  ,'Birth':True
-                                  ,'Leaving':False
-                                  ,'State':'Born'
-                                  ,'Daughter':'b'
-                                  ,'LineageID':lineageID
-                                  ,'DaughterID':'NA'
-                                  ,'ParentID':cellID
-                                  ,'SisterID':cellID+'a'
-                                  })
+                          data = {'CellID': cellID,'X':daughter_a['BX'].mean(),'Y':daughter_a['BY'].mean()
+                                  ,'Frame':frame + 1,'Volume': V,'Cell type': celltype,'Dataset':dirname
+                                  ,'UniqueID':dirname + '/' +cellID,'Division':False,'Birth':True,'Leaving':False
+                                  ,'State':'Born','Daughter':'b','LineageID':lineageID,'DaughterID':'NA'
+                                  ,'ParentID':cellID,'SisterID':cellID+'a'
+                                  ,'K10 total':np.nan,'K10 mean':np.nan})
             track = track.append(s)
             
         track['Divides'] = np.any(track['Division'])
@@ -279,96 +265,8 @@ for track in tracks:
 
 # tracks = tracks_div
 # tracks = tracks_non_div
-
+import pickle as pkl
 # Save dataframe
-# with open(path.join(dirname,'cell_membrane_seg/tracks.pkl'),'wb') as file:
-#     pkl.dump(tracks,file)
-
-#%%
-
-plt.figure()
-for track in tracks:
-    track_ = track[track['Daughter'] == 'NA']
-    if track_.iloc[0]['Cell type'] == 'K10 neg':
-        plt.plot(track_['Time'],track_['Volume'],'b')
-    else:
-        plt.plot(track_['Time'],track_['Volume'],'r')
-        
-plt.xlabel('Time (not aligned by birth) (days)')
-plt.ylabel('Cell volume (um3)')
-plt.legend(['K10 neg', 'K10 pos'])
-
-#%%
-
-# tracks = tracks_div
-
-def groupby_ttest(df,groupname,y_value):
-    df_ = df[~np.isnan(df[y_value])]
-    return stats.ttest_ind(*df_.groupby(groupname)[y_value].apply(lambda x:list(x)))
-
-def nonans(x):
-    return x[~np.isnan(x)]
-
-ts = pd.concat(tracks_not_leaving)
-division = ts[ts['Division'] == 1]
-birth = ts[ts['Birth'] == 1]
-na = ts[ts['State'] == 'NA']
-not_na = ts[ts['State'] != 'NA']
-
-sb.catplot(data = na,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
-
-sb.catplot(data = division,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
-sb.catplot(data = birth,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
-
-sb.catplot(data = ts,x='State',y='Volume',kind='strip',hue='Cell type',split=True)
-
-# sb.catplot(data= ts,x='Cell type',y='Specific growth rate (sm)',hue='Dataset',
-#            kind='strip', split=True)
-
-
-# print(ts.groupby('Cell type')['Volume'].mean())
-print(ts.groupby('Cell type')['Specific growth rate (sm)'].mean())
-print(birth.groupby('Cell type').count())
-print(division.groupby('Cell type').count())
-
-print('-----Volume------')
-# print( stats.ttest_ind(nonans(k10_pos['Volume']), nonans(k10_neg['Volume'])) )
-print(groupby_ttest(birth,'Cell type','Volume'))
-print(groupby_ttest(na,'Cell type','Volume'))
-print(groupby_ttest(division,'Cell type','Volume'))
-
-print('-----Specific growth rate------')
-print(groupby_ttest(ts,'Cell type','Specific growth rate (sm)'))
-
-
-#%%
-
-plt.figure()
-
-# plt.scatter(ts['Volume'],ts['Specific growth rate (sm)'], alpha = 0.1)
-
-sb.lmplot(data= ts, x='Volume', y='Specific growth rate (sm)',hue='Cell type')
-plt.xlim([200,1000])
-
-#%% Sister analysis
-
-# How often are they the same cell type?
-
-fate_diff = np.zeros(len(sisters))
-size_diff = np.zeros(len(sisters))
-total_size = np.zeros(len(sisters))
-for i,pair in enumerate(sisters):
-    
-    a = pair[0]
-    b = pair[1]
-    
-    if a.iloc[0]['Cell type'] == b.iloc[0]['Cell type']:
-        fate_diff[i] = 0
-    else:
-        fate_diff[i] = 1
-        
-    size_diff[i] = abs(a.iloc[0]['Volume'] - b.iloc[0]['Volume'])
-    total_size[i] = a.iloc[0]['Volume'] + b.iloc[0]['Volume']
-        
-
+with open('/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/tracks.pkl','wb') as file:
+    pkl.dump(tracks,file)
 

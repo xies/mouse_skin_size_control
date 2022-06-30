@@ -15,7 +15,8 @@ from re import findall
 from tqdm import tqdm
 
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-14-2022 beamexpander test/F1 WT 1.5x pw300 optizoom 1.41'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F6 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -25,7 +26,7 @@ def sort_by_slice(filename):
     return int(z)
 
 
-subfolders = glob(path.join(dirname,'ZSeries*/'))
+subfolders = glob(path.join(dirname,'Day*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []
@@ -67,9 +68,9 @@ for header_ome in tqdm(header_ome_h2b):
     G_reg = sr.transform_stack(G,tmats=T)
     
     output_path = path.join( d,'B_reg.tif')
-    io.imsave(output_path,B_reg.astype(np.int16))
+    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
     output_path = path.join( d,'G_reg.tif')
-    io.imsave(output_path,G_reg.astype(np.int16))
+    io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
 
@@ -85,20 +86,22 @@ for header_ome in tqdm(header_ome_fucci):
         continue
     
     # Load ome-tif
+    print(f'Loading {d}')
     stack = io.imread(header_ome)
     R = stack[0,...]
     R_shg = stack[1,...]
     
     # Use StackReg
+    print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(R,reference='previous',axis=0) #Obtain the transformation matrices
     R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     
     output_path = path.join( d,'R_reg.tif')
-    io.imsave(output_path,R_reg.astype(np.int16))
+    io.imsave(output_path,R_reg.astype(np.int16),check_contrast=False)
     output_path = path.join( d,'R_shg_reg.tif')
-    io.imsave(output_path,R_shg_reg.astype(np.int16))
+    io.imsave(output_path,R_shg_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
 

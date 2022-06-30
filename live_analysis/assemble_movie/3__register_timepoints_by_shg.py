@@ -16,16 +16,24 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
-# Grab all registered B/R tifs
-B_tifs = glob(path.join(dirname,'Day*/ZSeries*/B_reg_reg.tif'))
-G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg_reg.tif'))
-R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg_reg.tif'))
-R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg_reg.tif'))
 
+def sort_by_day(filename):
+    day = match('Day (\d+\.?5?)',path.split(path.split(path.split(filename)[0])[0])[1])
+    day = day.groups()[0]
+    return float(day)
+
+# Grab all registered B/R tifs
+B_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_reg_reg.tif')),key=sort_by_day)
+G_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_reg_reg.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg_reg.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_reg_reg.tif')),key=sort_by_day)
+
+assert(len(B_tifs) == len(R_tifs))
+assert(len(G_tifs) == len(R_shg_tifs))
 
 ########################################################################################
 # Author: Ujash Joshi, University of Toronto, 2017                                     #
@@ -39,7 +47,7 @@ R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg_reg.tif'))
 
 from scipy.signal import fftconvolve
 
-def normxcorr2(template, image, mode="full"):
+def xcorr2(template, image, mode="full"):
     """
     Input arrays should be floating point numbers.
     :param template: N-D array, of template or filter you are using for cross-correlation.
@@ -74,7 +82,6 @@ def normxcorr2(template, image, mode="full"):
     image[np.where(image < 0)] = 0
 
     template = np.sum(np.square(template))
-    out = out / np.sqrt(image * template)
 
     # Remove any divisions by 0 or very close to 0
     out[np.where(np.logical_not(np.isfinite(out)))] = 0
@@ -82,7 +89,7 @@ def normxcorr2(template, image, mode="full"):
     return np.abs(out)
                   
                   
-#%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
+#%% Correlate each R_shg timepoint with first time point
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
@@ -90,133 +97,115 @@ OVERWRITE = True
 XX = 1024
 XY_reg = False
 
+MANUAL = False
 
 ref_T = 0
-manual_z_ref = {1:41,
-                2:39,
-                3:43,
-                4:65,
-                6:58,
-                7:32,
-                8:66,
-                9:47-5,
-                10:48,
-                11:56,
-                12:53,
-                13:47,
-                14:57,
-                15:54,
-                16:49,
-                17:57,
-                18:69,
-                19:47
-                }
-# prepare the reference image
-assert(len(B_tifs) == len(R_tifs))
-assert(len(G_tifs) == len(R_shg_tifs))
-R_shg_ref = io.imread( R_shg_tifs[ref_T] )
 
 # Find the slice with maximum mean value in R_shg channel
-# Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() - 5 # Find max contrast slice
-Imax_ref = 33
+R_shg_ref = io.imread( R_shg_tifs[ref_T] )
+Z_ref = R_shg_ref.shape[ref_T]
+Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...]
-Z_ref = R_shg_ref.shape[0]
 
-CC = np.zeros(len(R_tifs))
 Iz_target_slice = np.zeros(len(R_tifs))
-
-t = 4
-# for t in tqdm( range(len(R_tifs) )): # 1-indexed + progress
+for t in tqdm( range(2) ): # 1-indexed
     
-#     if t == ref_T:
-#         continue
-#     if t == 1:
-#         continue
-
-#     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-#     if not OVERWRITE and path.exists(path.join(path.dirname(R_tifs[t]),'R_align.tif')):
-#         print(f'Skipping t = {t}')
-#         continue
+    if t == ref_T:
+        continue
     
-#Load the target
-R_shg_target = io.imread(R_shg_tifs[t])
-
-# Find simlar in the next time point
-# If specified, use the manually determined ref_z
-
-# Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
-Imax_target = manual_z_ref[t]
-
-B = io.imread(B_tifs[t])
-G = io.imread(G_tifs[t])
-R = io.imread(R_tifs[t])
-
-B_transformed = B; R_transformed = R; G_transformed = G; R_shg_transformed = R_shg_target;
-
-if XY_reg:
-    moving_img = R_shg_target[manual_z_ref[t],...]
-    print('\n Starting stackreg')
-    # Use StackReg to 'align' the two z slices
-    sr = StackReg(StackReg.RIGID_BODY)
-    T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
+    output_dir = path.split(path.dirname(R_tifs[t]))[0]
+    if not OVERWRITE and path.exists(path.join(path.dirname(R_tifs[t]),'R_align.tif')):
+        print(f'Skipping t = {t}')
+        continue
     
-    print('Applying transformation matrices')
-    # Apply transformation matrix to each stacks
+    print(f'Working on {R_shg_tifs[t]}')
+    #Load the target
+    R_shg_target = io.imread(R_shg_tifs[t])
     
-    for i, B_slice in enumerate(B):
-        B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
-        G_transformed[i,...] = sr.transform(G[i,...].astype(float),tmat=T)
-        R_transformed[i,...] = sr.transform(R[i,...].astype(float),tmat=T)
-        R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...].astype(float),tmat=T)
+    # Find simlar in the next time point
+    # If specified, use the manually determined ref_z
+    if MANUAL:
+        Imax_target = manual_z_ref[t]
+    else:
+        Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
     
-
-# Z-pad the time point in reference to t - 1
-Z_target = R_shg_target.shape[0]
-
-print('Padding')
-top_padding = Imax_ref - Imax_target
-if top_padding > 0: # the needs padding
-    R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
-    G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-    B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
-    R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
+    # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
+    CC = np.zeros(R_shg_target.shape[0])
+    for im in R_shg_target:
+        CC[z] = xcorr2(ref_img, im).max()
     
-elif top_padding < 0: # then needs trimming
-    R_padded = R[-top_padding:,...]
-    G_padded = G[-top_padding:,...]
-    B_padded = B[-top_padding:,...]
-    R_shg_padded = R_shg_target[-top_padding:,...]
     
-elif top_padding == 0:
-    R_padded = R
-    G_padded = G
-    B_padded = B
-    R_shg_padded = R_shg_target
+    # Perform transformations
+    B = io.imread(B_tifs[t])
+    G = io.imread(G_tifs[t])
+    R = io.imread(R_tifs[t])
     
-delta_ref = Z_ref - Imax_ref
-delta_target = Z_target - Imax_target
-bottom_padding = delta_ref - delta_target
-if bottom_padding > 0: # the needs padding
-    R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    B_transformed = B; R_transformed = R; G_transformed = G; R_shg_transformed = R_shg_target;
     
-elif bottom_padding < 0: # then needs trimming
-    R_padded = R_padded[0:bottom_padding,...]
-    G_padded = G_padded[0:bottom_padding,...]
-    B_padded = B_padded[0:bottom_padding,...]
-    R_shg_padded = R_shg_padded[0:bottom_padding,...]
+    if XY_reg:
+        moving_img = R_shg_target[Imax_target,...]
+        print('\n Starting stackreg')
+        # Use StackReg to 'align' the two z slices
+        sr = StackReg(StackReg.RIGID_BODY)
+        T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
+        
+        print('Applying transformation matrices')
+        # Apply transformation matrix to each stacks
+        
+        for i, B_slice in enumerate(B):
+            B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
+            G_transformed[i,...] = sr.transform(G[i,...].astype(float),tmat=T)
+            R_transformed[i,...] = sr.transform(R[i,...].astype(float),tmat=T)
+            R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...].astype(float),tmat=T)
+        
     
-print('Saving')
-output_dir = path.dirname(B_tifs[t])
-io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
-io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
-
-output_dir = path.dirname(R_tifs[t])
-io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
-io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
+    # Z-pad the time point in reference to t - 1
+    Z_target = R_shg_target.shape[0]
     
+    print('Padding')
+    top_padding = Imax_ref - Imax_target
+    if top_padding > 0: # the needs padding
+        R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
+        G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
+        B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
+        R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
+        
+    elif top_padding < 0: # then needs trimming
+        R_padded = R[-top_padding:,...]
+        G_padded = G[-top_padding:,...]
+        B_padded = B[-top_padding:,...]
+        R_shg_padded = R_shg_target[-top_padding:,...]
+        
+    elif top_padding == 0:
+        R_padded = R
+        G_padded = G
+        B_padded = B
+        R_shg_padded = R_shg_target
+        
+    delta_ref = Z_ref - Imax_ref
+    delta_target = Z_target - Imax_target
+    bottom_padding = delta_ref - delta_target
+    if bottom_padding > 0: # the needs padding
+        R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+        G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+        B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+        R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+        
+    elif bottom_padding < 0: # then needs trimming
+        R_padded = R_padded[0:bottom_padding,...]
+        G_padded = G_padded[0:bottom_padding,...]
+        B_padded = B_padded[0:bottom_padding,...]
+        R_shg_padded = R_shg_padded[0:bottom_padding,...]
+        
+    print('Saving')
+    output_dir = path.dirname(B_tifs[t])
+    io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
+    io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
+    
+    output_dir = path.dirname(R_tifs[t])
+    io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
+    io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
+        
     
     
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
