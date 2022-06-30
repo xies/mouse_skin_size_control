@@ -25,8 +25,8 @@ dirnames['/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 re
 dirnames['/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1'] = 'cell_membrane_seg'
 
 k10_channel = {'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20200925_F7_right ear_for Shicong/':1
-               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3':0
-               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1':0
+               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3':1
+               ,'/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/20210322_K10 revisits/20220322_male3/area1':1
                }
 
 #%% Parse .csv files

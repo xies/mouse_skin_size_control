@@ -13,6 +13,7 @@ import pickle as pkl
 with open('/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/tracks.pkl', 'rb') as f:
     tracks = pkl.load(f)
 
+
 #%% Raw growth curves
 
 plt.figure()
@@ -101,5 +102,19 @@ for i,pair in enumerate(sisters):
     size_diff[i] = abs(a.iloc[0]['Volume'] - b.iloc[0]['Volume'])
     total_size[i] = a.iloc[0]['Volume'] + b.iloc[0]['Volume']
         
+#%%
+
+def standardize(X):
+    return (X-X.mean())/X.std()
+
+ts = pd.concat(tracks,ignore_index=True)
+
+for dataset in np.unique( ts['Dataset']):
+    ts.at[ts['Dataset'] == dataset, 'K10 norm'] = standardize(ts[ts['Dataset'] == dataset]['K10 mean'])
+    
+birth = ts[ts['Birth'] == 1]
+sb.lmplot(data=birth,x='Volume',y='K10 norm',hue='Cell type', fit_reg=False)
+plt.xlabel('Volume at birth')
+plt.ylabel('K10 intensity (mean)')
 
 
