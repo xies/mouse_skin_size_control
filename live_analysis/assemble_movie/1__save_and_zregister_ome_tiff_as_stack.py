@@ -15,8 +15,8 @@ from re import findall
 from tqdm import tqdm
 
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R2'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F6 RBKO/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F6 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 

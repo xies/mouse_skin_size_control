@@ -95,7 +95,7 @@ def xcorr2(template, image, mode="full"):
 
 OVERWRITE = True
 XX = 1024
-XY_reg = False
+XY_reg = True
 
 MANUAL = False
 
@@ -108,7 +108,7 @@ Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...]
 
 Iz_target_slice = np.zeros(len(R_tifs))
-for t in tqdm( range(2) ): # 1-indexed
+for t in tqdm( range(len(R_tifs) )): # 1-indexed
     
     if t == ref_T:
         continue
@@ -127,13 +127,12 @@ for t in tqdm( range(2) ): # 1-indexed
     if MANUAL:
         Imax_target = manual_z_ref[t]
     else:
-        Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
-    
-    # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
-    CC = np.zeros(R_shg_target.shape[0])
-    for im in R_shg_target:
-        CC[z] = xcorr2(ref_img, im).max()
-    
+        # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
+        CC = np.zeros(R_shg_target.shape[0])
+        for z,im in enumerate(R_shg_target):
+            CC[z] = xcorr2(ref_img, im).max()
+    Imax_target = CC.argmax()
+        
     
     # Perform transformations
     B = io.imread(B_tifs[t])
@@ -199,14 +198,13 @@ for t in tqdm( range(2) ): # 1-indexed
         
     print('Saving')
     output_dir = path.dirname(B_tifs[t])
-    io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
-    io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
+    io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16),check_contrast=False)
     
     output_dir = path.dirname(R_tifs[t])
-    io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
-    io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
-        
-    
+    io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
+       
     
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
@@ -232,9 +230,22 @@ s = pd.Series({'B': glob(path.join(dirname,'Day 3.5/ZSeries*/B_reg_reg.tif'))[0]
 filelist = filelist.append(s)
 filelist = filelist.sort_index()
 
+# Save individual day*.tif
+
+
+for t in range(T):
+    R = io.imread(filelist.loc[t,'R'])
+    G = io.imread(filelist.loc[t,'G'])
+    B = io.imread(filelist.loc[t,'B'])
+    
+    stack = np.stack((R,G,B))
+    
+    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack,check_contrast=False)
+
+#%% Save master stack
 # Load file and concatenate them appropriately
 # FIJI default: CZT XY, but this is easier for indexing
-stack = np.zeros((T,Z_ref,3,XX,XX))
+# stack = np.zeros((T,Z_ref,3,XX,XX))
 
 for t in range(T):
     R = io.imread(filelist.loc[t,'R'])
@@ -245,7 +256,7 @@ for t in range(T):
     stack[t,:,1,:,:] = G
     stack[t,:,2,:,:] = B
     
-io.imsave(path.join(dirname,'master_stack.tif'),stack.astype(np.int16))
+# io.imsave(path.join(dirname,'master_stack.tif'),stack.astype(np.int16))
 
 
 
