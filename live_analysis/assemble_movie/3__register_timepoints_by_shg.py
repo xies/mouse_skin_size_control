@@ -22,15 +22,15 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R1'
 
 
 def sort_by_day(filename):
-    day = match('Day (\d+\.?5?)',path.split(path.split(path.split(filename)[0])[0])[1])
+    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(path.split(filename)[0])[0])[1])
     day = day.groups()[0]
     return float(day)
 
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_reg_reg.tif')),key=sort_by_day)
-G_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_reg_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg_reg.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_reg_reg.tif')),key=sort_by_day)
+B_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_reg_reg.tif')),key=sort_by_day)
+G_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/G_reg_reg.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_shg_reg_reg.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_reg_reg.tif')),key=sort_by_day)
 
 assert(len(B_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
@@ -93,7 +93,7 @@ def xcorr2(template, image, mode="full"):
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-OVERWRITE = True
+OVERWRITE = False
 XX = 1024
 XY_reg = True
 
@@ -210,22 +210,17 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
 T = len(B_tifs)-1
-# Use a function to regex the Day number and use that to sort
-def sort_by_number(filename):
-    day = match('Day (\d+)',path.split(path.split(path.split(filename)[0])[0])[1])
-    day = day.groups()[0]
-    return int(day)
 
 filelist = pd.DataFrame()
-filelist['B'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_align.tif')), key = sort_by_number)
-filelist['G'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_align.tif')), key = sort_by_number)
-filelist['R'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_align.tif')), key = sort_by_number)
+filelist['B'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_align.tif')), key = sort_by_day)
+filelist['G'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_align.tif')), key = sort_by_day)
+filelist['R'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_align.tif')), key = sort_by_day)
 filelist.index = np.arange(1,T+1)
 
 # t= 0 has no '_align'
-s = pd.Series({'B': glob(path.join(dirname,'Day 3.5/ZSeries*/B_reg_reg.tif'))[0],
-                 'G': glob(path.join(dirname,'Day 3.5/ZSeries*/G_reg_reg.tif'))[0],
-                 'R': glob(path.join(dirname,'Day 3.5/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
+s = pd.Series({'B': glob(path.join(dirname,'Day 0/ZSeries*/B_reg_reg.tif'))[0],
+                 'G': glob(path.join(dirname,'Day 0/ZSeries*/G_reg_reg.tif'))[0],
+                 'R': glob(path.join(dirname,'Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
 
 filelist = filelist.append(s)
 filelist = filelist.sort_index()
@@ -233,19 +228,24 @@ filelist = filelist.sort_index()
 # Save individual day*.tif
 
 
-for t in range(T):
+for t in range(T+1):
+    # stack = np.zeros((Z_ref,3,XX,XX))
+    
     R = io.imread(filelist.loc[t,'R'])
     G = io.imread(filelist.loc[t,'G'])
     B = io.imread(filelist.loc[t,'B'])
     
-    stack = np.stack((R,G,B))
+    # stack[:,0,...] = R
+    # stack[:,1,...] = G
+    # stack[:,2,...] = B
     
-    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack,check_contrast=False)
+    stack = np.stack((R,G,B))
+    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.int16),check_contrast=False)
 
 #%% Save master stack
 # Load file and concatenate them appropriately
 # FIJI default: CZT XY, but this is easier for indexing
-# stack = np.zeros((T,Z_ref,3,XX,XX))
+stack = np.zeros((T,Z_ref,3,XX,XX))
 
 for t in range(T):
     R = io.imread(filelist.loc[t,'R'])
