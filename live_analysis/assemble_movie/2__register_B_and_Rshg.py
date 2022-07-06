@@ -11,7 +11,8 @@ from skimage import io, filters, transform
 from os import path
 from glob import glob
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
 
 #%%
 
@@ -73,11 +74,16 @@ def normxcorr2(template, image, mode="full"):
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
+def sort_by_day(filename):
+    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(path.split(filename)[0])[0])[1])
+    day = day.groups()[0]
+    return float(day)
+
 # Grab all registered B/R tifs
-B_tifs = glob(path.join(dirname,'Day*/ZSeries*/B_reg.tif'))
-G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg.tif'))
-R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg.tif'))
-R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg.tif'))
+B_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_reg.tif')),key=sort_by_day)
+G_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/G_reg.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_reg.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_reg.tif')),key=sort_by_day)
 
 #%%
 
@@ -87,11 +93,11 @@ OVERWRITE = False
 
 assert(len(B_tifs) == len(R_tifs))
 
-for t in range(len(B_tifs)):
+for t in tqdm(range(len(B_tifs))):
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
     if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) and not OVERWRITE:
-        print(f'Skipping t = {t}')
+        print(f'Skipping t = {t} because ref time point')
         continue
     
     print(f'--- Started t = {t} ---')
@@ -133,8 +139,8 @@ for t in range(len(B_tifs)):
     B_transformed -= B_transformed.min()
 
     output_dir = path.dirname(B_tifs[t])
-    io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16))
-    io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16))
+    io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16),check_contrast=False)
     
     # Z-pad the red + red_shg channel using Imax and Iz
     bottom_padding = Iz - Imax
@@ -156,10 +162,10 @@ for t in range(len(B_tifs)):
     
     output_dir = path.dirname(R_tifs[t])
 
-    io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.int16))
-    io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.int16))
+    io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
     
     
 
-
+    
 

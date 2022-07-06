@@ -26,7 +26,7 @@ def sort_by_slice(filename):
     return int(z)
 
 
-subfolders = glob(path.join(dirname,'Day*/ZSeries*/'))
+subfolders = glob(path.join(dirname,'*Day*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

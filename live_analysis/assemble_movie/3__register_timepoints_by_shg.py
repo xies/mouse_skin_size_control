@@ -16,7 +16,8 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/F1 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -93,7 +94,7 @@ def xcorr2(template, image, mode="full"):
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-OVERWRITE = False
+OVERWRITE = True
 XX = 1024
 XY_reg = True
 
@@ -125,13 +126,13 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
     if MANUAL:
-        Imax_target = manual_z_ref[t]
+        Imax_target = 58
     else:
         # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
         CC = np.zeros(R_shg_target.shape[0])
         for z,im in enumerate(R_shg_target):
             CC[z] = xcorr2(ref_img, im).max()
-    Imax_target = CC.argmax()
+        Imax_target = CC.argmax()
         
     
     # Perform transformations
@@ -139,7 +140,7 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
     
-    B_transformed = B; R_transformed = R; G_transformed = G; R_shg_transformed = R_shg_target;
+    B_transformed = B.copy(); R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
     
     if XY_reg:
         moving_img = R_shg_target[Imax_target,...]
@@ -157,7 +158,6 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
             R_transformed[i,...] = sr.transform(R[i,...].astype(float),tmat=T)
             R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...].astype(float),tmat=T)
         
-    
     # Z-pad the time point in reference to t - 1
     Z_target = R_shg_target.shape[0]
     
@@ -204,7 +204,8 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     output_dir = path.dirname(R_tifs[t])
     io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
     io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
-       
+    
+    
     
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
@@ -212,35 +213,45 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
 T = len(B_tifs)-1
 
 filelist = pd.DataFrame()
-filelist['B'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_align.tif')), key = sort_by_day)
-filelist['G'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_align.tif')), key = sort_by_day)
-filelist['R'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_align.tif')), key = sort_by_day)
+filelist['B'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_align.tif')), key = sort_by_day)
+filelist['G'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/G_align.tif')), key = sort_by_day)
+filelist['R'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_align.tif')), key = sort_by_day)
 filelist.index = np.arange(1,T+1)
 
 # t= 0 has no '_align'
-s = pd.Series({'B': glob(path.join(dirname,'Day 0/ZSeries*/B_reg_reg.tif'))[0],
-                 'G': glob(path.join(dirname,'Day 0/ZSeries*/G_reg_reg.tif'))[0],
-                 'R': glob(path.join(dirname,'Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
+s = pd.Series({'B': glob(path.join(dirname,'*Day 0/ZSeries*/B_reg_reg.tif'))[0],
+                 'G': glob(path.join(dirname,'*Day 0/ZSeries*/G_reg_reg.tif'))[0],
+                 'R': glob(path.join(dirname,'*Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
 
 filelist = filelist.append(s)
 filelist = filelist.sort_index()
 
 # Save individual day*.tif
 
+MAX = 2**16-1
 
-for t in range(T+1):
+def fix_image_range(im, max_range):
+    
+    im = im.copy()
+    im = im - im.min()
+    im = im / im.max() * max_range
+    return im.astype(np.uint16)
+
+for t in tqdm(range(T+1)):
     # stack = np.zeros((Z_ref,3,XX,XX))
     
     R = io.imread(filelist.loc[t,'R'])
     G = io.imread(filelist.loc[t,'G'])
     B = io.imread(filelist.loc[t,'B'])
+    R_ = fix_image_range(R,MAX)
+    G_ = fix_image_range(G,MAX)
+    B_ = fix_image_range(B,MAX)
     
-    # stack[:,0,...] = R
-    # stack[:,1,...] = G
-    # stack[:,2,...] = B
+    # Do some image range clean up
     
-    stack = np.stack((R,G,B))
-    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.int16),check_contrast=False)
+    stack = np.stack((R_,G_,B_))
+    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.uint16),check_contrast=False)
+
 
 #%% Save master stack
 # Load file and concatenate them appropriately
