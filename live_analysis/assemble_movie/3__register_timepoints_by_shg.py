@@ -94,7 +94,7 @@ def xcorr2(template, image, mode="full"):
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-OVERWRITE = True
+OVERWRITE = False
 XX = 1024
 XY_reg = True
 
@@ -108,7 +108,7 @@ Z_ref = R_shg_ref.shape[ref_T]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...]
 
-Iz_target_slice = np.zeros(len(R_tifs))
+# Iz_target_slice = np.zeros(len(R_tifs))
 for t in tqdm( range(len(R_tifs) )): # 1-indexed
     
     if t == ref_T:
@@ -126,14 +126,15 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
     if MANUAL:
-        Imax_target = 58
+        Imax_target = 60
+        print(f'Target z-slice manually set at {Imax_target}')
     else:
         # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
         CC = np.zeros(R_shg_target.shape[0])
         for z,im in enumerate(R_shg_target):
             CC[z] = xcorr2(ref_img, im).max()
         Imax_target = CC.argmax()
-        
+        print(f'Target z-slice automatically determined to be {Imax_target}')
     
     # Perform transformations
     B = io.imread(B_tifs[t])
@@ -206,7 +207,6 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
     
     
-    
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
@@ -232,9 +232,11 @@ MAX = 2**16-1
 
 def fix_image_range(im, max_range):
     
-    im = im.copy()
-    im = im - im.min()
-    im = im / im.max() * max_range
+    im = im.copy().astype(float)
+    im[im == 0] = np.nan
+    im = im - np.nanmin(im)
+    im = im / np.nanmax(im) * max_range
+    im[np.isnan(im)] = 0
     return im.astype(np.uint16)
 
 for t in tqdm(range(T+1)):
