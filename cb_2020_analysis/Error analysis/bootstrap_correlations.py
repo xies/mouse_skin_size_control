@@ -33,14 +33,14 @@ for i in range(Nboot):
     I = sample(range(len(df)),subsample_size)
     df_ = df.iloc[I]
 
-    regression_total[i] = np.polyfit(*nonan_pairs(df_['Birth nuclear volume'],df_['Division nuclear growth']),1)[0]
-    regression_g1[i] = np.polyfit(*nonan_pairs(df_['Birth nuclear volume'],df_['G1 nuclear growth']),1)[0]
+    regression_total[i] = np.polyfit(*nonan_pairs(df_['Birth nuc volume'],df_['Total nuc growth']),1)[0]
+    regression_g1[i] = np.polyfit(*nonan_pairs(df_['Birth nuc volume'],df_['G1 nuc grown']),1)[0]
     
-    corr_total[i] = np.corrcoef(*nonan_pairs(df_['Birth nuclear volume'],df_['Division nuclear growth']))[0,1]
-    corr_g1[i] = np.corrcoef(*nonan_pairs(df_['Birth nuclear volume'],df_['G1 nuclear growth']))[0,1]
+    corr_total[i] = np.corrcoef(*nonan_pairs(df_['Birth nuc volume'],df_['Total nuc growth']))[0,1]
+    corr_g1[i] = np.corrcoef(*nonan_pairs(df_['Birth nuc volume'],df_['G1 nuc grown']))[0,1]
     
-    length_total[i] = np.corrcoef(*nonan_pairs(df_['Birth nuclear volume'],df_['Cycle length']))[0,1]
-    length_g1[i] = np.corrcoef(*nonan_pairs(df_['Birth nuclear volume'],df_['G1 length']))[0,1]
+    length_total[i] = np.corrcoef(*nonan_pairs(df_['Birth nuc volume'],df_['Cycle length']))[0,1]
+    length_g1[i] = np.corrcoef(*nonan_pairs(df_['Birth nuc volume'],df_['G1 length']))[0,1]
     
 #%%
     
