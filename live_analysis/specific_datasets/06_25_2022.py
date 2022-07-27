@@ -31,17 +31,17 @@ dirnames['KO R1'] = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1
 dx = {}
 dx['WT R1'] = 0.292435307476612 /1.5
 dx['KO R1'] = 0.292435307476612 /1.5
-# dx['WT R2'] = 0.292435307476612
-# dx['KO R2'] = 0.292435307476612
+dx['WT R2'] = 0.292435307476612
+dx['KO R2'] = 0.292435307476612
 
 time_stamps = {}
 time_stamps['WT R1'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
                         7.5,8,8.5,9,9.5]
 time_stamps['KO R1'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
                         7.5,8,8.5,9,9.5]
-# time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
-# time_stamps['KO R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
-#                         7.5,8,8.5,9,9.5,10]
+time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
+time_stamps['KO R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
+                        7.5,8,8.5,9,9.5,10]
 
 #%% Parse .csv files
 '''
@@ -216,15 +216,15 @@ def extrapolate_division_size(df):
         
     return df
 
-df = extrapolate_division_size(df)
+df = extrapolate_division_size(df_raw)
 df['Mother daughter diff'] = df['Total daughter size'] - df['Division size']
 df['Fold grown'] = df['Division size'] / df['Birth size']
 df['Fold grown (sm)'] = df['Division size (sm)'] / df['Birth size']
 df['Total growth (sm)'] = df['Division size (sm)']  - df['Birth size']
 
-# I_ignore = (df_raw['Genotype'] == 'WT') & ((df_raw['Birth frame'] == 11) \
-#             | (df_raw['Birth frame'] == 10))
-# df = df_raw[~I_ignore]
+I_ignore = (df['Genotype'] == 'WT') & ((df['Birth frame'] == 11) \
+            | (df['Birth frame'] == 10))
+df = df[~I_ignore]
 
 ko = df[df['Genotype'] == 'KO']
 wt = df[df['Genotype'] == 'WT']
@@ -237,55 +237,86 @@ print(ko[ko.duplicated(['CellID','Directory'])])
 
 #%%
 
-df_ = wt; title_str = 'WT'
+# df_ = wt; title_str = 'WT'
 df_ = ko; title_str = 'RB-KO'
 
 #%% Some quality control plots. Some time frames are not as good as others
-plt.figure()
-plt.scatter(df_['Birth frame'],df_['Birth size'])
-plt.figure()
-plt.scatter(df_['S phase frame'],df_['S phase size'])
-plt.figure()
-plt.scatter(df_['Division frame'],df_['Division size'])
+
+sb.lmplot(data = df_, x = 'Birth frame', y = 'Birth size', hue='Region')
+sb.lmplot(data = df_,x = 'S phase frame',y = 'S phase size', hue='Region')
+sb.lmplot(data = df_, x='Division frame',y='Division size',hue='Region')
 
 #%% Size homeotasis plots
 
-plt.figure()
-# plt.scatter(df_['Birth size'],df_['G1 growth'])
-plt.scatter(df_['Birth size'],df_['Total growth'])
-plot_bin_means(df_['Birth size'],df_['Total growth (sm)'],minimum_n=4,bin_edges=5)
-plt.legend(['G1 growth','Total growth'])
-plt.xlabel('Birth size (fL)'); plt.ylabel('Growth (fL)')
-plt.title(title_str)
+plt.subplot(1,2,1)
+plt.scatter(df_['Birth size'],df_['G1 growth'])
+# sb.regplot(data = df_, x = 'Birth size', y = 'G1 growth')
+plot_bin_means(df_['Birth size'],df_['G1 growth'],minimum_n=10,bin_edges=8)
+plt.xlim([100,350]); plt.ylim([0,400])
+plt.xlabel('Birth size (fL)'); plt.ylabel('G1 growth (fL)')
 
-#%%
+plt.subplot(1,2,2)
+plt.scatter(df_['Birth size'],df_['Total growth (sm)'])
+# sb.regplot(data = df_, x = 'Birth size', y = 'Total growth')
+plot_bin_means(df_['Birth size'],df_['Total growth (sm)'],minimum_n=10,bin_edges=8)
+
+plt.xlabel('Birth size (fL)'); plt.ylabel('Total growth (fL)')
+plt.title(title_str)
+plt.xlim([100,350]); plt.ylim([0,400])
+
+#%% Durations
+
 plt.figure()
-# plt.scatter(df_['Birth size'],df_['G1 length'])
+plt.scatter(df_['Birth size'],df_['G1 length'])
 plt.scatter(df_['Birth size'],df_['Cycle length'])
+# plot_bin_means(df_['Birth size'],df_['Cycle length'],minimum_n=5,bin_edges=8)
 
 plt.legend(['G1 length','Total length'])
 plt.xlabel('Birth size (fL)'); plt.ylabel('Duration (h)')
 plt.title(title_str)
+plt.xlim([100,350]); plt.ylim([0,200])
 
 #%% Sisters / daughters
 
-mothers = nonans(np.unique(wt['MotherID']))
-sister_sym_wt = np.array([np.diff(wt[ wt['MotherID'] == m ]['Birth size'])[0] for m in mothers])
-mean_birth_size_wt = np.array([np.mean(wt[ wt['MotherID'] == m ]['Birth size']) for m in mothers])
-mothers = nonans(np.unique(ko['MotherID']))
-sister_sym_ko = np.array([np.diff(ko[ ko['MotherID'] == m ]['Birth size'])[0] for m in mothers])
-mean_birth_size_ko = np.array([np.mean(ko[ ko['MotherID'] == m ]['Birth size']) for m in mothers])
+def find_sister_pairs(df):
+    assert(len(np.unique(df['Genotype'])) == 1)
+    mothers = nonans(np.unique(df['MotherID']))
+    sisters = [df[df['MotherID'] == m] for m in mothers]
+    # filter out singletons
+    sisters = [s for s in sisters if len(s) == 2]
+               
+    return sisters
 
-plt.hist(np.abs(sister_sym_wt),histtype='step')
-plt.hist(np.abs(sister_sym_ko),histtype='step')
+sisters_wt = find_sister_pairs(wt)
+sister_symmetry_wt = np.array([np.diff( sis['Birth size'] )[0] for sis in sisters_wt])
+mean_birth_size_wt = np.array([np.mean( sis['Birth size']) for sis in sisters_wt])
+sister_cyc_wt = np.array([np.diff(sis['Cycle length'])[0] for sis in sisters_wt])
+
+sisters_ko = find_sister_pairs(ko)
+sister_symmetry_ko = np.array([np.diff( sis['Birth size'] )[0] for sis in sisters_ko])
+mean_birth_size_ko = np.array([np.mean( sis['Birth size']) for sis in sisters_ko])
+sister_cyc_ko = np.array([np.diff(sis['Cycle length'])[0] for sis in sisters_ko])
+
+plt.hist(np.abs(sister_symmetry_wt),histtype='step')
+plt.hist(np.abs(sister_symmetry_ko),histtype='step')
 plt.xlabel('Sister asymmetry (fl)')
 plt.legend(['WT','RB-KO'])
 
 plt.figure()
-plt.hist(np.abs(sister_sym_wt)/mean_birth_size_wt,histtype='step')
-plt.hist(np.abs(sister_sym_ko)/mean_birth_size_ko,histtype='step')
+plt.hist(np.abs(sister_symmetry_wt)/mean_birth_size_wt,histtype='step')
+plt.hist(np.abs(sister_symmetry_ko)/mean_birth_size_ko,histtype='step')
 plt.xlabel('Sister asymmetry (% of mean birth size)')
 plt.legend(['WT','RB-KO'])
+
+plt.figure()
+plt.hist(np.abs(sister_cyc_wt),histtype='step')
+plt.hist(np.abs(sister_cyc_ko),histtype='step')
+plt.xlabel('Difference in cycle length (h)')
+plt.legend(['WT','RB-KO'])
+
+plt.figure()
+plt.scatter(sister_symmetry_wt,sister_cyc_wt)
+plt.scatter(sister_symmetry_ko,sister_cyc_ko)
 
 #%% Histogram of cell cycle times
 

@@ -16,13 +16,14 @@ from glob import glob
 import pandas as pd
 import seaborn as sb
 from re import match
+import matplotlib.pylab as plt
 
 # import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
 # from basic_utils import *
 
 dirnames = {}
-dirnames['WT R2'] = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
-dirnames['KO R2'] = '/Users/xies/Desktop/KO R2/manual_track'
+dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
+dirnames['KO R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/06-08-2022/F1 RB-KO/R2/manual_track'
 
 dx = 0.292435307476612
 
@@ -188,7 +189,9 @@ print(wt[wt.duplicated('CellID')])
 print(ko[ko.duplicated('CellID')])
 
 #%%
-df_ = ko
+
+# df_ = wt; title_str = 'WT'
+df_ = ko; title_str = 'RB-KO'
 
 #%% Some quality control plots. Some time frames are not as good as others
 
@@ -205,12 +208,25 @@ plt.figure()
 plt.scatter(df_['Birth size'],df_['G1 growth'])
 plt.scatter(df_['Birth size'],df_['Total growth'])
 plt.legend(['G1 growth','Total growth'])
+plt.xlabel('Birth size (fL)'); plt.ylabel('Growth (fL)')
+plt.title(title_str)
 
 plt.figure()
 plt.scatter(df_['Birth size'],df_['G1 length'])
 plt.scatter(df_['Birth size'],df_['Cycle length'])
 plt.legend(['G1 length','Total length'])
+plt.xlabel('Birth size (fL)'); plt.ylabel('Duration (h)')
+plt.title(title_str)
 
+#%% Histogram of cell cycle times
+
+plt.figure()
+plt.hist(wt['G1 length'],histtype='step'); plt.hist(ko['G1 length'],histtype='step')
+plt.xlabel('G1 length (h)'); plt.legend(['WT','RB-KO'])
+
+plt.figure()
+plt.hist(wt['Cycle length'],histtype='step'); plt.hist(ko['Cycle length'],histtype='step')
+plt.xlabel('Cycle length (h)'); plt.legend(['WT','RB-KO'])
 
 #%% Print stats
 
