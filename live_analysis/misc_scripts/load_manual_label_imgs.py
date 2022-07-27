@@ -14,7 +14,8 @@ from os import path
 import seaborn as sb
 import matplotlib.pyplot as plt
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-14-2022 beamexpander test/manual'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-14-2022 beamexpander test/manual'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/manual'
 
 #%%
 
@@ -28,7 +29,9 @@ labels = list(map(io.imread,filelist))
 dataset = list(zip(h2bs,fuccis,labels))
 
 names = ['RBKO','WT']
-dx = [0.19, 0.387]
+dx = [1, 1]
+
+labels = [delete_border_objects(l) for l in labels]
 
 #%% Measure and collate
 
@@ -62,12 +65,12 @@ for i,(h2b,fucci,label) in enumerate(dataset):
     regions.append(df_)
 
 df = pd.concat(regions,ignore_index=True)
-
     
 #%% plotting
 
 # Size v. cell cycle
 sb.lmplot(data=df,hue='Genotype',x='Volume',y='FUCCI norm', fit_reg=False)
+sb.lmplot(data=df,hue='Genotype',x='X',y='Volume', fit_reg=False)
 
 #%% 
 

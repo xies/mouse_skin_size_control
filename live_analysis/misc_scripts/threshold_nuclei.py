@@ -12,7 +12,7 @@ from glob import glob
 from os import path
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
 
 #%%
 

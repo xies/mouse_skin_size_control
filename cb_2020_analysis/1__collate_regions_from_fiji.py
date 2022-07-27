@@ -114,11 +114,12 @@ dx = 0.25
 regions = {}
 regions['/Users/xies/OneDrive - Stanford/Skin/Mesa et al//W-R1/tracked_cells/'] = 'M1R1'
 regions['/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/cropped/tracked_cells/'] = 'M1R2'
-            # '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5/tracked_cells/':'M2R5',
-            # '/Users/xies/box/Mouse/Skin/Mesa et al/W-R5-full/tracked_cells/':'M2R5'}
+regions['/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5/tracked_cells/'] = 'M2R5'
+regions['/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5-full/tracked_cells/'] = 'M2R5'
 
 
 #%%
+
 for regiondir,name in regions.items():
     
     # Grab single-frame data into a dataframe
@@ -168,51 +169,6 @@ for regiondir,name in regions.items():
                 frames.append(frame)
                 daughter.append(daughter_name)
     
-    ### NB: This fails to load nuclear volume correctly
-    # filelist = glob(path.join(regiondir,'*/*.txt'))
-    # for fullname in filelist:
-    #     subdir,f = path.split(fullname)
-    #     # Skip the log.txt or skipped.txt file
-    #     if f == 'log.txt' or f == 'skipped.txt' or f == 'g1_frame.txt' or f == 'mitosis_in_frame.txt':
-    #         continue
-    #     fn, extension = path.splitext(f)
-    #     if extension == '.txt':
-    #         fn, channel = path.splitext(fn)
-    #         # Measure everything on FUCCI channel first
-    #         if channel == '.fucci':
-    #             subdir = path.split(subdir)[1]
-    #             # Grab cellID from subdir name
-    #             cIDs.append( int(path.split(subdir)[1]) )
-                
-    #             # Add segmented area to get volume (um3)
-    #             # Add total FUCCI signal to dataframe
-    #             cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-    #             vols.append(cell['Area'].sum())
-    #             fucci.append(cell['Mean'].mean())
-                
-    #             # Check if main lineage or daughter cells
-    #             framename = path.split(fn)[1]
-    #             match = re.search('(\D)$',framename)
-                
-    #             # Main cell linage
-    #             if match == None:
-    #                 # Grab the frame # from filename
-    #                 frame = f.split('.')[0]
-    #                 frame = int(frame[1:])
-    #                 frames.append(frame)
-    #                 daughter.append('None')
-    #             else:
-    #                 daughter_name = match.group(0)
-    #                 frame = f.split('.')[0]
-    #                 frame = int(frame[1:-1])
-    #                 frames.append(frame)
-    #                 daughter.append(daughter_name)
-                    
-    #         elif channel == '.h2b':
-    #             cell = pd.read_csv(fullname,delimiter='\t',index_col=0)
-    #             nuclei.append(cell['IntDen'].sum().astype(float) * dx**2)
-                
-        
     raw_df['Frame'] = frames
     raw_df['CellID'] = cIDs
     raw_df['Volume'] = vols
