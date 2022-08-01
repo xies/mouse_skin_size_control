@@ -17,7 +17,7 @@ from tqdm import tqdm
 import matplotlib.pylab as plt
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -156,7 +156,8 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
         for i, B_slice in enumerate(B):
             B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
             G_transformed[i,...] = sr.transform(G[i,...].astype(float),tmat=T)
-            R_transformed[i,...] = sr.transform(R[i,...].astype(float),tmat=T)
+        for i, R_slice in enumerate(R):
+            R_transformed[i,...] = sr.transform(R_slice.astype(float),tmat=T)
             R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...].astype(float),tmat=T)
         
     # Z-pad the time point in reference to t - 1
@@ -205,9 +206,9 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     output_dir = path.dirname(R_tifs[t])
     io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
     io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
-    
-    
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
+    
+    
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
 T = len(B_tifs)-1

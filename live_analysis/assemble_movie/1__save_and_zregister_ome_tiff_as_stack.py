@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -74,7 +74,7 @@ for header_ome in tqdm(header_ome_h2b):
     
     print(f'Saved with {output_path}')
 
-#%% Register the FUCCI (R) channels (Using R_shg)
+#%% Register the FUCCI (R) channels (Using R)
 
 channel_names = ['R','R_shg']
 for header_ome in tqdm(header_ome_fucci):

@@ -12,7 +12,7 @@ from os import path
 from glob import glob
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
 
 #%%
 
@@ -97,7 +97,8 @@ assert(len(B_tifs) == len(R_tifs))
 for t in tqdm(range(len(B_tifs))):
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) and not OVERWRITE:
+    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) \
+    and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
         print(f'Skipping t = {t} because ref time point')
         continue
     

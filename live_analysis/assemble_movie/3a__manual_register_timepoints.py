@@ -16,7 +16,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R1'
+dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
