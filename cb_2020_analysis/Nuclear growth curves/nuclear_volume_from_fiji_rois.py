@@ -15,12 +15,12 @@ import csv
 from os import path
 
 dx = 0.25
-dirname = '/Users/xies/Box/Mouse/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/cropped/'
 
 #%% Load ROIs
 
 # Load collated list of time series
-with open(path.join(dirname,'tracked_cells/collated_manual.pkl'),'rb') as f:
+with open(path.join(dirname,'collated_manual.pkl'),'rb') as f:
     c2 = pkl.load(f)
 collated = c2
 

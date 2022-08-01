@@ -18,8 +18,9 @@ import seaborn as sb
 from re import match
 import matplotlib.pylab as plt
 
-# import sys; sys.path.insert(0,'/Users/xies/Code/xies_utils/basic_utils.py')
-# from basic_utils import *
+# Custom packages
+from basicUtils import nonans, nonan_pairs
+
 
 dirnames = {}
 
@@ -106,12 +107,16 @@ for name,dirname in dirnames.items():
             _tmp.at[i,'State'] = state
             _tmp.at[i,'Frame'] = int(frame)
             _tmp.at[i,'Volume'] = volume
+            
+            # _tmp.at[i,'X'] = _x['X'].mean()
+            # _tmp.at[i,'Y'] = _x['Y'].mean()
     
         # Multiple cellIDs could be in the same lineage folder
         cells_in_lineage = np.unique(_tmp['CellID'])
         for cellID in cells_in_lineage:
             
             this_cell = _tmp[_tmp['CellID'] == cellID]
+            # x = this_cell.iloc[0]['X']; y = this_cell.iloc[0]['Y']
             
             # Birth (should always exist)
             birth = this_cell[this_cell['State'] == 'b']
@@ -167,6 +172,8 @@ for name,dirname in dirnames.items():
                             ,'Genotype': genotype
                             ,'Region': name
                             ,'Directory':dirname
+                            # ,'X': x
+                            # ,'Y': y
                             ,'Birth time':birth_time
                             ,'Birth frame':birth_frame
                             ,'Birth size':birth_size
@@ -186,7 +193,7 @@ for name,dirname in dirnames.items():
     
 df_raw = df.copy()
 
-#%% Lineage calculations
+#% Lineage calculations
 
 def extrapolate_division_size(df):
     genotypes = np.unique(df['Genotype'])  
@@ -234,136 +241,10 @@ print('------\n Duplicated CellIDs:')
 print(wt[wt.duplicated(subset = ['CellID','Directory'])])
 print(ko[ko.duplicated(['CellID','Directory'])])
 
-
 #%%
 
-# df_ = wt; title_str = 'WT'
-df_ = ko; title_str = 'RB-KO'
-
-#%% Some quality control plots. Some time frames are not as good as others
-
-sb.lmplot(data = df_, x = 'Birth frame', y = 'Birth size', hue='Region')
-sb.lmplot(data = df_,x = 'S phase frame',y = 'S phase size', hue='Region')
-sb.lmplot(data = df_, x='Division frame',y='Division size',hue='Region')
-
-#%% Size homeotasis plots
-
-plt.subplot(1,2,1)
-plt.scatter(df_['Birth size'],df_['G1 growth'])
-# sb.regplot(data = df_, x = 'Birth size', y = 'G1 growth')
-plot_bin_means(df_['Birth size'],df_['G1 growth'],minimum_n=10,bin_edges=8)
-plt.xlim([100,350]); plt.ylim([0,400])
-plt.xlabel('Birth size (fL)'); plt.ylabel('G1 growth (fL)')
-
-plt.subplot(1,2,2)
-plt.scatter(df_['Birth size'],df_['Total growth (sm)'])
-# sb.regplot(data = df_, x = 'Birth size', y = 'Total growth')
-plot_bin_means(df_['Birth size'],df_['Total growth (sm)'],minimum_n=10,bin_edges=8)
-
-plt.xlabel('Birth size (fL)'); plt.ylabel('Total growth (fL)')
-plt.title(title_str)
-plt.xlim([100,350]); plt.ylim([0,400])
-
-#%% Durations
-
-plt.figure()
-plt.scatter(df_['Birth size'],df_['G1 length'])
-plt.scatter(df_['Birth size'],df_['Cycle length'])
-# plot_bin_means(df_['Birth size'],df_['Cycle length'],minimum_n=5,bin_edges=8)
-
-plt.legend(['G1 length','Total length'])
-plt.xlabel('Birth size (fL)'); plt.ylabel('Duration (h)')
-plt.title(title_str)
-plt.xlim([100,350]); plt.ylim([0,200])
-
-#%% Sisters / daughters
-
-def find_sister_pairs(df):
-    assert(len(np.unique(df['Genotype'])) == 1)
-    mothers = nonans(np.unique(df['MotherID']))
-    sisters = [df[df['MotherID'] == m] for m in mothers]
-    # filter out singletons
-    sisters = [s for s in sisters if len(s) == 2]
-               
-    return sisters
-
-sisters_wt = find_sister_pairs(wt)
-sister_symmetry_wt = np.array([np.diff( sis['Birth size'] )[0] for sis in sisters_wt])
-mean_birth_size_wt = np.array([np.mean( sis['Birth size']) for sis in sisters_wt])
-sister_cyc_wt = np.array([np.diff(sis['Cycle length'])[0] for sis in sisters_wt])
-
-sisters_ko = find_sister_pairs(ko)
-sister_symmetry_ko = np.array([np.diff( sis['Birth size'] )[0] for sis in sisters_ko])
-mean_birth_size_ko = np.array([np.mean( sis['Birth size']) for sis in sisters_ko])
-sister_cyc_ko = np.array([np.diff(sis['Cycle length'])[0] for sis in sisters_ko])
-
-plt.hist(np.abs(sister_symmetry_wt),histtype='step')
-plt.hist(np.abs(sister_symmetry_ko),histtype='step')
-plt.xlabel('Sister asymmetry (fl)')
-plt.legend(['WT','RB-KO'])
-
-plt.figure()
-plt.hist(np.abs(sister_symmetry_wt)/mean_birth_size_wt,histtype='step')
-plt.hist(np.abs(sister_symmetry_ko)/mean_birth_size_ko,histtype='step')
-plt.xlabel('Sister asymmetry (% of mean birth size)')
-plt.legend(['WT','RB-KO'])
-
-plt.figure()
-plt.hist(np.abs(sister_cyc_wt),histtype='step')
-plt.hist(np.abs(sister_cyc_ko),histtype='step')
-plt.xlabel('Difference in cycle length (h)')
-plt.legend(['WT','RB-KO'])
-
-plt.figure()
-plt.scatter(sister_symmetry_wt,sister_cyc_wt)
-plt.scatter(sister_symmetry_ko,sister_cyc_ko)
-
-#%% Histogram of cell cycle times
-
-plt.figure()
-plt.hist(wt['G1 length'],histtype='step'); plt.hist(ko['G1 length'],histtype='step')
-plt.xlabel('G1 length (h)'); plt.legend(['WT','RB-KO'])
-
-plt.figure()
-plt.hist(wt['Cycle length'],histtype='step'); plt.hist(ko['Cycle length'],histtype='step')
-plt.xlabel('Cycle length (h)'); plt.legend(['WT','RB-KO'])
-
-#%% Print stats
-
-print('--- Growth, correlation')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
-R,_ = np.corrcoef(X,Y)
-print(f'Pearson R, x = birth size, y = g1 growth, R = {R[1]}')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
-R,_ = np.corrcoef(X,Y)
-print(f'Pearson R, x = birth size, y = total growth, R = {R[1]}')
-
-
-print('--- Time, correlation')
-      
-X,Y = nonan_pairs(df_['Birth size'],df_['G1 length'])
-R,_ = np.corrcoef(X,Y)
-print(f'Pearson R, x = birth size, y = g1 length, R = {R[1]}')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['Cycle length'])
-R,_ = np.corrcoef(X,Y)
-print(f'Pearson R, x = birth size, y = cycle length, R = {R[1]}')
-
-
-print('--- Growth, regression')
-      
-# X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
-# p = np.polyfit(X,Y,1)
-# print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
-p = np.polyfit(X,Y,1)
-print(f'Regression slope, x = birth size, y = Total growth, m = {p[0]}')
-
-
-
+df_ = wt; title_str = 'WT'
+# df_ = ko; title_str = 'RB-KO'
 
 
 

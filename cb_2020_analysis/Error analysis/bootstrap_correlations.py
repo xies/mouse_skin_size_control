@@ -61,3 +61,5 @@ plt.hist(length_total,histtype='step')
 plt.hist(length_g1,histtype='step')
 plt.xlabel('Time corr')
 plt.legend(['G1','Total'])
+
+
