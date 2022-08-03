@@ -15,20 +15,30 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-14-2022 beamexpander test/manual'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/manual'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/manual_seg'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/07-19-2022 Skin/DS 06-25-22 H2B-Cerulean FUCCI2 Phall647'
 
 #%%
 
-filelist = sorted(glob(path.join(dirname,'h2b/*.tif')))
-h2bs = list(map(io.imread,filelist))
-filelist = sorted(glob(path.join(dirname,'fucci/*.tif')))
-fuccis = list(map(io.imread,filelist))
-filelist = sorted(glob(path.join(dirname,'labels/*.tif')))
-labels = list(map(io.imread,filelist))
+# filelist = glob(path.join(dirname,'h2b/*.tif'))
+# h2b = list(map(io.imread,filelist))
 
-dataset = list(zip(h2bs,fuccis,labels))
+# filelist = glob(path.join(dirname,'fucci/*.tif'))
+# fucci = list(map(io.imread,filelist))
 
-names = ['RBKO','WT']
+# filelist = glob(path.join(dirname,'labels/*.tif'))
+# labels = list(map(io.imread,filelist))
+
+h2b = [io.imread(path.join(dirname,'WT3/WT3.tif')),
+        io.imread(path.join(dirname,'KO2/KO2.tif'))]
+
+labels = [io.imread(path.join(dirname,'WT3/WT3_labels.tif')),
+        io.imread(path.join(dirname,'KO2/KO2_labels.tif'))]
+
+# dataset = list(zip(h2b,fucci,labels))
+dataset = list(zip(h2b,labels))
+
+names = ['WT','RBKO']
 dx = [1, 1]
 
 labels = [delete_border_objects(l) for l in labels]
@@ -40,12 +50,12 @@ def standardize(X):
 
 regions = []
 
-for i,(h2b,fucci,label) in enumerate(dataset):
+for i,(h2b,label) in enumerate(dataset):
     
     h2b_table = measure.regionprops_table(label,h2b,
                                             properties = ['label','centroid','area','mean_intensity'])
-    fucci_table = measure.regionprops_table(label,fucci,
-                                            properties = ['mean_intensity'])
+    # fucci_table = measure.regionprops_table(label,fucci,
+    #                                     properties = ['mean_intensity'])
     
     df_ = pd.DataFrame(h2b_table)
     df_['Genotype'] = names[i]
@@ -55,11 +65,10 @@ for i,(h2b,fucci,label) in enumerate(dataset):
                             ,'centroid-2':'Y'
                             ,'area':'Volume'
                             })
-    df_['FUCCI'] = fucci_table['mean_intensity']
+    # df_['FUCCI'] = fucci_table['mean_intensity']
     # Normalize mean intensities
     df_['H2b norm'] = standardize(df_['H2b'])
-    df_['FUCCI norm'] = standardize(df_['FUCCI'])
-    
+    # df_['FUCCI norm'] = standardize(df_['FUCCI'])
     df_['Volume'] = df_['Volume'] * dx[i]
     
     regions.append(df_)
@@ -69,10 +78,14 @@ df = pd.concat(regions,ignore_index=True)
 #%% plotting
 
 # Size v. cell cycle
-sb.lmplot(data=df,hue='Genotype',x='Volume',y='FUCCI norm', fit_reg=False)
+# sb.lmplot(data=df,hue='Genotype',x='FUCCI norm',y='Volume',fit_reg=False)
 sb.lmplot(data=df,hue='Genotype',x='X',y='Volume', fit_reg=False)
+sb.catplot(data=df,x='Genotype',y='Volume')
+
+print(df.groupby('Genotype').mean()['Volume'])
 
 #%% 
 
+df.to_csv(path.join(dirname,'cell_size.csv'))
 
 

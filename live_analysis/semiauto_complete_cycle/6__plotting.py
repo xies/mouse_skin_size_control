@@ -30,71 +30,75 @@ df_ = ko; title_str = 'RB-KO'; subplot= 2
 #%% Size homeotasis plots
 
 plt.figure(1)
-plt.subplot(1,2,subplot)
+plt.subplot(1,3,subplot)
 # plt.scatter(df_['Birth size'],df_['G1 growth'])
 sb.regplot(data = df_, x = 'Birth size', y = 'G1 growth', robust=False)
-plot_bin_means(df_['Birth size'],df_['G1 growth'],bin_edges=7,bin_style='percentile',minimum_n=5)
+plot_bin_means(df_['Birth size'],df_['G1 growth'],bin_edges=9,bin_style='equal',minimum_n=5)
 plt.gca().axis('equal')
 plt.xlabel('Birth size (fL)'); plt.ylabel('G1 growth (fL)')
 plt.title(title_str)
 
 plt.figure(2)
-plt.subplot(1,2,subplot)
+plt.subplot(1,3,subplot)
 # plt.scatter(df_['Birth size'],df_['Total growth'])
 sb.regplot(data = df_, x = 'Birth size', y = 'Total growth', robust=False)
-plot_bin_means(df_['Birth size'],df_['Total growth'],bin_edges=7,bin_style='percentile',minimum_n=5)
+plot_bin_means(df_['Birth size'],df_['Total growth'],bin_edges=9,bin_style='equal',minimum_n=5)
 plt.gca().axis('equal')
 
 plt.xlabel('Birth size (fL)'); plt.ylabel('Total growth (fL)')
 plt.title(title_str)
 
-#%% Durations
-
+#% Durations
 plt.figure(3)
-plt.subplot(1,2,subplot)
+plt.subplot(1,3,subplot)
 # plt.scatter(df_['Birth size'],df_['G1 length'])
 sb.regplot(data = df_,x='Birth size',y ='G1 length',y_jitter=2)
-plot_bin_means(df_['Birth size'],df_['G1 length'],minimum_n=15,bin_edges=5,bin_style='percentile')
-plt.gca().axis('equal')
+plot_bin_means(df_['Birth size'],df_['G1 length'],minimum_n=5,bin_edges=10,bin_style='equal')
 plt.title(title_str)
+plt.ylim([0,180])
 
 plt.figure(4)
 # plt.xlim([100,350]); plt.ylim([0,200])
-plt.subplot(1,2,subplot)
+plt.subplot(1,3,subplot)
 # plt.scatter(df_['Birth size'],df_['Cycle length'])
 sb.regplot(data = df_,x='Birth size',y ='Cycle length',y_jitter=2)
-plot_bin_means(df_['Birth size'],df_['Cycle length'],minimum_n=15,bin_edges=5,bin_style='percentile')
-plt.gca().axis('equal')
-
+plot_bin_means(df_['Birth size'],df_['Cycle length'],minimum_n=5,bin_edges=10,bin_style='equal')
 plt.legend(['G1 length','Total length'])
-plt.xlabel('Birth size (fL)'); plt.ylabel('Duration (h)')
+plt.xlabel('Birth size (fL)'); plt.ylabel('Cell cycle duration (h)')
 plt.title(title_str)
-# plt.xlim([100,350]); plt.ylim([0,200])
+plt.ylim([0,220])
 
 #%% Compare w/ Mesa dataset
 
-mesa_ = mesa[mesa['Region'] == 'M1R1']
-mesa_
+mesa_ = mesa; title_str = 'Mesa (N=197)'
+# mesa_ = mesa[mesa['Region'] == 'M1R1']; title_str = 'Mesa region 1 (N=87)'
 
-plt.figure(5)
-plt.subplot(1,2,1)
-sb.regplot(data = mesa_, x='Birth volume',y='G1 grown')
-plot_bin_means(mesa_['Birth volume'],mesa_['G1 grown'],bin_edges=10,minimum_n=8,bin_style='equal')
+plt.figure(1)
+plt.subplot(1,3,3)
+sb.regplot(data = mesa_, x='Birth nuc volume',y='G1 nuc grown')
+plot_bin_means(mesa_['Birth nuc volume'],mesa_['G1 nuc grown'],bin_edges=10,minimum_n=8,bin_style='equal')
+plt.title(title_str)
 # plt.gca().axis('equal')
-plt.subplot(1,2,2)
-sb.regplot(data = mesa_, x='Birth volume',y='Total growth')
-plot_bin_means(mesa_['Birth volume'],mesa_['Total growth'],bin_edges=10,minimum_n=8,bin_style='equal')
+plt.figure(2)
+plt.subplot(1,3,3)
+sb.regplot(data = mesa_, x='Birth nuc volume',y='Total nuc growth')
+plot_bin_means(mesa_['Birth nuc volume'],mesa_['Total nuc growth'],bin_edges=10,minimum_n=8,bin_style='equal')
 # plt.gca().axis('equal')
-plt.title('Mesa (one region)')
+plt.title(title_str)
 
-plt.figure(6)
-plt.subplot(1,2,1)
-sb.regplot(data = mesa_, x='Birth volume',y='G1 length',y_jitter=2)
+plt.figure(3)
+plt.subplot(1,3,3)
+sb.regplot(data = mesa_, x='Birth nuc volume',y='G1 length',y_jitter=2)
 plot_bin_means(mesa_['Birth nuc volume'],mesa_['G1 length'],bin_edges=10,minimum_n=8,bin_style='equal')
-plt.subplot(1,2,2)
-sb.regplot(data = mesa_, x='Birth volume',y='Cycle length',y_jitter=2)
+plt.ylim([0,180])
+plt.title(title_str)
+
+plt.figure(4)
+plt.subplot(1,3,3)
+sb.regplot(data = mesa_, x='Birth nuc volume',y='Cycle length',y_jitter=2)
 plot_bin_means(mesa_['Birth nuc volume'],mesa_['Cycle length'],bin_edges=10,minimum_n=8,bin_style='equal')
-plt.title('Mesa (one region)')
+plt.ylim([0,220])
+plt.title(title_str)
 
 #%% Growth ratios
 
@@ -162,42 +166,85 @@ plt.hist(wt['G1 length'],histtype='step'); plt.hist(ko['G1 length'],histtype='st
 plt.xlabel('G1 length (h)'); plt.legend(['WT','RB-KO'])
 
 plt.figure()
-plt.hist(wt['Cycle length'],histtype='step'); plt.hist(ko['Cycle length'],histtype='step')
+plt.hist(wt['Cycle length'],histtype='step'); plt.hist(ko['Cycle length'],histtype='step',bins=14)
 plt.xlabel('Cycle length (h)'); plt.legend(['WT','RB-KO'])
 
 #%% Print stats
 
-print('--- Growth, correlation')
+print('---WT: Growth, correlation')
 
-X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
+X,Y = nonan_pairs(wt['Birth size'],wt['G1 growth'])
 R,_ = np.corrcoef(X,Y)
 print(f'Pearson R, x = birth size, y = g1 growth, R = {R[1]}')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
+X,Y = nonan_pairs(wt['Birth size'],wt['Total growth'])
 R,_ = np.corrcoef(X,Y)
 print(f'Pearson R, x = birth size, y = total growth, R = {R[1]}')
 
 
-print('--- Time, correlation')
+print('---Mesa: Growth, correlation')
+
+X,Y = nonan_pairs(mesa['Birth nuc volume'],mesa['G1 nuc grown'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = g1 growth, R = {R[1]}')
+X,Y = nonan_pairs(mesa['Birth nuc volume'],mesa['Total nuc growth'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = total growth, R = {R[1]}')
+
+
+print('---RBKO: Growth, correlation')
+
+X,Y = nonan_pairs(ko['Birth size'],ko['G1 growth'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = g1 growth, R = {R[1]}')
+X,Y = nonan_pairs(ko['Birth size'],ko['Total growth'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = total growth, R = {R[1]}')
+
+
+print('\n\nWT: --- Time, correlation')
       
-X,Y = nonan_pairs(df_['Birth size'],df_['G1 length'])
+X,Y = nonan_pairs(wt['Birth size'],wt['G1 length'])
 R,_ = np.corrcoef(X,Y)
 print(f'Pearson R, x = birth size, y = g1 length, R = {R[1]}')
-
-X,Y = nonan_pairs(df_['Birth size'],df_['Cycle length'])
+X,Y = nonan_pairs(wt['Birth size'],wt['Cycle length'])
 R,_ = np.corrcoef(X,Y)
 print(f'Pearson R, x = birth size, y = cycle length, R = {R[1]}')
 
 
-print('--- Growth, regression')
-      
-# X,Y = nonan_pairs(df_['Birth size'],df_['G1 growth'])
-# p = np.polyfit(X,Y,1)
-# print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
+print('RBKO: --- Time, correlation')
+X,Y = nonan_pairs(ko['Birth size'],ko['G1 length'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = g1 length, R = {R[1]}')
+X,Y = nonan_pairs(ko['Birth size'],ko['Cycle length'])
+R,_ = np.corrcoef(X,Y)
+print(f'Pearson R, x = birth size, y = cycle length, R = {R[1]}')
 
-X,Y = nonan_pairs(df_['Birth size'],df_['Total growth'])
+
+print('\n\nWT: --- Growth, regression')
+X,Y = nonan_pairs(wt['Birth size'],wt['G1 growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
+X,Y = nonan_pairs(wt['Birth size'],wt['Total growth'])
 p = np.polyfit(X,Y,1)
 print(f'Regression slope, x = birth size, y = Total growth, m = {p[0]}')
+
+print('RBKO: --- Growth, regression')
+X,Y = nonan_pairs(ko['Birth size'],ko['G1 growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
+X,Y = nonan_pairs(ko['Birth size'],ko['Total growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = Total growth, m = {p[0]}')
+
+
+print('Mesa: --- Growth, regression')
+X,Y = nonan_pairs(mesa['Birth nuc volume'],mesa['G1 nuc grown'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = g1 growth, m = {p[0]}')
+X,Y = nonan_pairs(mesa['Birth nuc volume'],mesa['Total nuc growth'])
+p = np.polyfit(X,Y,1)
+print(f'Regression slope, x = birth size, y = Total growth, m = {p[0]}')
+
 
 
 

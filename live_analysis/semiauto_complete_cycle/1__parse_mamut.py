@@ -39,8 +39,8 @@ def sort_links_by_time(links,spots):
     return links
 
 def load_mamut_and_prune_for_complete_cycles(dirname):
-
     raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'),skiprows=[1,2,3],header=0)
+
     raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
     raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
     raw_links = pd.read_csv(path.join(dirname,'MaMuT/linkage.csv'),skiprows=[1,2,3],header=0)
@@ -163,7 +163,13 @@ wt = all_tracks[1]
 wtlength  = (np.array([len(t) for t in wt])* 12)
 rbkolength  = (np.array([len(t) for t in rbko])* 12)
 
-plt.hist(wtlength,9,histtype='step');plt.hist(rbkolength,9,histtype='step')
+plt.boxplot([wtlength,rbkolength],labels=['WT','RB-KO'])
+plt.ylabel('Cell cycle length (h)')
+
+plt.figure()
+
+plt.hist(wtlength,12,histtype='step');plt.hist(rbkolength,12,histtype='step')
+plt.legend(['WT','RB-KO'])
 
 plt.xlabel('Cell cycle length (h)')
 
