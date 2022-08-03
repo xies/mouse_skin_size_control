@@ -109,13 +109,13 @@ Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...]
 
 # Iz_target_slice = np.zeros(len(R_tifs))
-for t in tqdm( range(len(R_tifs) )): # 1-indexed
+for t in tqdm( range(len(B_tifs) )): # 1-indexed
     
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if not OVERWRITE and path.exists(path.join(path.dirname(R_tifs[t]),'R_align.tif')):
+    if not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
         print(f'Skipping t = {t}')
         continue
     
@@ -206,26 +206,26 @@ for t in tqdm( range(len(R_tifs) )): # 1-indexed
     output_dir = path.dirname(R_tifs[t])
     io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
     io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
+
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
-    
-    
+        
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
-T = len(B_tifs)-1
+T = len(B_tifs)
 
 filelist = pd.DataFrame()
 filelist['B'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_align.tif')), key = sort_by_day)
 filelist['G'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/G_align.tif')), key = sort_by_day)
 filelist['R'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_align.tif')), key = sort_by_day)
-filelist.index = np.arange(1,T+1)
+# filelist.index = np.arange(0,T)
 
-# t= 0 has no '_align'
-s = pd.Series({'B': glob(path.join(dirname,'*Day 0/ZSeries*/B_reg_reg.tif'))[0],
-                 'G': glob(path.join(dirname,'*Day 0/ZSeries*/G_reg_reg.tif'))[0],
-                 'R': glob(path.join(dirname,'*Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
+# # t= 0 has no '_align'
+# s = pd.Series({'B': glob(path.join(dirname,'*Day 0/ZSeries*/B_reg_reg.tif'))[0],
+#                  'G': glob(path.join(dirname,'*Day 0/ZSeries*/G_reg_reg.tif'))[0],
+#                  'R': glob(path.join(dirname,'*Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
 
-filelist = filelist.append(s)
-filelist = filelist.sort_index()
+# filelist = filelist.append(s)
+# filelist = filelist.sort_index()
 
 # Save individual day*.tif
 
