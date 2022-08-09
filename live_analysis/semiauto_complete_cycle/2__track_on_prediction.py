@@ -18,7 +18,8 @@ from glob import glob
 
 import pickle as pkl
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/10-20-2021/WT/R1'
+dirnames = {}
+dirname = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/manual_track'
 
 # dx = 0.2920097
 dx = 1
@@ -30,10 +31,12 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Load prediction by stardist
+# filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
+# seg = np.array([ io.imread(f) for f in filenames ])
+
+# Load prediction by stardist
 filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
 seg = np.array([ io.imread(f) for f in filenames ])
-
-# seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
 
 # with open(path.join(dirname,'MaMuT','complete_cycles_seg.pkl'),'rb') as file:
 #     cells = pkl.load(file)

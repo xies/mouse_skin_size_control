@@ -14,19 +14,27 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/04-04-2022 Power series multiple stack/R3 single stack 940nm_135 1020nm_175'
+# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 # Extract the first ome.tiff file from every subfolder, load, then separate the two channels
+def sort_by_slice(filename):
+    z = findall('_(\d+).ome.tif',filename)[0]
+    return int(z)
 
-subfolders = glob(path.join(dirname,'Day*/ZSeries*/'))
+
+subfolders = glob(path.join(dirname,'*. Day*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []
 for d in subfolders:
     ome_tifs = glob(path.join(d,'*.ome.tif'))
-    if len(ome_tifs) < 30:
+    ome_tifs = sorted(ome_tifs) # Sort by channel #
+    ome_tifs = sorted(ome_tifs, key = sort_by_slice) # Sort by slice #
+    if len(ome_tifs) < 40:
         print(f'Skipping {d}')
     else:
         if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
@@ -35,9 +43,7 @@ for d in subfolders:
             
             header_ome_fucci.append(ome_tifs[0])
 
-
 #%% Register the B/G channels (using B as reference)
-
 
 channel_names = ['G','B']
 for header_ome in tqdm(header_ome_h2b):
@@ -49,25 +55,26 @@ for header_ome in tqdm(header_ome_h2b):
         continue
     
     # Load ome-tif
-    stack = io.imread(header_ome)
+    print(f'Loading {d}')
+    stack = io.imread(header_ome,is_ome=True)
     G = stack[0,...]
     B = stack[1,...]
     
     # Use StackReg
+    print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(B,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
     B_reg = sr.transform_stack(B,tmats=T) # Apply to both channels
     G_reg = sr.transform_stack(G,tmats=T)
     
     output_path = path.join( d,'B_reg.tif')
-    io.imsave(output_path,B_reg.astype(np.int16))
+    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
     output_path = path.join( d,'G_reg.tif')
-    io.imsave(output_path,G_reg.astype(np.int16))
+    io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
 
-#%% Register the FUCCI (R) channels
-
+#%% Register the FUCCI (R) channels (Using R)
 
 channel_names = ['R','R_shg']
 for header_ome in tqdm(header_ome_fucci):
@@ -79,23 +86,24 @@ for header_ome in tqdm(header_ome_fucci):
         continue
     
     # Load ome-tif
+    print(f'Loading {d}')
     stack = io.imread(header_ome)
     R = stack[0,...]
     R_shg = stack[1,...]
     
     # Use StackReg
+    print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(R,reference='previous',axis=0) #Obtain the transformation matrices
     R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     
     output_path = path.join( d,'R_reg.tif')
-    io.imsave(output_path,R_reg.astype(np.int16))
+    io.imsave(output_path,R_reg.astype(np.int16),check_contrast=False)
     output_path = path.join( d,'R_shg_reg.tif')
-    io.imsave(output_path,R_shg_reg.astype(np.int16))
+    io.imsave(output_path,R_shg_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
-
 
 
 #%% Parse xml file into a dataframe organized by channel (column) and Frame (row)

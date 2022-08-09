@@ -1,29 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jun 17 14:58:19 2021
-
-Parses .csv output of Mamut and prunes out complete cell cycles
-
-Exports (pickle) as a list of dataframes, each corresponding to a complete cycle (from birth to division).
-Exported fields:
-    SpotID  X    Y    Z    T     Left child      Right child    Division(flag)     Terminus (flag)
+Created on Fri Jul 22 18:01:35 2022
 
 @author: xies
 """
 
-import numpy as np
-import pandas as pd
-import matplotlib.pylab as plt
-
-import seaborn as sb
-from os import path
-
-import pickle as pkl
-
-from mamutUtils import sort_links_by_time, load_mamut_and_prune_for_complete_cycles
-
-#%% Load CSV mamut exports
 
 def sort_links_by_time(links,spots):
     for idx,link in links.iterrows():
@@ -39,8 +21,8 @@ def sort_links_by_time(links,spots):
     return links
 
 def load_mamut_and_prune_for_complete_cycles(dirname):
-    raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'),skiprows=[1,2,3],header=0)
 
+    raw_spots = pd.read_csv(path.join(dirname,'MaMuT/spots.csv'),skiprows=[1,2,3],header=0)
     raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
     raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
     raw_links = pd.read_csv(path.join(dirname,'MaMuT/linkage.csv'),skiprows=[1,2,3],header=0)
@@ -138,38 +120,3 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
         tracks.extend(tracks_)
 
     return tracks
-
-#%% Export the coordinates of the completed cell cycles (as pickle)
-
-dirnames = []
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/')
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/')
-
-all_tracks = []
-for dirname in dirnames:
-    cycling_tracks, cycling_links, cycling_spots = load_mamut_and_prune_for_complete_cycles(dirname)
-    tracks = construct_data_frame(cycling_tracks, cycling_links, cycling_spots)
-
-    with open(path.join(dirname,'MaMuT/complete_cycles.pkl'),'wb') as file:
-        pkl.dump(tracks,file)
-
-    all_tracks.append(tracks)
-    
-#%%
-
-rbko = all_tracks[0]
-wt = all_tracks[1]
-
-wtlength  = (np.array([len(t) for t in wt])* 12)
-rbkolength  = (np.array([len(t) for t in rbko])* 12)
-
-plt.boxplot([wtlength,rbkolength],labels=['WT','RB-KO'])
-plt.ylabel('Cell cycle length (h)')
-
-plt.figure()
-
-plt.hist(wtlength,12,histtype='step');plt.hist(rbkolength,12,histtype='step')
-plt.legend(['WT','RB-KO'])
-
-plt.xlabel('Cell cycle length (h)')
-

@@ -36,7 +36,7 @@ def logit_curve(x,L,k,x0):
 XY_sigma = 35
 Z_sigma = 5
 
-for t,im in enumerate(im_list):
+for t,im in tqdm(enumerate(im_list)):
 
     
     im_xy_blur = np.zeros_like(im[...,0],dtype=float)
@@ -46,16 +46,16 @@ for t,im in enumerate(im_list):
         im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
         
     
-    
-    
     #Z_blur
     im_z_blur = np.zeros_like(im_xy_blur)
     for x in tqdm(range(XX)):
         for y in range(XX):
             im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
     
-    io.imsave(path.join(dirname,f'XYZ_blurred/t{t+1}.tif'), util.img_as_int(im_xy_blur))
+    io.imsave(path.join(dirname,f'XYZ_blurred/t{t+1}.tif'), util.img_as_int(im_z_blur))
 
+    heightmap = im_z_blur
+    
     k = np.zeros((XX,XX))
     x0 = np.zeros((XX,XX))
     
