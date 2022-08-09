@@ -15,8 +15,9 @@ from pystackreg import StackReg
 from tqdm import tqdm
 
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3'
-filenames = glob(path.join(dirname,'*.tif'))
+#dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3'
+dirname = '/home/xies/data/two_photon_shared/20210322_K10 revisits/20220322_female4/area3'
+filenames = glob(path.join(dirname,'reg*.tif'))
 
 im_list = list(map(io.imread,filenames))
 
