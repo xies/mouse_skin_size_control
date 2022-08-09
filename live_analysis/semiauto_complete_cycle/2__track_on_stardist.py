@@ -33,7 +33,9 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
 seg = np.array([ io.imread(f) for f in filenames ])
 
-# seg = io.imread(path.join(dirname,'stardist/prediction.tif'))
+# Load prediction by stardist
+filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
+seg = np.array([ io.imread(f) for f in filenames ])
 
 # with open(path.join(dirname,'MaMuT','complete_cycles_seg.pkl'),'rb') as file:
 #     cells = pkl.load(file)

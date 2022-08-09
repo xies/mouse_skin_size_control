@@ -26,8 +26,8 @@ dirnames = {}
 
 dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/manual_track'
 dirnames['KO R1'] = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/manual_track'
-# dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
-# dirnames['KO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2/manual_track'
+dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
+dirnames['KO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2/manual_track'
 
 dx = {}
 dx['WT R1'] = 0.292435307476612 /1.5
@@ -43,6 +43,11 @@ time_stamps['KO R1'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
 time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
 time_stamps['KO R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
                         7.5,8,8.5,9,9.5,10]
+mouse = {}
+mouse['WT R1'] = 1
+mouse['KO R1'] = 1
+mouse['WT R2'] = 2
+mouse['KO R2'] = 2
 
 #%% Parse .csv files
 '''
@@ -171,6 +176,7 @@ for name,dirname in dirnames.items():
                               ,'MotherID': motherID
                             ,'Genotype': genotype
                             ,'Region': name
+                            ,'Mouse': mouse[name]
                             ,'Directory':dirname
                             # ,'X': x
                             # ,'Y': y

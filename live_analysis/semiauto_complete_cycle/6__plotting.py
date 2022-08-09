@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 from basicUtils import nonans, nonan_pairs, plot_bin_means, jitter
 
 df_ = wt; title_str = 'WT'; subplot = 1
-df_ = ko; title_str = 'RB-KO'; subplot= 2
+# df_ = ko; title_str = 'RB-KO'; subplot= 2
 
 #% Some quality control plots. Some time frames are not as good as others
 

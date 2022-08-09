@@ -166,9 +166,6 @@ for t in tqdm(range(len(B_tifs))):
     elif top_padding < 0: # then needs trimming
         R_padded = R_padded[0:top_padding,...]
         R_shg_padded = R_shg_padded[0:top_padding,...]
-    elif top_padding == 0:
-        R_padded = R_padded
-        R_shg_padded = R_shg_padded
     
     output_dir = path.dirname(R_tifs[t])
 

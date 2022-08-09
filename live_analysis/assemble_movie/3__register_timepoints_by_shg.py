@@ -198,6 +198,8 @@ for t in tqdm( range(len(B_tifs) )): # 1-indexed
         B_padded = B_padded[0:bottom_padding,...]
         R_shg_padded = R_shg_padded[0:bottom_padding,...]
         
+        
+        
     print('Saving')
     output_dir = path.dirname(B_tifs[t])
     io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16),check_contrast=False)
@@ -211,21 +213,21 @@ for t in tqdm( range(len(B_tifs) )): # 1-indexed
         
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
 
-T = len(B_tifs)
+T = len(B_tifs)-1
 
 filelist = pd.DataFrame()
 filelist['B'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_align.tif')), key = sort_by_day)
 filelist['G'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/G_align.tif')), key = sort_by_day)
 filelist['R'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_align.tif')), key = sort_by_day)
-# filelist.index = np.arange(0,T)
+filelist.index = np.arange(0,T)
 
 # # t= 0 has no '_align'
-# s = pd.Series({'B': glob(path.join(dirname,'*Day 0/ZSeries*/B_reg_reg.tif'))[0],
-#                  'G': glob(path.join(dirname,'*Day 0/ZSeries*/G_reg_reg.tif'))[0],
-#                  'R': glob(path.join(dirname,'*Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
+s = pd.Series({'B': glob(path.join(dirname,'*Day 0/ZSeries*/B_reg_reg.tif'))[0],
+                  'G': glob(path.join(dirname,'*Day 0/ZSeries*/G_reg_reg.tif'))[0],
+                  'R': glob(path.join(dirname,'*Day 0/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
 
-# filelist = filelist.append(s)
-# filelist = filelist.sort_index()
+filelist = filelist.append(s)
+filelist = filelist.sort_index()
 
 # Save individual day*.tif
 
