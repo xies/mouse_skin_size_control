@@ -19,7 +19,7 @@ from glob import glob
 import pickle as pkl
 
 dirnames = {}
-dirname = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/manual_track'
+dirname = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
 
 # dx = 0.2920097
 dx = 1
@@ -34,9 +34,19 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 # filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
 # seg = np.array([ io.imread(f) for f in filenames ])
 
-# Load prediction by stardist
-filenames = [path.join(dirname,f'reg/prediction/z_reg_t{t}_chan2.tif') for t in range(19)]
-seg = np.array([ io.imread(f) for f in filenames ])
+# Load prediction by cellpose (.npz)
+# see: https://github.com/MouseLand/cellpose/blob/main/docs/outputs.rst
+filenames = glob(path.join(dirname,f'im_seq/t*.npy'))
+for f in filenames:
+    out_name = path.splitext(f)[0] + '_seg.tif'
+    if path.exists(out_name):
+        continue
+    data = np.load(f,allow_pickle=True).item()
+    seg = data['masks']
+    io.imsave(out_name, seg)
+    io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
+    
+seg = map(io.imread,glob(path.join(dirname,f'im_seq/t_seg.tif')))
 
 # with open(path.join(dirname,'MaMuT','complete_cycles_seg.pkl'),'rb') as file:
 #     cells = pkl.load(file)

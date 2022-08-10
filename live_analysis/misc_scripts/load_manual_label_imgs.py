@@ -40,8 +40,8 @@ labels = []
 h2b = [io.imread(path.join(dirnames[1],'WT1/WT1.tif')),
         io.imread(path.join(dirnames[0],'RBKO5/RBKO5.tif'))]
 
-labels = [io.imread(path.join(dirnames[1],'WT1/WT1_labels.tif')),
-        io.imread(path.join(dirnames[0],'RBKO5/RBKO5_labels.tif'))]
+labels = [io.imread(path.join(dirnames[1],'WT1/WT1_seg_clean.tif')),
+        io.imread(path.join(dirnames[0],'RBKO5/RBKO5_seg.tif'))]
 
 fucci = [io.imread(path.join(dirnames[1],'WT1/WT1_fucci.tif')),
         io.imread(path.join(dirnames[0],'RBKO5/RBKO5_fucci.tif'))]
@@ -64,7 +64,8 @@ regions = []
 for i,(h2b,fucci,label) in enumerate(dataset):
     
     h2b_table = measure.regionprops_table(label,h2b,
-                                            properties = ['label','centroid','area','mean_intensity'])
+                                            properties = ['label','centroid','area','mean_intensity'
+                                                          ,'bbox_area'])
     fucci_table = measure.regionprops_table(label,fucci,
                                         properties = ['mean_intensity'])
     
@@ -75,6 +76,7 @@ for i,(h2b,fucci,label) in enumerate(dataset):
                             ,'centroid-1':'X'
                             ,'centroid-2':'Y'
                             ,'area':'Volume'
+                            ,'bbox_area':'Bounding area'
                             })
     df_['FUCCI'] = fucci_table['mean_intensity']
     df_['FUCCI norm'] = standardize(df_['FUCCI'])
@@ -85,7 +87,14 @@ for i,(h2b,fucci,label) in enumerate(dataset):
     regions.append(df_)
 
 df = pd.concat(regions,ignore_index=True)
-df = df[df['Volume'] > 100]
+df['Ratio'] = df['Volume']/df['Bounding area']
+df_raw = df
+
+#%% Filter
+df = df_raw
+# df = df[df['Z'] < 70] # in um
+df = df[df['Volume'] > 10000]
+
 
 #%% plotting
 
