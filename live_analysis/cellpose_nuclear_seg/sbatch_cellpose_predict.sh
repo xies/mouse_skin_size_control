@@ -3,12 +3,11 @@
 #SBATCH --job-name=cellpose
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=24
 #SBATCH --partition=batch
 #SBATCH --account=skotheim
 #SBATCH --time=02:00:00
 #SBATCH --mem=500gb
-
 
 module load anaconda
 source activate cellpose
