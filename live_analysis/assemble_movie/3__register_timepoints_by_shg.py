@@ -115,7 +115,7 @@ ref_img = R_shg_ref[Imax_ref,...]
 z_pos_in_original = np.zeros(len(B_tifs))
 z_pos_in_original[ref_T] = Imax_ref
 z0_in_refframe = Z_ref
-XY_matrices = []
+XY_matrices = np.zeros((len(B_tifs),3,3))
 
 for t in tqdm( np.arange(3,len(B_tifs)) ): # 0-indexed
     
@@ -158,7 +158,7 @@ for t in tqdm( np.arange(3,len(B_tifs)) ): # 0-indexed
         # Use StackReg to 'align' the two z slices
         sr = StackReg(StackReg.RIGID_BODY)
         T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
-        XY_matrices.append(T)
+        XY_matrices[t,...] = T
         
         if APPLY:
             print('Applying transformation matrices')
@@ -220,10 +220,6 @@ for t in tqdm( np.arange(3,len(B_tifs)) ): # 0-indexed
         io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
 
 
-#%% Manually reconstruct transformation matrix if there is problematic time point
-
-
-
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
         
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
@@ -272,14 +268,19 @@ for t in tqdm(range(T+1)):
     stack = np.stack((R_,G_,B_))
     io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.uint16),check_contrast=False)
 
-#%% Manually input any thing and save
+#%% Manually input any matrix and save
 
-z_pos_in_original[11] = 65
+XY_matrices[ref_T] = np.eye(3)
 
-#@todo: figure out how to get translation matrix (also sign of transform)
-# from scipy.spatial import transform
-# r = transform.Rotation.from_euler('z',3,degrees=True).as_matrix()
-# r = r + transform.Translation
+# from skimage import transform
+# M = transform.EuclideanTransform(rotation = 3,translation=[-5,-5])
+
+T = np.array([[np.cos(3),-np.sin(3),-5],
+             [np.sin(3),np.cos(3),-5],
+             [0,0,1]])
+
+# XY_matrices[11] = T
+# z_pos_in_original[11] = 63
 
 import pickle as pkl
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
