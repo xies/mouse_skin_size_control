@@ -12,37 +12,34 @@ from os import path
 from glob import glob
 
 from tqdm import tqdm
+from scipy.optimize import curve_fit
 
 #%%
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area3/reg'
-filenames = glob(path.join(dirname,'reg*.tif'))
-
-im_list = list(map(io.imread,filenames))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/im_seq'
+filenames = glob(path.join(dirname,'t17.tif'))
 
 XX = 1024
-ZZ = 44
-
-
-from scipy.optimize import curve_fit
+ZZ = 95
+channel2use = 1
 
 def logit_curve(x,L,k,x0):
     y = L / (1 + np.exp(-k*(x-x0)))
     return y
 
-#%% XY Gaussian blur + Z blur
-
+#%%
 
 XY_sigma = 35
 Z_sigma = 5
 
+im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
+
 for t,im in tqdm(enumerate(im_list)):
 
-    
-    im_xy_blur = np.zeros_like(im[...,0],dtype=float)
+    im_xy_blur = np.zeros_like(im,dtype=float)
     
     #XY_blur
-    for z,im_ in enumerate(im[...,0]):
+    for z,im_ in enumerate(im):
         im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
         
     
@@ -52,7 +49,7 @@ for t,im in tqdm(enumerate(im_list)):
         for y in range(XX):
             im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
     
-    io.imsave(path.join(dirname,f'XYZ_blurred/t{t+1}.tif'), util.img_as_int(im_z_blur))
+    io.imsave(path.join(dirname,'xyz_blur_'+'t17.tif'), util.img_as_int(im_z_blur))
 
     heightmap = im_z_blur
     
@@ -93,6 +90,6 @@ for t,im in tqdm(enumerate(im_list)):
     io.imsave(path.join(dirname,f'flat/t{t+1}.tif'), flat.astype(np.int16))
 
 
-
+#%% Load
 
 

@@ -40,8 +40,8 @@ labels = []
 h2b = [io.imread(path.join(dirnames[1],'WT1/WT1.tif')),
         io.imread(path.join(dirnames[0],'RBKO5/RBKO5.tif'))]
 
-labels = [io.imread(path.join(dirnames[1],'WT1/WT1_seg_clean.tif')),
-        io.imread(path.join(dirnames[0],'RBKO5/RBKO5_seg.tif'))]
+labels = [io.imread(path.join(dirnames[1],'WT1/WT1_labels.tif')),
+        io.imread(path.join(dirnames[0],'RBKO5/RBKO5_labels.tif'))]
 
 fucci = [io.imread(path.join(dirnames[1],'WT1/WT1_fucci.tif')),
         io.imread(path.join(dirnames[0],'RBKO5/RBKO5_fucci.tif'))]
