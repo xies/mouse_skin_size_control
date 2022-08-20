@@ -16,7 +16,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
@@ -114,10 +114,9 @@ ref_img = R_shg_ref[Imax_ref,...]
 # variables to save:
 z_pos_in_original = np.zeros(len(B_tifs))
 z_pos_in_original[ref_T] = Imax_ref
-z0_in_refframe = Z_ref
 XY_matrices = np.zeros((len(B_tifs),3,3))
 
-for t in tqdm( np.arange(3,len(B_tifs)) ): # 0-indexed
+for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
     
     if t == ref_T:
         continue
@@ -219,6 +218,22 @@ for t in tqdm( np.arange(3,len(B_tifs)) ): # 0-indexed
         io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
 
+#% Manually input any matrix and save
+
+XY_matrices[ref_T] = np.eye(3)
+
+T = np.array([[np.cos(3),-np.sin(3),-5],
+              [np.sin(3),np.cos(3),-5],
+              [0,0,1]])
+XY_matrices[11] = T
+z_pos_in_original[11] = 63
+
+import pickle as pkl
+with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
+    print('Saving alignment matrices...')
+    pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
+
+print('DONE')
 
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
         
@@ -268,23 +283,7 @@ for t in tqdm(range(T+1)):
     stack = np.stack((R_,G_,B_))
     io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.uint16),check_contrast=False)
 
-#%% Manually input any matrix and save
 
-XY_matrices[ref_T] = np.eye(3)
-
-# from skimage import transform
-# M = transform.EuclideanTransform(rotation = 3,translation=[-5,-5])
-
-T = np.array([[np.cos(3),-np.sin(3),-5],
-             [np.sin(3),np.cos(3),-5],
-             [0,0,1]])
-
-# XY_matrices[11] = T
-# z_pos_in_original[11] = 63
-
-import pickle as pkl
-with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
-    pkl.dump([z_pos_in_original,XY_matrices,z0_in_refframe],f)
 
 #%% Save master stack
 # Load file and concatenate them appropriately
