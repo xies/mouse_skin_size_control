@@ -64,3 +64,4 @@ for f in filenames:
     
     io.imsave(path.splitext(f)[0] + '_clean.tif', seg_raw)
     
+    
