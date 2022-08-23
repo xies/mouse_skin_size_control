@@ -19,7 +19,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/master_stack
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 
-imgfiles = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
+imgfiles = glob(path.join(dirname,'3d_segmentation/tracked_labels.tif'))
 im = io.imread(imgfiles[0])
 
 # for f in imgfiles:

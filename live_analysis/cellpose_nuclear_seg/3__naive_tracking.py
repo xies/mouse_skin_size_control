@@ -15,11 +15,9 @@ from re import findall
 import pandas as pd
 import matplotlib.pylab as plt
 from tqdm import tqdm
-# from matplotlib.path import Path
-# from roipoly import roipoly
 
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/3d_segmentation/'
 
 WEIGHT_OVERLAP = 0.8
 WEIGHT_DISTANCE = 0.4
@@ -81,12 +79,12 @@ def detect_divisions(df_this,df_next, size_ratio_threshold = -0.4):
 
 current_label = 1 #NB: set this at the beginning of time loop
 
-for t in tqdm(range(14)):
+for t in tqdm(range(4)):
 
     if t == 0:
         this_frame = io.imread(filenames[t])
     else:
-        this_frame = io.imread(f'/Users/xies/Desktop/t{t}.tif')
+        this_frame = io.imread(path.join(dirname,f'cellpose_cleaned_manual/t{t}.tif'))
     next_frame = io.imread(filenames[t+1])
     
     df_this = pd.DataFrame(measure.regionprops_table(this_frame,
@@ -164,9 +162,9 @@ for t in tqdm(range(14)):
     
         
     if t == 0:
-        io.imsave(f'/Users/xies/Desktop/t{t}.tif',this_tracked.astype(np.int16))
+        io.imsave(path.join(dirname,f'naive_tracking/t{t}.tif'),this_tracked.astype(np.int16))
     
-    io.imsave(f'/Users/xies/Desktop/t{t+1}.tif',next_tracked.astype(np.int16))
+    io.imsave(path.join(dirname,f'naive_tracking/t{t+1}.tif'),next_tracked.astype(np.int16))
     
     
     

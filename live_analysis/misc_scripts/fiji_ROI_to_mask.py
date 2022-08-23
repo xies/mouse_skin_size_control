@@ -18,22 +18,23 @@ from tqdm import tqdm
 from twophoton_util import parse_unaligned_channels, parse_timecourse_directory
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 #%% Take all the annotated nuclei and draw them on unaligned images but with right aligned z-height
 
-ALIGN = True
+ALIGN = False
 
-XX = 1024
-ZZ = 95
-T = 19
+XX = 460
+ZZ = 72
+T = 15
 
 # reg_reg_list = parse_unaligned_channels(dirname)
 # align_list = parse_timecourse_directory(dirname)
 
-xfiles = sorted(glob(path.join(dirname,'manual_track/*/*/*.xpts.txt')))
-yfiles = sorted(glob(path.join(dirname,'manual_track/*/*/*.ypts.txt')))
-zfiles = sorted(glob(path.join(dirname,'manual_track/*/*/*.zpts.txt')))
+xfiles = sorted(glob(path.join(dirname,'tracked_cells/*/*.xpts.txt')))
+yfiles = sorted(glob(path.join(dirname,'tracked_cells/*/*.ypts.txt')))
+zfiles = sorted(glob(path.join(dirname,'tracked_cells/*/*.zpts.txt')))
 coordinate_file_tuple = zip(xfiles,yfiles,zfiles)
 
 if ALIGN:
@@ -45,8 +46,9 @@ labeled_image = np.zeros((T,ZZ,XX,XX))
 
 for fx,fy,fz in tqdm(coordinate_file_tuple):
     # parse timestamp
-    t = int(findall('t(\d+)\.',path.basename(fx))[0])
-    cellID = int(path.split(path.split(fx)[0])[1].split('.')[2])
+    t = int(findall('t([0-9]+)',path.basename(fx))[0])-1
+    # cellID = int(path.split(path.split(fx)[0])[1].split('.')[2])
+    cellID = int(path.split(path.split(fx)[0])[1].split('.')[0])
         
     # Manually load list because line size is ragged
     with open(fx) as f:
@@ -59,8 +61,12 @@ for fx,fy,fz in tqdm(coordinate_file_tuple):
     X = [np.array(line.strip('\n').split(','),dtype=int) for line in X]
     Y = [np.array(line.strip('\n').split(','),dtype=int) for line in Y]
     Z = np.array(Z[0].strip('\n').split(','),dtype=int)
-    Z_ = Z - dZ[t]
-    this_matrix = XY_matrices[t]
+    
+    if ALIGN:
+        Z_ = Z - dZ[t]
+        this_matrix = XY_matrices[t]
+    else:
+        Z_ = Z
     
     for i, (x,y) in enumerate(zip(X,Y)):
         
@@ -74,8 +80,9 @@ for fx,fy,fz in tqdm(coordinate_file_tuple):
             
             labeled_image[t,int(Z_[i]),coords[:,0],coords[:,1]] = cellID
         
+labeled_image = labeled_image - labeled_image.min()
 
-io.imsave('/Users/xies/Desktop/blah.tif',labeled_image.astype(np.int16))
+io.imsave('/Users/xies/Desktop/blah.tif',labeled_image.astype(np.uint16))
 
 
         
