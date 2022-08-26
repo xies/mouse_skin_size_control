@@ -10,7 +10,7 @@ import pandas as pd
 import pickle as pkl
 import numpy as np
 
-
+#%%
 #Load df from pickle
 r1 = pd.read_pickle('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/exports/dataframe.pkl')
 r2 = pd.read_pickle('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/exports/dataframe.pkl')

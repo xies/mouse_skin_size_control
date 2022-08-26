@@ -79,7 +79,7 @@ def detect_divisions(df_this,df_next, size_ratio_threshold = -0.4):
 
 current_label = 1 #NB: set this at the beginning of time loop
 
-for t in tqdm(range(4)):
+for t in tqdm(range(12)):
 
     if t == 0:
         this_frame = io.imread(filenames[t])
