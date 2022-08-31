@@ -25,20 +25,23 @@ from roipoly import roipoly
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
+filenames = glob(path.join(dirname,'RBKO1.tif'))
 
 #%%
 
 # pred_files = glob(path.join(dirname,'h2b_sequence/*/t*_masks.tif'))
-T = 15
+T = 1
 
 # Some pruning parameters
-MIN_SIZE_IN_PX = 700
+# MIN_SIZE_IN_PX = 2000
 
 _tmp = []
 for t in range(T):
     
-    predictions = io.imread(path.join(dirname,f'h2b_sequence/t{t}_3d_th_neg/t{t}_masks.tif'))
-    heightmaps = io.imread(path.join(dirname,f'heightmaps/t{t}.tif'))
+    # predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'RBKO1_nuc_masks.tif'))
+    heightmaps = io.imread(path.join(dirname,f'Image flattening/heightmaps/RBKO1.tif'))
     table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid'}))
     
     # Look at each XY coord and look up heightmap
@@ -48,7 +51,6 @@ for t in range(T):
     table['Time'] = t
     _tmp.append(table)
     
-    
 
 #%%%
 
@@ -57,7 +59,7 @@ df = pd.concat(_tmp)
 plt.scatter(df['area'],df['Corrected Z'],alpha=0.01)
 plt.ylabel('Corrected Z (to heightmap)')
 plt.xlabel('Cell size (px2)')
-
+# plt.xlim([0,25000])
 gate = roipoly()
 
 #%%
@@ -74,7 +76,8 @@ df_ = df[I]
 
 for t in range(T):
     
-    predictions = io.imread(path.join(dirname,f'h2b_sequence/t{t}_3d_th_neg/t{t}_masks.tif'))
+    # predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'RBKO1_nuc_masks.tif'))
     this_cellIDs = df_[df_['Time'] == t]['label']
     
     filtered_pred = predictions.flatten()
@@ -82,8 +85,8 @@ for t in range(T):
     filtered_pred[~I] = 0
     filtered_pred = filtered_pred.reshape(predictions.shape)
     
-    io.imsave(path.join(dirname,f'cellpose_cleaned/t{t}.tif'),filtered_pred.astype(np.int16))
-    
+    # io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_cleaned/t{t}.tif'),filtered_pred.astype(np.int16))
+    io.imsave(path.join(dirname,f'RBKO1_nuc_seg_cleaned.tif'),filtered_pred.astype(np.int16))
     
 
 

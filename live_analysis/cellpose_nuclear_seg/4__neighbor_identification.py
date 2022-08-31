@@ -23,7 +23,7 @@ from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean
 
 XX = 460
 VISUALIZE = True
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/3d_segmentation/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/3d_nuc_seg/'
 
 '''
 NB: idx - the order in array in dense segmentation
@@ -51,11 +51,36 @@ def euclidean_distance(X,Y):
     assert(X.ndim == Y.ndim)
     return np.sqrt( np.sum((X-Y)**2) )
 
+def colorize_segmentation(seg,value_dict):
+    '''
+    Given a segmentation label image, colorize the segmented labels using a dictionary of label: value
+    
+    (Or you instead use)
+    '''
+    
+    assert( len(np.unique(seg)[1:] == len(value_dict)) )
+    colorized = np.zeros_like(seg)
+    for k,v in value_dict.items():
+        colorized[seg == k] = v
+    return colorized
+    
+# convert trianglulation to adjacency matrix (for easy editing)
+
+def tri_to_adjmat(tri):
+    
+    num_verts = max(map(max,tri.simplices)) + 1
+    A = np.zeros((num_verts,num_verts),dtype=bool)
+    for idx in range(num_verts):
+        neighbor_idx = get_neighbor_idx(tri,idx)
+        A[idx,neighbor_idx] = True
+    return A
+
+# def draw_adjmat_on_
 
 #%%
 
 df = []
-for t in range(12):
+for t in range(1):
     
     dense_seg = io.imread(path.join(dirname,f'naive_tracking/t{t}.tif'))
     growth_curves = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
@@ -80,7 +105,8 @@ for t in range(12):
         
     
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg, intensity_image = growth_curves,
-                                                       properties=['label','area','centroid','max_intensity']))
+                                                       properties=['label','area','centroid',
+                                                                   'euler_number','max_intensity']))
     df_dense = df_dense.rename(columns={'max_intensity':'ManualID'
                                             ,'centroid-0':'Z'
                                             ,'centroid-1':'Y'
@@ -93,24 +119,25 @@ for t in range(12):
     
     df_central['Frame'] = t+1
     
-    
     #@todo: Load heightmap and calculate adjusted height
+    heightmap = io.imread(path.join(dirname,f'../Image flattening/heightmaps/t{t}.tif'))
+    df_dense['Height to BM'] = df_dense['Z'] - heightmap[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)]
     
+    # colorized = colorize_segmentation(dense_seg,{k:v for k,v in zip(df_dense['label'],df_dense['Height to BM']) })
+    # io.imsave('/Users/xies/Desktop/blah.tif',colorized)
     
     #% Use Delaunay triangulation in 2D to approximate the basal layer topology
-    
     tri = Delaunay(dense_coords)
-    
-    if VISUALIZE and t==1:
+    # if VISUALIZE:
         
-        plt.figure()
-        plt.triplot(dense_coords[:,1], dense_coords[:,0], tri.simplices,'r-')
-        # plt.plot(dense_coords[118,1], dense_coords[118,0], 'ko')
-        io.imshow(dense_seg.max(axis=0))
-        plt.show()
+    #     plt.figure()
+    #     plt.triplot(dense_coords[:,1], dense_coords[:,0], tri.simplices,'r-')
+    #     # plt.plot(dense_coords[118,1], dense_coords[118,0], 'ko')
+    #     io.imshow(dense_seg.max(axis=0))
+    #     plt.show()
+    
     
     # Use the dual Voronoi to get rid of the border/infinity cells
-    
     vor = Voronoi(dense_coords)
     # Find the voronoi regions that touch the image border
     vertices_outside = np.where(np.any((vor.vertices < 0) | (vor.vertices > XX),axis=1))
@@ -134,7 +161,6 @@ for t in range(12):
     #     io.imshow(dense_seg.max(axis=0))
     #     # io.imshow((_im > 0).astype(int))
     #     # plt.show()
-    
     
     #%
     # get # of neighbors from triangulation
@@ -192,10 +218,7 @@ for t in range(12):
     
     # Colorize nuclei based on mean curvature (for inspection)
     # mean_colors = (mean-mean.min())/mean.max()
-    # colorized = np.zeros_like(dense_seg,dtype=float)
-    # for i,this_cell in df_dense.iterrows():
-    #     if not this_cell['Border']:
-    #         colorized[dense_seg == this_cell['label']] = mean_colors[i]
+    # colorized = colorize_segmentation(dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
 
     df_ = pd.merge(df_dense,df_central,how='inner',on=['ManualID'])
     df_ = df_.drop(columns=['Z_y','Y_y','X_y'])
@@ -205,7 +228,7 @@ for t in range(12):
 
     df.append(df_)
 
-df_dense = pd.concat(df,ignore_index=True)
+df = pd.concat(df,ignore_index=True)
 
 
 
