@@ -7,7 +7,7 @@ Created on Tue Aug 23 00:02:34 2022
 """
 
 import numpy as np
-from skimage import io, measure
+from skimage import io, measure, draw, util
 from glob import glob
 from os import path
 from scipy.spatial import distance, Voronoi, Delaunay
@@ -19,7 +19,9 @@ from tqdm import tqdm
 # from roipoly import roipoly
 from trimesh import Trimesh
 from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean_curvature_measure, sphere_ball_intersection
-    
+from basicUtils import euclidean_distance
+from imageUtils import draw_labels_on_image, draw_adjmat_on_image
+import csv
 
 XX = 460
 VISUALIZE = True
@@ -45,12 +47,6 @@ def get_neighbor_distances(tri,idx,coords):
     D = np.array([euclidean_distance(this_coord,n) for n in neighbor_coords])
     return D
 
-def euclidean_distance(X,Y):
-    X = np.array(X,dtype=float)
-    Y = np.array(Y,dtype=float)
-    assert(X.ndim == Y.ndim)
-    return np.sqrt( np.sum((X-Y)**2) )
-
 def colorize_segmentation(seg,value_dict):
     '''
     Given a segmentation label image, colorize the segmented labels using a dictionary of label: value
@@ -75,12 +71,12 @@ def tri_to_adjmat(tri):
         A[idx,neighbor_idx] = True
     return A
 
-# def draw_adjmat_on_
+    
 
 #%%
 
 df = []
-for t in range(1):
+for t in tqdm(range(15)):
     
     dense_seg = io.imread(path.join(dirname,f'naive_tracking/t{t}.tif'))
     growth_curves = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
@@ -227,7 +223,29 @@ for t in range(1):
                               'area_y':'Cell volume','area_x':'Cellpose volume'})
 
     df.append(df_)
-
+    
+    #Save a bunch of intermediates
+    # Save segmentation with text labels @ centroid
+    im_cellposeID = draw_labels_on_image(dense_coords,df_dense['label'],[XX,XX],font_size=12)
+    im_cellposeID.save(path.join(dirname,f'cellposeIDs/t{t}.tif'))
+    
+    # Save adjacency matrix as image
+    A = tri_to_adjmat(tri)
+    A_masked = A.copy()
+    for j,a in enumerate(A_masked):
+        if df_dense.iloc[j]['Border']:
+            A_masked[j, df_dense['Border']] = False
+            
+    I_adj = draw_adjmat_on_image(A_masked,dense_coords,[XX,XX])
+    io.imsave(path.join(dirname,f'adjacency/t{t}.tif'),util.img_as_uint(I_adj))
+    
+    # Save adjacency matrix as CSV
+    with open(path.join(dirname,'adjmat.csv'),'w',newline='') as csvfile:
+        writer = csv.writer(csvfile,delimiter=',')
+        for j,a in enumerate(A):
+            writer.writerow( np.hstack((j+1,np.where(a)[0]+1)))
+            
+            
 df = pd.concat(df,ignore_index=True)
 
 
