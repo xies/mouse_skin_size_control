@@ -34,16 +34,16 @@ def most_likely_label(labeled,im):
 
 #%% Load the cytoplasmic segmentatinos
 
-for t in range(6):
-
-    # t = 4
+for t in tqdm(range(15)):
+    
+    # t = 14
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     selem = ndi.generate_binary_structure(2,1)
     selem = ndi.iterate_structure(selem, corona)
     # allcytoIDs = np.unique(cyto_seg)[1:]
     
-    dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t}.tif'))
+    dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     # heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     # heightmap = np.round(heightmap).astype(int)
     
@@ -80,8 +80,8 @@ for t in range(6):
         cytoID = cyto['label']
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
         if len(I) > 1:
-            print(f'ERROR at {I}')
-            break
+            print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
+            error()
         elif len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
     
@@ -114,12 +114,52 @@ for t in range(6):
         A[this_idx,touching_idx] = 1
     
     #% Save as matrix and image
-    im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX])
-    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj)
+    im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX]).astype(np.uint16)
+    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
     
     # save matrix
     np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
     
     
-    
+#%%
+
+
+A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
+
+dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+df_nuc = pd.DataFrame( measure.regionprops_table(dense_seg,properties=['label','centroid']))
+df_nuc = df_nuc.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'})
+
+nuc_coords_3d = np.array([df_nuc['Z'],df_nuc['Y'],df_nuc['X']]).T
+im_adj = draw_adjmat_on_image_3d(A,nuc_coords_3d,[72,XX,XX])
+selem = morphology.disk(3)
+for z,im in enumerate(im_adj):
+    im_adj[z,...] = morphology.dilation(im, selem)
+io.imsave('/Users/xies/Desktop/blah.tif',im_adj.astype(np.uint16))
+
+# Construct triangulation
+def adjmat2triangle(G):
+    triangles = set()
+    for u,w in G.edges:
+        for v in set(G.neighbors(u)).intersection(G.neighbors(w)):
+            triangles.add(frozenset([u,v,w]))
+            
+    return triangles
+
+G = nx.Graph(A)
+triangles = adjmat2triangle(G)
+triangle_neighbors = np.array([list(x) for x in list(triangles)])
+
+from matplotlib.tri import Triangulation
+
+tri = Triangulation(x=nuc_coords_3d[:,1], y=nuc_coords_3d[:,2], triangles = triangle_neighbors)
+
+#%%
+
+fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+ax.plot_trisurf(tri, Z = nuc_coords_3d[:,0])
+
+
+
 

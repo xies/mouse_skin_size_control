@@ -76,12 +76,12 @@ def detect_divisions(df_this,df_next, size_ratio_threshold = -0.4):
             
     return newborn
 
-#%% @todo: labels are clashing
+#%% Overlap track, detect division, manage label range
 
 current_label = 1 #NB: set this at the beginning of time loop
 T = 15
 
-for t in tqdm(range(T-1)):
+for t in tqdm(range(6)):
 
     if t == 0:
         this_frame = io.imread(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t0.tif'))
@@ -95,13 +95,6 @@ for t in tqdm(range(T-1)):
     df_next = pd.DataFrame(measure.regionprops_table(next_frame,
                                                      properties = ['area','centroid','label',
                                                                    'euler_number']))
-    
-    # clean up again for area (some speckles are left behind)
-    # df_this = df_this[df_this['area'] > 500]
-    # df_next = df_next[df_next['area'] > 500]
-    # Also need to clean up the images for overlap computation
-    # this_frame[~np.in1d(this_frame.flatten(),df_this['label']).reshape(this_frame.shape)] = 0
-    # next_frame[~np.in1d(next_frame.flatten(),df_next['label']).reshape(next_frame.shape)] = 0
     
     if t == 0:
         df_this['TrackID'] = np.nan
@@ -128,7 +121,8 @@ for t in tqdm(range(T-1)):
             current_label += 1
         else:
             label2use = thisID
-        
+        if t == 5 and label2use == 20:
+            error()
         if t == 0:
             this_tracked[this_frame == thisID] = label2use
             df_this.at[i,'TrackID'] = label2use
@@ -167,9 +161,9 @@ for t in tqdm(range(T-1)):
         
     
     if t == 0:
-        io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t}.tif'),this_tracked.astype(np.int16))
+        io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t}.tif'),this_tracked.astype(np.int16),check_contrast=False)
     
-    io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t+1}.tif'),next_tracked.astype(np.int16))
+    io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t+1}.tif'),next_tracked.astype(np.int16),check_contrast=False)
     
     
     
