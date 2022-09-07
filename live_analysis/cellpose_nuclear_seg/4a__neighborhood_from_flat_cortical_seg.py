@@ -137,14 +137,6 @@ for z,im in enumerate(im_adj):
     im_adj[z,...] = morphology.dilation(im, selem)
 io.imsave('/Users/xies/Desktop/blah.tif',im_adj.astype(np.uint16))
 
-# Construct triangulation
-def adjmat2triangle(G):
-    triangles = set()
-    for u,w in G.edges:
-        for v in set(G.neighbors(u)).intersection(G.neighbors(w)):
-            triangles.add(frozenset([u,v,w]))
-            
-    return triangles
 
 G = nx.Graph(A)
 triangles = adjmat2triangle(G)

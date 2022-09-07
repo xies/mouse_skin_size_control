@@ -61,9 +61,7 @@ def colorize_segmentation(seg,value_dict):
     return colorized
     
 # convert trianglulation to adjacency matrix (for easy editing)
-
 def tri_to_adjmat(tri):
-    
     num_verts = max(map(max,tri.simplices)) + 1
     A = np.zeros((num_verts,num_verts),dtype=bool)
     for idx in range(num_verts):
@@ -71,14 +69,21 @@ def tri_to_adjmat(tri):
         A[idx,neighbor_idx] = True
     return A
 
-    
+# Construct triangulation
+def adjmat2triangle(G):
+    triangles = set()
+    for u,w in G.edges:
+        for v in set(G.neighbors(u)).intersection(G.neighbors(w)):
+            triangles.add(frozenset([u,v,w]))
+    return triangles
 
+    
 #%%
 
 df = []
 for t in tqdm(range(15)):
     
-    dense_seg = io.imread(path.join(dirname,f'naive_tracking/t{t}.tif'))
+    dense_seg = io.imread(path.join(dirname,f'cellpose_cleaned_manual/t{t}.tif'))
     growth_curves = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
     
     df_central = pd.DataFrame( measure.regionprops_table(growth_curves, properties=['label','area','centroid']))
@@ -115,7 +120,7 @@ for t in tqdm(range(15)):
     
     df_central['Frame'] = t+1
     
-    #@todo: Load heightmap and calculate adjusted height
+    # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'../Image flattening/heightmaps/t{t}.tif'))
     df_dense['Height to BM'] = df_dense['Z'] - heightmap[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)]
     
@@ -124,14 +129,6 @@ for t in tqdm(range(15)):
     
     #% Use Delaunay triangulation in 2D to approximate the basal layer topology
     tri = Delaunay(dense_coords)
-    # if VISUALIZE:
-        
-    #     plt.figure()
-    #     plt.triplot(dense_coords[:,1], dense_coords[:,0], tri.simplices,'r-')
-    #     # plt.plot(dense_coords[118,1], dense_coords[118,0], 'ko')
-    #     io.imshow(dense_seg.max(axis=0))
-    #     plt.show()
-    
     
     # Use the dual Voronoi to get rid of the border/infinity cells
     vor = Voronoi(dense_coords)
@@ -147,17 +144,6 @@ for t in tqdm(range(15)):
     df_dense.loc[ np.in1d(df_dense['label'],border_nuclei), 'Border'] = True
     
     
-    # if VISUALIZE and t==1:
-    #     _im = np.zeros_like(dense_seg.max(axis=0))
-    #     for n in border_nuclei:
-    #         _im[dense_seg.max(axis=0) == n] = n
-    #     plt.figure()
-    #     plt.plot(dense_coords[Iborder,1], dense_coords[Iborder,0], 'ko')
-    #     # spatial.voronoi_plot_2d(vor)
-    #     io.imshow(dense_seg.max(axis=0))
-    #     # io.imshow((_im > 0).astype(int))
-    #     # plt.show()
-    
     #%
     # get # of neighbors from triangulation
     num_neighbors = [len(get_neighbor_idx(tri,i)) for i in range(len(df_dense))]
@@ -165,7 +151,6 @@ for t in tqdm(range(15)):
     
     #% Find other geometries in 3D
     # Transfer from dense df to sparse DF
-    
     df_dense['Neighbor mean dist'] = np.nan
     df_dense['Neighbor max dist'] = np.nan
     df_dense['Neighbor min dist'] = np.nan
@@ -195,6 +180,7 @@ for t in tqdm(range(15)):
         io.imsave(f'/Users/xies/Desktop/t{t}_neighbors.tif', neighbors)
     
     
+    
     #% Compute local curvature
     # Visualize mesh
     # from mpl_toolkits.mplot3d import Axes3D as ax3d
@@ -215,7 +201,6 @@ for t in tqdm(range(15)):
     # Colorize nuclei based on mean curvature (for inspection)
     # mean_colors = (mean-mean.min())/mean.max()
     # colorized = colorize_segmentation(dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
-
     df_ = pd.merge(df_dense,df_central,how='inner',on=['ManualID'])
     df_ = df_.drop(columns=['Z_y','Y_y','X_y'])
     df_ = df_.rename(columns={'Z_x':'Z','Y_x':'Y','X_x':'X',
@@ -229,22 +214,6 @@ for t in tqdm(range(15)):
     im_cellposeID = draw_labels_on_image(dense_coords,df_dense['label'],[XX,XX],font_size=12)
     im_cellposeID.save(path.join(dirname,f'cellposeIDs/t{t}.tif'))
     
-    # Save adjacency matrix as image
-    A = tri_to_adjmat(tri)
-    A_masked = A.copy()
-    for j,a in enumerate(A_masked):
-        if df_dense.iloc[j]['Border']:
-            A_masked[j, df_dense['Border']] = False
-            
-    I_adj = draw_adjmat_on_image(A_masked,dense_coords,[XX,XX])
-    io.imsave(path.join(dirname,f'adjacency/t{t}.tif'),util.img_as_uint(I_adj))
-    
-    # Save adjacency matrix as CSV
-    with open(path.join(dirname,'adjmat.csv'),'w',newline='') as csvfile:
-        writer = csv.writer(csvfile,delimiter=',')
-        for j,a in enumerate(A):
-            writer.writerow( np.hstack((j+1,np.where(a)[0]+1)))
-            
             
 df = pd.concat(df,ignore_index=True)
 

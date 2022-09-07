@@ -28,7 +28,6 @@ def sort_by_t(f):
     t = findall('t([0-9]+).tif',f)
     return int(t[0])
 
-filenames = sorted(glob(path.join(dirname,'3d_nuc_seg/naive_tracking/t*.tif')),key=sort_by_t)
 
 def compute_mask_overlaps(this_im,next_im,df_this):
     '''
@@ -81,13 +80,13 @@ def detect_divisions(df_this,df_next, size_ratio_threshold = -0.4):
 current_label = 1 #NB: set this at the beginning of time loop
 T = 15
 
-for t in tqdm(range(6)):
+for t in tqdm(range(T-1)):
 
     if t == 0:
         this_frame = io.imread(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t0.tif'))
     else:
-        this_frame = io.imread(filenames[t]) # load from /naive_tracking/ directory
-    next_frame = io.imread(filenames[t+1])
+        this_frame = io.imread(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t+1}.tif')) # load from /naive_tracking/ directory
+    next_frame = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t+1}.tif'))
     
     df_this = pd.DataFrame(measure.regionprops_table(this_frame,
                                                      properties = ['area','centroid','label',
@@ -121,8 +120,8 @@ for t in tqdm(range(6)):
             current_label += 1
         else:
             label2use = thisID
-        if t == 5 and label2use == 20:
-            error()
+        # if t == 4 and label2use == 20:
+        #     error()
         if t == 0:
             this_tracked[this_frame == thisID] = label2use
             df_this.at[i,'TrackID'] = label2use
@@ -155,15 +154,10 @@ for t in tqdm(range(6)):
         current_label += 1
         # print(f'newborn {trackID} became {current_label - 1}')
     
-    # if DEBUG:
-    #     if current_label -1 < this_tracked.max():
-    #         error()
-        
-    
     if t == 0:
-        io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t}.tif'),this_tracked.astype(np.int16),check_contrast=False)
+        io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t}.tif'),this_tracked.astype(np.uint16),check_contrast=False)
     
-    io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t+1}.tif'),next_tracked.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/naive_tracking/t{t+1}.tif'),next_tracked.astype(np.uint16),check_contrast=False)
     
     
     
