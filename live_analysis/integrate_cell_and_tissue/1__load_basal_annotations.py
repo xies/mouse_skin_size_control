@@ -30,10 +30,7 @@ T = 15
 basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
 allIDs = np.unique(basal_tracking)[1:]
 
-#%%
-
-# columns = ['basalID','Volume','Z','Y','X','Frame','Surface area'
-#            ,'Axial angle','Axial component','Planar component 1','Planar component 2']
+#%% Do pixel level measurements
 
 collated = {k:pd.DataFrame() for k in allIDs}
 
@@ -103,7 +100,7 @@ def get_growth_rate(cf,field):
 
 #%% Calculate spline + growth rates
 
-g1_anno = pd.read_csv(path.join(dirname,'tracked_cells/g1_frame.txt'),index_col=0)
+g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
 for basalID, df in collated.items():
     
@@ -133,6 +130,10 @@ for basalID, df in collated.items():
     collated[basalID] = df
 
 #%%
+#@todo: daughter/division voluem analysis!
+
+#%%
+
 with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
 

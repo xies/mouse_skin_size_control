@@ -81,6 +81,15 @@ def adjmat2triangle(G):
     return triangles
 
 
+def most_likely_label(labeled,im):
+    label = 0
+    if len(im[im>0]) > 0:
+        unique,counts = np.unique(im[im > 0],return_counts=True)
+        label = unique[counts.argmax()]
+        if label == 0:
+            label = np.nan
+    return label
+
     
 #%%
 
@@ -90,14 +99,24 @@ for t in tqdm(range(15)):
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
     
-    df_dense = pd.DataFrame( measure.regionprops_table(dense_seg, intensity_image = manual_tracks,
+    #NB: only use 0-index for the df_dense dataframe
+    df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
                                                        properties=['label','area','centroid']))
-    
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'
-                                        ,'label':'CellposeID','area':'Nuclear volume'
-                                        ,'max_intensity':'basalID'})
+                                        ,'label':'CellposeID','area':'Nuclear volume'})
     df_dense['Frame'] = t
-    
+    df_dense['basalID'] = np.nan
+
+    #NB: best to use this since it guarantees one-to-one 
+    df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = dense_seg,
+                                                       properties = ['label'],
+                                                       extra_properties = [most_likely_label]))
+    df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
+    assert(np.isnan(df_manual['CellposeID']).sum() == 0)
+    # Reverse the mapping
+    for _,this_cell in df_manual.iterrows():
+         df_dense.loc[ df_dense['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
+
     dense_coords = np.array([df_dense['Y'],df_dense['X']]).T
     dense_coords_3d = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
@@ -178,14 +197,18 @@ for t in tqdm(range(15)):
                 df_dense.at[i,'Coronal angle'] = theta
                 df_dense.at[i,'Coronal eccentricity'] = a/b
             
-            
     # Save the DF
     df.append(df_dense)
     
     #Save a bunch of intermediates
     # Save segmentation with text labels @ centroid
-    im_cellposeID = draw_labels_on_image(dense_coords,df_dense['CellposeID'],[XX,XX],font_size=12)
-    im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
+    # im_cellposeID = draw_labels_on_image(dense_coords,df_dense['basalID'],[XX,XX],font_size=12)
+    # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
+    
+    df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
+    colorized = colorize_segmentation(dense_seg,
+                                      {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
+    io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized)
     
 df = pd.concat(df,ignore_index=True)
 

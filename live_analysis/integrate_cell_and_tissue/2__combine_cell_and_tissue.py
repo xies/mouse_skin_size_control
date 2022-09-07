@@ -26,10 +26,14 @@ T = 15
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
     collated = pkl.load(f)
+    
+cell_ts = pd.concat(collated,ignore_index=True)
 
 tissue = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col = 0)
+df = pd.merge(cell_ts, tissue, how='inner', on='basalID')
 
 #%%
 
-# @todo: find overlap between 
-
+sb.pairplot(df,vars=['Nuclear volume','Volume','Height to BM',
+                     'Mean curvature','Mean neighbor dist','Nuclear axial angle'
+                     ,'Axial angle','Coronal area'])
