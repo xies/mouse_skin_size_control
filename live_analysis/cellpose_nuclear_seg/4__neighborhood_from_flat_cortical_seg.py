@@ -87,9 +87,8 @@ for t in tqdm(range(15)):
     
     
     #% Reconstruct adj network from cytolabels that touch
-    
     A = np.zeros((len(df_nuc),len(df_nuc)))
-    for i,cyto in tqdm(df_cyto.iterrows()):
+    for i,cyto in df_cyto.iterrows():
         
         if np.isnan(cyto['CellposeID']):
             continue
@@ -137,6 +136,15 @@ for z,im in enumerate(im_adj):
     im_adj[z,...] = morphology.dilation(im, selem)
 io.imsave('/Users/xies/Desktop/blah.tif',im_adj.astype(np.uint16))
 
+# Construct triangulation
+def adjmat2triangle(G):
+    triangles = set()
+    for u,w in G.edges:
+        for v in set(G.neighbors(u)).intersection(G.neighbors(w)):
+            triangles.add(frozenset([u,v,w]))
+    return triangles
+
+from networkx import Graph
 
 G = nx.Graph(A)
 triangles = adjmat2triangle(G)
