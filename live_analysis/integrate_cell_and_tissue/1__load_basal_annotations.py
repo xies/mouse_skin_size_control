@@ -13,6 +13,8 @@ from scipy.interpolate import UnivariateSpline
 import pandas as pd
 import matplotlib.pylab as plt
 
+from mathUtils import surface_area, parse_inertial_tensor
+
 from os import path
 from glob import glob
 from tqdm import tqdm
@@ -25,49 +27,8 @@ T = 15
 
 #%% Load the basal cell tracking
 
-basal_tracking = io.imread(path.join(dirname,'basal_tracks.tif'))
+basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
 allIDs = np.unique(basal_tracking)[1:]
-
-#%%
-
-def surface_area(im):
-    assert(im.ndim == 3)
-    eroded = morphology.binary_erosion(im).astype(int)
-    outline = im - eroded
-    return outline.sum()
-
-def parse_inertial_tensor(I):
-    
-    L,D = linalg.eig(I)
-    L = np.real(L) # Assume no complex solution is necessary
-    
-    #Sort eigvec by eigenvalue magnitudes
-    order = np.flip( np.argsort(L) )
-    L = L[order]
-    D = D[:,order]
-    
-    Znorm = np.zeros((3,3))
-    Znorm[0,:] = 1
-    
-    delta = D - Znorm
-    norms = np.sqrt( (delta**2).sum(axis=0) )
-    
-    # Flip Znorm if everything is too large
-    if np.all(norms > 1):
-        delta = D + Znorm
-        norms = np.sqrt( (delta**2).sum(axis=0) )
-    
-    which_Zaxis = norms <= 1
-    single_norm = norms[which_Zaxis]
-    assert( len(single_norm) == 1)
-    phi = np.rad2deg( np.arcsin(single_norm) )
-    
-    axial_moment = L[which_Zaxis]
-    
-    other_axes = norms > 1
-    other_moments = L[other_axes]
-    
-    return axial_moment[0], phi[0], other_moments[0], other_moments[1]
 
 #%%
 

@@ -19,6 +19,7 @@ import matplotlib.pylab as plt
 # from matplotlib.path import Path
 # from roipoly import roipoly
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image
+from mathUtils import argsort_counter_clockwise, polygon_area, surface_area, parse_inertial_tensor
 
 from tqdm import tqdm
 from glob import glob
@@ -79,6 +80,7 @@ def adjmat2triangle(G):
             triangles.add(frozenset([u,v,w]))
     return triangles
 
+
     
 #%%
 
@@ -89,8 +91,8 @@ for t in tqdm(range(15)):
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
     
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg, intensity_image = manual_tracks,
-                                                       properties=['label','area','centroid','max_intensity']))
-
+                                                       properties=['label','area','centroid']))
+    
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'
                                         ,'label':'CellposeID','area':'Nuclear volume'
                                         ,'max_intensity':'basalID'})
@@ -129,12 +131,31 @@ for t in tqdm(range(15)):
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d))
     
+    df_dense['Nuclear surface area'] = np.nan
+    df_dense['Nuclear axial component'] = np.nan
+    df_dense['Nuclear axial angle'] = np.nan
+    df_dense['Nuclear planar component 1'] = np.nan
+    df_dense['Nuclear planar component 2'] = np.nan
     df_dense['Num neighbors'] = np.nan
     df_dense['Mean neighbor dist'] = np.nan
     df_dense['Min neighbor dist'] = np.nan
     df_dense['Max neighbor dist'] = np.nan
     df_dense['Coronal area'] = np.nan
+    df_dense['Coronal angle'] = np.nan
+    df_dense['Coronal eccentricity'] = np.nan
+    
+    props = measure.regionprops(dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
+        
+        I = props[i]['inertia_tensor']
+        SA = props[i]['surface_area']
+        Iaxial,phi,Ia,Ib = parse_inertial_tensor(I)
+        df_dense.at[i,'Nuclear surface area'] = SA
+        df_dense.at[i,'Nuclear axial component'] = Iaxial
+        df_dense.at[i,'Nuclear axial angle'] = phi
+        df_dense.at[i,'Nuclear planar component 1'] = Ia
+        df_dense.at[i,'Nuclear planar component 2'] = Ib
+        
         neighbor_idx = np.where(A[i,:])[0]
         df_dense.at[i,'Num neighbors'] = len(neighbor_idx)
         if len(neighbor_idx) > 0:
@@ -142,9 +163,21 @@ for t in tqdm(range(15)):
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
             df_dense.at[i,'Min neighbor dist'] = neighbor_dists.min()
             df_dense.at[i,'Max neighbor dist'] = neighbor_dists.max()
-    
-        # @todo: use +1 halo to calculate local neighborhood shape
-        
+            
+            # get 2d coronal area
+            X = dense_coords[neighbor_idx,1]
+            Y = dense_coords[neighbor_idx,0]
+            order = argsort_counter_clockwise(X,Y)
+            df_dense.at[i,'Coronal area'] = polygon_area(X[order],Y[order])
+            
+            if len(X)>4:
+                # Fit ellipse and find major axis/eccentricity
+                el = measure.EllipseModel()
+                el.estimate(dense_coords[neighbor_idx,:])
+                _,_, a,b,theta= el.params
+                df_dense.at[i,'Coronal angle'] = theta
+                df_dense.at[i,'Coronal eccentricity'] = a/b
+            
             
     # Save the DF
     df.append(df_dense)
