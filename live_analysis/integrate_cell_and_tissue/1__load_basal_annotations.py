@@ -13,7 +13,7 @@ from scipy.interpolate import UnivariateSpline
 import pandas as pd
 import matplotlib.pylab as plt
 
-from mathUtils import surface_area, parse_inertial_tensor
+from mathUtils import surface_area, parse_3D_inertial_tensor
 
 from os import path
 from glob import glob
@@ -25,43 +25,9 @@ ZZ = 72
 XX = 460
 T = 15
 
-#%% Load the basal cell tracking
-
-basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
-allIDs = np.unique(basal_tracking)[1:]
-
-#%% Do pixel level measurements
-
-collated = {k:pd.DataFrame() for k in allIDs}
-
-for t,im in enumerate(basal_tracking):
-
-    properties = measure.regionprops(im, extra_properties = [surface_area])
-    
-    for p in properties:
-        
-        basalID = p['label']
-        V = p['area']
-        Z,Y,X = p['centroid']
-        SA = p['surface_area']
-        
-        I = p['inertia_tensor']
-        Iaxial, phi, Ia, Ib = parse_inertial_tensor(I)
-        s = pd.Series({'basalID': basalID
-                       ,'Volume':V
-                       ,'Z':Z,'Y':Y,'X':X, 'Frame': t
-                       ,'Surface area':SA
-                       ,'Axial angle':phi
-                       ,'Axial component':Iaxial
-                       ,'Planar component 1':Ia,'Planar component 2':Ib})
-    
-        collated[basalID] = collated[basalID].append(s,ignore_index=True)
-    
-#%% Derive simple parameters from existing fields
-
 from toeplitzDifference import backward_difference
 
-def get_interpolated_curve(cf,smoothing_factor=1e5):
+def get_interpolated_curve(cf,smoothing_factor=1e10):
 
     # Get rid of daughter cells]
     if len(cf) < 4:
@@ -98,7 +64,40 @@ def get_growth_rate(cf,field):
     
     return gr,gr_sm
 
-#%% Calculate spline + growth rates
+
+#%% Load the basal cell tracking
+
+basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
+allIDs = np.unique(basal_tracking)[1:]
+
+#%% Do pixel level measurements
+
+collated = {k:pd.DataFrame() for k in allIDs}
+for t,im in enumerate(basal_tracking):
+
+    properties = measure.regionprops(im, extra_properties = [surface_area])
+    
+    for p in properties:
+        
+        basalID = p['label']
+        V = p['area']
+        Z,Y,X = p['centroid']
+        SA = p['surface_area']
+        
+        I = p['inertia_tensor']
+        Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
+        s = pd.Series({'basalID': basalID
+                       ,'Volume':V
+                       ,'Z':Z,'Y':Y,'X':X, 'Frame': t
+                       ,'Surface area':SA
+                       ,'Axial angle':phi
+                       ,'Axial component':Iaxial
+                       ,'Planar component 1':Ia,'Planar component 2':Ib
+                       ,'Planar orientation':theta})
+        
+        collated[basalID] = collated[basalID].append(s,ignore_index=True)
+    
+#% Calculate spline + growth rates
 
 g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
@@ -116,23 +115,25 @@ for basalID, df in collated.items():
         gr,gr_sm = get_growth_rate(df,'Volume')
         df['Growth rate'] = gr
         df['Growth rate (sm)'] = gr_sm
-
+        df['Specific GR (sm)'] = gr_sm / df['Volume (sm)']
+        df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
+        
         # G1 annotations
-
         g1_frame = g1_anno.loc[basalID]['Frame']
         if g1_frame == '?':
             continue
         else:
             g1_frame = int(g1_frame)
+            df['G1S frame'] = g1_frame
             df['Phase'] = 'G1'
             df.loc[df['Frame'].values > g1_frame,'Phase'] = 'SG2'
             
     collated[basalID] = df
 
-#%%
+#%
 #@todo: daughter/division voluem analysis!
 
-#%%
+#%
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)

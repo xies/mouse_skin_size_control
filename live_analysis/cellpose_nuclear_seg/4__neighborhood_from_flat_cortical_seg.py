@@ -32,11 +32,11 @@ def most_likely_label(labeled,im):
         label = unique[counts.argmax()]
     return label
 
-#%% Load the cytoplasmic segmentatinos
+#%% Load the flat cytoplasmic segmentations
 
 for t in tqdm(range(15)):
     
-    # t = 14
+    t = 1
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     selem = ndi.generate_binary_structure(2,1)
@@ -48,7 +48,6 @@ for t in tqdm(range(15)):
     # heightmap = np.round(heightmap).astype(int)
     
     #% Label transfer from nuc3D -> cyto2D
-    
     touching_threshold = 20 #px
     
     # For now detect the max overlap label with the nuc projection
@@ -74,7 +73,6 @@ for t in tqdm(range(15)):
         print(f'CytoID being duplicated: {uniques[i]}')
     
     #% Relabel cyto seg with nuclear CellposeID
-    
     df_cyto['CellposeID'] = np.nan
     for i,cyto in df_cyto.iterrows():
         cytoID = cyto['label']
@@ -123,6 +121,7 @@ for t in tqdm(range(15)):
 #%%
 
 
+
 A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
 
 dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
@@ -151,7 +150,6 @@ triangles = adjmat2triangle(G)
 triangle_neighbors = np.array([list(x) for x in list(triangles)])
 
 from matplotlib.tri import Triangulation
-
 tri = Triangulation(x=nuc_coords_3d[:,1], y=nuc_coords_3d[:,2], triangles = triangle_neighbors)
 
 #%%

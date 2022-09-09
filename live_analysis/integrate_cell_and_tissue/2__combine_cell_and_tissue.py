@@ -30,10 +30,35 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
 cell_ts = pd.concat(collated,ignore_index=True)
 
 tissue = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col = 0)
-df = pd.merge(cell_ts, tissue, how='inner', on='basalID')
+# tissue_ = tissue[~np.isnan(tissue['basalID'].values)]
+
+df = pd.merge(cell_ts, tissue, how='inner', on=['basalID','Frame'])
+
+#%% Derive cell->tissue features
+
+# @todo: Alignment of cell to local tissue
+
+# @todo: look back in time and look at height!
+# Axial angle -> alignment to z-axis
+# 
+
+df['Cell alignment'] = df['Coronal angle'] - df['Planar angle']
+
+        
+
+df_ = df[df['Phase'] != '?']
+    
+#%%
+
+# sb.pairplot(df_,vars=['Volume','Height to BM',
+#                      'Mean curvature','Mean neighbor dist','Growth rate (sm)','Specific GR (sm)'
+#                      ,'Axial angle','Coronal eccentricity'],plot_kws={'alpha':0.5}
+#             , hue='Phase')
+
+sb.pairplot(df_,vars=['Volume','Growth rate (sm)','Specific GR (sm)','Coronal density'],
+            plot_kws={'alpha':0.5}
+            , hue='Phase')
 
 #%%
 
-sb.pairplot(df,vars=['Nuclear volume','Volume','Height to BM',
-                     'Mean curvature','Mean neighbor dist','Nuclear axial angle'
-                     ,'Axial angle','Coronal area'])
+sb.regplot(df_,y='phase', logistic=True, x='Growth rate')

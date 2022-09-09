@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 # from matplotlib.path import Path
 # from roipoly import roipoly
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image
-from mathUtils import argsort_counter_clockwise, polygon_area, surface_area, parse_inertial_tensor
+from mathUtils import argsort_counter_clockwise, polygon_area, surface_area, parse_3D_inertial_tensor
 
 from tqdm import tqdm
 from glob import glob
@@ -94,6 +94,7 @@ def most_likely_label(labeled,im):
 #%%
 
 df = []
+
 for t in tqdm(range(15)):
     
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
@@ -101,9 +102,10 @@ for t in tqdm(range(15)):
     
     #NB: only use 0-index for the df_dense dataframe
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
-                                                       properties=['label','area','centroid']))
+                                                       properties=['label','area','centroid','solidity']))
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'
-                                        ,'label':'CellposeID','area':'Nuclear volume'})
+                                        ,'label':'CellposeID','area':'Nuclear volume'
+                                        ,'solidity':'Nuclear solidity'})
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
 
@@ -113,6 +115,7 @@ for t in tqdm(range(15)):
                                                        extra_properties = [most_likely_label]))
     df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
     assert(np.isnan(df_manual['CellposeID']).sum() == 0)
+    
     # Reverse the mapping
     for _,this_cell in df_manual.iterrows():
          df_dense.loc[ df_dense['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
@@ -168,12 +171,13 @@ for t in tqdm(range(15)):
         
         I = props[i]['inertia_tensor']
         SA = props[i]['surface_area']
-        Iaxial,phi,Ia,Ib = parse_inertial_tensor(I)
+        Iaxial,phi,Ia,Ib,theta = parse_3D_inertial_tensor(I)
         df_dense.at[i,'Nuclear surface area'] = SA
         df_dense.at[i,'Nuclear axial component'] = Iaxial
         df_dense.at[i,'Nuclear axial angle'] = phi
         df_dense.at[i,'Nuclear planar component 1'] = Ia
         df_dense.at[i,'Nuclear planar component 2'] = Ib
+        df_dense.at[i,'Nuclear planar orientation'] = theta
         
         neighbor_idx = np.where(A[i,:])[0]
         df_dense.at[i,'Num neighbors'] = len(neighbor_idx)
@@ -186,17 +190,25 @@ for t in tqdm(range(15)):
             # get 2d coronal area
             X = dense_coords[neighbor_idx,1]
             Y = dense_coords[neighbor_idx,0]
-            order = argsort_counter_clockwise(X,Y)
-            df_dense.at[i,'Coronal area'] = polygon_area(X[order],Y[order])
-            
-            if len(X)>4:
-                # Fit ellipse and find major axis/eccentricity
-                el = measure.EllipseModel()
-                el.estimate(dense_coords[neighbor_idx,:])
-                _,_, a,b,theta= el.params
+            if len(X) > 2:
+                order = argsort_counter_clockwise(X,Y)
+                X = X[order]
+                Y = Y[order]
+                im = np.zeros([XX,XX])
+                rr,cc = draw.polygon(Y,X)
+                im[rr,cc] = 1
+                p = measure.regionprops(im.astype(int))[0]
+                df_dense.at[i,'Coronal area'] = p['area']
+                df_dense.at[i,'Coronal eccentricity'] = p['eccentricity']
+                theta = np.rad2deg(p['orientation'])
+                if theta < 0:
+                    theta = theta + 180
                 df_dense.at[i,'Coronal angle'] = theta
-                df_dense.at[i,'Coronal eccentricity'] = a/b
+                # df_dense.at[i,'Coronal '
             
+                    
+    df_dense['Coronal density'] = df_dense['Num neighbors'] / df_dense['Coronal area']
+    
     # Save the DF
     df.append(df_dense)
     
@@ -208,12 +220,11 @@ for t in tqdm(range(15)):
     df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
     colorized = colorize_segmentation(dense_seg,
                                       {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized,check_contrast=False)
     
 df = pd.concat(df,ignore_index=True)
 
-#%%
-
+#%
 df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
 
 #%%
