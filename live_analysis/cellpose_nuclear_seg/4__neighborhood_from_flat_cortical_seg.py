@@ -23,7 +23,11 @@ from imageUtils import draw_labels_on_image, draw_adjmat_on_image
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 XX = 460
 T = 15
+touching_threshold = 2 #px
 corona = 2
+
+selem = ndi.generate_binary_structure(2,1)
+# selem = ndi.iterate_structure(selem, corona)
 
 def most_likely_label(labeled,im):
     label = 0
@@ -36,11 +40,9 @@ def most_likely_label(labeled,im):
 
 for t in tqdm(range(15)):
     
-    t = 1
+    # t = 0
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
-    selem = ndi.generate_binary_structure(2,1)
-    selem = ndi.iterate_structure(selem, corona)
     # allcytoIDs = np.unique(cyto_seg)[1:]
     
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
@@ -48,7 +50,6 @@ for t in tqdm(range(15)):
     # heightmap = np.round(heightmap).astype(int)
     
     #% Label transfer from nuc3D -> cyto2D
-    touching_threshold = 20 #px
     
     # For now detect the max overlap label with the nuc projection
     df_nuc = pd.DataFrame( measure.regionprops_table(dense_seg.max(axis=0), intensity_image = cyto_seg
@@ -98,6 +99,8 @@ for t in tqdm(range(15)):
         
         touchingIDs,counts = np.unique(cyto_seg[this_mask_dil],return_counts=True)
         touchingIDs[counts > touching_threshold] # should get rid of 'conrner touching'
+        # if i == 87:
+        #     error
         touchingIDs = touchingIDs[touchingIDs > 0] # Could touch background pxs
         touchingIDs = touchingIDs[touchingIDs != cyto['label']] # nonself
         

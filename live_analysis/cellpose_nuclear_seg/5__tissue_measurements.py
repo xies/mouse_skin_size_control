@@ -27,6 +27,9 @@ from os import path
 import csv
 
 XX = 460
+Z_SHIFT = 15
+HEIGHT_CUTOFF = 9 #microns above BM
+
 VISUALIZE = True
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
@@ -34,7 +37,6 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 NB: idx - the order in array in dense segmentation
 
 '''
-
 
 #%% Load the segmentation and coordinates
 
@@ -124,8 +126,11 @@ for t in tqdm(range(15)):
     dense_coords_3d = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
     # Load heightmap and calculate adjusted height
-    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
-    df_dense['Height to BM'] = df_dense['Z'] - heightmap[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)]
+    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) + Z_SHIFT
+    df_dense['Height to BM'] = heightmap[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
+    
+    # Based on adjusted height, determine a 'cutoff'
+    df_dense['Differentiating'] = df_dense['Height to BM'] > HEIGHT_CUTOFF
     
     # Generate a dense mesh based sole only 2D/3D nuclear locations
     #% Use Delaunay triangulation in 2D to approximate the basal layer topology
@@ -153,18 +158,31 @@ for t in tqdm(range(15)):
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d))
     
+    A_diff = A.copy()
+    A_diff[:,~df_dense['Differentiating']] = 0
+    A_diff = A_diff + A_diff.T
+    A_diff[A_diff > 1] = 1
+    
+    A_planar = A - A_diff
+    
+    # Resave adjmat as planar v. diff
+    im = draw_adjmat_on_image(A_planar,dense_coords,[XX,XX])
+    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_planar.tif'),im.astype(np.uint16),check_contrast=False)
+    im = draw_adjmat_on_image(A_diff,dense_coords,[XX,XX])
+    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_diff.tif'),im.astype(np.uint16),check_contrast=False)
+    
     df_dense['Nuclear surface area'] = np.nan
     df_dense['Nuclear axial component'] = np.nan
     df_dense['Nuclear axial angle'] = np.nan
     df_dense['Nuclear planar component 1'] = np.nan
     df_dense['Nuclear planar component 2'] = np.nan
-    df_dense['Num neighbors'] = np.nan
+
     df_dense['Mean neighbor dist'] = np.nan
-    df_dense['Min neighbor dist'] = np.nan
-    df_dense['Max neighbor dist'] = np.nan
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
+    df_dense['Mean planar neighbor height'] = np.nan
+    df_dense['Mean diff neighbor height'] = np.nan
     
     props = measure.regionprops(dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
@@ -179,17 +197,33 @@ for t in tqdm(range(15)):
         df_dense.at[i,'Nuclear planar component 2'] = Ib
         df_dense.at[i,'Nuclear planar orientation'] = theta
         
-        neighbor_idx = np.where(A[i,:])[0]
-        df_dense.at[i,'Num neighbors'] = len(neighbor_idx)
-        if len(neighbor_idx) > 0:
-            neighbor_dists = D[i, neighbor_idx]
+        # Use neighbor matrices
+        planar_neighbor_idx = np.where(A_planar[i,:])[0]
+        diff_neighbor_idx = np.where(A_diff[i,:])[0]
+        df_dense.at[i,'Num planar neighbors'] = len(planar_neighbor_idx)
+        df_dense.at[i,'Num diff neighbors'] = len(diff_neighbor_idx)
+        
+        if len(np.hstack([diff_neighbor_idx,planar_neighbor_idx])) > 0:
+            neighbor_heights = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['Height to BM']
+            df_dense.at[i,'Mean neighbor height'] = neighbor_heights.mean()
+            
+        # Differentiating neighbor heights
+        if len(diff_neighbor_idx) > 0:
+            neighbor_heights = df_dense.loc[diff_neighbor_idx]['Height to BM']
+            df_dense.at[i,'Mean diff neighbor height'] = neighbor_heights.mean()
+            
+        # +1 Planar neighbors (i.e. those that are still basal)
+        if len(planar_neighbor_idx) > 0:
+            
+            neighbor_heights = df_dense.loc[planar_neighbor_idx]['Height to BM']
+            df_dense.at[i,'Mean planar neighbor height'] = neighbor_heights.mean()
+            
+            neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
-            df_dense.at[i,'Min neighbor dist'] = neighbor_dists.min()
-            df_dense.at[i,'Max neighbor dist'] = neighbor_dists.max()
             
             # get 2d coronal area
-            X = dense_coords[neighbor_idx,1]
-            Y = dense_coords[neighbor_idx,0]
+            X = dense_coords[planar_neighbor_idx,1]
+            Y = dense_coords[planar_neighbor_idx,0]
             if len(X) > 2:
                 order = argsort_counter_clockwise(X,Y)
                 X = X[order]
@@ -205,9 +239,9 @@ for t in tqdm(range(15)):
                     theta = theta + 180
                 df_dense.at[i,'Coronal angle'] = theta
                 # df_dense.at[i,'Coronal '
-            
+                
                     
-    df_dense['Coronal density'] = df_dense['Num neighbors'] / df_dense['Coronal area']
+    df_dense['Coronal density'] = df_dense['Num planar neighbors'] / df_dense['Coronal area']
     
     # Save the DF
     df.append(df_dense)
@@ -221,6 +255,7 @@ for t in tqdm(range(15)):
     colorized = colorize_segmentation(dense_seg,
                                       {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
     io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized,check_contrast=False)
+    
     
 df = pd.concat(df,ignore_index=True)
 

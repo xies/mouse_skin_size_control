@@ -38,36 +38,53 @@ def plot_logit_model(model,field):
 
 #%% Data sanitization
 
-df_ = df[df['Phase'] != '?']
-df_g1s = pd.DataFrame()
 df_g1s = df_.rename(columns={'Volume (sm)':'vol_sm'
-                             ,'Coronal density':'cor_density'})
+                             ,'Coronal density':'cor_density'
+                             ,'Nuclear volume':'nuc_vol'
+                             ,'Mean curvature':'mean_curve'
+                             ,'Cell alignment':'cell_align'
+                             ,'Planar eccentricity':'planar_ecc'
+                             ,'Axial eccentricity':'axial_ecc'
+                             ,'Num diff neighbors':'neighb_diff'
+                             ,'Specific GR (sm)':'sgr'
+                             ,'Height to BM':'height'
+                             ,'Neighbor mean height frame-1':'neighb_height_12h'
+                             ,'Neighbor mean height frame-2':'neighb_height_24h'
+                             ,'Relative nuclear height':'rel_nuc_height'
+                             ,'Growth rate (sm)':'gr'
+                             ,'Num planar neighbors':'neighb_plan'})
+
+df_g1s = df_g1s[['Age','vol_sm','nuc_vol','cor_density','mean_curve','cell_align'
+                 ,'planar_ecc','neighb_diff','neighb_plan','sgr','gr','neighb_height_12h','neighb_height_24h'
+                 ,'height','axial_ecc','rel_nuc_height']]
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
+
+
 #%%
 
-field = 'vol_sm'
-############### Plot G1S logistic as function of size ###############
-model = smf.logit(f'G1S_logistic ~ {field}', data=df_g1s).fit()
-model.summary()
+# field = 'vol_sm'
+# ############### Plot G1S logistic as function of size ###############
+# model = smf.logit(f'G1S_logistic ~ {field}', data=df_g1s).fit()
+# model.summary()
+# # plot_logit_model(model,field)
+
+# #%%
+
+# field = 'Age'
+# ############### G1S logistic as function of age ###############
+# model = smf.logit(f'G1S_logistic ~ {field}',data=df_g1s).fit()
+# model.summary()
 # plot_logit_model(model,field)
 
-#%%
-
-field = 'Age'
-############### G1S logistic as function of age ###############
-model = smf.logit(f'G1S_logistic ~ {field}',data=df_g1s).fit()
-model.summary()
-# plot_logit_model(model,field)
-
-#%%
+#%
 
 ############### G1S logistic as function of age ###############
-model = smf.logit(f'G1S_logistic ~ vol_sm + Age + cor_density',data=df_g1s).fit()
-model.summary()
+model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.columns != 'G1S_logistic']),
+                  data=df_g1s).fit()
+print(model.summary())
 
-
-#%%
+ #%%
 
 print "Mid point is: ",  mdpoint
 x = dfc_g1['Age'].values

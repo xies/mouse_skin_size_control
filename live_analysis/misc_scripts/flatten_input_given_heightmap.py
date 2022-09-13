@@ -28,7 +28,7 @@ T,Z,XX,_,C = imstack.shape
 for t,im in tqdm(enumerate(im2flatten)):
     Iz = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     Iz += OFFSET
-    output_dir = path.join(dirname,'Image flattening/flat_G')
+    output_dir = path.join(dirname,'Image flattening/flat_10')
     
     flat = np.zeros((XX,XX,C))
     for x in range(XX):

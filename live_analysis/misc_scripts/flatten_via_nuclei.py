@@ -18,10 +18,10 @@ from scipy.optimize import curve_fit
 
 #%%
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
-filenames = glob(path.join(dirname,'WT1.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
+# filenames = glob(path.join(dirname,'WT1.tif'))
 
 channel2use = 1
 
@@ -33,8 +33,8 @@ imstack = io.imread(filenames[0])
 
 #%%
 
-XX = 1024
-ZZ = 221
+XX = 460
+ZZ = 72
 
 XY_sigma = 25
 Z_sigma = 15
@@ -76,7 +76,7 @@ heightmap = np.diff(_tmp[TOP_Z_BOUND:BOTTOM_Z_BOUND,...],axis=0).argmax(axis=0) 
 io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{1}.tif'),heightmap.astype(np.int8))
 
 # Reconstruct flattened movie
-z_shift = 0
+z_shift = -15
 
 Iz = np.round(heightmap + z_shift).astype(int)
 

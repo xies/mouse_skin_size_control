@@ -17,7 +17,7 @@ from tqdm import tqdm
 import pickle as pkl
 
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 ZZ = 72
 XX = 460
 T = 15
@@ -33,21 +33,40 @@ tissue = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col = 0)
 # tissue_ = tissue[~np.isnan(tissue['basalID'].values)]
 
 df = pd.merge(cell_ts, tissue, how='inner', on=['basalID','Frame'])
+df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 
 #%% Derive cell->tissue features
 
 # @todo: Alignment of cell to local tissue
-
+df['Cell alignment'] = np.abs(df['Coronal angle'] - df['Planar angle'])
 # @todo: look back in time and look at height!
-# Axial angle -> alignment to z-axis
-# 
 
-df['Cell alignment'] = df['Coronal angle'] - df['Planar angle']
-
+col_idx = len(df.columns)
+df['Neighbor mean height frame-1'] = np.nan
+df['Neighbor mean height frame-2'] = np.nan
+# Call fate based on cell height
+# For each cell, load all frames, then grab the prev frame height data
+for basalID in collated.keys():
+    idx = np.where(df['basalID'] == basalID)[0]
+    this_len = len(idx)
+    if this_len > 1:
         
+        this_cell = df.iloc[idx]
+        heights = this_cell['Mean neighbor height'].values
+        
+        for t in np.arange(1,this_len):
+            
+            df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
+            if t > 1:
+                df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]
+            
+# df['Neighbor max
+# df['Neighbor mean height frame -1 or -2'] = np.array([df['Neighbor mean height frame-2'],df['Neighbor mean height frame-1']]).max(axis=0).shape
+
+df.to_csv(path.join(dirname,'MLR model/ts_features.csv'))
 
 df_ = df[df['Phase'] != '?']
-    
+
 #%%
 
 # sb.pairplot(df_,vars=['Volume','Height to BM',
@@ -55,10 +74,11 @@ df_ = df[df['Phase'] != '?']
 #                      ,'Axial angle','Coronal eccentricity'],plot_kws={'alpha':0.5}
 #             , hue='Phase')
 
-sb.pairplot(df_,vars=['Volume','Growth rate (sm)','Specific GR (sm)','Coronal density'],
+sb.pairplot(df_,vars=['Volume','Cell alignment','Num diff neighbors','Neighbor mean height frame-2','Neighbor mean height frame-1','Specific GR (sm)','Coronal density'],
             plot_kws={'alpha':0.5}
-            , hue='Phase')
+            ,kind='hist')
 
 #%%
 
 sb.regplot(df_,y='phase', logistic=True, x='Growth rate')
+

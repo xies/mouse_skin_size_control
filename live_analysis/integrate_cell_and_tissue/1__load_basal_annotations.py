@@ -57,13 +57,12 @@ def get_growth_rate(cf,field):
     Tb = backward_difference(len(v))
     gr = np.dot(Tb,v)
     Tb = backward_difference(len(v_sm))
-    gr_sm = np.dot(Tb,v)
+    gr_sm = np.dot(Tb,v_sm)
     gr[0] = np.nan
     gr_sm[0] = np.nan
 
-    
     return gr,gr_sm
-
+    
 
 #%% Load the basal cell tracking
 
@@ -93,7 +92,7 @@ for t,im in enumerate(basal_tracking):
                        ,'Axial angle':phi
                        ,'Axial component':Iaxial
                        ,'Planar component 1':Ia,'Planar component 2':Ib
-                       ,'Planar orientation':theta})
+                       ,'Planar angle':theta})
         
         collated[basalID] = collated[basalID].append(s,ignore_index=True)
     
@@ -137,4 +136,5 @@ for basalID, df in collated.items():
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
+
 
