@@ -25,7 +25,7 @@ ZZ = 72
 XX = 460
 T = 15
 
-from toeplitzDifference import backward_difference
+from toeplitzDifference import backward_difference,forward_difference
 
 def get_interpolated_curve(cf,smoothing_factor=1e10):
 
@@ -54,15 +54,21 @@ def get_growth_rate(cf,field):
     
     v = cf[field].values
     v_sm = cf[field + ' (sm)'].values
+    
     Tb = backward_difference(len(v))
-    gr = np.dot(Tb,v)
+    Tf = forward_difference(len(v))
+    gr_b = np.dot(Tb,v)
+    gr_f = np.dot(Tb,v)
+    
     Tb = backward_difference(len(v_sm))
-    gr_sm = np.dot(Tb,v_sm)
+    Tf = forward_difference(len(v_sm))
+    gr_sm_b = np.dot(Tb,v_sm)
+    gr_sm_f = np.dot(Tf,v_sm)
+    
     gr[0] = np.nan
     gr_sm[0] = np.nan
 
-    return gr,gr_sm
-    
+    return gr_b,gr_f,gr_sm_b,gr_sm_f
 
 #%% Load the basal cell tracking
 
@@ -111,10 +117,13 @@ for basalID, df in collated.items():
         
         Vsm = get_interpolated_curve(df)
         df['Volume (sm)'] = Vsm
-        gr,gr_sm = get_growth_rate(df,'Volume')
-        df['Growth rate'] = gr
-        df['Growth rate (sm)'] = gr_sm
-        df['Specific GR (sm)'] = gr_sm / df['Volume (sm)']
+        gr_f,gr_b,gr_sm_b,gr_sm_f = get_growth_rate(df,'Volume')
+        df['Growth rate b'] = gr_f
+        df['Growth rate f'] = gr_b
+        df['Growth rate b (sm)'] = gr_sm_b
+        df['Growth rate f (sm)'] = gr_sm_f
+        df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
+        df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
         df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
         
         # G1 annotations

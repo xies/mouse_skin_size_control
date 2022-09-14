@@ -39,8 +39,7 @@ def most_likely_label(labeled,im):
 #%% Load the flat cytoplasmic segmentations
 
 for t in tqdm(range(15)):
-    
-    t = 2
+    t = 11
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
@@ -114,7 +113,7 @@ for t in tqdm(range(15)):
         A[this_idx,touching_idx] = 1
     
     #% Save as matrix and image
-    im_adj = draw_adjmat_on_image(A[0:2,:],nuc_coords,[XX,XX]).astype(np.uint16)
+    im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX]).astype(np.uint16)
     io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
     
     # save matrix

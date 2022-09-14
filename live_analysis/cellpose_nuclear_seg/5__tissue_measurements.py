@@ -240,7 +240,6 @@ for t in tqdm(range(15)):
                 df_dense.at[i,'Coronal angle'] = theta
                 # df_dense.at[i,'Coronal '
                 
-                    
     df_dense['Coronal density'] = df_dense['Num planar neighbors'] / df_dense['Coronal area']
     
     # Save the DF
