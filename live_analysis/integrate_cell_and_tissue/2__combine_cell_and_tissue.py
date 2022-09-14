@@ -55,7 +55,6 @@ for basalID in collated.keys():
         heights = this_cell['Mean neighbor height'].values
         
         for t in np.arange(1,this_len):
-            
             df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
             if t > 1:
                 df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]

@@ -142,6 +142,7 @@ for basalID, df in collated.items():
             df['G1S frame'] = g1_frame
             df['Phase'] = 'G1'
             df.loc[df['Frame'].values > g1_frame,'Phase'] = 'SG2'
+            df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
             
     collated[basalID] = df
 

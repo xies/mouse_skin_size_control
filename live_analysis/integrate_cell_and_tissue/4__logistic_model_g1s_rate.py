@@ -36,9 +36,10 @@ def plot_logit_model(model,field):
     I = np.argsort(expitvals)
     plt.plot(x[I],expitvals[I],'b')
 
-#%% Data sanitization
+#%% OLS for smoothed specific growth rate
 
-df_g1s = df_.rename(columns={'Volume (sm)':'vol_sm'
+df_g1s = df_.rename(columns={ # Cell geometry
+                              'Volume (sm)':'vol_sm'
                              ,'Nuclear volume':'nuc_vol'
                              ,'Planar eccentricity':'planar_ecc'
                              ,'Axial eccentricity':'axial_ecc'
@@ -46,17 +47,16 @@ df_g1s = df_.rename(columns={'Volume (sm)':'vol_sm'
                              ,'Axial angle':'axial_angle'
                              ,'Planar component 1':'planar_component_1'
                              ,'Planar component 2':'planar_component_2'
-                             
-                             ,'Specific GR b (sm)':'sgr'
-                             ,'Height to BM':'height'
                              ,'Relative nuclear height':'rel_nuc_height'
-                             
-                             ,'Growth rate b (sm)':'gr'
                              ,'Surface area':'sa'
                              
-                             
+                             # Growth rates
+                             ,'Specific GR b (sm)':'sgr'
+                             ,'Growth rate b (sm)':'gr'
+                             ,'Height to BM':'height'
                              ,'Mean curvature':'mean_curve'
                              
+                             # Neighbor topolgy and
                              ,'Coronal density':'cor_density'
                              ,'Cell alignment':'cell_align'
                              ,'Mean neighbor dist':'mean_neighb_dist'
@@ -64,6 +64,7 @@ df_g1s = df_.rename(columns={'Volume (sm)':'vol_sm'
                              ,'Neighbor mean height frame-2':'neighb_height_24h'
                              ,'Num diff neighbors':'neighb_diff'
                              ,'Num planar neighbors':'neighb_plan'})
+#%% Logistic for G1/S transition
 
 df_g1s = df_g1s[['Age','vol_sm','nuc_vol','cor_density','mean_curve','cell_align'
                  ,'planar_ecc','neighb_diff','neighb_plan','sgr','gr','neighb_height_12h','neighb_height_24h'
@@ -82,11 +83,11 @@ df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
 # #%%
 
-# field = 'Age'
-# ############### G1S logistic as function of age ###############
-# model = smf.logit(f'G1S_logistic ~ {field}',data=df_g1s).fit()
-# model.summary()
-# plot_logit_model(model,field)
+############### G1S logistic as function of age ###############
+model = smf.ols(f'sgr ~ ' + str.join(' + ',
+                                      df_g1s.columns[(df_g1s.columns != 'sgr') &
+                                                     (df_g1s.columns != 'gr')]),data=df_g1s).fit()
+print(model.summary())
 
 #%
 
@@ -94,6 +95,7 @@ df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.columns != 'G1S_logistic']),
                   data=df_g1s).fit()
 print(model.summary())
+
 
  #%%
 

@@ -39,7 +39,7 @@ def most_likely_label(labeled,im):
 #%% Load the flat cytoplasmic segmentations
 
 for t in tqdm(range(15)):
-    t = 11
+    
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
@@ -71,8 +71,8 @@ for t in tqdm(range(15)):
     bad_idx = np.where(counts > 1)[0]
     for i in bad_idx:
         print(f'CytoID being duplicated: {uniques[i]}')
-    
     #% Relabel cyto seg with nuclear CellposeID
+    
     df_cyto['CellposeID'] = np.nan
     for i,cyto in df_cyto.iterrows():
         cytoID = cyto['label']
@@ -120,8 +120,8 @@ for t in tqdm(range(15)):
     np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
     
     
-#%%
 
+#%%
 A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
 
 dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
