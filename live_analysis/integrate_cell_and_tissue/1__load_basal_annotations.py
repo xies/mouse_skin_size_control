@@ -24,6 +24,7 @@ dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 ZZ = 72
 XX = 460
 T = 15
+dx = 0.25
 
 from toeplitzDifference import backward_difference,forward_difference
 
@@ -52,6 +53,8 @@ def get_growth_rate(cf,field):
     
     assert(field == 'Nucleus' or field == 'Volume')
     
+    #@todo: detect + impute NaN for automatically tracked cells
+    
     v = cf[field].values
     v_sm = cf[field + ' (sm)'].values
     
@@ -65,8 +68,10 @@ def get_growth_rate(cf,field):
     gr_sm_b = np.dot(Tb,v_sm)
     gr_sm_f = np.dot(Tf,v_sm)
     
-    gr[0] = np.nan
-    gr_sm[0] = np.nan
+    gr_b[0] = np.nan
+    gr_f[-1] = np.nan
+    gr_sm_b[0] = np.nan
+    gr_sm_f[-1] = np.nan
 
     return gr_b,gr_f,gr_sm_b,gr_sm_f
 
@@ -85,15 +90,17 @@ for t,im in enumerate(basal_tracking):
     for p in properties:
         
         basalID = p['label']
-        V = p['area']
+        V = p['area'] * dx**2
         Z,Y,X = p['centroid']
-        SA = p['surface_area']
+        SA = p['surface_area'] * dx**2
         
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
         s = pd.Series({'basalID': basalID
                        ,'Volume':V
-                       ,'Z':Z,'Y':Y,'X':X, 'Frame': t
+                       ,'Z':Z,'Frame': t
+                       ,'Y-pixels':Y,'X-pixels':X
+                       ,'Y':Y * dx**2,'X':X * dx**2
                        ,'Surface area':SA
                        ,'Axial angle':phi
                        ,'Axial component':Iaxial
@@ -118,10 +125,10 @@ for basalID, df in collated.items():
         Vsm = get_interpolated_curve(df)
         df['Volume (sm)'] = Vsm
         gr_f,gr_b,gr_sm_b,gr_sm_f = get_growth_rate(df,'Volume')
-        df['Growth rate b'] = gr_f
-        df['Growth rate f'] = gr_b
-        df['Growth rate b (sm)'] = gr_sm_b
-        df['Growth rate f (sm)'] = gr_sm_f
+        df['Growth rate b'] = gr_f / 12.
+        df['Growth rate f'] = gr_b / 12.
+        df['Growth rate b (sm)'] = gr_sm_b / 12.
+        df['Growth rate f (sm)'] = gr_sm_f / 12.
         df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
         df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
         df['Age'] = (df['Frame']-df['Frame'].min()) * 12.

@@ -122,8 +122,6 @@ for t in tqdm(range(15)):
     
 #%%
 
-
-
 A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
 
 dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))

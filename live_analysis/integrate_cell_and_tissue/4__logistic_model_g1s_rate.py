@@ -39,26 +39,37 @@ def plot_logit_model(model,field):
 #%% Data sanitization
 
 df_g1s = df_.rename(columns={'Volume (sm)':'vol_sm'
-                             ,'Coronal density':'cor_density'
                              ,'Nuclear volume':'nuc_vol'
-                             ,'Mean curvature':'mean_curve'
-                             ,'Cell alignment':'cell_align'
                              ,'Planar eccentricity':'planar_ecc'
                              ,'Axial eccentricity':'axial_ecc'
-                             ,'Num diff neighbors':'neighb_diff'
-                             ,'Specific GR (sm)':'sgr'
+                             ,'Axial component':'axial_moment'
+                             ,'Axial angle':'axial_angle'
+                             ,'Planar component 1':'planar_component_1'
+                             ,'Planar component 2':'planar_component_2'
+                             
+                             ,'Specific GR b (sm)':'sgr'
                              ,'Height to BM':'height'
+                             ,'Relative nuclear height':'rel_nuc_height'
+                             
+                             ,'Growth rate b (sm)':'gr'
+                             ,'Surface area':'sa'
+                             
+                             
+                             ,'Mean curvature':'mean_curve'
+                             
+                             ,'Coronal density':'cor_density'
+                             ,'Cell alignment':'cell_align'
+                             ,'Mean neighbor dist':'mean_neighb_dist'
                              ,'Neighbor mean height frame-1':'neighb_height_12h'
                              ,'Neighbor mean height frame-2':'neighb_height_24h'
-                             ,'Relative nuclear height':'rel_nuc_height'
-                             ,'Growth rate (sm)':'gr'
+                             ,'Num diff neighbors':'neighb_diff'
                              ,'Num planar neighbors':'neighb_plan'})
 
 df_g1s = df_g1s[['Age','vol_sm','nuc_vol','cor_density','mean_curve','cell_align'
                  ,'planar_ecc','neighb_diff','neighb_plan','sgr','gr','neighb_height_12h','neighb_height_24h'
-                 ,'height','axial_ecc','rel_nuc_height']]
+                 ,'height','axial_ecc','rel_nuc_height','sa','axial_angle','axial_moment'
+                 ,'planar_component_1','planar_component_2']]
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
-
 
 
 #%%

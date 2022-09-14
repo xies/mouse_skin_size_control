@@ -26,6 +26,7 @@ from glob import glob
 from os import path
 import csv
 
+dx = 0.25
 XX = 460
 Z_SHIFT = 15
 HEIGHT_CUTOFF = 9 #microns above BM
@@ -105,9 +106,12 @@ for t in tqdm(range(15)):
     #NB: only use 0-index for the df_dense dataframe
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
                                                        properties=['label','area','centroid','solidity']))
-    df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'
+    df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
                                         ,'label':'CellposeID','area':'Nuclear volume'
                                         ,'solidity':'Nuclear solidity'})
+    df_dense['Nuclear volume'] = df_dense['Nuclear volume'] * dx**2
+    df_dense['X'] = df_dense['X-pixels'] * dx**2
+    df_dense['Y'] = df_dense['Y-pixels'] * dx**2
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
 
@@ -122,8 +126,8 @@ for t in tqdm(range(15)):
     for _,this_cell in df_manual.iterrows():
          df_dense.loc[ df_dense['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
 
-    dense_coords = np.array([df_dense['Y'],df_dense['X']]).T
-    dense_coords_3d = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
+    dense_coords = np.array([df_dense['Y-pixels'],df_dense['X-pixels']]).T
+    dense_coords_3d_um = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
     # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) + Z_SHIFT
@@ -146,7 +150,7 @@ for t in tqdm(range(15)):
     df_dense['Border'] = False
     df_dense.loc[ np.in1d(df_dense['CellposeID'],border_nuclei), 'Border'] = True
     
-    Z,Y,X = dense_coords_3d.T
+    Z,Y,X = dense_coords_3d_um.T
     mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
     # mesh_sm = trimesh.smoothing.filter_laplacian(mesh,lamb=0.01)
     mean_curve = discrete_mean_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
@@ -156,7 +160,7 @@ for t in tqdm(range(15)):
     
     # Load the actual neighborhood topology
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
-    D = distance.squareform(distance.pdist(dense_coords_3d))
+    D = distance.squareform(distance.pdist(dense_coords_3d_um))
     
     A_diff = A.copy()
     A_diff[:,~df_dense['Differentiating']] = 0
@@ -188,9 +192,9 @@ for t in tqdm(range(15)):
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
         
         I = props[i]['inertia_tensor']
-        SA = props[i]['surface_area']
+        SA = props[i]['surface_area'] * dx**2
         Iaxial,phi,Ia,Ib,theta = parse_3D_inertial_tensor(I)
-        df_dense.at[i,'Nuclear surface area'] = SA
+        df_dense.at[i,'Nuclear surface area'] = SA  * dx**2
         df_dense.at[i,'Nuclear axial component'] = Iaxial
         df_dense.at[i,'Nuclear axial angle'] = phi
         df_dense.at[i,'Nuclear planar component 1'] = Ia
@@ -232,7 +236,7 @@ for t in tqdm(range(15)):
                 rr,cc = draw.polygon(Y,X)
                 im[rr,cc] = 1
                 p = measure.regionprops(im.astype(int))[0]
-                df_dense.at[i,'Coronal area'] = p['area']
+                df_dense.at[i,'Coronal area'] = p['area']  * dx**2
                 df_dense.at[i,'Coronal eccentricity'] = p['eccentricity']
                 theta = np.rad2deg(p['orientation'])
                 if theta < 0:
