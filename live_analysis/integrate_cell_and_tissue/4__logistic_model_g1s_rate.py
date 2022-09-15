@@ -6,7 +6,6 @@ Created on Wed Sep  7 15:27:52 2022
 @author: xies
 """
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -15,6 +14,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.special import expit
 from basicUtils import *
+from os import path
 
 from numpy import random
 from sklearn.metrics import roc_curve, auc
@@ -36,147 +36,98 @@ def plot_logit_model(model,field):
     I = np.argsort(expitvals)
     plt.plot(x[I],expitvals[I],'b')
 
-#%% OLS for smoothed specific growth rate
-
-df_g1s = df_.rename(columns={ # Cell geometry
-                              'Volume (sm)':'vol_sm'
-                             ,'Nuclear volume':'nuc_vol'
-                             ,'Planar eccentricity':'planar_ecc'
-                             ,'Axial eccentricity':'axial_ecc'
-                             ,'Axial component':'axial_moment'
-                             ,'Axial angle':'axial_angle'
-                             ,'Planar component 1':'planar_component_1'
-                             ,'Planar component 2':'planar_component_2'
-                             ,'Relative nuclear height':'rel_nuc_height'
-                             ,'Surface area':'sa'
-                             
-                             # Growth rates
-                             ,'Specific GR b (sm)':'sgr'
-                             ,'Growth rate b (sm)':'gr'
-                             ,'Height to BM':'height'
-                             ,'Mean curvature':'mean_curve'
-                             
-                             # Neighbor topolgy and
-                             ,'Coronal density':'cor_density'
-                             ,'Cell alignment':'cell_align'
-                             ,'Mean neighbor dist':'mean_neighb_dist'
-                             ,'Neighbor mean height frame-1':'neighb_height_12h'
-                             ,'Neighbor mean height frame-2':'neighb_height_24h'
-                             ,'Num diff neighbors':'neighb_diff'
-                             ,'Num planar neighbors':'neighb_plan'})
-#%% Logistic for G1/S transition
-
-df_g1s = df_g1s[['Age','vol_sm','nuc_vol','cor_density','mean_curve','cell_align'
-                 ,'planar_ecc','neighb_diff','neighb_plan','sgr','gr','neighb_height_12h','neighb_height_24h'
-                 ,'height','axial_ecc','rel_nuc_height','sa','axial_angle','axial_moment'
-                 ,'planar_component_1','planar_component_2']]
-df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
-
+def z_standardize(x):
+    return (x - np.nanmean(x))/np.std(x)
 
 #%%
 
-# field = 'vol_sm'
-# ############### Plot G1S logistic as function of size ###############
-# model = smf.logit(f'G1S_logistic ~ {field}', data=df_g1s).fit()
-# model.summary()
-# # plot_logit_model(model,field)
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
 
-# #%%
+df_ = df[df['Phase'] != '?']
 
-############### G1S logistic as function of age ###############
-model = smf.ols(f'sgr ~ ' + str.join(' + ',
+#%% Sanitize field names for smf
+
+features_list = { # Cell geometry
+                'Age':'age'
+                ,'Volume (sm)':'vol_sm'
+                # ,'Nuclear volume':'nuc_vol'
+                ,'Planar eccentricity':'planar_ecc'
+                ,'Axial eccentricity':'axial_ecc'
+                ,'Axial component':'axial_moment'
+                ,'Axial angle':'axial_angle'
+                ,'Planar component 1':'planar_component_1'
+                ,'Planar component 2':'planar_component_2'
+                ,'Relative nuclear height':'rel_nuc_height'
+                # ,'Surface area':'sa'
+                
+                # Growth rates
+                # ,'Specific GR b (sm)':'sgr'
+                ,'Growth rate b (sm)':'gr'
+                ,'Height to BM':'height_to_bm'
+                ,'Mean curvature':'mean_curve'
+                
+                # Neighbor topolgy and
+                # ,'Coronal density':'cor_density'
+                ,'Cell alignment':'cell_align'
+                ,'Mean neighbor dist':'mean_neighb_dist'
+                ,'Neighbor mean height frame-1':'neighb_height_12h'
+                # ,'Neighbor mean height frame-2':'neighb_height_24h'
+                ,'Num diff neighbors':'neighb_diff'
+                ,'Num planar neighbors':'neighb_plan'}
+
+df_g1s = df_.loc[:,list(features_list.keys())]
+df_g1s = df_g1s.rename(columns=features_list)
+
+# Standardize
+for col in df_g1s.columns[df_g1s.columns != 'G1S_logistic']:
+    df_g1s[col] = z_standardize(df_g1s[col])
+
+df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+
+#%%
+
+from firthlogist import FirthLogisticRegression, load_sex2
+import statsmodels.api as sm
+
+df_g1s_ = df_g1s.dropna()
+y = df_g1s_['G1S_logistic']
+df_X = df_g1s_[df_g1s_.columns[df_g1s.columns != 'G1S_logistic']]
+X = sm.add_constant(df_X)
+feature_names = X.columns
+
+fl = FirthLogisticRegression( pl_max_iter=1000)
+fl.fit(X, y)
+
+fl.summary(xname = feature_names)
+
+#%%OLS for smoothed specific growth rate
+
+############### OLS for specific growth rate ###############
+model_ols = smf.rlm(f'sgr ~ ' + str.join(' + ',
                                       df_g1s.columns[(df_g1s.columns != 'sgr') &
                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
-print(model.summary())
+print(model_ols.summary())
 
-#%
+
+############### GLM for specific growth rate ###############
+model_glm = smf.glm(f'sgr ~ ' + str.join(' + ',
+                                      df_g1s.columns[(df_g1s.columns != 'sgr') &
+                                                     (df_g1s.columns != 'gr')]),data=df_g1s).fit()
+print(model_glm.summary())
+
+
+
+#%% Logistic for G1/S transition
 
 ############### G1S logistic as function of age ###############
 model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.columns != 'G1S_logistic']),
                   data=df_g1s).fit()
 print(model.summary())
 
-
- #%%
-
-print "Mid point is: ",  mdpoint
-x = dfc_g1['Age'].values
-y = dfc_g1['G1S_logistic'].values
-plt.scatter( x, jitter(y,0.1) )
-sb.regplot(data = dfc_g1,x='Age',y='G1S_logistic',logistic=True,scatter=False)
-plt.ylabel('G1/S transition')
-plt.vlines([mdpoint],0,1)
-expitvals = expit( (x * model.params['Age']) + model.params['Intercept'])
-I = np.argsort(expitvals)
-plt.plot(x[I],expitvals[I],'b')
-
-# Plot ROC
-y = dfc_g1['G1S_logistic']
-x = dfc_g1['Age']
-x = sm.add_constant(x)
-y_pred = model.predict(x)
-fpr,tpr, thresholds = roc_curve(y,y_pred)
-print 'Area under ROC: ', auc(fpr,tpr)
-plt.figure(1)
-plt.plot(fpr,tpr)
-plt.xlim([0,1])
-plt.gca().set_aspect('equal', adjustable='box')
-
-
-Ncells = len(dfc_g1)
-Nboot = 1000
-mp_bs = np.zeros(Nboot)
-for i in range(Nboot):
-#    df_bs = pd.DataFrame(dfc_g1.values[random.randint(Ncells, size=Ncells)], columns=dfc_g1.columns)
-    df_bs = dfc_g1.iloc[random.randint(Ncells,size=Ncells)]
-    m = smf.logit('G1S_logistic ~ Age', data=df_bs).fit()
-    mp_bs[i] = - m.params['Intercept'] / m.params['Age']
-
-sb.regplot(data = dfc_g1,x='Age',y='G1S_logistic',logistic=True,scatter=True)
-
-
-############### G1S logistic multiregression with: vol, gr, Age ###############
-logit_model = smf.logit('G1S_logistic ~ vol_sm + gr_sm + Age', data = dfc_g1).fit()
-logit_model.summary()
-I = ~np.isnan(dfc_g1['gr_sm'])
-y = dfc_g1.loc[I]['G1S_logistic']
-y_pred = logit_model.predict()
-fpr,tpr, thresholds = roc_curve(y,y_pred)
-print 'Area under ROC: ', auc(fpr,tpr)
-plt.figure(1)
-plt.plot(fpr,tpr)
-plt.plot([0,1],[0,1])
-plt.xlim([0,1])
-plt.gca().set_aspect('equal', adjustable='box')
-plt.legend(['Cell volume','Age','Both'])
+#%% Leave one out feature selection
 
 
 
-
-#NB: Strong colinearity between Age and Volume
-
-# Transition rate prediction using PLS
-X = dfc_g1[['vol_sm','Age','gr_sm']] # Design matrix
-y = dfc_g1['G1S_logistic'] # Response var
-# Drop NaN rows
-I = np.isnan(dfc_g1['gr_sm'])
-X = X.loc[~I].copy()
-y = y[~I]
-pls_model = PLSCanonical()
-pls_model.fit(scale(X),y)
-
-X_c,y_c = pls_model.transform(scale(X),y)
-
-
-
-
-
-# Multiple linearregression on birth size and growth rate
-df['bvol'] = df['Birth volume']
-df['exp_gr'] = df['Exponential growth rate']
-df['g1_len'] = df['G1 length']
-model = smf.ols('g1_len ~ exp_gr + bvol', data = df).fit()
-model.summary()
-print model.pvalues
 
 

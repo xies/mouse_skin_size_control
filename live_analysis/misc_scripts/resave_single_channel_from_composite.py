@@ -16,10 +16,10 @@ from os import path
 
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/Shared/20210322_K10 revisits/20220322_female4/area1/reg'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/master_stack/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
+imgfiles = glob(path.join(dirname,'Cropped_images/*.tif'))
 
-imgfiles = glob(path.join(dirname,'3d_segmentation/tracked_labels.tif'))
 im = io.imread(imgfiles[0])
 
 # for f in imgfiles:
@@ -33,6 +33,6 @@ im = io.imread(imgfiles[0])
 #%%
 
 for t,im_t in tqdm(enumerate(im)):
-    io.imsave( path.join( dirname, f't{t}.tif'), im_t)
+    io.imsave( path.join( dirname, f't{t}.tif'), im_t[...,2])
      
     

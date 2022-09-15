@@ -31,26 +31,27 @@ def logit_curve(x,L,k,x0):
 
 imstack = io.imread(filenames[0])
 
-#%%
-
 XX = 460
 ZZ = 72
 
-XY_sigma = 25
-Z_sigma = 15
+#%%
 
-DEBUG = True
-TOP_Z_BOUND = 0
-BOTTOM_Z_BOUND = 150
+XY_sigma = 25
+Z_sigma = 5
+
+TOP_Z_BOUND = 35
+BOTTOM_Z_BOUND = 65
+
+z_shift = 10
 
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
 # for t,im in tqdm(enumerate(imstack)):
 
-im = imstack
-t = 0
-    
+t = 1
+im = imstack[t,...]
+        
 im_xy_blur = np.zeros_like(im[:,:,:,channel2use],dtype=float)
 
 #XY_blur
@@ -64,7 +65,7 @@ for x in tqdm(range(XX)):
     for y in range(XX):
         im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
 
-# io.imsave(path.join(dirname,'xyz_blur_'+'t17.tif'), util.img_as_int(im_z_blur))
+io.imsave(path.join(dirname,'xyz_blur_'+'t0.tif'), util.img_as_int(im_z_blur))
 
 # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
 _tmp = im_z_blur.copy()
@@ -76,7 +77,7 @@ heightmap = np.diff(_tmp[TOP_Z_BOUND:BOTTOM_Z_BOUND,...],axis=0).argmax(axis=0) 
 io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{1}.tif'),heightmap.astype(np.int8))
 
 # Reconstruct flattened movie
-z_shift = -15
+
 
 Iz = np.round(heightmap + z_shift).astype(int)
 
@@ -88,8 +89,9 @@ for x in range(XX):
         flat[y,x,:] = im[Iz[y,x],y,x,:]
         height_image[Iz[y,x],y,x] = 1
 
-io.imsave(path.join(dirname,f'Image flattening/flat/t{t+1}.tif'), flat.astype(np.int16))
+io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t+1}.tif'), flat.astype(np.int16))
 io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16))
 
-
+pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,TOP_Z_BOUND:'TOP_Z_BOUND','BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
+              'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
 

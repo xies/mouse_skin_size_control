@@ -44,7 +44,7 @@ for i,c in enumerate(collated):
 
 x = 'Volume (sm)'
 y = 'Specific GR b (sm)'
-color = 'Age'
+color = 'Time to G1S'
 
 
 plt.figure()
