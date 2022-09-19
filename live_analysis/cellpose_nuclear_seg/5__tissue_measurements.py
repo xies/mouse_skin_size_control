@@ -29,7 +29,9 @@ import csv
 dx = 0.25
 XX = 460
 Z_SHIFT = 10
-HEIGHT_CUTOFF = 11 #microns above BM
+
+# Differentiating thresholds
+centroid_height_cutoff = 3 #microns above BM
 
 VISUALIZE = True
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
@@ -43,22 +45,25 @@ NB: idx - the order in array in dense segmentation
 
 def find_differentiating_cells(df,height_cutoff,heightmap):
     
-    I = df['Height to BM'] > height_cutoff
+    # I = df['Height to BM'] > height_cutoff
+    diff_height_th = heightmap[np.round(
+        df['Y-pixels']).astype(int),np.round(df['X-pixels']).astype(int)] - height_cutoff
     
-    # Check that the bottom bbox of nucleus is not within 2um of the 'heightmap'
-    df['Nuclear bbox bottom']
+    # Check that the bottom bbox of nucleus is not within cutoff of the 'heightmap'
+    I = df['Nuclear bbox bottom'] < diff_height_th
     
     df['Differentiating'] = False
     df.loc[I,'Differentiating'] = True
     
     return df
 
-def colorize_segmentation(seg,value_dict):
+def colorize_segmentation(seg,value_dict,dtype=int):
     '''
     Given a segmentation label image, colorize the segmented labels using a dictionary of label: value
     '''
-    assert( len(np.unique(seg)[1:] == len(value_dict)) )
-    colorized = np.zeros_like(seg)
+    
+    assert( len(np.unique(seg[1:]) == len(value_dict)) )
+    colorized = np.zeros_like(seg,dtype=dtype)
     for k,v in value_dict.items():
         colorized[seg == k] = v
     return colorized
@@ -72,7 +77,6 @@ def tri_to_adjmat(tri):
         A[idx,neighbor_idx] = True
     return A
 
-    
 #%%
 
 df = []
@@ -84,10 +88,12 @@ for t in tqdm(range(15)):
     
     #NB: only use 0-index for the df_dense dataframe
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
-                                                       properties=['label','area','centroid','solidity']))
+                                                       properties=['label','area','centroid','solidity','bbox']))
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
-                                        ,'label':'CellposeID','area':'Nuclear volume'
+                                        ,'label':'CellposeID','area':'Nuclear volume','bbox-0':'Nuclear bbox top'
+                                        ,'bbox-3':'Nuclear bbox bottom'
                                         ,'solidity':'Nuclear solidity'})
+    df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
     df_dense['Nuclear volume'] = df_dense['Nuclear volume'] * dx**2
     df_dense['X'] = df_dense['X-pixels'] * dx**2
     df_dense['Y'] = df_dense['Y-pixels'] * dx**2
@@ -109,11 +115,13 @@ for t in tqdm(range(15)):
     dense_coords_3d_um = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
     # Load heightmap and calculate adjusted height
-    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) + Z_SHIFT
-    df_dense['Height to BM'] = heightmap[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
+    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
+    heightmap_shifted = heightmap + Z_SHIFT
+    df_dense['Height to BM'] = heightmap_shifted[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
     
     # Based on adjusted height, determine a 'cutoff'
-    df_dense['Differentiating'] = df_dense['Height to BM'] > HEIGHT_CUTOFF
+    # df_dense['Differentiating'] = df_dense['Height to BM'] > HEIGHT_CUTOFF
+    df_dense = find_differentiating_cells(df_dense,centroid_height_cutoff,heightmap)
     
     # Generate a dense mesh based sole only 2D/3D nuclear locations
     #% Use Delaunay triangulation in 2D to approximate the basal layer topology
@@ -248,9 +256,10 @@ for t in tqdm(range(15)):
                                       {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
     io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized,check_contrast=False)
     
-    colorized = colorize_segmentation(dense_seg,
+    colorized = colorize_segmentation(dense_seg.astype(float),
                                       {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Height to BM'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'),colorized,check_contrast=False)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'), \
+              util.img_as_uint(colorized/colorized.max()),check_contrast=False)
     
     
     

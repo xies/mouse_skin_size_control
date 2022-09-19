@@ -33,24 +33,28 @@ collated = decollate_df(df)
 
 ID = 341
 
-
 x = 'Frame'
 y = 'Coronal density'
 plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
 plt.xlabel(x); plt.ylabel(y)
 
 x = 'Frame'
-y = 'Axial component'
+y = 'Planar angle'
 plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
 plt.xlabel(x); plt.ylabel(y)
 
 x = 'Frame'
-y = 'Num planar neighbors'
+y = 'Collagen orientation'
 plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
 plt.xlabel(x); plt.ylabel(y)
 
 x = 'Frame'
 y = 'Num diff neighbors'
+plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
+plt.xlabel(x); plt.ylabel(y)
+
+x = 'Frame'
+y = 'Basal area'
 plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
 plt.xlabel(x); plt.ylabel(y)
 

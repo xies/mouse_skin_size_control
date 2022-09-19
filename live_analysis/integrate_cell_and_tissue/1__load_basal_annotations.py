@@ -105,11 +105,58 @@ for t,im in enumerate(basal_tracking):
                        ,'Axial angle':phi
                        ,'Axial component':Iaxial
                        ,'Planar component 1':Ia,'Planar component 2':Ib
-                       ,'Planar angle':theta})
+                       ,'Planar angle':theta
+                       ,'Apical area':np.nan
+                       ,'Basal area':np.nan
+                       ,'Basal orientation':np.nan
+                       ,'Collagen orientation':np.nan})
         
         collated[basalID] = collated[basalID].append(s,ignore_index=True)
+
+#%% Load "flattened" segmenations to look at apical v. basal area
+# Load "collagen orientation + fibrousness image"
+
+for t in range(T):
+    f = path.join(dirname,f'Image flattening/flat_basal_tracking/t{t}.tif')
+    im = io.imread(f)
     
-#% Calculate spline + growth rates
+    properties = measure.regionprops(im, extra_properties = [surface_area])
+    for p in properties:
+        
+        basalID = p['label']
+        bbox = p['bbox']
+        Z_top = bbox[0]
+        Z_bottom = bbox[3]
+        
+        mask = im == basalID
+        apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
+        apical_area = apical_area.sum()
+        
+        basal_mask = mask[Z_bottom-3:Z_bottom,...]
+        basal_area = basal_mask.max(axis=0).sum()
+    
+        basal_mask = basal_mask.max(axis=0)
+        basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
+        basal_orientation = np.rad2deg(basal_orientation)
+        # Constran aingles to be > 0
+        if basal_orientation < 0:
+            basal_orientation + 180
+                                                            
+        idx = collated[basalID].index[collated[basalID]['Frame'] == t][0]
+        collated[basalID].at[idx,'Apical area'] = apical_area * dx**2
+        collated[basalID].at[idx,'Basal area'] = basal_area * dx**2
+        
+        collated[basalID].at[idx,'Basal orientation'] = basal_orientation
+        
+        f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
+        im_ori = np.load(f)
+        collagen_ori = im_ori[basal_mask]
+        if collagen_ori < 0:
+            collagen_ori + 180
+        collated[basalID].at[idx,'Collagen orientation'] = collagen_ori
+    
+
+#%% Calculate spline + growth rates + save
 
 g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
@@ -132,6 +179,7 @@ for basalID, df in collated.items():
         df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
         df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
         df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
+        df['Collagen alignment'] = np.abs(df['Collagen orientation'] - df['Basal orientation'])
         
         # G1 annotations
         g1_frame = g1_anno.loc[basalID]['Frame']
@@ -155,3 +203,19 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
 
 
+#%% Visualize somethings
+
+df = pd.concat(collated)
+
+for t in range(T):
+    t=9
+    
+    seg = basal_tracking[t,...]
+    df_ = df[df['Frame'] == t]
+    colorized = colorize_segmentation(seg,
+                                      {k:v for k,v in zip(df_['basalID'].values,df_['Collagen orientation'].values)}
+                                      ,dtype=int)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/Collagen_orientation/t{t}.tif'),colorized,check_contrast=False)
+      
+    
+    

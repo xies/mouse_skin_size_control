@@ -39,39 +39,44 @@ ZZ = 72
 XY_sigma = 20
 Z_sigma = 7
 
-TOP_Z_BOUND = 37
+TOP_Z_BOUND = 30
 BOTTOM_Z_BOUND = 65
 
-z_shift = -10
+z_shift = -5
 
-MANUAL_BLUR = False
+OVERWRITE = False
 
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
 for t,im in tqdm(enumerate(imstack)):
 
-# t = 10
+# t = 14
 # im = imstack[t,...]
-
-    if not MANUAL_BLUR:        
-        im_xy_blur = np.zeros_like(im[:,:,:,channel2use],dtype=float)
-        
-        #XY_blur
-        for z,im_ in enumerate(im[:,:,:,channel2use]):
-            im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
-            
-        #Z_blur
-        im_z_blur = np.zeros_like(im_xy_blur)
-        for x in range(XX):
-            for y in range(XX):
-                im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
-                
-        io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur))
     
-    else:
-        im_zblur = io.imread(path.join(dirname,f'Image flattening/xyz_blur/t{t}_manual.tif'))
+    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')):
+        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0)
+        XY_sigma = params['XY_sigma']
+        Z_sigma = params['Z_sigma']
+        TOP_Z_BOUND = params['TOP_Z_BOUND']
+        BOTTOM_Z_BOUND = params['BOTTOM_Z_BOUND']
         
+    im_xy_blur = np.zeros_like(im[:,:,:,channel2use],dtype=float)
+    
+    #XY_blur
+    for z,im_ in enumerate(im[:,:,:,channel2use]):
+        im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
+        
+    #Z_blur
+    im_z_blur = np.zeros_like(im_xy_blur)
+    for x in range(XX):
+        for y in range(XX):
+            im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
+            
+    # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
+
+
+
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp = im_z_blur.copy()
     _tmp[np.isnan(_tmp)] = 0
@@ -79,6 +84,8 @@ for t,im in tqdm(enumerate(imstack)):
     heightmap = np.diff(-_tmp,axis=0).argmax(axis=0)
     heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
     heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
+    
+    io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), heightmap.astype(np.int16),check_contrast=False)
     
     # Reconstruct flattened movie
     Iz = np.round(heightmap + z_shift).astype(int)
@@ -91,9 +98,9 @@ for t,im in tqdm(enumerate(imstack)):
             flat[y,x,:] = im[Iz[y,x],y,x,:]
             height_image[Iz[y,x],y,x] = 1
     
-    io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t+1}.tif'), flat.astype(np.int16))
-    io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16))
+    io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.int16),check_contrast=False)
+    io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
     
-    pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,TOP_Z_BOUND:'TOP_Z_BOUND','BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
+    pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
                   'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
-
+    

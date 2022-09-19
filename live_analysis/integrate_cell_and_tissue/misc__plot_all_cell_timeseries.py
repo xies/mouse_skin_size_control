@@ -33,7 +33,7 @@ collated = decollate_df(df)
 #%% Plot given fields as individual lines
 
 x = 'Time to G1S'
-y = 'Specific GR b (sm)'
+y = 'Basal area'
 
 for i,c in enumerate(collated):
     plt.plot(c[x],c[y])
@@ -49,3 +49,4 @@ color = 'Time to G1S'
 
 plt.figure()
 sb.scatterplot(data = df,x=x,y=y,hue=color,palette='icefire')
+
