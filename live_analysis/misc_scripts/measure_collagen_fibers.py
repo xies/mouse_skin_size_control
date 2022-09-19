@@ -26,7 +26,8 @@ T = 15
 #%%
 
 for t in range(T):
-    t=9
+    # t=9
+    
     #https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0131814#acks
     
     im = io.imread(path.join(dirname,f'Image flattening/flat_z_shift_2/t{t}.tif'))[...,2]
@@ -38,8 +39,8 @@ for t in range(T):
     Gx = filters.sobel_h(im_blur)
     Gy = filters.sobel_v(im_blur)
     
-    Gx = filters.gaussian(Gx,sigma=1)
-    Gy = filters.gaussian(Gy,sigma=1)
+    Gx = filters.gaussian(Gx,sigma=2)
+    Gy = filters.gaussian(Gy,sigma=2)
     
     G = np.sqrt( Gx**2 + Gy**2)
     
@@ -48,17 +49,19 @@ for t in range(T):
     Jy = 2*Gx*Gy
     
     thetas = np.rad2deg(np.arctan2(Jy,Jx))
-    thetas = filters.gaussian(thetas,sigma=2)
+    # thetas = filters.gaussian(thetas,sigma=1)
+    
+    theta_th =thetas.copy()
+    theta_th[im_blur < im_blur.mean()-im_blur.std()] = np.nan
+    
     
     # Make all angles range from 0 to 180
-    thetas[thetas < 0] = thetas[thetas < 0]+180
-    theta_th =thetas.copy()
-    theta_th[im_blur < 0.015] = np.nan
+    
     
     # io.imsave(path.join(dirname,f'Image flattening/collagen_fibrousness/t{t}.tif'),
     #           util.img_as_uint(G/im_blur))
-    io.imsave(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.tif'),
-              thetas.astype(int))
+    # io.imsave(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.tif'),
+    #           thetas.astype(int))
     np.save(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy'),
               theta_th)
     

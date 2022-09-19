@@ -18,7 +18,7 @@ from basicUtils import euclidean_distance
 import matplotlib.pylab as plt
 # from matplotlib.path import Path
 # from roipoly import roipoly
-from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label
+from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
 from mathUtils import *
 
 from tqdm import tqdm
@@ -57,17 +57,6 @@ def find_differentiating_cells(df,height_cutoff,heightmap):
     
     return df
 
-def colorize_segmentation(seg,value_dict,dtype=int):
-    '''
-    Given a segmentation label image, colorize the segmented labels using a dictionary of label: value
-    '''
-    
-    assert( len(np.unique(seg[1:]) == len(value_dict)) )
-    colorized = np.zeros_like(seg,dtype=dtype)
-    for k,v in value_dict.items():
-        colorized[seg == k] = v
-    return colorized
-    
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):
     num_verts = max(map(max,tri.simplices)) + 1

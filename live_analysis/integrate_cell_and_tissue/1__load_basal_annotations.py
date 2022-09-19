@@ -83,6 +83,7 @@ allIDs = np.unique(basal_tracking)[1:]
 #%% Do pixel level measurements
 
 collated = {k:pd.DataFrame() for k in allIDs}
+
 for t,im in enumerate(basal_tracking):
 
     properties = measure.regionprops(im, extra_properties = [surface_area])
@@ -137,23 +138,35 @@ for t in range(T):
     
         basal_mask = basal_mask.max(axis=0)
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
-        basal_orientation = np.rad2deg(basal_orientation)
+        basal_orientation = np.rad2deg(basal_orientation) + 90
         # Constran aingles to be > 0
         if basal_orientation < 0:
-            basal_orientation + 180
+            basal_orientation = basal_orientation + 90
+        elif basal_orientation > 180:
+            basal_orientation = basal_orientation - 180
                                                             
         idx = collated[basalID].index[collated[basalID]['Frame'] == t][0]
         collated[basalID].at[idx,'Apical area'] = apical_area * dx**2
         collated[basalID].at[idx,'Basal area'] = basal_area * dx**2
         
         collated[basalID].at[idx,'Basal orientation'] = basal_orientation
+        if np.isnan( basal_orientation ):
+            what()
         
         f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
         im_ori = np.load(f)
         collagen_ori = im_ori[basal_mask]
-        if collagen_ori < 0:
-            collagen_ori + 180
+        
+        #%  @todo: NEED to convert to nematic tensor
+        
+        collagen_ori = np.nanmean(collagen_ori)
+        if basal_orientation < 0:
+            basal_orientation = basal_orientation + 180
+        
         collated[basalID].at[idx,'Collagen orientation'] = collagen_ori
+        
+        # if np.isnan( np.nanmean(collagen_ori) ):
+        #     what()
     
 
 #%% Calculate spline + growth rates + save
@@ -179,7 +192,9 @@ for basalID, df in collated.items():
         df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
         df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
         df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
-        df['Collagen alignment'] = np.abs(df['Collagen orientation'] - df['Basal orientation'])
+        cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
+        cos[cos < 0] = -cos[cos < 0]
+        df['Collagen alignment'] = cos
         
         # G1 annotations
         g1_frame = g1_anno.loc[basalID]['Frame']
@@ -205,9 +220,10 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
 
 #%% Visualize somethings
 
-df = pd.concat(collated)
+df = pd.concat(collated,ignore_index=True)
 
-for t in range(T):
+for t in tqdm(range(T)):
+    
     t=9
     
     seg = basal_tracking[t,...]
@@ -215,7 +231,20 @@ for t in range(T):
     colorized = colorize_segmentation(seg,
                                       {k:v for k,v in zip(df_['basalID'].values,df_['Collagen orientation'].values)}
                                       ,dtype=int)
-    io.imsave(path.join(dirname,f'3d_nuc_seg/Collagen_orientation/t{t}.tif'),colorized,check_contrast=False)
-      
+    io.imsave(path.join(dirname,f'3d_nuc_seg/Collagen_orientation/t{t}.tif'),colorized.astype(np.uint16),check_contrast=False)
+    
+    colorized = colorize_segmentation(seg,
+                                      {k:v for k,v in zip(df_['basalID'].values,df_['Basal orientation'].values)}
+                                      ,dtype=int)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/basal_orientation/t{t}.tif'),
+              colorized.astype(np.uint16),check_contrast=False)
+    
+    colorized = colorize_segmentation(seg,
+                                      {k:v for k,v in zip(df_['basalID'].values,df_['Collagen alignment'].values)}
+                                      ,dtype=float)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/collagen_alignment/t{t}.tif'),
+              util.img_as_uint(colorized),check_contrast=False)
+     
+    
     
     

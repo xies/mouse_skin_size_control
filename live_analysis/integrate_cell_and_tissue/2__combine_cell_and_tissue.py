@@ -34,7 +34,7 @@ tissue = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col = 0)
 df = pd.merge(cell_ts, tissue, how='inner', on=['basalID','Frame'])
 df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 
-#%% Derive cell->tissue features
+#% Derive cell->tissue features
 
 # @todo: Alignment of cell to local tissue
 df['Cell alignment'] = np.abs(df['Coronal angle'] - df['Planar angle'])

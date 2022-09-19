@@ -47,7 +47,6 @@ df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
 df_ = df[df['Phase'] != '?']
 N,P = df_.shape
 
-
 #%% Sanitize field names for smf
 
 features_list = { # Cell geometry
@@ -91,6 +90,9 @@ for col in df_g1s.columns[df_g1s.columns != 'G1S_logistic']:
     df_g1s[col] = z_standardize(df_g1s[col])
 
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+
+# Count NANs
+np.isnan(df_g1s
 
 #%% Robust LM for smoothed specific growth rate
 

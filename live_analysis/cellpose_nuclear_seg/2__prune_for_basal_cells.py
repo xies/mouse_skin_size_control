@@ -13,7 +13,7 @@ from os import path
 import pandas as pd
 import matplotlib.pylab as plt
 from matplotlib.path import Path
-from roipoly import roipoly
+from SelectFromCollection import SelectFromCollection
 
 '''
 
@@ -54,21 +54,29 @@ for t in range(T):
 
 #%%%
 
+# ts = ax.scatter(grid_x, grid_y)
+
 df = pd.concat(_tmp)
 
 plt.scatter(df['area'],df['Corrected Z'],alpha=0.01)
 plt.ylabel('Corrected Z (to heightmap)')
 plt.xlabel('Cell size (px2)')
 # plt.xlim([0,25000])
-gate = roipoly()
+# gate = roipoly()
+
+selector = SelectFromCollection(plt.gca(), pts)
 
 #%%
 
-p_ = Path(np.array([gate.x,gate.y]).T)
-I = p_.contains_points( np.array([df['area'],df['Corrected Z']]).T )
+verts = np.array(selector.poly.verts)
+x = verts[:,0]
+y = verts[:,1]
 
-df_ = df[I]
+p_ = Path(np.array([x,y]).T)
+I = np.array([p_.contains_point([x,y]) for x,y in zip(df['area'],df['Corrected Z'])])
+# I = p_.contains_points( np.array([df['area'],df['Corrected Z']]).T )
 
+# df_ = df[I]
 # plt.scatter(df['area'],df['centroid-0'],alpha=0.5)
 # plt.scatter(df_['area'],df_['centroid-0'],color='r')
 
