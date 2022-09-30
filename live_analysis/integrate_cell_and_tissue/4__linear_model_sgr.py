@@ -51,16 +51,23 @@ N,P = df_.shape
 
 features_list = { # Cell geometry
                 'Age':'age'
+                # ,'Z_x':'z','Y_x':'y','X_x':'x'
                 ,'Volume (sm)':'vol_sm'
-                # ,'Nuclear volume':'nuc_vol'
+                ,'Axial component':'axial_moment'
+                ,'Nuclear volume':'nuc_vol'
+                ,'Nuclear surface area':'nuc_sa'
+                ,'Nuclear axial component':'nuc_axial_moment'
+                ,'Nuclear solidity':'nuc_solid'
+                ,'Nuclear axial angle':'nuc_angle'
                 ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
-                ,'Axial component':'axial_moment'
                 ,'Axial angle':'axial_angle'
-                ,'Planar component 1':'planar_component_1'
-                ,'Planar component 2':'planar_component_2'
+                # ,'Planar component 1':'planar_component_1'
+                # ,'Planar component 2':'planar_component_2'
                 ,'Relative nuclear height':'rel_nuc_height'
                 ,'Surface area':'sa'
+                # ,'SA to vol':'ratio_sa_vol'
+                # ,'Time to G1S':'time_g1s'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
                 ,'Basal orientation':'basal_orien'
@@ -70,9 +77,11 @@ features_list = { # Cell geometry
                 ,'Growth rate b (sm)':'gr'
                 ,'Height to BM':'height_to_bm'
                 ,'Mean curvature':'mean_curve'
+                ,'Gaussian curvature':'gaussian_curve'
                 
                 # Neighbor topolgy and
-                # ,'Coronal density':'cor_density'
+                ,'Coronal angle':'cor_angle'
+                ,'Coronal density':'cor_density'
                 ,'Cell alignment':'cell_align'
                 ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
@@ -85,14 +94,14 @@ features_list = { # Cell geometry
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
 
-# Standardize
-for col in df_g1s.columns[df_g1s.columns != 'G1S_logistic']:
-    df_g1s[col] = z_standardize(df_g1s[col])
-
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
+# Standardize
+for col in df_g1s.columns:
+    df_g1s[col] = z_standardize(df_g1s[col])
+
 # Count NANs
-np.isnan(df_g1s
+print(np.isnan(df_g1s).sum(axis=0))
 
 #%% Robust LM for smoothed specific growth rate
 
@@ -102,13 +111,39 @@ model_rlm = smf.rlm(f'sgr ~ ' + str.join(' + ',
                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
 print(model_rlm.summary())
 
-
 ############### GLM for specific growth rate ###############
 # model_glm = smf.glm(f'sgr ~ ' + str.join(' + ',
 #                                       df_g1s.columns[(df_g1s.columns != 'sgr') &
 #                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
 # print(model_glm.summary())
 
+#%%
+
+from scipy.stats import stats
+
+params = pd.DataFrame()
+
+# Total corrcoef
+X,Y = nonan_pairs(model_rlm.predict(df_g1s), df_g1s['sgr'])
+R,P = stats.pearsonr(X,Y)
+Rsqfull = R**2
+
+params['var'] = model_rlm.params.index
+params['coef'] = model_rlm.params.values
+params['li'] = model_rlm.conf_int()[0].values
+params['ui'] = model_rlm.conf_int()[1].values
+params['pvals'] = model_rlm.pvalues.values
+
+params['err'] = params['ui'] - params['coef'] 
+
+params['effect size'] = np.sqrt(params['coef']**2 /(1-Rsqfull))
+
+order = np.argsort( np.abs(params['coef']) )[::-1][0:10]
+params = params.iloc[order]
+
+plt.bar(range(len(params)),params['coef'],yerr=params['err'])
+plt.ylabel('Regression coefficients')
+plt.savefig('/Users/xies/Desktop/fig.eps')
 
 #%% Cross-validation
 
