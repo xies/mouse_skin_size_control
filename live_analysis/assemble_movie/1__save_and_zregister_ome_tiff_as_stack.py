@@ -14,9 +14,8 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-# dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -50,7 +49,7 @@ for header_ome in tqdm(header_ome_h2b):
     
     d = path.dirname(header_ome)
     # Make sure we haven't already processed this stack
-    if path.exists(path.join(d,'B_reg.tif')):
+    if path.exists(path.join(d,'G_reg.tif')):
         print(f'Skipping {d}')
         continue
     
@@ -65,12 +64,12 @@ for header_ome in tqdm(header_ome_h2b):
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(B,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
     B_reg = sr.transform_stack(B,tmats=T) # Apply to both channels
-    G_reg = sr.transform_stack(G,tmats=T)
+    # G_reg = sr.transform_stack(G,tmats=T)
     
-    output_path = path.join( d,'B_reg.tif')
-    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
     output_path = path.join( d,'G_reg.tif')
-    io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
+    # output_path = path.join( d,'G_reg.tif')
+    # io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
 

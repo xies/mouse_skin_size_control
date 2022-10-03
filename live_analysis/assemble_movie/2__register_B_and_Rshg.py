@@ -10,9 +10,11 @@ import numpy as np
 from skimage import io, filters, transform
 from os import path
 from glob import glob
+from re import match
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+
 
 #%%
 
@@ -80,17 +82,17 @@ def sort_by_day(filename):
     return float(day)
 
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_reg.tif')),key=sort_by_day)
+# B_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_reg.tif')),key=sort_by_day)
 G_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/G_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_reg.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_reg.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_regz.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_regz.tif')),key=sort_by_day)
 
 #%%
 
 XX = 1024
 
 OVERWRITE = False
-skip = 11
+# skip = 11
 
 assert(len(B_tifs) == len(R_tifs))
 
