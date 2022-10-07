@@ -14,6 +14,8 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
+from mathUtils import normxcorr2
+
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 
@@ -23,7 +25,6 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO 
 def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
-
 
 subfolders = glob(path.join(dirname,'*. Day*/ZSeries*/'))
 
@@ -39,7 +40,6 @@ for d in subfolders:
         if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
             header_ome_h2b.append(ome_tifs[0])
         else:
-            
             header_ome_fucci.append(ome_tifs[0])
 
 #%% Register the B/G channels (using B as reference)
@@ -56,8 +56,11 @@ for header_ome in tqdm(header_ome_h2b):
     # Load ome-tif
     print(f'Loading {d}')
     stack = io.imread(header_ome,is_ome=True)
-    G = stack[0,...]
-    B = stack[1,...]
+    if stack.ndim > 3:
+        G = stack[0,...]
+        B = stack[1,...]
+    else:
+        B = stack
     
     # Use StackReg
     print(f'Registering {d}')
@@ -68,7 +71,7 @@ for header_ome in tqdm(header_ome_h2b):
     
     output_path = path.join( d,'G_reg.tif')
     io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
-    # output_path = path.join( d,'G_reg.tif')
+    # output_path = path.join( d,'G_reg.tif') 
     # io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
@@ -103,7 +106,6 @@ for header_ome in tqdm(header_ome_fucci):
     io.imsave(output_path,R_shg_reg.astype(np.int16),check_contrast=False)
     
     print(f'Saved with {output_path}')
-
 
 #%% Parse xml file into a dataframe organized by channel (column) and Frame (row)
 #NB: not needed for now, but working
