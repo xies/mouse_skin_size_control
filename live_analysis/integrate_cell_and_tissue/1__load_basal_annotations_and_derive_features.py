@@ -80,7 +80,7 @@ def get_growth_rate(cf,field):
 basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
 allIDs = np.unique(basal_tracking)[1:]
 
-#%% Do pixel level measurements
+#%% Do pixel level measurements e.g. Surface Area
 
 collated = {k:pd.DataFrame() for k in allIDs}
 
@@ -110,16 +110,25 @@ for t,im in enumerate(basal_tracking):
                        ,'Apical area':np.nan
                        ,'Basal area':np.nan
                        ,'Basal orientation':np.nan
-                       ,'Collagen orientation':np.nan})
+                       ,'Collagen orientation':np.nan
+                       ,'Collagen fibrousness':np.nan})
         
         collated[basalID] = collated[basalID].append(s,ignore_index=True)
 
 #%% Load "flattened" segmenations to look at apical v. basal area
-# Load "collagen orientation + fibrousness image"
+# E.g. collagen orientation + fibrousness
 
 for t in range(T):
+
     f = path.join(dirname,f'Image flattening/flat_basal_tracking/t{t}.tif')
     im = io.imread(f)
+    
+    # Load the structuring matrix elements
+    f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
+    [Gx,Gy] = np.load(f)
+    Jxx = Gx*Gx
+    Jxy = Gx*Gy
+    Jyy = Gy*Gy   
     
     properties = measure.regionprops(im, extra_properties = [surface_area])
     for p in properties:
@@ -137,36 +146,40 @@ for t in range(T):
         basal_area = basal_mask.max(axis=0).sum()
     
         basal_mask = basal_mask.max(axis=0)
+        #NB: skimage uses the 'vertical' as the orientation axis
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
-        basal_orientation = np.rad2deg(basal_orientation) + 90
-        # Constran aingles to be > 0
-        if basal_orientation < 0:
-            basal_orientation = basal_orientation + 90
-        elif basal_orientation > 180:
-            basal_orientation = basal_orientation - 180
-                                                            
+        # Need to 'convert to horizontal--> subtract 90-deg from image
+        basal_orientation = np.rad2deg(basal_orientation - np.pi/2)
+        # Need to 'flip' the 3-rd quad angles into first quad
+        if basal_orientation < -90:
+            basal_orientation = -basal_orientation
+        
+
         idx = collated[basalID].index[collated[basalID]['Frame'] == t][0]
         collated[basalID].at[idx,'Apical area'] = apical_area * dx**2
         collated[basalID].at[idx,'Basal area'] = basal_area * dx**2
         
         collated[basalID].at[idx,'Basal orientation'] = basal_orientation
-        if np.isnan( basal_orientation ):
-            what()
         
-        f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
-        im_ori = np.load(f)
-        collagen_ori = im_ori[basal_mask]
+        # Characteristic matrix
+        J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],[Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
+        l,D = np.linalg.eig(J) # NB: not sorted
+        order = np.argsort(l)[::-1] # Ascending order
+        l = l[order]
+        D = D[:,order]
         
-        #%  @todo: NEED to convert to nematic tensor
+        # Orientation
+        theta = np.rad2deg(np.arctan(D[1,0]/D[0,0]))
+        fibrousness = (l[0] - l[1]) / l.sum()
         
-        collagen_ori = np.nanmean(collagen_ori)
-        if basal_orientation < 0:
-            basal_orientation = basal_orientation + 180
+        # theta = np.rad2deg( -np.arctan( 2*Jxy[basal_mask].sum() / (Jyy[basal_mask].sum()-Jxx[basal_mask].sum()) )/2 )
+        # # Fibrousness
+        # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
+        #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
         
-        collated[basalID].at[idx,'Collagen orientation'] = collagen_ori
         
-        # if np.isnan( np.nanmean(collagen_ori) ):
-        #     what()
+        collated[basalID].at[idx,'Collagen orientation'] = theta
+        collated[basalID].at[idx,'Collagen fibrousness'] = fibrousness
     
 
 #%% Calculate spline + growth rates + save
@@ -193,8 +206,7 @@ for basalID, df in collated.items():
         df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
         df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
         cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
-        cos[cos < 0] = -cos[cos < 0]
-        df['Collagen alignment'] = cos
+        df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
         
         # G1 annotations
         g1_frame = g1_anno.loc[basalID]['Frame']
@@ -216,16 +228,14 @@ for basalID, df in collated.items():
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
-
+df = pd.concat(collated,ignore_index=True)
 
 #%% Visualize somethings
 
 df = pd.concat(collated,ignore_index=True)
 
 for t in tqdm(range(T)):
-    
-    t=9
-    
+        
     seg = basal_tracking[t,...]
     df_ = df[df['Frame'] == t]
     colorized = colorize_segmentation(seg,

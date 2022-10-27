@@ -9,6 +9,7 @@ Optimized for Mesa et al organization
 """
 
 import numpy as np
+import pandas as pd
 from skimage import io, filters, exposure, util
 from os import path
 from glob import glob
@@ -18,8 +19,8 @@ from scipy.optimize import curve_fit
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
 # filenames = glob(path.join(dirname,'WT1.tif'))
 
@@ -32,30 +33,30 @@ def logit_curve(x,L,k,x0):
 imstack = io.imread(filenames[0])
 
 XX = 460
-ZZ = 72
+ZZ = 70
 
 #%%
 
-XY_sigma = 20
-Z_sigma = 7
+XY_sigma = 10
+Z_sigma = 4
 
 TOP_Z_BOUND = 30
 BOTTOM_Z_BOUND = 65
 
 z_shift = -5
 
-OVERWRITE = False
+OVERWRITE = True
 
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
 for t,im in tqdm(enumerate(imstack)):
-
-# t = 14
-# im = imstack[t,...]
     
-    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')):
-        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0)
+    # t = 2
+    # im = imstack[t,...]
+    
+    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
+        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
         XY_sigma = params['XY_sigma']
         Z_sigma = params['Z_sigma']
         TOP_Z_BOUND = params['TOP_Z_BOUND']
@@ -74,9 +75,7 @@ for t,im in tqdm(enumerate(imstack)):
             im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
             
     # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
-
-
-
+    
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp = im_z_blur.copy()
     _tmp[np.isnan(_tmp)] = 0
@@ -103,4 +102,4 @@ for t,im in tqdm(enumerate(imstack)):
     
     pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
                   'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
-    
+

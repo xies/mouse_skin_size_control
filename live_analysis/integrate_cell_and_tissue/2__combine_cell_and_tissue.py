@@ -72,7 +72,9 @@ df_ = df[df['Phase'] != '?']
 #                      ,'Axial angle','Coronal eccentricity'],plot_kws={'alpha':0.5}
 #             , hue='Phase')
 
-sb.pairplot(df_,vars=['Volume','Cell alignment','Num diff neighbors','Neighbor mean height frame-2','Neighbor mean height frame-1','Specific GR (sm)','Coronal density'],
+sb.pairplot(df_,vars=['Volume','Cell alignment','Collagen alignment',
+                      'Neighbor mean height frame-2','Neighbor mean height frame-1',
+                      'Specific GR b (sm)','Coronal density'],
             plot_kws={'alpha':0.5}
             ,kind='hist')
 

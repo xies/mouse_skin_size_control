@@ -12,37 +12,30 @@ from glob import glob
 from os import path
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
-
-filenames = glob(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
 
 #%% Load a heightmap and flatten the given z-stack
 
-OFFSET = 2
-Zoffsetrange = np.arange(-20,5,1).astype(int)
+OFFSET = -5
 
 
 imstack = io.imread(filenames[0])
-T,Z,XX,_ = imstack.shape
+T,Z,XX,_,C = imstack.shape
 
-im2flatten = imstack # flatten green channel
-
-Z = len(Zoffsetrange)
+im2flatten = imstack[...,1] # flatten green channel
 
 
 for t,im in tqdm(enumerate(im2flatten)):
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     
-    # output_dir = path.join(dirname,f'Image flattening/flat_z_shift_{OFFSET}')
-    output_dir = path.join(dirname,'Image flattening/flat_basal_tracking/')
+    output_dir = path.join(dirname,f'Image flattening/flat_z_shift_{OFFSET}')
     
-    flat = np.zeros((Z,XX,XX))
-    for z,OFFSET in enumerate(Zoffsetrange):
-        Iz = heightmap + OFFSET
-        for x in range(XX):
-            for y in range(XX):
-                flat[z,y,x] = im[Iz[y,x],y,x]
+    flat = np.zeros((XX,XX))
+    Iz = heightmap + OFFSET
+    for x in range(XX):
+        for y in range(XX):
+            flat[y,x] = im[Iz[y,x],y,x]
                 
     io.imsave( path.join(output_dir,f't{t}.tif'), flat.astype(np.uint16))
     
