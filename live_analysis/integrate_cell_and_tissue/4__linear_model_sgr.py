@@ -39,18 +39,24 @@ def plot_logit_model(model,field):
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
-#%%
+#%% Load features from training + test set
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
-
 df_ = df[df['Phase'] != '?']
+
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+df_test = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+df_test_ = df_test[df_test['Phase'] != '?']
+
+# df_ = pd.concat((df_,df_test_),ignore_index=True)
 N,P = df_.shape
 
 #%% Sanitize field names for smf
 
 features_list = { # Cell geometry
                 'Age':'age'
+                # ,'basalID':'basalID'
                 # ,'Z_x':'z','Y_x':'y','X_x':'x'
                 ,'Volume (sm)':'vol_sm'
                 ,'Axial component':'axial_moment'
@@ -58,11 +64,11 @@ features_list = { # Cell geometry
                 ,'Nuclear surface area':'nuc_sa'
                 ,'Nuclear axial component':'nuc_axial_moment'
                 ,'Nuclear solidity':'nuc_solid'
-                ,'Nuclear axial angle':'nuc_angle'
+                # ,'Nuclear axial angle':'nuc_angle'
                 ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
-                ,'Axial angle':'axial_angle'
-                # ,'Planar component 1':'planar_component_1'
+                # ,'Axial angle':'axial_angle'
+                ,'Planar component 1':'planar_component_1'
                 # ,'Planar component 2':'planar_component_2'
                 ,'Relative nuclear height':'rel_nuc_height'
                 ,'Surface area':'sa'
@@ -70,7 +76,7 @@ features_list = { # Cell geometry
                 # ,'Time to G1S':'time_g1s'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
-                ,'Basal orientation':'basal_orien'
+                # ,'Basal orientation':'basal_orien'
                 
                 # Growth rates
                 ,'Specific GR b (sm)':'sgr'
@@ -80,7 +86,7 @@ features_list = { # Cell geometry
                 ,'Gaussian curvature':'gaussian_curve'
                 
                 # Neighbor topolgy and
-                ,'Coronal angle':'cor_angle'
+                # ,'Coronal angle':'cor_angle'
                 ,'Coronal density':'cor_density'
                 ,'Cell alignment':'cell_align'
                 ,'Mean neighbor dist':'mean_neighb_dist'
@@ -88,17 +94,23 @@ features_list = { # Cell geometry
                 ,'Neighbor mean height frame-2':'neighb_height_24h'
                 ,'Num diff neighbors':'neighb_diff'
                 ,'Num planar neighbors':'neighb_plan'
-                ,'Collagen orientation':'col_ori'
+                ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'}
 
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
+# df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
-df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+df_g1s_test = df_test_.loc[:,list(features_list.keys())]
+df_g1s_test = df_g1s_test.rename(columns=features_list)
+# df_g1s_test['G1S_logistic'] = (df_test_['Phase'] == 'SG2').astype(int)
 
 # Standardize
 for col in df_g1s.columns:
     df_g1s[col] = z_standardize(df_g1s[col])
+
+for col in df_g1s_test.columns:
+    df_g1s_test[col] = z_standardize(df_g1s_test[col])
 
 # Count NANs
 print(np.isnan(df_g1s).sum(axis=0))
@@ -117,7 +129,21 @@ print(model_rlm.summary())
 #                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
 # print(model_glm.summary())
 
+sb.heatmap(model_rlm.cov_params(),xticklabels=True,yticklabels=True)
+
 #%%
+plt.figure()
+plt.scatter(model_rlm.params[model_rlm.params > 0],-np.log10(model_rlm.pvalues[model_rlm.params > 0]),color='b')
+plt.scatter(model_rlm.params[model_rlm.params < 0],-np.log10(model_rlm.pvalues[model_rlm.params < 0]),color='r')
+sig_params = model_rlm.pvalues.index[model_rlm.pvalues < 0.05]
+for p in sig_params:
+    plt.text(model_rlm.params[p] + 0.01, -np.log10(model_rlm.pvalues[p]), p)
+
+plt.hlines(-np.log10(0.05),xmin=-1,xmax=1,color='r')
+plt.xlabel('Regression coefficient')
+plt.ylabel('-Log(P)')
+
+#%% Plot important parameters
 
 from scipy.stats import stats
 
@@ -145,7 +171,7 @@ plt.bar(range(len(params)),params['coef'],yerr=params['err'])
 plt.ylabel('Regression coefficients')
 plt.savefig('/Users/xies/Desktop/fig.eps')
 
-#%% Cross-validation
+#%% Cross-validation on the same dataset
 
 from numpy import random
 
@@ -156,6 +182,7 @@ frac_withhold = 0.1
 models = []
 MSE = np.zeros(Niter)
 Rsq = np.zeros(Niter)
+Rsq_random = np.zeros(Niter)
 
 for i in tqdm(range(Niter)):
     
@@ -181,7 +208,39 @@ for i in tqdm(range(Niter)):
 
     R = np.corrcoef(*nonan_pairs(ypred, df_withheld['sgr']))[0,1]
     Rsq[i] = R**2
+    
+    
+    # Generate a 'random' model
+    df_rand = df_subsetted.copy()
+    for col in df_rand.columns.drop('sgr'):
+        df_rand[col] = random.randn(N-num_withold)
+        
+    random_model = smf.rlm(f'sgr ~ ' + str.join(' + ',
+                                          df_rand.columns[(df_rand.columns != 'sgr') &
+                                          (df_rand.columns != 'gr')]),data=df_rand).fit()
+    
+    # predict on the withheld data
+    ypred = random_model.predict(df_withheld)
+    res = df_withheld['sgr'] - ypred
+    MSE[i] = np.nansum( res ** 2 )
+    
+    R = np.corrcoef(*nonan_pairs(ypred, df_withheld['sgr']))[0,1]
+    Rsq_random[i] = R**2
+    
+    
+plt.hist(Rsq.flatten())
+plt.hist(Rsq_random.flatten())
 
+#%% Validate on other region
 
+ypred = model_rlm.predict(df_g1s_test)
+res = df_g1s_test['sgr'] - ypred
+MSE_test = np.nansum( res**2 )
+
+R_test = np.corrcoef(*nonan_pairs(ypred, df_g1s_test['sgr']))[0,1]
+
+sb.regplot(df_g1s_test['sgr'],ypred)
+plt.xlabel('Measured growth rates')
+plt.ylabel('Predicted growth rates')
 
 

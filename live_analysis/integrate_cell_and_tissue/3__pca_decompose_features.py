@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 
 from sklearn.decomposition import PCA
-
+from mathUtils import z_standardize
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
@@ -35,9 +35,11 @@ def plot_principle_component(df,pca,comp):
 #%% NaN check
 
 df_pca = df.drop(columns = ['basalID','CellposeID','G1S frame','Phase','Border','Differentiating',
-                            'Mean diff neighbor height','Neighbor mean height frame-2',
+                            # 'Mean diff neighbor height','Neighbor mean height frame-2',
                             'Volume','Growth rate f','Growth rate b',
-                            'Z_y','X-pixels_x','Y-pixels_x','X-pixels_y','Y-pixels_y','X_y','Y_y'])
+                            'Collagen orientation','Basal orientation','Coronal angle','Nuclear planar orientation'
+                            'Z_y','X-pixels_x','Y-pixels_x','X-pixels_y','Y-pixels_y','X_y','Y_y','Z_x','X_x','Y_x'
+                            ])
 
 for col in df_pca.columns[df_pca.columns != 'G1S_logistic']:
     df_pca[col] = z_standardize(df_pca[col])
@@ -54,19 +56,17 @@ N,P = X.shape
 #%%
 
 X = df_pca.values
-pca = PCA(n_components = 20)
+pca = PCA(n_components = 5)
 
 pca.fit(X)
 
 #%%
 plt.figure()
-plt.bar(range(20),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
+plt.bar(range(5),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
 # plt.figure(); plt.plot(pca.singular_values_); plt.ylabel('Singular value');plt.xlabel('Components')
 
-#%%'
-
-plot_principle_component(df_pca,pca,0)
+# plot_principle_component(df_pca,pca,0)
 plot_principle_component(df_pca,pca,1)
-plot_principle_component(df_pca,pca,2)
+# plot_principle_component(df_pca,pca,2)
 # plot_principle_component(df_pca,pca,19)
 

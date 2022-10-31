@@ -16,8 +16,8 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-ZZ = 72
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+ZZ = 70
 XX = 460
 T = 15
 
@@ -37,7 +37,11 @@ df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 #% Derive cell->tissue features
 
 # @todo: Alignment of cell to local tissue
-df['Cell alignment'] = np.abs(df['Coronal angle'] - df['Planar angle'])
+df['Cell alignment'] = np.abs(np.cos(df['Coronal angle'] - df['Planar angle']))
+
+df['Coronal area'] = df['Coronal area'] - df['Middle area']
+df['Coronal density'] = df['Num planar neighbors'] / df['Coronal area']
+
 # @todo: look back in time and look at height!
 
 col_idx = len(df.columns)
@@ -72,7 +76,14 @@ df_ = df[df['Phase'] != '?']
 #                      ,'Axial angle','Coronal eccentricity'],plot_kws={'alpha':0.5}
 #             , hue='Phase')
 
-sb.pairplot(df_,vars=['Volume','Cell alignment','Collagen alignment',
+# sb.pairplot(df_,vars=['Volume','Collagen fibrousness','Collagen alignment',
+#                       'Neighbor mean height frame-2','Neighbor mean height frame-1',
+#                       'Specific GR b (sm)','Coronal density'],
+#             plot_kws={'alpha':0.5}
+#             ,kind='hist')
+
+
+sb.pairplot(df_,vars=['Volume','Planar component 1','Planar component 2',
                       'Neighbor mean height frame-2','Neighbor mean height frame-1',
                       'Specific GR b (sm)','Coronal density'],
             plot_kws={'alpha':0.5}
@@ -80,5 +91,5 @@ sb.pairplot(df_,vars=['Volume','Cell alignment','Collagen alignment',
 
 #%%
 
-sb.regplot(df_,y='phase', logistic=True, x='Growth rate')
+sb.regplot(data =df_,y='Phase', logistic=True, x='Growth rate b')
 

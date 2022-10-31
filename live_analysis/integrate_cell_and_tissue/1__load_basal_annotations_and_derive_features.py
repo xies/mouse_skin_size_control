@@ -20,7 +20,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -118,7 +118,7 @@ for t,im in enumerate(basal_tracking):
 #%% Load "flattened" segmenations to look at apical v. basal area
 # E.g. collagen orientation + fibrousness
 
-for t in range(T):
+for t in tqdm(range(T)):
 
     f = path.join(dirname,f'Image flattening/flat_basal_tracking/t{t}.tif')
     im = io.imread(f)
@@ -142,6 +142,9 @@ for t in range(T):
         apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
         apical_area = apical_area.sum()
         
+        # mid-level area
+        mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
+        
         basal_mask = mask[Z_bottom-3:Z_bottom,...]
         basal_area = basal_mask.max(axis=0).sum()
     
@@ -149,19 +152,17 @@ for t in range(T):
         #NB: skimage uses the 'vertical' as the orientation axis
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
         # Need to 'convert to horizontal--> subtract 90-deg from image
-        basal_orientation = np.rad2deg(basal_orientation - np.pi/2)
-        # Need to 'flip' the 3-rd quad angles into first quad
-        if basal_orientation < -90:
-            basal_orientation = -basal_orientation
-        
-
+        basal_orientation = np.rad2deg(basal_orientation + np.pi/2)
         idx = collated[basalID].index[collated[basalID]['Frame'] == t][0]
         collated[basalID].at[idx,'Apical area'] = apical_area * dx**2
         collated[basalID].at[idx,'Basal area'] = basal_area * dx**2
         
         collated[basalID].at[idx,'Basal orientation'] = basal_orientation
         
-        # Characteristic matrix
+        # Subtract the mid-area of central cell from the coronal area
+        collated[basalID].at[idx,'Middle area'] = mid_area
+        
+        # Characteristic matrix of collagen signal
         J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],[Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
         l,D = np.linalg.eig(J) # NB: not sorted
         order = np.argsort(l)[::-1] # Ascending order
@@ -176,11 +177,10 @@ for t in range(T):
         # # Fibrousness
         # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
         #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
-        
-        
         collated[basalID].at[idx,'Collagen orientation'] = theta
         collated[basalID].at[idx,'Collagen fibrousness'] = fibrousness
     
+df = pd.concat(collated,ignore_index=True)
 
 #%% Calculate spline + growth rates + save
 

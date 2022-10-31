@@ -45,6 +45,13 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
 
 df_ = df[df['Phase'] != '?']
+
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+df_test = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+
+df_test_ = df_test[df_test['Phase'] != '?']
+
+df_ = pd.concat((df_,df_test_),ignore_index=True)
 N,P = df_.shape
 
 #%% Sanitize field names for smf
@@ -60,7 +67,7 @@ features_list = { # Cell geometry
                 ,'Nuclear solidity':'nuc_solid'
                 ,'Nuclear axial angle':'nuc_angle'
                 ,'Planar eccentricity':'planar_ecc'
-                ,'Axial eccentricity':'axial_ecc'
+                # ,'Axial eccentricity':'axial_ecc'
                 ,'Axial angle':'axial_angle'
                 # ,'Planar component 1':'planar_component_1'
                 # ,'Planar component 2':'planar_component_2'
@@ -77,14 +84,14 @@ features_list = { # Cell geometry
                 # ,'Growth rate b (sm)':'gr'
                 ,'Height to BM':'height_to_bm'
                 ,'Mean curvature':'mean_curve'
-                ,'Gaussian curvature':'gaussian_curve'
+                # ,'Gaussian curvature':'gaussian_curve'
                 
                 # Neighbor topolgy and
                 ,'Coronal angle':'cor_angle'
                 ,'Coronal density':'cor_density'
                 ,'Cell alignment':'cell_align'
                 ,'Mean neighbor dist':'mean_neighb_dist'
-                ,'Neighbor mean height frame-1':'neighb_height_12h'
+                # ,'Neighbor mean height frame-1':'neighb_height_12h'
                 ,'Neighbor mean height frame-2':'neighb_height_24h'
                 ,'Num diff neighbors':'neighb_diff'
                 ,'Num planar neighbors':'neighb_plan'
@@ -94,11 +101,26 @@ features_list = { # Cell geometry
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
 
+df_g1s_test = df_test_.loc[:,list(features_list.keys())]
+df_g1s_test = df_g1s_test.rename(columns=features_list)
+
 # Standardize
 for col in df_g1s.columns:
     df_g1s[col] = z_standardize(df_g1s[col])
+    
+for col in df_g1s_test.columns:
+    df_g1s_test[col] = z_standardize(df_g1s_test[col])
 
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+df_g1s_test['G1S_logistic'] = (df_test_['Phase'] == 'SG2').astype(int)
+
+#% Rebalance class
+Ng1 = 200
+g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+# df_g1s[df_g1s['Phase' == 'G1']].sample
+sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
+
+df_g1s = pd.concat((g1_sampled,sg2),ignore_index=True)
 
 
 #%% Logistic for G1/S transition
@@ -108,6 +130,21 @@ model_g1s = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.c
                   data=df_g1s).fit()
 
 print(model_g1s.summary())
+
+sb.heatmap(model_g1s.cov_params(),xticklabels=True,yticklabels=True)
+
+plt.figure()
+params = model_g1s.params.drop('Intercept')
+pvals = model_g1s.pvalues.drop('Intercept')
+plt.scatter(params[params < 0],-np.log10(pvals[params < 0]),color='r')
+plt.scatter(params[params > 0],-np.log10(pvals[params > 0]),color='b')
+sig_params = model_g1s.pvalues.index[model_g1s.pvalues < 0.05].drop('Intercept') # No interpretable value
+for p in sig_params:
+    plt.text(model_g1s.params[p] + 0.01, -np.log10(model_g1s.pvalues[p]), p)
+
+plt.hlines(-np.log10(0.05),xmin=-1.2,xmax=1.9,color='r')
+plt.xlabel('Regression coefficient')
+plt.ylabel('-Log(P)')
 
 #%%
 
@@ -140,14 +177,21 @@ plt.savefig('/Users/xies/Desktop/fig.eps')
 #%% Cross-validation
 
 from numpy import random
+from sklearn import metrics
 
 Niter = 100
 
 frac_withhold = 0.1
+N = len(df_g1s)
 
 models = []
-MSE = np.zeros(Niter)
-Rsq = np.zeros(Niter)
+random_models = []
+AUC = np.zeros(Niter)
+AP = np.zeros(Niter)
+C = np.zeros((Niter,2,2))
+AUC_random= np.zeros(Niter)
+AP_random = np.zeros(Niter)
+C_random = np.zeros((Niter,2,2))
 
 for i in tqdm(range(Niter)):
     
@@ -161,19 +205,90 @@ for i in tqdm(range(Niter)):
     df_subsetted = df_g1s.loc[Isubsetted]
     df_withheld = df_g1s.loc[Iwithheld]
     
-    this_model = smf.rlm(f'sgr ~ ' + str.join(' + ',
-                                          df_subsetted.columns[(df_subsetted.columns != 'sgr') &
-                                          (df_subsetted.columns != 'gr')]),data=df_subsetted).fit()
+    this_model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_subsetted.columns[df_subsetted.columns != 'G1S_logistic']),
+                  data=df_subsetted).fit()
     models.append(this_model)
     
+    # Generate a 'random' model
+    df_rand = df_subsetted.copy()
+    for col in df_rand.columns.drop('G1S_logistic'):
+        df_rand[col] = random.randn(N-num_withold)
+        
+    random_model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_rand.columns[df_rand.columns != 'G1S_logistic']),
+                  data=df_rand).fit()
+    random_models.append(random_model)
+    
     # predict on the withheld data
-    ypred = this_model.predict(df_withheld)
-    res = df_withheld['sgr'] - ypred
-    MSE[i] = np.nansum( res ** 2 )
+    ypred = this_model.predict(df_withheld).values
+    IdropNA = ~np.isnan(ypred)
+    ypred = ypred[IdropNA]
+    labels = df_withheld['G1S_logistic'].values[IdropNA]
+    
+    fpr, tpr, _ = metrics.roc_curve(labels, ypred)
+    AUC[i] = metrics.auc(fpr,tpr)
+    
+    precision,recall,th = metrics.precision_recall_curve(labels,ypred)
+    AP[i] = metrics.average_precision_score(labels,ypred)
+    
+    C[i,:,:] = metrics.confusion_matrix(labels,ypred>0.5,normalize='pred')
 
-    R = np.corrcoef(*nonan_pairs(ypred, df_withheld['sgr']))[0,1]
-    Rsq[i] = R**2
+
+    # predict on the withheld data
+    ypred = random_model.predict(df_withheld).values
+    IdropNA = ~np.isnan(ypred)
+    ypred = ypred[IdropNA]
+    labels = df_withheld['G1S_logistic'].values[IdropNA]
+    
+    fpr, tpr, _ = metrics.roc_curve(labels, ypred)
+    AUC_random[i] = metrics.auc(fpr,tpr)
+    
+    precision,recall,th = metrics.precision_recall_curve(labels,ypred)
+    AP_random[i] = metrics.average_precision_score(labels,ypred)
+    
+    C_random[i,:,:] = metrics.confusion_matrix(labels,ypred>0.5,normalize='pred')
+
+    
+plt.hist(AUC)
+plt.hist(AP)
 
 
+#%% Plot confusion matrix as bar
+
+
+g1_rates = C[:,0,0]
+sg2_rates = C[:,1,1]
+g1_rates_random = C_random[:,0,0]
+sg2_rates_random = C_random[:,1,1]
+
+rates = pd.DataFrame(columns = ['accuracy','phase','random'])
+rates['accuracy'] = np.hstack((g1_rates,g1_rates_random,sg2_rates,sg2_rates_random))
+rates.loc[0:200,'phase'] = 'G1'
+rates.loc[200:400,'phase'] = 'SG2'
+rates.loc[0:100,'random'] = False
+rates.loc[100:200,'random'] = True
+rates.loc[200:300,'random'] = False
+rates.loc[300:400,'random'] = True
+
+
+sb.catplot(data = rates,x='phase',y='accuracy',kind='violin',hue='random',split=True)
+# plt.ylabel('True positive rate')
+
+#%% Generate PR curve based on test dataset
+
+
+ypred = model_g1s.predict(df_g1s_test)
+
+IdropNA = ~np.isnan(ypred.values)
+ypred = ypred.values[IdropNA]
+labels = df_g1s_test['G1S_logistic'].values[IdropNA]
+
+precision,recall,th = metrics.precision_recall_curve(labels,ypred)
+metrics.PrecisionRecallDisplay(precision=precision, recall=recall).plot()
+AP = metrics.average_precision_score(labels,ypred)
+
+fpr, tpr, _ = metrics.roc_curve(labels, ypred)
+metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+
+AUC_test = metrics.auc(fpr,tpr)
 
 

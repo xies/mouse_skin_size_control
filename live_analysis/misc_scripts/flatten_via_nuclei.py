@@ -43,17 +43,17 @@ Z_sigma = 4
 TOP_Z_BOUND = 30
 BOTTOM_Z_BOUND = 65
 
-z_shift = -5
+z_shift = 0
 
 OVERWRITE = True
 
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
-for t,im in tqdm(enumerate(imstack)):
+# for t,im in tqdm(enumerate(imstack)):
     
-    # t = 2
-    # im = imstack[t,...]
+    t = 1
+    im = imstack[t,...]
     
     if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
         params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
@@ -97,9 +97,9 @@ for t,im in tqdm(enumerate(imstack)):
             flat[y,x,:] = im[Iz[y,x],y,x,:]
             height_image[Iz[y,x],y,x] = 1
     
-    io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.int16),check_contrast=False)
-    io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
     
-    pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
-                  'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
+    # pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
+    #               'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
 
