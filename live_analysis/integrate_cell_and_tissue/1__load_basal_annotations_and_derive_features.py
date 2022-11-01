@@ -180,6 +180,7 @@ for t in tqdm(range(T)):
         collated[basalID].at[idx,'Collagen orientation'] = theta
         collated[basalID].at[idx,'Collagen fibrousness'] = fibrousness
     
+    
 df = pd.concat(collated,ignore_index=True)
 
 #%% Calculate spline + growth rates + save
@@ -187,6 +188,8 @@ df = pd.concat(collated,ignore_index=True)
 g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
 for basalID, df in collated.items():
+    # put in the birth volume
+    collated[basalID]['Birth volume'] = collated[basalID]['Volume'].values[0]
     
     df['Phase'] = '?'
     if len(df) > 1:
