@@ -56,19 +56,18 @@ N,P = df_.shape
 
 features_list = { # Cell geometry
                 'Age':'age'
-                # ,'basalID':'basalID'
                 # ,'Z_x':'z','Y_x':'y','X_x':'x'
                 ,'Volume (sm)':'vol_sm'
                 ,'Axial component':'axial_moment'
                 ,'Nuclear volume':'nuc_vol'
-                ,'Nuclear surface area':'nuc_sa'
-                ,'Nuclear axial component':'nuc_axial_moment'
-                ,'Nuclear solidity':'nuc_solid'
-                # ,'Nuclear axial angle':'nuc_angle'
+                # ,'Nuclear surface area':'nuc_sa'
+                # ,'Nuclear axial component':'nuc_axial_moment'
+                # ,'Nuclear solidity':'nuc_solid'
+                ,'Nuclear axial angle':'nuc_angle'
                 ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
-                # ,'Axial angle':'axial_angle'
-                ,'Planar component 1':'planar_component_1'
+                ,'Axial angle':'axial_angle'
+                # ,'Planar component 1':'planar_component_1'
                 # ,'Planar component 2':'planar_component_2'
                 ,'Relative nuclear height':'rel_nuc_height'
                 ,'Surface area':'sa'
@@ -76,34 +75,33 @@ features_list = { # Cell geometry
                 # ,'Time to G1S':'time_g1s'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
-                # ,'Basal orientation':'basal_orien'
                 
                 # Growth rates
                 ,'Specific GR b (sm)':'sgr'
-                ,'Growth rate b (sm)':'gr'
                 ,'Height to BM':'height_to_bm'
                 ,'Mean curvature':'mean_curve'
-                ,'Gaussian curvature':'gaussian_curve'
+                # ,'Gaussian curvature':'gaussian_curve'
                 
                 # Neighbor topolgy and
                 # ,'Coronal angle':'cor_angle'
                 ,'Coronal density':'cor_density'
                 ,'Cell alignment':'cell_align'
+                ,'Mean neighbor nuclear volume':'mean_neighb_nuc_vol'
                 ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
                 ,'Neighbor mean height frame-2':'neighb_height_24h'
-                ,'Num diff neighbors':'neighb_diff'
-                ,'Num planar neighbors':'neighb_plan'
+                # ,'Num diff neighbors':'neighb_diff'
+                # ,'Num planar neighbors':'neighb_plan'
                 ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'}
 
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
-# df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
 df_g1s_test = df_test_.loc[:,list(features_list.keys())]
 df_g1s_test = df_g1s_test.rename(columns=features_list)
-# df_g1s_test['G1S_logistic'] = (df_test_['Phase'] == 'SG2').astype(int)
+df_g1s_test['G1S_logistic'] = (df_test_['Phase'] == 'SG2').astype(int)
 
 # Standardize
 for col in df_g1s.columns:
@@ -117,22 +115,29 @@ print(np.isnan(df_g1s).sum(axis=0))
 
 #%% Robust LM for smoothed specific growth rate
 
+from numpy.linalg import eig
+
 ############### OLS for specific growth rate ###############
 model_rlm = smf.rlm(f'sgr ~ ' + str.join(' + ',
-                                      df_g1s.columns[(df_g1s.columns != 'sgr') &
-                                                     (df_g1s.columns != 'gr')]),data=df_g1s).fit()
+                                      df_g1s.columns.drop(['sgr'])),data=df_g1s).fit()
 print(model_rlm.summary())
+
+# model_rlm_ridge = smf.rlm(f'sgr ~ ' + str.join(' + ',
+#                                       df_g1s.columns.drop(['sgr'])),data=df_g1s).fit_regularized('lasso')
 
 ############### GLM for specific growth rate ###############
 # model_glm = smf.glm(f'sgr ~ ' + str.join(' + ',
 #                                       df_g1s.columns[(df_g1s.columns != 'sgr') &
 #                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
 # print(model_glm.summary())
+C = model_rlm.cov_params()
+sb.heatmap(C,xticklabels=True,yticklabels=True)
+L,D = eig(C)
 
-sb.heatmap(model_rlm.cov_params(),xticklabels=True,yticklabels=True)
+print(f'Covariance eigenvalue ratio: {L.max()/L.min()}')
 
-#%%
 plt.figure()
+
 plt.scatter(model_rlm.params[model_rlm.params > 0],-np.log10(model_rlm.pvalues[model_rlm.params > 0]),color='b')
 plt.scatter(model_rlm.params[model_rlm.params < 0],-np.log10(model_rlm.pvalues[model_rlm.params < 0]),color='r')
 sig_params = model_rlm.pvalues.index[model_rlm.pvalues < 0.05]
@@ -161,7 +166,6 @@ params['ui'] = model_rlm.conf_int()[1].values
 params['pvals'] = model_rlm.pvalues.values
 
 params['err'] = params['ui'] - params['coef'] 
-
 params['effect size'] = np.sqrt(params['coef']**2 /(1-Rsqfull))
 
 order = np.argsort( np.abs(params['coef']) )[::-1][0:10]
@@ -176,7 +180,7 @@ plt.savefig('/Users/xies/Desktop/fig.eps')
 from numpy import random
 
 Niter = 100
-
+N,P = df_g1s.shape
 frac_withhold = 0.1
 
 models = []
@@ -184,21 +188,22 @@ MSE = np.zeros(Niter)
 Rsq = np.zeros(Niter)
 Rsq_random = np.zeros(Niter)
 
+coefficients = np.zeros((Niter,P-1))
+pvalues = np.zeros((Niter,P-1))
+
 for i in tqdm(range(Niter)):
     
+    # Withold data
     num_withold = np.round(frac_withhold * N).astype(int)
-    
     idx_subset = random.choice(N, size = num_withold, replace=False)
     Iwithheld = np.zeros(N).astype(bool)
     Iwithheld[idx_subset] = True
     Isubsetted = ~Iwithheld
-    
     df_subsetted = df_g1s.loc[Isubsetted]
     df_withheld = df_g1s.loc[Iwithheld]
     
-    this_model = smf.rlm(f'sgr ~ ' + str.join(' + ',
-                                          df_subsetted.columns[(df_subsetted.columns != 'sgr') &
-                                          (df_subsetted.columns != 'gr')]),data=df_subsetted).fit()
+    this_model = smf.rlm(f'sgr ~ ' + str.join(' + ',df_subsetted.columns.drop('sgr')),
+                         data=df_subsetted).fit()
     models.append(this_model)
     
     # predict on the withheld data
@@ -215,9 +220,8 @@ for i in tqdm(range(Niter)):
     for col in df_rand.columns.drop('sgr'):
         df_rand[col] = random.randn(N-num_withold)
         
-    random_model = smf.rlm(f'sgr ~ ' + str.join(' + ',
-                                          df_rand.columns[(df_rand.columns != 'sgr') &
-                                          (df_rand.columns != 'gr')]),data=df_rand).fit()
+    random_model = smf.rlm(f'sgr ~ ' + str.join(' + ',df_rand.columns.drop('sgr')),
+                           data=df_rand).fit()
     
     # predict on the withheld data
     ypred = random_model.predict(df_withheld)
@@ -227,11 +231,29 @@ for i in tqdm(range(Niter)):
     R = np.corrcoef(*nonan_pairs(ypred, df_withheld['sgr']))[0,1]
     Rsq_random[i] = R**2
     
+    coefficients[i,:] = this_model.params.drop('Intercept')
+    pvalues[i,:] = this_model.pvalues.drop('Intercept')
+
+coefficients = pd.DataFrame(coefficients,columns=df_g1s.columns.drop('sgr'))
+pvalues = pd.DataFrame(pvalues,columns=df_g1s.columns.drop('sgr'))
     
+# Plot R2
 plt.hist(Rsq.flatten())
 plt.hist(Rsq_random.flatten())
+plt.legend(['Empirical','Random']),plt.xlabel('R2 on test set')
 
-#%% Validate on other region
+# Plot coefficient variance
+plt.figure()
+plt.errorbar(coefficients.mean(axis=0),y=-np.log10(pvalues).mean(axis=0),
+             xerr = coefficients.std(axis=0),yerr= -np.log10(pvalues).std(axis=0),
+             fmt='b*')
+sig_params = coefficients.columns[pvalues.mean(axis=0) < 0.05]
+for p in sig_params:
+    plt.text(coefficients[p].mean() + 0.1, -np.log10(pvalues[p]).mean() + 0.01, p)
+plt.hlines(-np.log10(0.05),xmin=-1,xmax=1,color='r')
+plt.xlabel('Reg coefficient');plt.ylabel('-Log10(P)')
+
+#%% Validate across regions
 
 ypred = model_rlm.predict(df_g1s_test)
 res = df_g1s_test['sgr'] - ypred

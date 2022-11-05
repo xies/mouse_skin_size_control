@@ -17,9 +17,9 @@ from tqdm import tqdm
 
 from twophoton_util import parse_unaligned_channels, parse_timecourse_directory
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1'
 
 #@todo: Also export all daughter cells as a separate .tif so we can do daughter.division interpolation
 
@@ -34,9 +34,9 @@ T = 15
 # reg_reg_list = parse_unaligned_channels(dirname)
 # align_list = parse_timecourse_directory(dirname)
 
-xfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[!ab].xpts.txt')))
-yfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[!ab].ypts.txt')))
-zfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[!ab].zpts.txt')))
+xfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].xpts.txt')))
+yfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].ypts.txt')))
+zfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].zpts.txt')))
 coordinate_file_tuple = zip(xfiles,yfiles,zfiles)
 
 if ALIGN:
@@ -47,6 +47,7 @@ if ALIGN:
 labeled_image = np.zeros((T,ZZ,XX,XX))
 
 for fx,fy,fz in tqdm(coordinate_file_tuple):
+    
     # parse timestamp
     t = int(findall('t([0-9]+)',path.basename(fx))[0])-1
     # cellID = int(path.split(path.split(fx)[0])[1].split('.')[2])
@@ -87,7 +88,7 @@ for fx,fy,fz in tqdm(coordinate_file_tuple):
 io.imsave('/Users/xies/Desktop/blah.tif',labeled_image.astype(np.uint16))
 
 for t in range(T):
-    io.imsave(path.join(dirname,f'manual_basal_tracking/t{t}.tif'),
+    io.imsave(path.join(dirname,f'manual_basal_tracking_daughters/t{t}.tif'),
           labeled_image[t,...].astype(np.uint16))
 
         

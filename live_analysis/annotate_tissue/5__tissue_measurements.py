@@ -157,10 +157,13 @@ for t in tqdm(range(15)):
     df_dense['Nuclear axial angle'] = np.nan
     df_dense['Nuclear planar component 1'] = np.nan
     df_dense['Nuclear planar component 2'] = np.nan
+    df_dense['Nuclear axial eccentricity'] = np.nan
+    df_dense['Nuclear planar eccentricity'] = np.nan
     df_dense['Nuclear bbox top'] = np.nan
     df_dense['Nuclear bbox bottom'] = np.nan
 
     df_dense['Mean neighbor dist'] = np.nan
+    df_dense['Mean neighbor nuclear volume'] = np.nan
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
@@ -182,6 +185,8 @@ for t in tqdm(range(15)):
         df_dense.at[i,'Nuclear axial angle'] = phi
         df_dense.at[i,'Nuclear planar component 1'] = Ia
         df_dense.at[i,'Nuclear planar component 2'] = Ib
+        df_dense.at[i,'Nuclear axial eccentricity'] = Ia/Iaxial
+        df_dense.at[i,'Nuclear planar eccentricity'] = Ib/Ia
         df_dense.at[i,'Nuclear planar orientation'] = theta
         
         # Use neighbor matrices
@@ -207,7 +212,10 @@ for t in tqdm(range(15)):
             
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
-            
+                    
+            neighbor_dists = D[i, planar_neighbor_idx]
+            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
+                
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
             Y = dense_coords[planar_neighbor_idx,0]

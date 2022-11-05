@@ -16,8 +16,8 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-ZZ = 70
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+ZZ = 72
 XX = 460
 T = 15
 
@@ -40,7 +40,7 @@ df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 df['Cell alignment'] = np.abs(np.cos(df['Coronal angle'] - df['Planar angle']))
 
 df['Coronal area'] = df['Coronal area'] - df['Middle area']
-df['Coronal density'] = df['Num planar neighbors'] / df['Coronal area']
+df['Coronal density'] = df['Num planar neighbors']/df['Coronal area']
 
 # @todo: look back in time and look at height!
 
@@ -83,9 +83,9 @@ df_ = df[df['Phase'] != '?']
 #             ,kind='hist')
 
 
-sb.pairplot(df_,vars=['Volume','Planar component 1','Planar component 2',
-                      'Neighbor mean height frame-2','Neighbor mean height frame-1',
-                      'Specific GR b (sm)','Coronal density'],
+sb.pairplot(df_,vars=['Volume','Planar component 1','Coronal area',
+                      'Neighbor mean height frame-2','Mean neighbor nuclear volume',
+                      'Specific GR b (sm)','Phase'],
             plot_kws={'alpha':0.5}
             ,kind='hist')
 

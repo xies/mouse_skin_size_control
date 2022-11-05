@@ -13,6 +13,7 @@ import numpy as np
 from skimage import io
 from os import path, stat
 from glob import glob
+from tqdm import tqdm
 import pandas as pd
 import seaborn as sb
 from re import match
@@ -24,8 +25,8 @@ from basicUtils import nonans, nonan_pairs
 
 dirnames = {}
 
-dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/manual_track'
-dirnames['KO R1'] = '/Users/xies//OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/manual_track'
+dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/manual_track'
+dirnames['KO R1'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1/manual_track'
 dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
 dirnames['KO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2/manual_track'
 
@@ -75,7 +76,7 @@ for name,dirname in dirnames.items():
     
     genotype = name.split(' ')[0]
     
-    for f in all_cells:
+    for f in tqdm(all_cells):
         # Parse the manual annotations
         _tmp = pd.DataFrame()
         

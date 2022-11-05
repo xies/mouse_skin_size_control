@@ -20,8 +20,8 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-ZZ = 72
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+ZZ = 70
 XX = 460
 T = 15
 dx = 0.25
@@ -160,7 +160,7 @@ for t in tqdm(range(T)):
         collated[basalID].at[idx,'Basal orientation'] = basal_orientation
         
         # Subtract the mid-area of central cell from the coronal area
-        collated[basalID].at[idx,'Middle area'] = mid_area
+        collated[basalID].at[idx,'Middle area'] = mid_area * dx**2
         
         # Characteristic matrix of collagen signal
         J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],[Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
@@ -212,14 +212,14 @@ for basalID, df in collated.items():
         df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
         
         # G1 annotations
-        g1_frame = g1_anno.loc[basalID]['Frame']
+        g1_frame = g1_anno.loc[basalID]['Frame'] #NB: 1-indexed!
         if g1_frame == '?':
             continue
         else:
             g1_frame = int(g1_frame)
             df['G1S frame'] = g1_frame
             df['Phase'] = 'G1'
-            df.loc[df['Frame'].values > g1_frame,'Phase'] = 'SG2'
+            df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
             df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
             
     collated[basalID] = df

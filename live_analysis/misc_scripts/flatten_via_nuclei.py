@@ -19,8 +19,8 @@ from scipy.optimize import curve_fit
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
 # filenames = glob(path.join(dirname,'WT1.tif'))
 
@@ -33,17 +33,17 @@ def logit_curve(x,L,k,x0):
 imstack = io.imread(filenames[0])
 
 XX = 460
-ZZ = 70
+ZZ = 72
 
 #%%
 
-XY_sigma = 10
-Z_sigma = 4
+XY_sigma = 20
+Z_sigma = 7
 
 TOP_Z_BOUND = 30
 BOTTOM_Z_BOUND = 65
 
-z_shift = 0
+z_shift = 2
 
 OVERWRITE = True
 
@@ -52,7 +52,7 @@ OVERWRITE = True
 # for t,im in tqdm(enumerate(im_list)):
 # for t,im in tqdm(enumerate(imstack)):
     
-    t = 1
+    t = 7
     im = imstack[t,...]
     
     if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
