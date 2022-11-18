@@ -49,3 +49,4 @@ for f in filenames:
 	
 	# Also resave the mask as standalone .tif for convenience
 	io.imsave(path.join(output_dir, basename + '_masks.tif'),masks)
+

@@ -80,7 +80,7 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
         spots['Y'] = spots_['POSITION_Y']
         spots['Z'] = spots_['POSITION_Z']
         spots['Frame'] = spots_['POSITION_T']
-        spots['TrackID'] = spots_['TRACK_ID']
+        spots['MaMuTID'] = spots_['TRACK_ID']
         spots['Left'] = None
         spots['Right'] = None
         spots['Division'] = False
@@ -90,8 +90,8 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
         # Build a daughter(s) tree into the spots dataframe
         
         for idx,spot in spots.iterrows():
-            links_from_this_spot = link[link['SPOT_SOURCE_ID'] == spot.ID]
             
+            links_from_this_spot = link[link['SPOT_SOURCE_ID'] == spot.ID]
             if len(links_from_this_spot) == 1:
                 # No division
                 spots.at[idx,'Left'] = links_from_this_spot.iloc[0]['SPOT_TARGET_ID']
@@ -142,8 +142,7 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/')
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/')
+dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1')
 
 all_tracks = []
 for dirname in dirnames:
@@ -158,18 +157,18 @@ for dirname in dirnames:
 #%%
 
 rbko = all_tracks[0]
-wt = all_tracks[1]
+# wt = all_tracks[1]
 
-wtlength  = (np.array([len(t) for t in wt])* 12)
+# wtlength  = (np.array([len(t) for t in wt])* 12)
 rbkolength  = (np.array([len(t) for t in rbko])* 12)
 
-plt.boxplot([wtlength,rbkolength],labels=['WT','RB-KO'])
-plt.ylabel('Cell cycle length (h)')
+# plt.boxplot([wtlength,rbkolength],labels=['WT','RB-KO'])
+# plt.ylabel('Cell cycle length (h)')
 
-plt.figure()
+# plt.figure()
 
-plt.hist(wtlength,12,histtype='step');plt.hist(rbkolength,12,histtype='step')
-plt.legend(['WT','RB-KO'])
+# plt.hist(wtlength,12,histtype='step');plt.hist(rbkolength,12,histtype='step')
+# plt.legend(['WT','RB-KO'])
 
-plt.xlabel('Cell cycle length (h)')
+# plt.xlabel('Cell cycle length (h)')
 

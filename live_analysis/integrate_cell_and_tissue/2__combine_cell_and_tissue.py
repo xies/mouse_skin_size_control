@@ -23,7 +23,7 @@ T = 15
 
 #%% Load
 
-with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
+with open(path.join(dirname,'basal_with_daughters.pkl'),'rb') as f:
     collated = pkl.load(f)
     
 cell_ts = pd.concat(collated,ignore_index=True)

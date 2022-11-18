@@ -17,7 +17,7 @@ from tqdm import tqdm
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -47,7 +47,7 @@ for d in subfolders:
 channel_names = ['G','B']
 for header_ome in tqdm(header_ome_h2b):
     
-    d = path.dirname(header_ome)
+    d = path.split(path.dirname(header_ome))[0]
     # Make sure we haven't already processed this stack
     if path.exists(path.join(d,'G_reg.tif')):
         print(f'Skipping {d}')
@@ -80,8 +80,8 @@ for header_ome in tqdm(header_ome_h2b):
 
 channel_names = ['R','R_shg']
 for header_ome in tqdm(header_ome_fucci):
-    
-    d = path.dirname(header_ome)
+
+    d = path.split(path.dirname(header_ome))[0]
     # Make sure we haven't already processed this stack
     if path.exists(path.join(d,'R_reg.tif')):
         print(f'Skipping {d}')

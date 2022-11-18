@@ -19,7 +19,7 @@ from twophoton_util import parse_unaligned_channels, parse_timecourse_directory
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2'
 
 #@todo: Also export all daughter cells as a separate .tif so we can do daughter.division interpolation
 

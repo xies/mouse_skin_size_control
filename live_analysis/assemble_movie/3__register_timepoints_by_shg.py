@@ -17,23 +17,23 @@ from tqdm import tqdm
 import matplotlib.pylab as plt
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 
 def sort_by_day(filename):
-    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(path.split(filename)[0])[0])[1])
+    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(filename)[0])[1])
     day = day.groups()[0]
     return float(day)
 
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_reg_reg.tif')),key=sort_by_day)
-G_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/G_reg_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_shg_reg_reg.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'*Day*/ZSeries*/R_reg_reg.tif')),key=sort_by_day)
+# B_tifs = sorted(glob(path.join(dirname,'*Day*/B_reg_reg.tif')),key=sort_by_day)
+G_tifs = sorted(glob(path.join(dirname,'*Day*/G_reg.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/R_shg_reg_reg.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
 
-assert(len(B_tifs) == len(R_tifs))
+assert(len(G_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
 
 ########################################################################################
@@ -96,11 +96,11 @@ def xcorr2(template, image, mode="full"):
 
 XX = 1024
 
-OVERWRITE = False
+OVERWRITE = True
 
 XY_reg = True
 MANUAL_Z = False
-APPLY = False
+APPLY = True
 
 ref_T = 0
 
@@ -112,17 +112,17 @@ ref_img = R_shg_ref[Imax_ref,...]
 
 
 # variables to save:
-z_pos_in_original = np.zeros(len(B_tifs))
+z_pos_in_original = np.zeros(len(G_tifs))
 z_pos_in_original[ref_T] = Imax_ref
-XY_matrices = np.zeros((len(B_tifs),3,3))
+XY_matrices = np.zeros((len(G_tifs),3,3))
 
-for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
-    
+for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
+    # t = 15
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if APPLY and not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
+    if APPLY and not OVERWRITE and path.exists(path.join(path.dirname(G_tifs[t]),'G_align.tif')):
         print(f'Skipping t = {t}')
         continue
     
@@ -145,11 +145,12 @@ for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
     z_pos_in_original[t] = Imax_target
     
     # Perform transformations
-    B = io.imread(B_tifs[t])
+    # B = io.imread(B_tifs[t])
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
     
-    B_transformed = B.copy(); R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
+    # B_transformed = B.copy();
+    R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
     
     if XY_reg:
         moving_img = R_shg_target[Imax_target,...]
@@ -163,12 +164,12 @@ for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
             print('Applying transformation matrices')
             # Apply transformation matrix to each stacks
             
-            for i, B_slice in enumerate(B):
-                B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
-                G_transformed[i,...] = sr.transform(G[i,...].astype(float),tmat=T)
+            for i, G_slice in enumerate(G):
+                # B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
+                G_transformed[i,...] = sr.transform(G_slice,tmat=T)
             for i, R_slice in enumerate(R):
-                R_transformed[i,...] = sr.transform(R_slice.astype(float),tmat=T)
-                R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...].astype(float),tmat=T)
+                R_transformed[i,...] = sr.transform(R_slice,tmat=T)
+                R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...],tmat=T)
         
     if APPLY:    
         # Z-pad the time point in reference to t - 1
@@ -179,19 +180,19 @@ for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
         if top_padding > 0: # the needs padding
             R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
             G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-            B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
+            # B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
             R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
             
         elif top_padding < 0: # then needs trimming
             R_padded = R_transformed[-top_padding:,...]
             G_padded = G_transformed[-top_padding:,...]
-            B_padded = B_transformed[-top_padding:,...]
-            R_shg_padded = B_transformed[-top_padding:,...]
+            # B_padded = G_transformed[-top_padding:,...]
+            R_shg_padded = R_shg_transformed[-top_padding:,...]
             
         elif top_padding == 0:
             R_padded = R_transformed
             G_padded = G_transformed
-            B_padded = B_transformed
+            # B_padded = B_transformed
             R_shg_padded = R_shg_transformed
             
         delta_ref = Z_ref - Imax_ref
@@ -200,23 +201,23 @@ for t in tqdm( np.arange(0,len(B_tifs)) ): # 0-indexed
         if bottom_padding > 0: # the needs padding
             R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+            # B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             
         elif bottom_padding < 0: # then needs trimming
             R_padded = R_padded[0:bottom_padding,...]
             G_padded = G_padded[0:bottom_padding,...]
-            B_padded = B_padded[0:bottom_padding,...]
+            # B_padded = B_padded[0:bottom_padding,...]
             R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
         print('Saving')
-        output_dir = path.dirname(B_tifs[t])
-        io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16),check_contrast=False)
-        io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16),check_contrast=False)
+        output_dir = path.dirname(R_tifs[t])
+        # io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16),check_contrast=False)
+        io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
         
         output_dir = path.dirname(R_tifs[t])
-        io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16),check_contrast=False)
-        io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16),check_contrast=False)
+        io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
+        io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
 
 #% Manually input any matrix and save
 

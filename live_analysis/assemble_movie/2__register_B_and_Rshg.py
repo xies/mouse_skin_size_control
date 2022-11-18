@@ -13,8 +13,7 @@ from glob import glob
 from re import match
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 
 #%%
 
@@ -84,8 +83,8 @@ def sort_by_day(filename):
 # Grab all registered B/R tifs
 # B_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_reg.tif')),key=sort_by_day)
 G_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/G_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_regz.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_regz.tif')),key=sort_by_day)
+R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_reg.tif')),key=sort_by_day)
+R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_reg.tif')),key=sort_by_day)
 
 #%%
 
@@ -94,18 +93,18 @@ XX = 1024
 OVERWRITE = False
 # skip = 11
 
-assert(len(B_tifs) == len(R_tifs))
+# assert(len(B_tifs) == len(R_tifs))
 
-for t in tqdm(range(len(B_tifs))):
+for t in tqdm(range(len(R_tifs))):
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif')) \
-    and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
+    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
+    # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
         print(f'Skipping t = {t} because ref time point')
         continue
     
     print(f'--- Started t = {t} ---')
-    B = io.imread(B_tifs[t])
+    # B = io.imread(B_tifs[t])
     R_shg = io.imread(R_shg_tifs[t])
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
@@ -134,19 +133,19 @@ for t in tqdm(range(len(B_tifs))):
     y_shift = XX - y_shift
     x_shift = XX - x_shift
     
-    B_transformed = np.zeros_like(B).astype(np.int16)
+    # B_transformed = np.zeros_like(B).astype(np.int16)
     G_transformed = np.zeros_like(G).astype(np.int16)
     T = transform.SimilarityTransform(translation=(-x_shift,-y_shift))
     
     for i, B_slice in enumerate(B):
-        B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
+        # B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
         G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
         
     # G_transformed -= G_transformed.min()
     # B_transformed -= B_transformed.min()
     
     output_dir = path.dirname(B_tifs[t])
-    io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16),check_contrast=False)
     io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16),check_contrast=False)
     
     # Z-pad the red + red_shg channel using Imax and Iz

@@ -20,7 +20,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 70
 XX = 460
 T = 15
@@ -49,7 +49,7 @@ def get_interpolated_curve(cf,smoothing_factor=1e10):
 
     return yhat
     
-def get_growth_rate(cf,field):
+def get_growth_rate(cf,field,time_field='Time'):
     
     assert(field == 'Nucleus' or field == 'Volume')
     
@@ -57,16 +57,19 @@ def get_growth_rate(cf,field):
     
     v = cf[field].values
     v_sm = cf[field + ' (sm)'].values
+    t = cf[time_field]
     
     Tb = backward_difference(len(v))
     Tf = forward_difference(len(v))
-    gr_b = np.dot(Tb,v)
-    gr_f = np.dot(Tb,v)
+    gr_b = np.dot(Tb,v) / t
+    gr_f = np.dot(Tb,v) / t
     
     Tb = backward_difference(len(v_sm))
     Tf = forward_difference(len(v_sm))
-    gr_sm_b = np.dot(Tb,v_sm)
-    gr_sm_f = np.dot(Tf,v_sm)
+    
+    
+    gr_sm_b = np.dot(Tb,v_sm) / t
+    gr_sm_f = np.dot(Tf,v_sm) / t
     
     gr_b[0] = np.nan
     gr_f[-1] = np.nan
@@ -80,7 +83,7 @@ def get_growth_rate(cf,field):
 basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
 allIDs = np.unique(basal_tracking)[1:]
 
-#%% Do pixel level measurements e.g. Surface Area
+#% Do pixel level measurements e.g. Surface Area
 
 collated = {k:pd.DataFrame() for k in allIDs}
 
@@ -98,8 +101,9 @@ for t,im in enumerate(basal_tracking):
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
         s = pd.Series({'basalID': basalID
+                       ,'Daughter':False
                        ,'Volume':V
-                       ,'Z':Z,'Frame': t
+                       ,'Z':Z,'Frame': t,'Time':t*12
                        ,'Y-pixels':Y,'X-pixels':X
                        ,'Y':Y * dx**2,'X':X * dx**2
                        ,'Surface area':SA
@@ -183,6 +187,37 @@ for t in tqdm(range(T)):
     
 df = pd.concat(collated,ignore_index=True)
 
+#%% Load the daughter cells
+
+# Load into a dict of individual cells (some daughter cell pairs have >1 time points)
+daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_daughters/manual_basal_tracking_daughters.tif'))
+daughterIDs = np.unique(daughter_tracking)[1:]
+daughters = {k:pd.DataFrame() for k in daughterIDs}
+
+for t,im in enumerate(daughter_tracking):
+
+    properties = measure.regionprops(im)
+    
+    for p in properties:
+        
+        basalID = p['label']
+        V = p['area'] * dx**2
+        s = pd.Series({'basalID': basalID
+                       ,'Daughter volume':V})
+        
+        daughters[basalID] = daughters[basalID].append(s,ignore_index=True)
+
+# Trim to only first daughter time point
+for basalID,daughter in daughters.items():
+    if len(daughter) > 0:
+        daughters[basalID] = daughter.iloc[0]
+    last_time = collated[basalID]['Time'].max()
+    collated[basalID] = collated[basalID].append(pd.Series({'basalID':basalID,
+                                                            'Time':last_time + 12,
+                                                            'Volume':daughter['Daughter volume'].values[0],
+                                                            'Daughter':True
+                                                            }),ignore_index=True)
+
 #%% Calculate spline + growth rates + save
 
 g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
@@ -201,13 +236,13 @@ for basalID, df in collated.items():
         Vsm = get_interpolated_curve(df)
         df['Volume (sm)'] = Vsm
         gr_f,gr_b,gr_sm_b,gr_sm_f = get_growth_rate(df,'Volume')
-        df['Growth rate b'] = gr_f / 12.
-        df['Growth rate f'] = gr_b / 12.
-        df['Growth rate b (sm)'] = gr_sm_b / 12.
-        df['Growth rate f (sm)'] = gr_sm_f / 12.
+        df['Growth rate b'] = gr_f
+        df['Growth rate f'] = gr_b
+        df['Growth rate b (sm)'] = gr_sm_b
+        df['Growth rate f (sm)'] = gr_sm_f
         df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
         df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
-        df['Age'] = (df['Frame']-df['Frame'].min()) * 12.
+        df['Age'] = (df['Time']-df['Time'].min())
         cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
         df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
         
@@ -224,12 +259,8 @@ for basalID, df in collated.items():
             
     collated[basalID] = df
 
-#%
-#@todo: daughter/division voluem analysis!
 
-#%
-
-with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
+with open(path.join(dirname,'basal_with_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
 df = pd.concat(collated,ignore_index=True)
 
