@@ -12,6 +12,7 @@ from os import path
 from glob import glob
 from re import match
 from pystackreg import StackReg
+from imageUtils import gaussian_blur_3d
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 
@@ -37,19 +38,27 @@ R_tifs = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_reg.tif')),key=sort_b
 Tmatrices = dict()
 Tmatrices[0] = transform.SimilarityTransform(translation=(-5,-60))
 Tmatrices[1] = transform.SimilarityTransform(translation=(-12,-8))
-Tmatrices[2] = transform.SimilarityTransform(translation=(-38,2))
+Tmatrices[2] = transform.SimilarityTransform(translation=(-38,-5))
+Tmatrices[3] = transform.SimilarityTransform(translation=(-120,8))
+Tmatrices[4] = transform.SimilarityTransform(translation=(15,-10))
 
 Zshifts = dict()
 Zshifts[0] = 10
 Zshifts[1] = -7
 Zshifts[2] = -2
+Zshifts[3] = -7
+Zshifts[4] = -18
 
 #%% Transform
 
-t = 0
+t = 4
+s_xy = 0.5
+s_z = 1
 
 G = io.imread(G_tifs[t])
+G = gaussian_blur_3d(G,s_xy,s_z)
 R = io.imread(R_tifs[t])
+R = gaussian_blur_3d(R,s_xy,s_z)
 R_shg = io.imread(R_shg_tifs[t])
 
 Zshift = Zshifts[t]
@@ -60,7 +69,6 @@ R_ref = R[G_zref + Zshift,...]
 
 # sr = StackReg(StackReg.TRANSLATION)
 # T = sr.register(G_ref, R_ref)
-
 
 R_transformed = np.zeros_like(R)
 R_shg_transformed = np.zeros_like(R)

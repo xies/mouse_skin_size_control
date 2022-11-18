@@ -10,6 +10,7 @@ import numpy as np
 from skimage import io, measure
 from glob import glob
 from os import path
+from tqdm import tqdm
 import pandas as pd
 import matplotlib.pylab as plt
 from matplotlib.path import Path
@@ -23,15 +24,14 @@ from SelectFromCollection import SelectFromCollection
 
 '''
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
-filenames = glob(path.join(dirname,'RBKO1.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
+# filenames = glob(path.join(dirname,'RBKO1.tif'))
 
 #%%
 
-# pred_files = glob(path.join(dirname,'h2b_sequence/*/t*_masks.tif'))
-T = 1
+T = 15
 
 # Some pruning parameters
 # MIN_SIZE_IN_PX = 2000
@@ -39,9 +39,8 @@ T = 1
 _tmp = []
 for t in range(T):
     
-    # predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
-    predictions = io.imread(path.join(dirname,f'RBKO1_nuc_masks.tif'))
-    heightmaps = io.imread(path.join(dirname,f'Image flattening/heightmaps/RBKO1.tif'))
+    predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_nuc/t{t}_masks.tif'))
+    heightmaps = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid'}))
     
     # Look at each XY coord and look up heightmap
@@ -58,7 +57,9 @@ for t in range(T):
 
 df = pd.concat(_tmp)
 
-plt.scatter(df['area'],df['Corrected Z'],alpha=0.01)
+plt.figure()
+
+pts = plt.scatter(df['area'],df['Corrected Z'],alpha=0.01)
 plt.ylabel('Corrected Z (to heightmap)')
 plt.xlabel('Cell size (px2)')
 # plt.xlim([0,25000])
@@ -66,7 +67,7 @@ plt.xlabel('Cell size (px2)')
 
 selector = SelectFromCollection(plt.gca(), pts)
 
-#%%
+#%% Gate the cells
 
 verts = np.array(selector.poly.verts)
 x = verts[:,0]
@@ -76,16 +77,16 @@ p_ = Path(np.array([x,y]).T)
 I = np.array([p_.contains_point([x,y]) for x,y in zip(df['area'],df['Corrected Z'])])
 # I = p_.contains_points( np.array([df['area'],df['Corrected Z']]).T )
 
-# df_ = df[I]
+df_ = df[I]
 # plt.scatter(df['area'],df['centroid-0'],alpha=0.5)
 # plt.scatter(df_['area'],df_['centroid-0'],color='r')
 
 #%% # Reconstruct the filtered segmentation predictions
 
-for t in range(T):
+for t in tqdm(range(T)):
     
-    # predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
-    predictions = io.imread(path.join(dirname,f'RBKO1_nuc_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'im_seq/t{t}_3d_nuc/t{t}_masks.tif'))
+    
     this_cellIDs = df_[df_['Time'] == t]['label']
     
     filtered_pred = predictions.flatten()
@@ -93,8 +94,8 @@ for t in range(T):
     filtered_pred[~I] = 0
     filtered_pred = filtered_pred.reshape(predictions.shape)
     
-    # io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_cleaned/t{t}.tif'),filtered_pred.astype(np.int16))
-    io.imsave(path.join(dirname,f'RBKO1_nuc_seg_cleaned.tif'),filtered_pred.astype(np.int16))
+    io.imsave(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned/t{t}.tif'),filtered_pred.astype(np.int16))
+    # io.imsave(path.join(dirname,f'RBKO1_nuc_seg_cleaned.tif'),filtered_pred.astype(np.int16))
     
 
 

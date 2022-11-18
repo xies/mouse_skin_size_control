@@ -9,6 +9,7 @@ Optimized for Mesa et al organization
 """
 
 import numpy as np
+import pandas as pd
 from skimage import io, filters, exposure, util
 from os import path
 from glob import glob
@@ -19,7 +20,7 @@ from scipy.optimize import curve_fit
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_W_R1_cropped.tif'))
+filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
 # filenames = glob(path.join(dirname,'WT1.tif'))
 
@@ -42,20 +43,20 @@ Z_sigma = 7
 TOP_Z_BOUND = 30
 BOTTOM_Z_BOUND = 65
 
-z_shift = -5
+z_shift = 2
 
-OVERWRITE = False
+OVERWRITE = True
 
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
-for t,im in tqdm(enumerate(imstack)):
-
-# t = 14
-# im = imstack[t,...]
+# for t,im in tqdm(enumerate(imstack)):
     
-    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')):
-        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0)
+    t = 7
+    im = imstack[t,...]
+    
+    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
+        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
         XY_sigma = params['XY_sigma']
         Z_sigma = params['Z_sigma']
         TOP_Z_BOUND = params['TOP_Z_BOUND']
@@ -74,9 +75,7 @@ for t,im in tqdm(enumerate(imstack)):
             im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
             
     # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
-
-
-
+    
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp = im_z_blur.copy()
     _tmp[np.isnan(_tmp)] = 0
@@ -98,9 +97,9 @@ for t,im in tqdm(enumerate(imstack)):
             flat[y,x,:] = im[Iz[y,x],y,x,:]
             height_image[Iz[y,x],y,x] = 1
     
-    io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.int16),check_contrast=False)
-    io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
     
-    pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
-                  'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
-    
+    # pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
+    #               'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
+

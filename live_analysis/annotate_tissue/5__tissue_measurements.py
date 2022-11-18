@@ -31,10 +31,10 @@ XX = 460
 Z_SHIFT = 10
 
 # Differentiating thresholds
-centroid_height_cutoff = 3 #microns above BM
+centroid_height_cutoff = 3.5 #microns above BM
 
 VISUALIZE = True
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 '''
 NB: idx - the order in array in dense segmentation
@@ -71,6 +71,7 @@ def tri_to_adjmat(tri):
 df = []
 
 for t in tqdm(range(15)):
+    # t = 2
     
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
@@ -156,10 +157,13 @@ for t in tqdm(range(15)):
     df_dense['Nuclear axial angle'] = np.nan
     df_dense['Nuclear planar component 1'] = np.nan
     df_dense['Nuclear planar component 2'] = np.nan
+    df_dense['Nuclear axial eccentricity'] = np.nan
+    df_dense['Nuclear planar eccentricity'] = np.nan
     df_dense['Nuclear bbox top'] = np.nan
     df_dense['Nuclear bbox bottom'] = np.nan
 
     df_dense['Mean neighbor dist'] = np.nan
+    df_dense['Mean neighbor nuclear volume'] = np.nan
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
@@ -181,6 +185,8 @@ for t in tqdm(range(15)):
         df_dense.at[i,'Nuclear axial angle'] = phi
         df_dense.at[i,'Nuclear planar component 1'] = Ia
         df_dense.at[i,'Nuclear planar component 2'] = Ib
+        df_dense.at[i,'Nuclear axial eccentricity'] = Ia/Iaxial
+        df_dense.at[i,'Nuclear planar eccentricity'] = Ib/Ia
         df_dense.at[i,'Nuclear planar orientation'] = theta
         
         # Use neighbor matrices
@@ -206,7 +212,10 @@ for t in tqdm(range(15)):
             
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
-            
+                    
+            neighbor_dists = D[i, planar_neighbor_idx]
+            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
+                
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
             Y = dense_coords[planar_neighbor_idx,0]
@@ -226,7 +235,6 @@ for t in tqdm(range(15)):
                 df_dense.at[i,'Coronal angle'] = theta
                 # df_dense.at[i,'Coronal '
                 
-    df_dense['Coronal density'] = df_dense['Num planar neighbors'] / df_dense['Coronal area']
     
     # Save the DF
     df.append(df_dense)
@@ -237,18 +245,18 @@ for t in tqdm(range(15)):
     # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
     
     df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
-    colorized = colorize_segmentation(dense_seg,
-                                      {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized,check_contrast=False)
+    # colorized = colorize_segmentation(dense_seg,
+    #                                   {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
+    # io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized,check_contrast=False)
     
     colorized = colorize_segmentation(dense_seg,
                                       {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized,check_contrast=False)
+    io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized.astype(int8),check_contrast=False)
     
-    colorized = colorize_segmentation(dense_seg.astype(float),
-                                      {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Height to BM'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'), \
-              util.img_as_uint(colorized/colorized.max()),check_contrast=False)
+    # colorized = colorize_segmentation(dense_seg.astype(float),
+    #                                   {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Height to BM'].values)})
+    # io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'), \
+    #           util.img_as_uint(colorized/colorized.max()),check_contrast=False)
     
     
     

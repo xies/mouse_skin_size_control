@@ -16,9 +16,10 @@ from scipy.spatial import distance
 import pandas as pd
 import matplotlib.pylab as plt
 from tqdm import tqdm
+import networkx as nx
 
 
-from imageUtils import draw_labels_on_image, draw_adjmat_on_image
+from imageUtils import draw_labels_on_image, draw_adjmat_on_image, draw_adjmat_on_image_3d
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 XX = 460
@@ -38,8 +39,9 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
-for t in tqdm(range(15)):
+# for t in tqdm(range(15)):
     
+    t = 7
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
@@ -78,6 +80,7 @@ for t in tqdm(range(15)):
         cytoID = cyto['label']
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
         if len(I) > 1:
+            
             print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
             error()
         elif len(I) == 1:
@@ -100,7 +103,7 @@ for t in tqdm(range(15)):
         touchingIDs[counts > touching_threshold] # should get rid of 'conrner touching'
         # if i == 87:
         #     error
-        touchingIDs = touchingIDs[touchingIDs > 0] # Could touch background pxs
+        touchingIDs = touchingIDs[touchingIDs > 2] # Could touch background pxs
         touchingIDs = touchingIDs[touchingIDs != cyto['label']] # nonself
         
         # Convert CytoID to CellposeID

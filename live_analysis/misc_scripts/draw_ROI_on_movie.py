@@ -14,13 +14,13 @@ from PIL import Image, ImageDraw, ImageFont
 from shapely.geometry import Polygon
 from glob import glob
 
-
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/2020 CB analysis/tracked_cells/'
 # dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
-dirname = '/Users/xies/Desktop/KO R2/manual_track'
+# dirname = '/Users/xies/Desktop/KO R2/manual_track'
 
 #%%
 
-filename = glob(path.join(dirname,'*/*.xpts.txt'))
+filename = glob(path.join(dirname,'*/*[ab].xpts.txt'))
 
 # Draw PolyRoi using PIL.ImageDraw
 X = 1024
