@@ -18,18 +18,18 @@ from time import time
 
 model = models.Cellpose(model_type='nuclei')
 
-#dirnames = ['/home/xies/data/Skin/06-25-2022/M6 RBKO/R1/im_seq']
-#dirnames.append('/home/xies/data/Skin/06-25-2022/M1 WT/R1/im_seq')
-dirnames = ['/home/xies/data/Skin/NMS/09-29-2022 RB-KO pair/RBKO/R1/cellpose']
+'/home/xies/data/Skin/Confocal/11-02-2022 DS 09-29-2022/H2B-Cerulean FUCCI2 Phalloidin-647'
+#dirnames = ['/home/xies/data/Skin/NMS/11-17-2022 RB-KO tam control/M5 RB CreER tam/R2', '/home/xies/data/Skin/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1']
 
-diameter = 17 #OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 30 #OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
 cellprob_threshold = -0.1
+channels = [2]
 
 # Load the raw image (RGB,Z,X,Y)
 filenames = []
 for dirname in dirnames:
-	filenames = filenames + glob(path.join(dirname,'t*.tif'))
+	filenames = filenames + glob(path.join(dirname,'*.tif'))
 
 OVERWRITE = False
 
@@ -46,7 +46,7 @@ for f in filenames:
 	tic = time()
 	print(f'Predicting on {f}')
 	im = io.imread(f)
-	masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True,
+	masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True, channels=channels,
 					cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
 	io.masks_flows_to_seg(im, masks,flows,diams,f)
 	# annoyingly, need to manually move
