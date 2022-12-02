@@ -7,7 +7,7 @@ Created on Tue Mar 15 17:16:59 2022
 """
 
 import numpy as np
-from skimage import io, filters
+from skimage import io, filters, util
 from os import path
 from glob import glob
 from pystackreg import StackReg
@@ -17,7 +17,7 @@ from tqdm import tqdm
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -49,9 +49,9 @@ for header_ome in tqdm(header_ome_h2b):
     
     d = path.split(path.dirname(header_ome))[0]
     # Make sure we haven't already processed this stack
-    if path.exists(path.join(d,'G_reg.tif')):
-        print(f'Skipping {d}')
-        continue
+    # if path.exists(path.join(d,'G_reg.tif')):
+    #     print(f'Skipping {d}')
+    #     continue
     
     # Load ome-tif
     print(f'Loading {d}')
@@ -70,9 +70,9 @@ for header_ome in tqdm(header_ome_h2b):
     # G_reg = sr.transform_stack(G,tmats=T)
     
     output_path = path.join( d,'G_reg.tif')
-    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(B_reg/B_reg.max()),check_contrast=False)
     # output_path = path.join( d,'G_reg.tif') 
-    # io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
+    # io.imsave(output_path,G_reg.astype(np.uint16),check_contrast=False)
     
     print(f'Saved with {output_path}')
 
@@ -83,9 +83,9 @@ for header_ome in tqdm(header_ome_fucci):
 
     d = path.split(path.dirname(header_ome))[0]
     # Make sure we haven't already processed this stack
-    if path.exists(path.join(d,'R_reg.tif')):
-        print(f'Skipping {d}')
-        continue
+    # if path.exists(path.join(d,'R_reg.tif')):
+    #     print(f'Skipping {d}')
+    #     continue
     
     # Load ome-tif
     print(f'Loading {d}')
@@ -101,9 +101,9 @@ for header_ome in tqdm(header_ome_fucci):
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     
     output_path = path.join( d,'R_reg.tif')
-    io.imsave(output_path,R_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(R_reg/R_reg.max()),check_contrast=False)
     output_path = path.join( d,'R_shg_reg.tif')
-    io.imsave(output_path,R_shg_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(R_shg_reg/R_shg_reg.max()),check_contrast=False)
     
     print(f'Saved with {output_path}')
 

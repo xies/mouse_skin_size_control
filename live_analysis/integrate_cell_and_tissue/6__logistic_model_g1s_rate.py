@@ -87,7 +87,7 @@ ui = pd.DataFrame(ui,columns = df_g1s.columns.drop('G1S_logistic')).dropna()
 plt.errorbar(x=coefficients.mean(axis=0), y=-np.log10(pvalues).mean(axis=0),
              xerr = coefficients.std(axis=0)/np.sqrt(Niter),
              yerr = -np.log10(pvalues).std(axis=0)/np.sqrt(Niter),
-             fmt='b*')
+             fmt='bo')
 # Label sig variables
 sig_params = pvalues.columns[-np.log10(pvalues).mean(axis=0) > -np.log10(0.05)]
 for p in sig_params:
@@ -240,7 +240,7 @@ from sklearn.tree import plot_tree
 Niter = 100
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
-importance = np.zeros((Niter,df_g1s.shape[1]-1))
+importance = np.zeros((Niter,df_g1s.shape[1]))
 AUC = np.zeros(Niter); AP = np.zeros(Niter)
 C_rf = np.zeros((Niter,2,2))
 
@@ -250,6 +250,7 @@ for i in tqdm(range(Niter)):
     # df_g1s[df_g1s['Phase' == 'G1']].sample
     sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
     df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+    df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
     
     forest = RandomForestClassifier(n_estimators=100, random_state=i)
     
@@ -268,18 +269,22 @@ for i in tqdm(range(Niter)):
 plt.hist(AUC); plt.hist(AP)
 
 imp = pd.DataFrame(importance)
-imp.columns = df_g1s.columns.drop('G1S_logistic')
+imp.columns = df_g1s_balanced.columns.drop('G1S_logistic')
+
+#%%
 
 plt.figure()
-sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');plt.xticks(rotation=45);plt.ylabel('Importance')
+sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value',order=imp.columns[imp.mean(axis=0).values.argsort()[::-1]]);
+plt.xticks(rotation=45);plt.ylabel('Importance')
 
 #%% Compare MLR v RF
 
-plt.figure()
-sb.heatmap(C_mlr.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
-plt.title('Logistic')
+# plt.figure()
+# sb.heatmap(C_mlr.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
+# plt.title('Logistic')
 plt.figure()
 sb.heatmap(C_rf.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
 plt.title('Rand Forest')
+plt.savefig('/Users/xies/Desktop/rfm.eps')
 
 
