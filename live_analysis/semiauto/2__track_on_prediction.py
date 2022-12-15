@@ -20,14 +20,15 @@ from tqdm import tqdm
 import pickle as pkl
 
 dirnames = {}
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirname = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
 
 # dx = 0.2920097
 dx = 1
 
 #%% Load parsed tracks, previous manual segtrack, additional segonly
 
-MANUAL = True
+MANUAL = False
 
 # Load preliminary tracks
 with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
@@ -46,12 +47,12 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 #     io.imsave(out_name, seg)
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
+segonly = io.imread(path.join(dirname,f'segmentation/cellpose_masks.tif'))
+
 if MANUAL:
     segtrack = io.imread(path.join(dirname,f'manual_tracking/manual_tracking.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
-
-segonly = io.imread(path.join(dirname,f'segmentation/cellpose_masks.tif'))
 
 #%% Use tracks and extract segmentation; generate a filtered segmentation image
 # where only tracked spots are shown + put 3D markers on un-segmented spots
@@ -105,7 +106,7 @@ for track in tqdm(tracks):
         # segtrack[t,...] = this_segtrack
 
 io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
-      segtrack.astype(np.int16))
+      segtrack.astype(np.uint16))
 
 
 
