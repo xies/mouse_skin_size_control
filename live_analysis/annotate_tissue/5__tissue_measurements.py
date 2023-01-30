@@ -97,7 +97,7 @@ for t in tqdm(range(15)):
     df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
     assert(np.isnan(df_manual['CellposeID']).sum() == 0)
     
-    # Reverse the mapping
+    # Reverse the mapping from CellposeID to basalID
     for _,this_cell in df_manual.iterrows():
          df_dense.loc[ df_dense['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
 
@@ -127,6 +127,7 @@ for t in tqdm(range(15)):
     df_dense['Border'] = False
     df_dense.loc[ np.in1d(df_dense['CellposeID'],border_nuclei), 'Border'] = True
     
+    # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
     mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
     # mesh_sm = trimesh.smoothing.filter_laplacian(mesh,lamb=0.01)
@@ -164,12 +165,14 @@ for t in tqdm(range(15)):
 
     df_dense['Mean neighbor dist'] = np.nan
     df_dense['Mean neighbor nuclear volume'] = np.nan
+    df_dense['Std neighbor nuclear volume'] = np.nan
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
     df_dense['Mean planar neighbor height'] = np.nan
     df_dense['Mean diff neighbor height'] = np.nan
     
+    # Use this to make specific neighborhood measurements
     props = measure.regionprops(dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
         
@@ -215,6 +218,7 @@ for t in tqdm(range(15)):
                     
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].std()
                 
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
