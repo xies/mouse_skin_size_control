@@ -26,13 +26,14 @@ XX = 460
 T = 15
 dx = 0.25
 
-from toeplitzDifference import backward_difference,forward_difference
+from toeplitzDifference import backward_difference,forward_difference,central_difference
 
 def get_interpolated_curve(cf,smoothing_factor=1e10):
 
     # Get rid of daughter cells]
     if len(cf) < 4:
         yhat = cf.Volume.values
+        dydt = np.ones(len(cf)) * np.nan
         
     else:
         t = np.array(range(0,len(cf))) * 12
@@ -41,42 +42,56 @@ def get_interpolated_curve(cf,smoothing_factor=1e10):
         spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
         yhat = spl(t)
         
+        dydt = spl.derivative(n=1)(t)
+        
         # # Nuclear volume
         # nv = cf.Nucleus.values
         # # Spline smooth
         # spl = UnivariateSpline(t, nv, k=3, s=smoothing_factor)
         # nuc_hat = spl(t)
 
-    return yhat
+    return yhat,dydt
     
-def get_growth_rate(cf,field,time_field='Time'):
+def get_growth_rate(cf,field='Volume',time_field='Time'):
     
     assert(field == 'Nucleus' or field == 'Volume')
     
     #@todo: detect + impute NaN for automatically tracked cells
+    #@todo: Filter out daughters
     
     v = cf[field].values
     v_sm = cf[field + ' (sm)'].values
-    t = cf[time_field]
+    t = cf[time_field].values
     
     Tb = backward_difference(len(v))
     Tf = forward_difference(len(v))
     gr_b = np.dot(Tb,v) / t
-    gr_f = np.dot(Tb,v) / t
+    gr_f = np.dot(Tf,v) / t
+    
+    Tc = central_difference(len(v))
+    gr_c = np.dot(Tc,v) / t
     
     Tb = backward_difference(len(v_sm))
     Tf = forward_difference(len(v_sm))
+    Tf = central_difference(len(v_sm))
     
     
     gr_sm_b = np.dot(Tb,v_sm) / t
     gr_sm_f = np.dot(Tf,v_sm) / t
+    gr_sm_c = np.dot(Tc,v_sm) / t
     
     gr_b[0] = np.nan
     gr_f[-1] = np.nan
     gr_sm_b[0] = np.nan
     gr_sm_f[-1] = np.nan
+    
+    gr_c[0] = np.nan
+    gr_c[-1] = np.nan
+    gr_sm_c[0] = np.nan
+    gr_sm_c[-1] = np.nan
+    
 
-    return gr_b,gr_f,gr_sm_b,gr_sm_f
+    return gr_b,gr_f,gr_c,gr_sm_b,gr_sm_f,gr_sm_c
 
 #%% Load the basal cell tracking
 
@@ -187,7 +202,58 @@ for t in tqdm(range(T)):
     
 df = pd.concat(collated,ignore_index=True)
 
-#%% Load the daughter cells
+#%% Calculate spline + growth rates
+
+g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
+
+for basalID, df in collated.items():
+    # put in the birth volume
+    collated[basalID]['Birth volume'] = collated[basalID]['Volume'].values[0]
+    
+    df['Phase'] = '?'
+    if len(df) > 1:
+        df['Axial eccentricity'] = df['Axial component'] / df['Planar component 2']
+        df['Planar eccentricity'] = df['Planar component 2'] / df['Planar component 1']
+        df['SA to vol'] = df['Surface area'] / df['Volume']
+        collated[basalID] = df
+        
+        Vsm,dVdt = get_interpolated_curve(df)
+        df['Volume (sm)'] = Vsm
+        gr_f,gr_b,gr_c,gr_sm_b,gr_sm_f,gr_sm_c = get_growth_rate(df,'Volume')
+        df['Growth rate spl'] = dVdt
+        df['Growth rate b'] = gr_f
+        df['Growth rate f'] = gr_b
+        df['Growth rate c'] = gr_c
+        df['Growth rate b (sm)'] = gr_sm_b
+        df['Growth rate f (sm)'] = gr_sm_f
+        df['Growth rate c (sm)'] = gr_sm_c
+        df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
+        df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
+        df['Specific GR c (sm)'] = gr_sm_c / df['Volume (sm)']
+        df['Specific GR spl'] = dVdt / df['Volume (sm)']
+        df['Age'] = (df['Time']-df['Time'].min())
+        cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
+        
+        df.loc[df['Daughter'],'Growth rate b'] = np.nan
+        df.loc[df['Daughter'],'Growth rate f'] = np.nan
+        
+        df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
+        
+        # G1 annotations
+        g1_frame = g1_anno.loc[basalID]['Frame'] #NB: 1-indexed!
+        if g1_frame == '?':
+            continue
+        else:
+            g1_frame = int(g1_frame)
+            df['G1S frame'] = g1_frame
+            df['Phase'] = 'G1'
+            df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
+            df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
+            
+    collated[basalID] = df
+
+
+#%% Load the daughter cells + save
 
 # Load into a dict of individual cells (some daughter cell pairs have >1 time points)
 daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_daughters/manual_basal_tracking_daughters.tif'))
@@ -217,48 +283,6 @@ for basalID,daughter in daughters.items():
                                                             'Volume':daughter['Daughter volume'].values[0],
                                                             'Daughter':True
                                                             }),ignore_index=True)
-
-#%% Calculate spline + growth rates + save
-
-g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
-
-for basalID, df in collated.items():
-    # put in the birth volume
-    collated[basalID]['Birth volume'] = collated[basalID]['Volume'].values[0]
-    
-    df['Phase'] = '?'
-    if len(df) > 1:
-        df['Axial eccentricity'] = df['Axial component'] / df['Planar component 2']
-        df['Planar eccentricity'] = df['Planar component 2'] / df['Planar component 1']
-        df['SA to vol'] = df['Surface area'] / df['Volume']
-        collated[basalID] = df
-        
-        Vsm = get_interpolated_curve(df)
-        df['Volume (sm)'] = Vsm
-        gr_f,gr_b,gr_sm_b,gr_sm_f = get_growth_rate(df,'Volume')
-        df['Growth rate b'] = gr_f
-        df['Growth rate f'] = gr_b
-        df['Growth rate b (sm)'] = gr_sm_b
-        df['Growth rate f (sm)'] = gr_sm_f
-        df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
-        df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
-        df['Age'] = (df['Time']-df['Time'].min())
-        cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
-        df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
-        
-        # G1 annotations
-        g1_frame = g1_anno.loc[basalID]['Frame'] #NB: 1-indexed!
-        if g1_frame == '?':
-            continue
-        else:
-            g1_frame = int(g1_frame)
-            df['G1S frame'] = g1_frame
-            df['Phase'] = 'G1'
-            df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
-            df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
-            
-    collated[basalID] = df
-
 
 with open(path.join(dirname,'basal_with_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
