@@ -86,13 +86,14 @@ ui = pd.DataFrame(ui,columns = df_g1s.columns.drop('G1S_logistic')).dropna()
 # Effect size v. pvalue
 plt.errorbar(x=coefficients.mean(axis=0), y=-np.log10(pvalues).mean(axis=0),
              xerr = coefficients.std(axis=0)/np.sqrt(Niter),
-             yerr = -np.log10(pvalues).std(axis=0)/np.sqrt(Niter),
+             yerr = np.log10(pvalues).std(axis=0)/np.sqrt(Niter),
              fmt='bo')
+
 # Label sig variables
-sig_params = pvalues.columns[-np.log10(pvalues).mean(axis=0) > -np.log10(0.05)]
+sig_params = pvalues.columns[-np.log10(pvalues).mean(axis=0) > -np.log10(0.01)]
 for p in sig_params:
     plt.text(coefficients[p].mean() + 0.1, -np.log10(pvalues[p]).mean() + 0.01, p)
-plt.hlines(-np.log10(0.05),xmin=-1.5,xmax=2.0,color='r')
+plt.hlines(-np.log10(0.01),xmin=-1.5,xmax=2.0,color='r')
 plt.xlabel('Regression coefficient')
 plt.ylabel('-Log(P)')
 
