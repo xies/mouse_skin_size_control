@@ -9,6 +9,7 @@ Created on Fri Sep 30 15:24:22 2022
 import numpy as np
 from skimage import io, filters, transform, util
 from os import path
+from tqdm import tqdm
 from glob import glob
 from re import match
 from pystackreg import StackReg
@@ -77,9 +78,9 @@ assert(len(G_tifs) == len(R_shg_tifs))
 
 OVERWRITE = True
 #%% Transform
-
-for t in tqdm(np.arange(0,17)):
-# t = 15
+# 
+for t in tqdm(np.arange(0,16)):
+# t = 1
     
     output_dir = path.dirname(R_tifs[t])
     # if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:
@@ -91,7 +92,7 @@ for t in tqdm(np.arange(0,17)):
     
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
-    R = gaussian_blur_3d(R,s_xy,s_z)
+    # R = gaussian_blur_3d(R,s_xy,s_z)
     R_shg = io.imread(R_shg_tifs[t])
     
     Zshift = Zshifts[t]
