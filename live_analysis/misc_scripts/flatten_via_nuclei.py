@@ -22,11 +22,11 @@ from scipy.optimize import curve_fit
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 Phall-647/WT1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1/'
 # filenames = glob(path.join(dirname,'tracking/H2B_stack.tif'))
-filenames = glob(path.join(dirname,'*.tif'))
-                 
+filenames = glob(path.join(dirname,'*h2b.tif'))
+
 
 channel2use = 1
 

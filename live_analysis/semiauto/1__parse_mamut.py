@@ -76,6 +76,7 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
         spots = pd.DataFrame()
         # Construct a cleaned-up dataframe
         spots['ID'] = spots_['ID']
+        spots['Label'] = spots_['LABEL']
         spots['X'] = spots_['POSITION_X']
         spots['Y'] = spots_['POSITION_Y']
         spots['Z'] = spots_['POSITION_Z']
@@ -120,13 +121,17 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
         
             # Pop from list
             spot = spots2trace.pop()
-            print(f'Tracing from {spot.ID}')
+            # print(f'Tracing from {spot.ID}')
             track = [spot]
+
+            idx = 0
             while not spot.iloc[0]['Division'] and not spot.iloc[0]['Terminus']:
+                idx +=1
                 # Trace the linkages
                 next_spot = spots[spots.ID == spot['Left'].iloc[0]]
                 track.append(next_spot)
                 spot = next_spot
+                
             if spot.iloc[0]['Division']:
                 # If we found a division, then this is a complete cell cycle
                 tracks_.append(pd.concat(track))
@@ -142,7 +147,7 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1')
+dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2')
 
 all_tracks = []
 for dirname in dirnames:

@@ -18,7 +18,7 @@ from mathUtils import normxcorr2
 import matplotlib.pylab as plt
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -62,9 +62,9 @@ ref_img = R_shg_ref[Imax_ref,...]
 
 
 # variables to save:
-# z_pos_in_original = np.zeros(len(G_tifs))
-# z_pos_in_original[ref_T] = Imax_ref
-# XY_matrices = np.zeros((len(G_tifs),3,3))
+z_pos_in_original = np.zeros(len(G_tifs))
+z_pos_in_original[ref_T] = Imax_ref
+XY_matrices = np.zeros((len(G_tifs),3,3))
 
 for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
     # t = 1

@@ -104,14 +104,14 @@ params['li'] = li.mean(axis=0).values
 params['ui'] = ui.mean(axis=0).values
 
 params['err'] = params['ui'] - params['coef']
-params['effect size'] = np.sqrt(params['coef']**2 /(1-Rsqfull))
+params['effect size'] = params['coef']
 
-order = np.argsort( np.abs(params['coef']) )[::-1][0:10]
+order = np.argsort( np.abs(params['coef']) )[::-1][0:5]
 params = params.iloc[order]
 
 plt.figure()
 plt.bar(range(len(params)),params['coef'],yerr=params['err'])
-plt.xticks(range(10),params['var'],rotation=30)
+plt.xticks(range(5),params['var'],rotation=30)
 
 #%% Cross-validation
 

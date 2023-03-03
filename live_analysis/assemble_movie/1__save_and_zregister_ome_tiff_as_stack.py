@@ -17,10 +17,7 @@ from tqdm import tqdm
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M*/R1/'
-
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -29,7 +26,7 @@ def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
 
-subfolders = glob(path.join(dirname,''))
+subfolders = glob(path.join(dirname,'*. Day*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

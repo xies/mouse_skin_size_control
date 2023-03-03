@@ -15,7 +15,7 @@ from re import match
 from pystackreg import StackReg
 from imageUtils import gaussian_blur_3d
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -35,52 +35,50 @@ R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 #% Hand build translation matrices
 
 Tmatrices = dict()
-Tmatrices[0] = transform.SimilarityTransform(translation=(-95,-50))
-Tmatrices[1] = transform.SimilarityTransform(translation=(-10,-15))
-Tmatrices[2] = transform.SimilarityTransform(translation=(2,-47))
-Tmatrices[3] = transform.SimilarityTransform(translation=(0,-10))
-Tmatrices[4] = transform.SimilarityTransform(translation=(-4,-40))
-Tmatrices[5] = transform.SimilarityTransform(translation=(-150,50))
-Tmatrices[6] = transform.SimilarityTransform(translation=(-12,-60))
-Tmatrices[7] = transform.SimilarityTransform(translation=(-20,-50))
-Tmatrices[8] = transform.SimilarityTransform(translation=(10,-55))
-Tmatrices[9] = transform.SimilarityTransform(translation=(5,-45))
-Tmatrices[10] = transform.SimilarityTransform(translation=(-30,-55))
-Tmatrices[11] = transform.SimilarityTransform(translation=(-45,-85))
-Tmatrices[12] = transform.SimilarityTransform(translation=(-12,-6))
-Tmatrices[13] = transform.SimilarityTransform(translation=(-11,-90))
-Tmatrices[14] = transform.SimilarityTransform(translation=(13,-35))
-Tmatrices[15] = transform.SimilarityTransform(translation=(-20,-20))
+Tmatrices[0] = transform.SimilarityTransform(translation=(-45,65))
+Tmatrices[1] = transform.SimilarityTransform(translation=(0,12))
+Tmatrices[2] = transform.SimilarityTransform(translation=(0,-10))
+Tmatrices[3] = transform.SimilarityTransform(translation=(-8,15))
+Tmatrices[4] = transform.SimilarityTransform(translation=(5,5))
+Tmatrices[5] = transform.SimilarityTransform(translation=(-5,15))
+Tmatrices[6] = transform.SimilarityTransform(translation=(60,-118))
+Tmatrices[7] = transform.SimilarityTransform(translation=(-13,-30))
+Tmatrices[8] = transform.SimilarityTransform(translation=(0,12))
+Tmatrices[9] = transform.SimilarityTransform(translation=(0,-10))
+Tmatrices[10] = transform.SimilarityTransform(translation=(0,65))
+Tmatrices[11] = transform.SimilarityTransform(translation=(39,36))
+Tmatrices[12] = transform.SimilarityTransform(translation=(50,-65))
+Tmatrices[13] = transform.SimilarityTransform(translation=(0,15))
+Tmatrices[14] = transform.SimilarityTransform(translation=(-5,30))
 
 Zshifts = dict()
-Zshifts[0] = 2
-Zshifts[1] = 7
-Zshifts[2] = 6
-Zshifts[3] = 6
-Zshifts[4] = 7
-Zshifts[5] = 7
-Zshifts[6] = 8
-Zshifts[7] = 3
-Zshifts[8] = 7
-Zshifts[9] = -4
-Zshifts[10] = 9
-Zshifts[11] = 26
-Zshifts[12] = 3
-Zshifts[13] = -7
-Zshifts[14] = 5
-Zshifts[15] = 7
+Zshifts[0] = 14
+Zshifts[1] = -9
+Zshifts[2] = 3
+Zshifts[3] = 2
+Zshifts[4] = 8
+Zshifts[5] = 12
+Zshifts[6] = 9
+Zshifts[7] = 4
+Zshifts[8] = 4
+Zshifts[9] = 2
+Zshifts[10] = 20
+Zshifts[11] = 9
+Zshifts[12] = 4
+Zshifts[13] = -8
+Zshifts[14] = -8
 
 np.save(arr=(Tmatrices,Zshifts),file =path.join(dirname,'G_R_alignment.npy'))
 
 assert(len(G_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
 
-
 OVERWRITE = True
-#%% Transform
+
+ #%% Transform
 # 
-for t in tqdm(np.arange(0,16)):
-# t = 1
+for t in tqdm(np.arange(0,14)):
+    
     
     output_dir = path.dirname(R_tifs[t])
     # if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:
@@ -92,7 +90,7 @@ for t in tqdm(np.arange(0,16)):
     
     G = io.imread(G_tifs[t])
     R = io.imread(R_tifs[t])
-    # R = gaussian_blur_3d(R,s_xy,s_z)
+    R = gaussian_blur_3d(R,s_xy,s_z)
     R_shg = io.imread(R_shg_tifs[t])
     
     Zshift = Zshifts[t]
@@ -134,6 +132,6 @@ for t in tqdm(np.arange(0,16)):
     io.imsave(path.join(output_dir,'R_reg_reg.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
     io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
-
-
     
+    
+         

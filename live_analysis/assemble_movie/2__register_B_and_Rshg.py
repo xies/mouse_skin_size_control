@@ -15,7 +15,7 @@ from tqdm import tqdm
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M9*/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M5*/R1/'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -81,8 +81,8 @@ for t in tqdm(range(len(R_tifs))):
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices
     
     print('Transforming')
-    R_transformed = np.zeros_like(R)
-    R_shg_transformed = np.zeros_like(R)
+    R_transformed = np.zeros_like(R).astype(float)
+    R_shg_transformed = np.zeros_like(R).astype(float)
     for i, R_slice in enumerate(R):
         R_transformed[i,...] = sr.transform(R_slice,tmat=T)
         R_shg_transformed[i,...] = sr.transform(R_shg[i,...],tmat=T)
@@ -94,10 +94,10 @@ for t in tqdm(range(len(R_tifs))):
     
     print('Padding')
     # Z-pad the red + red_shg channel using Imax and Iz
-    bottom_padding = -(Iz - Imax)
+    bottom_padding = Iz - Imax
     if bottom_padding > 0: # the needs padding
-        R_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_transformed), axis= 0).astype(np.int16)
-        R_shg_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_shg_transformed), axis= 0).astype(np.int16)
+        R_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_transformed), axis= 0)
+        R_shg_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),R_shg_transformed), axis= 0)
     elif bottom_padding < 0: # then needs trimming
         R_padded = R_transformed[-bottom_padding:,...]
         R_shg_padded = R_shg_transformed[-bottom_padding:,...]
@@ -105,19 +105,19 @@ for t in tqdm(range(len(R_tifs))):
         R_padded = R_transformed
         R_shg_padded = R_shg_transformed
     
-    print('Saving')
     top_padding = B.shape[0] - R_padded.shape[0]
     if top_padding > 0: # the needs padding
-        R_padded = np.concatenate( (R_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0).astype(np.int16)
-        R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0).astype(np.int16)
+        R_padded = np.concatenate( (R_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+        R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
     elif top_padding < 0: # then needs trimming
         R_padded = R_padded[0:top_padding,...]
         R_shg_padded = R_shg_padded[0:top_padding,...]
     
     output_dir = path.dirname(R_tifs[t])
 
-    io.imsave(path.join(output_dir,'R_reg_reg.tif'),R_padded.astype(np.uint16),check_contrast=False)
-    io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),R_shg_padded.astype(np.uint16),check_contrast=False)
+    print('Saving')
+    io.imsave(path.join(output_dir,'R_reg_reg.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
+    io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
     
     

@@ -28,7 +28,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 Phall-647/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1/'
 filenames = glob(path.join(dirname,'*/*/*_manual.tiff'))
 
 
@@ -36,8 +36,8 @@ filenames = glob(path.join(dirname,'*/*/*_manual.tiff'))
 
 T = 1
 
-predictions = io.imread(path.join(dirname,'R1_masks.tif'))
-heightmaps = io.imread(path.join(dirname,'R1_height_map.tif'))
+predictions = io.imread(path.join(dirname,'WT1_h2b_masks.tif'))
+heightmaps = io.imread(path.join(dirname,'WT1_height_map.tif'))
 # SEG_DIR = 'tracking/3d_nuc_seg/cellpose_masks'
 
 # Some pruning parameters
@@ -104,7 +104,7 @@ I = np.in1d(predictions.flatten(), this_cellIDs)
 filtered_pred[~I] = 0
 filtered_pred = filtered_pred.reshape(predictions.shape)
 
-io.imsave(path.join(dirname,f'{OUT_SUBDIR}/R1_clean.tif'),filtered_pred.astype(np.int16))
+io.imsave(path.join(dirname,f'{OUT_SUBDIR}/WT1_clean.tif'),filtered_pred.astype(np.int16))
 # io.imsave(path.join(dirname,f'RBKO1_nuc_seg_cleaned.tif'),filtered_pred.astype(np.int16))
     
 
