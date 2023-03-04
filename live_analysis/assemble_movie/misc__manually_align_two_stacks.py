@@ -68,7 +68,7 @@ Zshifts[12] = 4
 Zshifts[13] = -8
 Zshifts[14] = -8
 
-np.save(arr=(Tmatrices,Zshifts),file =path.join(dirname,'G_R_alignment.npy'))
+np.save(arr=(Tmatrices,Zshifts),file=path.join(dirname,'G_R_alignment.npy'))
 
 assert(len(G_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
@@ -78,7 +78,6 @@ OVERWRITE = True
  #%% Transform
 # 
 for t in tqdm(np.arange(0,14)):
-    
     
     output_dir = path.dirname(R_tifs[t])
     # if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:

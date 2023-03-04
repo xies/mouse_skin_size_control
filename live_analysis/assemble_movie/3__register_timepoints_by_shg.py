@@ -36,7 +36,6 @@ R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
 assert(len(G_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
 
-
 #%% Correlate each R_shg timepoint with first time point
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
