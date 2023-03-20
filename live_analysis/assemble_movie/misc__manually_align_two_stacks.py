@@ -37,7 +37,8 @@ R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 Tmatrices = dict()
 Tmatrices[0] = transform.SimilarityTransform(translation=(-45,65))
 Tmatrices[1] = transform.SimilarityTransform(translation=(0,12))
-Tmatrices[2] = transform.SimilarityTransform(translation=(0,-10))
+Tmatrices[2] = transform.SimilarityTransform(translation=(5,0))
+
 Tmatrices[3] = transform.SimilarityTransform(translation=(-8,15))
 Tmatrices[4] = transform.SimilarityTransform(translation=(5,5))
 Tmatrices[5] = transform.SimilarityTransform(translation=(-5,15))
@@ -54,7 +55,8 @@ Tmatrices[14] = transform.SimilarityTransform(translation=(-5,30))
 Zshifts = dict()
 Zshifts[0] = 14
 Zshifts[1] = -9
-Zshifts[2] = 3
+Zshifts[2] = 5
+
 Zshifts[3] = 2
 Zshifts[4] = 8
 Zshifts[5] = 12
@@ -77,7 +79,8 @@ OVERWRITE = True
 
  #%% Transform
 # 
-for t in tqdm(np.arange(0,14)):
+# for t in tqdm(np.arange(0,14)):
+    t = 2
     
     output_dir = path.dirname(R_tifs[t])
     # if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:

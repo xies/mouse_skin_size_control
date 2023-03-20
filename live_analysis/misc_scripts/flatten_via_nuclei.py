@@ -20,12 +20,11 @@ from scipy.optimize import curve_fit
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1'
+# filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1/'
 # filenames = glob(path.join(dirname,'tracking/H2B_stack.tif'))
-filenames = glob(path.join(dirname,'*h2b.tif'))
+filenames = glob(path.join(dirname,'im_seq_decon/t*_decon.tif'))
 
 
 channel2use = 1
@@ -34,21 +33,20 @@ def logit_curve(x,L,k,x0):
     y = L / (1 + np.exp(-k*(x-x0)))
     return y
 
-imstack = io.imread(filenames[0])
+imstack = np.stack(map(io.imread,filenames))
 
 XX = 1024
 ZZ = 84
 
 #%%
 
-XY_sigma = 25
-Z_sigma = 10
+XY_sigma = 20
+Z_sigma = 15
 
 TOP_Z_BOUND = 3
-BOTTOM_Z_BOUND = 25
+BOTTOM_Z_BOUND = 35
 
-z_shift = 2
-
+z_shift = 0
 
 OVERWRITE = True
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
@@ -58,7 +56,7 @@ OVERWRITE = True
 
 # t = 0
     # im = imstack[t,...]
-im = imstack
+im = imstack[2,...]
 
 # if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
 #     params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
