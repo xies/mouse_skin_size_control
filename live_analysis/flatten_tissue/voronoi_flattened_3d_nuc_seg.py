@@ -42,6 +42,12 @@ import matplotlib.colors as colors
 
 fig = plt.figure()
 
+vor = voronois[0]
+vertices = vor['vertices']
+faces = vor['faces']
+polygons =[ np.array([vertices[j] for j in faces[i]['vertices']]) for i in range(len(faces))]
+
+c = colors.rgb2hex((np.random.rand(3)))
 
 def plot_polygon3d(ax,polygon,color='blue'):
     # Polygon -> vertex list arranged counterclockwise
@@ -69,7 +75,6 @@ for i,face in enumerate(faces):
     plot_polygon3d(ax,polygon,color=c)
 
 plt.show()
-
 
 #%% Generate 'segmentation' based on Voronoi
 
@@ -131,7 +136,7 @@ def point_is_in_polyhedron(point,polygons,ax=None):
 
 #%%
 
-vor_segmentation = np.zeros([72,460,460])
+vor_segmentation = np.zeros([25,460,460])
 
 for i,vor in tqdm(enumerate(voronois)):
     
@@ -144,7 +149,7 @@ for i,vor in tqdm(enumerate(voronois)):
     maxes = np.ceil(np.array(vertices).max(axis=0)).astype(int)
     mins = np.floor(np.array(vertices).min(axis=0)).astype(int)
     
-    Z = np.arange( max(0,mins[0]), min(71,maxes[0]))
+    Z = np.arange( max(0,mins[0]), min(19,maxes[0]))
     Y = np.arange( max(0,mins[1]), min(459,maxes[1]))
     X = np.arange( max(0,mins[2]), min(459,maxes[2]))
     
@@ -153,10 +158,11 @@ for i,vor in tqdm(enumerate(voronois)):
     coords2test = list(zip(ZZ.flatten(),YY.flatten(),XX.flatten()))
     
     for coord in tqdm(coords2test):
-        vor_segmentation[coord[0],coord[1],coord[2]] = point_is_in_polyhedron(coord,polygons) * label
+        if vor_segmentation[coord[0],coord[1],coord[2]] == 0:
+            vor_segmentation[coord[0],coord[1],coord[2]] = point_is_in_polyhedron(coord,polygons) * label
 
 
 
-
+io.imsave(path.join(dirname,'voro_seg.tif'),vor_segmentation)
 
 
