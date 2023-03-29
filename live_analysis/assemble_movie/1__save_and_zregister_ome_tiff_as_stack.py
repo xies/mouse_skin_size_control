@@ -49,9 +49,9 @@ for header_ome in tqdm(header_ome_h2b):
     
     d = path.split(path.dirname(header_ome))[0]
     # Make sure we haven't already processed this stack
-    # if path.exists(path.join(d,'G_reg.tif')):
-    #     print(f'Skipping {d}')
-    #     continue
+    if path.exists(path.join(d,'G_reg.tif')):
+        print(f'Skipping {d}')
+        continue
     
     # Load ome-tif
     print(f'Loading {d}')
