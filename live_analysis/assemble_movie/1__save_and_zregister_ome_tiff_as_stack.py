@@ -7,14 +7,13 @@ Created on Tue Mar 15 17:16:59 2022
 """
 
 import numpy as np
-from skimage import io, filters, util
+from skimage import io, util
 from os import path
 from glob import glob
 from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
