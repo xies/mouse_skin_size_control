@@ -17,7 +17,7 @@ sgr_theo = {}
 sgr_est = {}
 sgr_est_noise = {}
 max_age = [1,2,3,4,5,6,7]
-# colors = [colormaps['viridis'](i) for i in np.linspace(1,255,8)]
+colors = [colormaps['viridis'](i) for i in np.linspace(1,255,8)]
 for j,age in enumerate(max_age):
     
     # Assume 70h cell cycle -> every 12h -> ~6 average sampling rate

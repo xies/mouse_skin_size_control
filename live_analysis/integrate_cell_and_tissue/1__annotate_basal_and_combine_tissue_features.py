@@ -20,7 +20,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 ZZ = 70
 XX = 460
 T = 15
@@ -100,7 +100,7 @@ allIDs = np.unique(basal_tracking)[1:]
 
 #% Do pixel level measurements e.g. Surface Area
 
-collated = {k:pd.DataFrame() for k in allIDs}
+collated = {k:[] for k in allIDs}
 
 for t,im in enumerate(basal_tracking):
 
@@ -115,7 +115,14 @@ for t,im in enumerate(basal_tracking):
         
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
-        s = pd.Series({'basalID': basalID
+        
+        
+    footprint = morphology.cube(5)
+    
+    this_seg_dilated = morphology.dilation(this_seg,footprint=footprint)
+    
+        
+        s = {'basalID': basalID
                        ,'Daughter':False
                        ,'Volume':V
                        ,'Z':Z,'Frame': t,'Time':t*12
@@ -130,9 +137,12 @@ for t,im in enumerate(basal_tracking):
                        ,'Basal area':np.nan
                        ,'Basal orientation':np.nan
                        ,'Collagen orientation':np.nan
-                       ,'Collagen fibrousness':np.nan})
+                       ,'Collagen fibrousness':np.nan}
         
-        collated[basalID] = collated[basalID].append(s,ignore_index=True)
+        collated[basalID].append(s)
+
+collated = {basalID: pd.DataFrame(cell) for basalID,cell in collated.items()}
+
 
 #%% Load "flattened" segmenations to look at apical v. basal area
 # E.g. collagen orientation + fibrousness
@@ -202,6 +212,7 @@ for t in tqdm(range(T)):
     
 df = pd.concat(collated,ignore_index=True)
 
+
 #%% Calculate spline + growth rates
 
 g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
@@ -251,7 +262,6 @@ for basalID, df in collated.items():
             df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
             
     collated[basalID] = df
-
 
 #%% Load the daughter cells + save
 
