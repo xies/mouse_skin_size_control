@@ -90,7 +90,6 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
     gr_sm_c[0] = np.nan
     gr_sm_c[-1] = np.nan
     
-
     return gr_b,gr_f,gr_c,gr_sm_b,gr_sm_f,gr_sm_c
 
 #%% Load the basal cell tracking
@@ -102,7 +101,7 @@ allIDs = np.unique(basal_tracking)[1:]
 
 collated = {k:[] for k in allIDs}
 
-for t,im in enumerate(basal_tracking):
+for t,im in tqdm(enumerate(basal_tracking)):
 
     properties = measure.regionprops(im, extra_properties = [surface_area])
     
@@ -115,12 +114,6 @@ for t,im in enumerate(basal_tracking):
         
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
-        
-        
-    footprint = morphology.cube(5)
-    
-    this_seg_dilated = morphology.dilation(this_seg,footprint=footprint)
-    
         
         s = {'basalID': basalID
                        ,'Daughter':False

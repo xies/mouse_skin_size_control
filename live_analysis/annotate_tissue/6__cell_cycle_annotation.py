@@ -21,7 +21,7 @@ import seaborn as sb
 from matplotlib.path import Path
 from SelectFromCollection import SelectFromCollection
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -64,7 +64,6 @@ for t in tqdm(range(15)):
     df['FUCCI background std'] = bg_std_fucci
     df['FUCCI bg sub'] = fucci_bg_sub
     df['Frame'] = t
-    
     
     
     by_frame.append(df)
@@ -114,7 +113,8 @@ ts.to_csv(path.join(dirname,'tissue_dataframe.csv'))
 
 for t in tqdm(range(15)):
 
-    colored = colorize_segmentation(nuc_seg[t,...],
+    this_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    colored = colorize_segmentation(this_seg,
                                     {row['CellposeID']:row['FUCCI thresholded'] == 'High' for i,row in df[df['Frame'] == t].iterrows()} )
     
     io.imsave(path.join(dirname,f'Misc visualizations/High FUCCI/t{t}.tif'),

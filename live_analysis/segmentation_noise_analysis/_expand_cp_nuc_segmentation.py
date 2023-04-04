@@ -36,6 +36,7 @@ for t in tqdm(range(15)):
     im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))[...,2]
     
     
+    
     th = filters.threshold_otsu(im)
     im_thresh = im > th
     

@@ -34,36 +34,46 @@ for name,dirname in dirnames.items():
 df = pd.concat(df,ignore_index=True)
 ts = pd.concat(ts,ignore_index=True)
 
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
+    c1 = pkl.load(f,encoding='latin-1')
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
+    c2 = pkl.load(f,encoding='latin-1')
+collated = c1+c2
+dfc = pd.concat(collated)
+
 #%% Illustrate the problem
 
 plt.figure(1)
 for cellID in df['basalID'].unique():
     this_cell = df[df['basalID'] == cellID]
-    plt.plot(this_cell.Frame,this_cell['Volume (sm)'])
-
-
+    plt.plot(this_cell.Frame,this_cell['Nuclear volume'],'b-',alpha=0.1)
+sb.lineplot(data=df,x='Frame',y='Nuclear volume',color='r')
 plt.xlabel('Movie frame')
-plt.ylabel('Cell volume (fL)')
+plt.ylabel('Nuclear volume -- cellpose->threshold (fL)')
 
 plt.figure(2)
 for cellID in df['basalID'].unique():
     this_cell = df[df['basalID'] == cellID]
-    plt.plot(this_cell.Frame,this_cell['Nuclear volume'])
-
+    plt.plot(this_cell.Frame,this_cell['Nuclear volume raw'],'b-',alpha=0.1)
+sb.lineplot(data=df,x='Frame',y='Nuclear volume raw',color='r')
 plt.xlabel('Movie frame')
 plt.ylabel('Nuclear volume (fL)')
 
 
 plt.figure(3)
-mesa = dfc
+mesa = dfc.copy()
 mesa['Frame'] = mesa['Frame'] - 1
 for cellID in mesa['CellID'].unique():
     this_cell = mesa[mesa['CellID'] == cellID]
     this_cell = this_cell[this_cell['Daughter'] == 'None']
-    plt.plot(this_cell.Frame,this_cell['Nucleus'])
-
+    plt.plot(this_cell.Frame,this_cell['Nucleus'],'b-',alpha=0.1)
+sb.lineplot(data=mesa[mesa['Daughter'] == 'None'],x='Frame',y='Nucleus',color='r')
 plt.xlabel('Movie frame')
 plt.ylabel('Nuclear volume -- Otsu thresholded (fL)')
+
+plt.figure(4)
+sb.lineplot(data=ts,x='Frame',y='Nuclear volume raw')
+sb.lineplot(data=ts,x='Frame',y='Nuclear volume')
 
 #%%
 
@@ -71,8 +81,8 @@ df_all = df.rename(columns={'basalID':'CellID'}).merge(mesa,on=['Region','CellID
 # df_all = df_all[df_all['Daughter'] == 'None']
 sb.lmplot(data = df_all, x= 'Nucleus',y='Nuclear volume',hue='Frame',
           facet_kws = {'sharex':True, 'sharey':True})
-plt.xlim([0,325])
-plt.ylim([0,325])
+# plt.xlim([0,325])
+# plt.ylim([0,325])
 
 #%%
 

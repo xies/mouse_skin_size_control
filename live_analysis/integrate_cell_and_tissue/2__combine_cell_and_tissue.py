@@ -35,15 +35,11 @@ df = pd.merge(cell_ts, tissue, how='inner', on=['basalID','Frame'])
 df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 
 #% Derive cell->tissue features
-
-# @todo: Alignment of cell to local tissue
 df['Cell alignment'] = np.abs(np.cos(df['Coronal angle'] - df['Planar angle']))
-
 df['Coronal area'] = df['Coronal area'] - df['Middle area']
 df['Coronal density'] = df['Num planar neighbors']/df['Coronal area']
 
-# @todo: look back in time and look at height!
-
+# Derive some neighborhood dynamics
 col_idx = len(df.columns)
 df['Neighbor mean height frame-1'] = np.nan
 df['Neighbor mean height frame-2'] = np.nan
