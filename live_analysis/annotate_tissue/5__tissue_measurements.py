@@ -71,7 +71,6 @@ def tri_to_adjmat(tri):
 df = []
 
 for t in tqdm(range(15)):
-    # t = 2
     
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
@@ -89,8 +88,12 @@ for t in tqdm(range(15)):
     df_dense['Y'] = df_dense['Y-pixels'] * dx**2
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
+    
+    #@todo: include thresholded volumes
+    # Load thresholded images
+    
 
-    #NB: best to use this since it guarantees one-to-one 
+    #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
     df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = dense_seg,
                                                        properties = ['label'],
                                                        extra_properties = [most_likely_label]))
