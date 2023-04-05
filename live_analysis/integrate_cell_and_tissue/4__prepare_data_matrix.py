@@ -78,6 +78,8 @@ features_list = { # Cell geometry
                 ,'Cell alignment':'cell_align'
                 ,'Mean neighbor nuclear volume':'mean_neighb_nuc_vol'
                 ,'Mean neighbor dist':'mean_neighb_dist'
+                ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
+                ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
                 ,'Neighbor mean height frame-2':'neighb_height_24h'
                 ,'Num diff neighbors':'neighb_diff'

@@ -30,7 +30,7 @@ for t in xrange(T):
         entropy = filters.rank.threshold_percentile(im, selem,p0=0.5)
 #        mask[t,z,...] = (entropy >= 800).astype(np.int8)
         
-        print 'Done with t= ',t,', z = ',z 
+        print 'Done with t= ',t,', z = ',z
 
 #mask = io.imread(path.join(dirname,'h2b_mask.tif'))
 #
