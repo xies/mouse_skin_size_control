@@ -16,6 +16,7 @@ from pystackreg import StackReg
 from tqdm import tqdm
 from mathUtils import normxcorr2
 import matplotlib.pylab as plt
+import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
@@ -44,14 +45,19 @@ manual_Ztarget = {}
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
 XY_reg = True
-manual_Ztarget = {}
+manual_Ztarget = {4:8}
 APPLY = True
 
 ref_T = 0
 
+if path.exists(path.join(dirname,'alignment_information.pkl')):
+    with open(path.join(dirname,'alignment_information.pkl'),'rb') as f:
+        [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
+
+#%%
 
 # Find the slice with maximum mean value in R_shg channel
 R_shg_ref = io.imread( R_shg_tifs[ref_T] )
@@ -61,9 +67,9 @@ ref_img = R_shg_ref[Imax_ref,...]
 
 
 # variables to save:
-z_pos_in_original = np.zeros(len(G_tifs))
+z_pos_in_original = {}
 z_pos_in_original[ref_T] = Imax_ref
-XY_matrices = np.zeros((len(G_tifs),3,3))
+XY_matrices = {}
 
 for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
 # t = 14
@@ -71,9 +77,9 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
         continue
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    # if APPLY and not OVERWRITE and path.exists(path.join(path.dirname(G_tifs[t]),'G_align.tif')):
-    #     print(f'Skipping t = {t}')
-    #     continue
+    if APPLY and not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
+        print(f'Skipping t = {t}')
+        continue
     
     print(f'Working on {R_shg_tifs[t]}')
     #Load the target
@@ -81,46 +87,51 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
     
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
-    if t in manual_Ztarget.keys():
-        Imax_target = manual_Ztarget[t]
-        print(f'Target z-slice manually set at {Imax_target}')
-    else:
-        # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
-        CC = np.zeros(R_shg_target.shape[0])
-        for z,im in enumerate(R_shg_target):
-            CC[z] = normxcorr2(ref_img, im).max()
-        Imax_target = CC.argmax()
-        print(f'Target z-slice automatically determined to be {Imax_target}')
-    z_pos_in_original[t] = Imax_target
+    if t in z_pos_in_original.keys() and OVERWRITE:
+        I_max_target = z_pos_in_original[t]
+        if t in manual_Ztarget.keys():
+            Imax_target = manual_Ztarget[t]
+            print(f'Target z-slice manually set at {Imax_target}')
+        else:
+            # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
+            CC = np.zeros(R_shg_target.shape[0])
+            for z,im in enumerate(R_shg_target):
+                CC[z] = normxcorr2(ref_img, im).max()
+            Imax_target = CC.argmax()
+            print(f'Target z-slice automatically determined to be {Imax_target}')
+        z_pos_in_original[t] = Imax_target
     
     # Perform transformations
-    # B = io.imread(B_tifs[t])
+    B = util.img_as_float(io.imread(B_tifs[t]))
     G = util.img_as_float(io.imread(G_tifs[t]))
     R = util.img_as_float(io.imread(R_tifs[t]))
     
-    # B_transformed = B.copy();
+    B_transformed = B.copy();
     R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
     
     if XY_reg:
-        moving_img = R_shg_target[Imax_target,...]
-        print('\n Starting stackreg')
-        # 2. Use StackReg to 'align' the two z slices
-        sr = StackReg(StackReg.RIGID_BODY)
-        T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
-        XY_matrices[t,...] = T
+        if t in XY_matrices.keys():
+            T = XY_matrices[t]
+        else:
+            moving_img = R_shg_target[Imax_target,...]
+            print('\n Starting stackreg')
+            # 2. Use StackReg to 'align' the two z slices
+            sr = StackReg(StackReg.RIGID_BODY)
+            T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
+            XY_matrices[t] = T
         
         if APPLY:
             print('Applying transformation matrices')
             # Apply transformation matrix to each stacks
             
             for i, G_slice in enumerate(G):
-                # B_transformed[i,...] = sr.transform(B_slice.astype(float),tmat=T)
+                B_transformed[i,...] = sr.transform(B[i,...].astype(float),tmat=T)
                 G_transformed[i,...] = sr.transform(G_slice,tmat=T)
             for i, R_slice in enumerate(R):
                 R_transformed[i,...] = sr.transform(R_slice,tmat=T)
                 R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...],tmat=T)
         
-    if APPLY:    
+    if APPLY:
         # Z-pad the time point in reference to t - 1
         Z_target = R_shg_target.shape[0]
     
@@ -129,19 +140,19 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
         if top_padding > 0: # the needs padding
             R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
             G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-            # B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
+            B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
             R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
             
         elif top_padding < 0: # then needs trimming
             R_padded = R_transformed[-top_padding:,...]
             G_padded = G_transformed[-top_padding:,...]
-            # B_padded = G_transformed[-top_padding:,...]
+            B_padded = B_transformed[-top_padding:,...]
             R_shg_padded = R_shg_transformed[-top_padding:,...]
             
         elif top_padding == 0:
             R_padded = R_transformed
             G_padded = G_transformed
-            # B_padded = B_transformed
+            B_padded = B_transformed
             R_shg_padded = R_shg_transformed
             
         delta_ref = Z_ref - Imax_ref
@@ -150,18 +161,18 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
         if bottom_padding > 0: # the needs padding
             R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            # B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+            B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
             
         elif bottom_padding < 0: # then needs trimming
             R_padded = R_padded[0:bottom_padding,...]
             G_padded = G_padded[0:bottom_padding,...]
-            # B_padded = B_padded[0:bottom_padding,...]
+            B_padded = B_padded[0:bottom_padding,...]
             R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
         print('Saving')
         output_dir = path.dirname(R_tifs[t])
-        # io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16),check_contrast=False)
+        io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
         
         output_dir = path.dirname(R_tifs[t])
@@ -169,7 +180,6 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
 
-import pickle as pkl
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
@@ -191,12 +201,12 @@ print('DONE')
 # z_pos_in_original[t] = 16
 
 
-import pickle as pkl
-with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
-    print('Saving alignment matrices...')
-    pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
+# import pickle as pkl
+# with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
+#     print('Saving alignment matrices...')
+#     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 
-print('DONE')
+# print('DONE')
 
 #%% Sort filenames by time (not alphanumeric) and then assemble each time point
         
@@ -205,16 +215,16 @@ print('DONE')
 T = len(G_tifs)
 
 filelist = pd.DataFrame()
-# filelist['B'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_align.tif')), key = sort_by_day)
+filelist['B'] = sorted(glob(path.join(dirname,'*Day*/ZSeries*/B_align.tif')), key = sort_by_day)
 filelist['G'] = sorted(glob(path.join(dirname,'*Day*/G_align.tif')), key = sort_by_day)
 filelist['R'] = sorted(glob(path.join(dirname,'*Day*/R_align.tif')), key = sort_by_day)
 filelist['R_shg'] = sorted(glob(path.join(dirname,'*Day*/R_shg_align.tif')), key = sort_by_day)
 filelist.index = np.arange(1,T)
 
 # t= 0 has no '_align'
-s = pd.Series({
-                  'G': glob(path.join(dirname,'*Day 0.5/G_reg_reg.tif'))[0],
-                  'R': glob(path.join(dirname,'*Day 0.5/R_reg_reg.tif'))[0],
+s = pd.Series({'B': glob(path.join(dirname,'*Day 0/B_reg.tif'))[0],
+                  'G': glob(path.join(dirname,'*Day 0/G_reg.tif'))[0],
+                  'R': glob(path.join(dirname,'*Day 0/R_reg_reg.tif'))[0],
                    'R_shg': glob(path.join(dirname,'*Day 0.5/R_shg_reg_reg.tif'))[0]}
               , name=0)
 
