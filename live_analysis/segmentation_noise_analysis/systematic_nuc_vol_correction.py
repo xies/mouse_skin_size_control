@@ -101,6 +101,8 @@ for cellID in df['basalID'].unique():
     
     this_cell = df_all[df_all['CellID'] == cellID]
     this_cell = this_cell.sort_values('Frame')
+    if this_cell.iloc[-1]['Frame'] == 8:
+        continue
     
     size_control.append(
         {'Birth nuclear volume raw':this_cell.iloc[0]['Nuclear volume raw']
@@ -111,8 +113,8 @@ for cellID in df['basalID'].unique():
          ,'Division nuclear volume normalized':this_cell.iloc[-1]['Nuclear volume normalized']
          ,'Birth nuclear volume original':this_cell.iloc[0]['Nucleus']
          ,'Division nuclear volume original':this_cell.iloc[-1]['Nucleus']
-         ,'Birth volume':this_cell.iloc[0]['Volume_y']
-         ,'Division volume':this_cell.iloc[-1]['Volume_y']
+         ,'Birth volume':this_cell.iloc[0]['Volume (sm)_y']
+         ,'Division volume':this_cell.iloc[-1]['Volume (sm)_y']
             })
 
 size_control = pd.DataFrame(size_control)
@@ -121,24 +123,28 @@ size_control['Growth'] = size_control['Division volume'] - size_control['Birth v
 size_control['Nuclear growth'] = size_control['Division nuclear volume'] - size_control['Birth nuclear volume']
 size_control['Nuclear growth original'] = size_control['Division nuclear volume original'] - size_control['Birth nuclear volume original']
 size_control['Nuclear growth raw'] = size_control['Division nuclear volume raw'] - size_control['Birth nuclear volume raw']
-size_control['Nuclear growth normalized'] = size_control['Division nuclear volume'] - size_control['Birth nuclear volume normalized']
+size_control['Nuclear growth normalized'] = size_control['Division nuclear volume normalized'] - size_control['Birth nuclear volume normalized']
 
 #%%
 
-sb.lmplot(size_control,x='Birth volume',y='Division volume')
-sb.lmplot(size_control,x='Birth nuclear volume original',y='Division nuclear volume original')
-sb.lmplot(size_control,x='Birth nuclear volume normalized',y='Division nuclear volume normalized')
+sb.lmplot(size_control,x='Birth volume',y='Growth')
+sb.lmplot(size_control,x='Birth nuclear volume original',y='Nuclear growth original')
+sb.lmplot(size_control,x='Birth nuclear volume raw',y='Nuclear growth raw')
+sb.lmplot(size_control,x='Birth nuclear volume normalized',y='Nuclear growth normalized')
 
 
+linreg = sm.OLS(size_control.dropna()['Growth'], sm.add_constant(size_control.dropna()['Birth volume'])).fit()
+print(f'Slope from cortical volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
+linreg = sm.OLS(size_control['Nuclear growth'], sm.add_constant(size_control['Birth nuclear volume'])).fit()
+print(f'Slope from nuclear volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
+linreg = sm.OLS(size_control['Nuclear growth original'], sm.add_constant(size_control['Birth nuclear volume original'])).fit()
+print(f'Slope from original = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
+linreg = sm.OLS(size_control['Nuclear growth raw'], sm.add_constant(size_control['Birth nuclear volume raw'])).fit()
+print(f'Slope from raw = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
+linreg = sm.OLS(size_control['Nuclear growth normalized'], sm.add_constant(size_control['Birth nuclear volume normalized'])).fit()
+print(f'Slope from normalized = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
 
-linreg = sm.OLS(size_control['Division volume'], sm.add_constant(bsizes_manual)).fit()
-print(f'Slope from manual+thresh = {linreg.params[1]} ({linreg.conf_int()[1,:]})')
-linreg = sm.OLS(growth, sm.add_constant(bsizes)).fit()
-print(f'Slope from cellpose+thresh = {linreg.params[1]} ({linreg.conf_int()[1,:]})')
-linreg = sm.OLS(growth, sm.add_constant(bsizes_raw)).fit()
-print(f'Slope from raw = {linreg.params[1]} ({linreg.conf_int()[1,:]})')
-linreg = sm.OLS(growth_norm, sm.add_constant(bsizes_norm)).fit()
-print(f'Slope from normalized = {linreg.params[1]} ({linreg.conf_int()[1,:]})')
+
 
 #%%
 
