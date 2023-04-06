@@ -71,7 +71,7 @@ def tri_to_adjmat(tri):
 df = []
 
 # for expansion
-footprint = morphology.cube(5)
+footprint = morphology.cube(3)
 
 for t in tqdm(range(15)):
     # t = 4
@@ -126,6 +126,10 @@ for t in tqdm(range(15)):
     threshed_volumes['area'] = threshed_volumes['area'] * dx**2
     threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume'})
     df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
+
+    # Calculate a 'normalized nuc volume'
+    norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume'].mean()
+    df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume']/norm_factor
 
     #----- map from cellpoose to manual -----
     #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
@@ -264,7 +268,13 @@ for t in tqdm(range(15)):
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
             df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].std()
-                
+            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].max()
+            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].min()
+            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].std()
+            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].max()
+            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].min()
+            
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
             Y = dense_coords[planar_neighbor_idx,0]
@@ -311,7 +321,8 @@ df = pd.concat(df,ignore_index=True)
 
 #%
 df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
-
+print(f'Saved to: {dirname}')
+ 
 #%%
  
     # Colorize nuclei based on mean curvature (for inspection)

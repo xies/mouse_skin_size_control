@@ -30,7 +30,6 @@ dx = 0.2920097/1.5
 
 RECALCULATE = True
 
-
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
 
