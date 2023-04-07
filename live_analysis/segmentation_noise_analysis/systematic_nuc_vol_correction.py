@@ -148,9 +148,9 @@ print(f'Slope from normalized = {linreg.params.values[1]} ({linreg.conf_int().va
 
 #%%
 
-# sb.lineplot(data=df,x='Frame',y='NC ratio')
-# sb.lineplot(data=df,x='Frame',y='NC ratio raw')
-sb.lineplot(data=df,x='Frame',y='NC ratio normalized')
+sb.lineplot(data=df,x='Frame',y='NC ratio')
+sb.lineplot(data=df,x='Frame',y='NC ratio raw')
+sb.lineplot(data=df,x='Frame',y='NC ratio normalized (sm)')
 
 #%%
 

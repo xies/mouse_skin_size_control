@@ -23,21 +23,6 @@ from sklearn.preprocessing import scale
 from sklearn.cross_decomposition import PLSCanonical
 
 
-def plot_logit_model(model,field):
-    mdpoint = - model.params['Intercept'] / model.params[field]
-
-    print(f'Mid point is: {mdpoint}')
-    x = df_g1s[field].values
-    y = df_g1s['G1S_logistic'].values
-    plt.figure()
-    plt.scatter( x, jitter(y,0.1) )
-    sb.regplot(data = df_g1s,x=field,y='G1S_logistic',logistic=True,scatter=False)
-    plt.ylabel('G1/S transition')
-    plt.vlines([mdpoint],0,1)
-    expitvals = expit( (x * model.params[field]) + model.params['Intercept'])
-    I = np.argsort(expitvals)
-    plt.plot(x[I],expitvals[I],'b')
-
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
@@ -45,7 +30,7 @@ df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/
 
 #%% Logistic for G1/S transition
 
-Ng1 = 150
+Ng1 = 199
 Niter = 50
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -120,7 +105,7 @@ from sklearn import metrics
 
 Niter = 100
 
-frac_withhold = 0.1
+frac_withhold = 0.2
 N = len(df_g1s_balanced)
 
 models = []
@@ -194,44 +179,6 @@ for i in tqdm(range(Niter)):
     
 plt.hist(AUC)
 plt.hist(AP)
-
-# #%% Plot confusion matrix as bar
-
-# g1_rates = C[:,0,0]
-# sg2_rates = C[:,1,1]
-# g1_rates_random = C_random[:,0,0]
-# sg2_rates_random = C_random[:,1,1]
-
-# rates = pd.DataFrame(columns = ['accuracy','phase','random'])
-# rates['accuracy'] = np.hstack((g1_rates,g1_rates_random,sg2_rates,sg2_rates_random))
-# rates.loc[0:200,'phase'] = 'G1'
-# rates.loc[200:400,'phase'] = 'SG2'
-# rates.loc[0:100,'random'] = False
-# rates.loc[100:200,'random'] = True
-# rates.loc[200:300,'random'] = False
-# rates.loc[300:400,'random'] = True
-
-# sb.catplot(data = rates,x='phase',y='accuracy',kind='violin',hue='random',split=True)
-# # plt.ylabel('True positive rate')
-
-# #%% Generate PR curve based on test dataset
-
-# ypred = model_g1s.predict(df_g1s_test)
-
-# IdropNA = ~np.isnan(ypred.values)
-# ypred = ypred.values[IdropNA]
-# labels = df_g1s_test['G1S_logistic'].values[IdropNA]
-
-# precision,recall,th = metrics.precision_recall_curve(labels,ypred)
-# metrics.PrecisionRecallDisplay(precision=precision, recall=recall).plot()
-# AP = metrics.average_precision_score(labels,ypred)
-
-# fpr, tpr, _ = metrics.roc_curve(labels, ypred)
-# metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-
-# AUC_test = metrics.auc(fpr,tpr)
-
-
 #%% Random forest classifier
 
 from sklearn.model_selection import train_test_split
@@ -256,7 +203,7 @@ for i in tqdm(range(Niter)):
     forest = RandomForestClassifier(n_estimators=100, random_state=i)
     
     X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1,random_state=42)
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
     forest.fit(X_train,y_train)
     
     y_pred = forest.predict(X_test)
@@ -272,17 +219,93 @@ plt.hist(AUC); plt.hist(AP)
 imp = pd.DataFrame(importance)
 imp.columns = df_g1s_balanced.columns.drop('G1S_logistic')
 
+
 #%%
 
+from sklearn.inspection import permutation_importance, partial_dependence
+
+result = permutation_importance(
+    forest, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
+)
+forest_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
+
+forest_importances.plot.bar(yerr=result.importances_std)
+ax.set_ylabel("Mean accuracy decrease")
+fig.tight_layout()
+plt.show()
+
+#%%
+
+from sklearn.linear_model import LogisticRegression
+
+g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
+df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
+
+X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
+
+logist_model = LogisticRegression(random_state=42).fit(X_train,y_train)
+
+result = permutation_importance(
+    logist_model, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
+)
+
+logit_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
+
 plt.figure()
-sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value',order=imp.columns[imp.mean(axis=0).values.argsort()[::-1]]);
-plt.xticks(rotation=45);plt.ylabel('Importance')
+logit_importances.plot.bar(yerr=result.importances_std)
+ax.set_ylabel("Mean accuracy decrease")
+fig.tight_layout()
+plt.show()
+
+# Partial dependence of the first 5 important features
+part_dep = partial_dependence(logist_model, features=np.argsort(result.importances_mean)[::-1][0:2], X=X, percentiles=(0, 1),
+                    grid_resolution=10) 
+
+plt.pcolor(part_dep['average'][0,...])
+
+#%%
+
+# plt.figure()
+# sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value',order=imp.columns[imp.mean(axis=0).values.argsort()[::-1]]);
+# plt.xticks(rotation=45);plt.ylabel('Importance')
+
+import os
+from sklearn import tree
+# tree.plot_tree(rf_random.best_estimator_.estimators_[k])
+
+plt.figure()
+# Export as dot file
+# tree.plot_tree(forest[0])
+tree.plot_tree(forest.estimators_[0],
+               feature_names = df_g1s.columns,
+                     filled=True,
+                     max_depth=1)
+
+
+# param_dist = {'n_estimators': randint(50,500),
+#               'max_depth': randint(1,20)}
+
+# # Create a random forest classifier
+# rf = RandomForestClassifier()
+
+# # Use random search to find the best hyperparameters
+# rand_search = RandomizedSearchCV(rf, 
+#                                  param_distributions = param_dist, 
+#                                  n_iter=5, 
+#                                  cv=5)
+
+# # Fit the random search object to the data
+# rand_search.fit(X_train, y_train)
+
 
 #%% Compare MLR v RF
 
-# plt.figure()
-# sb.heatmap(C_mlr.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
-# plt.title('Logistic')
+plt.figure()
+sb.heatmap(C_mlr.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
+plt.title('Logistic')
 plt.figure()
 sb.heatmap(C_rf.mean(axis=0),annot=True,xticklabels=['G1','SG2'],yticklabels=['Pred G1','Pred SG2'])
 plt.title('Rand Forest')

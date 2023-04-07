@@ -52,11 +52,14 @@ for basalID in collated.keys():
         
         this_cell = df.iloc[idx]
         heights = this_cell['Mean neighbor height'].values
+        fucci_int = this_cell['FUCCI bg sub'].values
         
         for t in np.arange(1,this_len):
+            df.at[idx[t],'FUCCI bg sub frame-1'] = fucci_int[t-1]
             df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
             if t > 1:
                 df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]
+                df.at[idx[t],'FUCCI bg sub frame-2'] = fucci_int[t-2]
             
 df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
 df['NC ratio raw'] = df['Nuclear volume raw']/df['Volume (sm)']
@@ -80,6 +83,7 @@ df_ = df[df['Phase'] != '?']
 #                       'Specific GR b (sm)','Coronal density'],
 #             plot_kws={'alpha':0.5}
 #             ,kind='hist')
+
 
 
 sb.pairplot(df_,vars=['Volume','Planar component 1','Coronal area',

@@ -43,6 +43,7 @@ N,P = df_.shape
 
 features_list = { # Cell geometry
                 'Age':'age'
+                
                 # ,'Differentiating':'diff'
                 # ,'Z_x':'z','Y_x':'y','X_x':'x'
                 ,'Volume':'vol_sm'
@@ -62,7 +63,7 @@ features_list = { # Cell geometry
                 # ,'Planar component 2':'planar_component_2'
                 ,'Relative nuclear height':'rel_nuc_height'
                 # ,'Surface area':'sa'
-                # ,'Time to G1S':'time_g1s'
+                ,'Time to G1S':'time_g1s'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
                 
@@ -82,6 +83,9 @@ features_list = { # Cell geometry
                 ,'Min neighbor nuclear volume normalized':'min_neighb_nuc_vol'
                 ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
+                ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
+                ,'FUCCI bg sub frame-1':'fucci_int_12h'
+                ,'FUCCI bg sub frame-2':'fucci_int_24h'
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
                 ,'Neighbor mean height frame-2':'neighb_height_24h'
