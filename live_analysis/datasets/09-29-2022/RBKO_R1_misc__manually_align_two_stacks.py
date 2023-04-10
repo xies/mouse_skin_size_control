@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 30 15:24:22 2022
+Created on Tue Nov 29 16:03:07 2022
 
 @author: xies
 """
@@ -9,13 +9,12 @@ Created on Fri Sep 30 15:24:22 2022
 import numpy as np
 from skimage import io, filters, transform, util
 from os import path
-from tqdm import tqdm
 from glob import glob
 from re import match
 from pystackreg import StackReg
 from imageUtils import gaussian_blur_3d
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -32,60 +31,61 @@ G_tifs = sorted(glob(path.join(dirname,'*. Day*/G_reg.tif')),key=sort_by_day)
 R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/R_shg_reg.tif')),key=sort_by_day)
 R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 
-#% Hand build translation matrices
+#%% Hand build translation matrices
 
 Tmatrices = dict()
-Tmatrices[0] = transform.SimilarityTransform(translation=(-45,65))
-Tmatrices[1] = transform.SimilarityTransform(translation=(0,12))
-Tmatrices[2] = transform.SimilarityTransform(translation=(5,0))
-
-Tmatrices[3] = transform.SimilarityTransform(translation=(-8,15))
-Tmatrices[4] = transform.SimilarityTransform(translation=(5,5))
-Tmatrices[5] = transform.SimilarityTransform(translation=(-5,15))
-Tmatrices[6] = transform.SimilarityTransform(translation=(60,-118))
-Tmatrices[7] = transform.SimilarityTransform(translation=(-13,-30))
-Tmatrices[8] = transform.SimilarityTransform(translation=(0,12))
-Tmatrices[9] = transform.SimilarityTransform(translation=(0,-10))
-Tmatrices[10] = transform.SimilarityTransform(translation=(0,65))
-Tmatrices[11] = transform.SimilarityTransform(translation=(39,36))
-Tmatrices[12] = transform.SimilarityTransform(translation=(50,-65))
-Tmatrices[13] = transform.SimilarityTransform(translation=(0,15))
-Tmatrices[14] = transform.SimilarityTransform(translation=(-5,30))
+Tmatrices[0] = transform.SimilarityTransform(translation=(-5,-60))
+Tmatrices[1] = transform.SimilarityTransform(translation=(-12,-8))
+Tmatrices[2] = transform.SimilarityTransform(translation=(-38,-5))
+Tmatrices[3] = transform.SimilarityTransform(translation=(-120,8))
+Tmatrices[4] = transform.SimilarityTransform(translation=(15,-10))
+Tmatrices[5] = transform.SimilarityTransform(translation=(-3,5))
+Tmatrices[6] = transform.SimilarityTransform(translation=(15,-8))
+Tmatrices[7] = transform.SimilarityTransform(translation=(-5,-18))
+Tmatrices[8] = transform.SimilarityTransform(translation=(0,-18))
+Tmatrices[9] = transform.SimilarityTransform(translation=(15,0))
+Tmatrices[10] = transform.SimilarityTransform(translation=(0,-80))
+Tmatrices[11] = transform.SimilarityTransform(translation=(20,-45))
+Tmatrices[12] = transform.SimilarityTransform(translation=(-12,-30))
+Tmatrices[13] = transform.SimilarityTransform(translation=(-35,12))
+Tmatrices[14] = transform.SimilarityTransform(translation=(-20,-60))
+Tmatrices[15] = transform.SimilarityTransform(translation=(2,-18))
+Tmatrices[16] = transform.SimilarityTransform(translation=(0,-52))
 
 Zshifts = dict()
-Zshifts[0] = 14
-Zshifts[1] = -9
-Zshifts[2] = 5
-
-Zshifts[3] = 2
-Zshifts[4] = 8
-Zshifts[5] = 12
-Zshifts[6] = 9
-Zshifts[7] = 4
-Zshifts[8] = 4
-Zshifts[9] = 2
-Zshifts[10] = 20
+Zshifts[0] = 10
+Zshifts[4] = -18
+Zshifts[1] = -7
+Zshifts[2] = -2
+Zshifts[3] = -7
+Zshifts[5] = 5
+Zshifts[6] = 12
+Zshifts[7] = 13
+Zshifts[8] = 13
+Zshifts[9] = -5
+Zshifts[10] = 6
 Zshifts[11] = 9
-Zshifts[12] = 4
-Zshifts[13] = -8
-Zshifts[14] = -8
+Zshifts[12] = 9
+Zshifts[13] = 9
+Zshifts[14] = 10
+Zshifts[15] = 7
+Zshifts[16] = 6
 
-np.save(arr=(Tmatrices,Zshifts),file=path.join(dirname,'G_R_alignment.npy'))
+np.save(arr=(Tmatrices,Zshifts),file =path.join(dirname,'G_R_alignment.npy'))
 
 assert(len(G_tifs) == len(R_tifs))
 assert(len(G_tifs) == len(R_shg_tifs))
 
+#%% Transform
+
 OVERWRITE = True
 
- #%% Transform
-# 
-# for t in tqdm(np.arange(0,14)):
-    t = 2
+for t in tqdm(np.arange(0,17)):
     
     output_dir = path.dirname(R_tifs[t])
-    # if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:
-    #     print(f'Skipping {output_dir}')
-    #     continue
+    if path.exists(path.join(output_dir,'R_reg_reg.tif')) and not OVERWRITE:
+        print(f'Skipping {output_dir}')
+        continue
     
     s_xy = 0.5
     s_z = 1
@@ -96,10 +96,13 @@ OVERWRITE = True
     R_shg = io.imread(R_shg_tifs[t])
     
     Zshift = Zshifts[t]
-    G_zref = 21
+    G_zref = 44
     
     # G_ref = G[G_zref,...]
     R_ref = R[G_zref + Zshift,...]
+    
+    # sr = StackReg(StackReg.TRANSLATION)
+    # T = sr.register(G_ref, R_ref)
     
     R_transformed = R.copy().astype(float)
     R_shg_transformed = util.img_as_float(R_shg)
@@ -135,5 +138,5 @@ OVERWRITE = True
     io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
     
+
     
-         

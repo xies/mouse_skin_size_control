@@ -136,7 +136,7 @@ im_adj = draw_adjmat_on_image_3d(A,nuc_coords_3d,[72,XX,XX])
 selem = morphology.disk(3)
 for z,im in enumerate(im_adj):
     im_adj[z,...] = morphology.dilation(im, selem)
-io.imsave('/Users/xies/Desktop/blah.tif',im_adj.astype(np.uint16))
+# io.imsave('/Users/xies/Desktop/blah.tif',im_adj.astype(np.uint16))
 
 # Construct triangulation
 def adjmat2triangle(G):

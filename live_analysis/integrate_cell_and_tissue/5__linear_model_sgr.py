@@ -37,10 +37,6 @@ print(model_rlm.summary())
 # model_rlm_ridge = smf.ols(f'sgr ~ ' + str.join(' + ',
 #                                       df_g1s.columns.drop(['sgr'])),data=df_g1s).fit_regularized('sqrt_lasso')
 
-############### GLM for specific growth rate ###############
-model_rlm = smf.glm(f'sgr ~ ' + str.join(' + ',
-                                      df_g1s.columns[(df_g1s.columns != 'sgr') &
-                                                      (df_g1s.columns != 'gr')]),data=df_g1s).fit()
 print(model_rlm.summary())
 C = model_rlm.cov_params()
 sb.heatmap(C,xticklabels=True,yticklabels=True)
@@ -53,6 +49,7 @@ plt.figure()
 plt.scatter(model_rlm.params[model_rlm.params > 0],-np.log10(model_rlm.pvalues[model_rlm.params > 0]),color='b')
 plt.scatter(model_rlm.params[model_rlm.params < 0],-np.log10(model_rlm.pvalues[model_rlm.params < 0]),color='r')
 sig_params = model_rlm.pvalues.index[model_rlm.pvalues < 0.05]
+
 for p in sig_params:
     plt.text(model_rlm.params[p] + 0.01, -np.log10(model_rlm.pvalues[p]), p)
 

@@ -20,6 +20,7 @@ from twophoton_util import parse_unaligned_channels, parse_timecourse_directory
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2'
+dirname = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1/manual_track'
 
 #@todo: Also export all daughter cells as a separate .tif so we can do daughter.division interpolation
 
@@ -34,9 +35,9 @@ T = 15
 # reg_reg_list = parse_unaligned_channels(dirname)
 # align_list = parse_timecourse_directory(dirname)
 
-xfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].xpts.txt')))
-yfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].ypts.txt')))
-zfiles = sorted(glob(path.join(dirname,'2020 CB analysis/tracked_cells/*/*[ab].zpts.txt')))
+xfiles = sorted(glob(path.join(dirname,'*/*.xpts.txt')))
+yfiles = sorted(glob(path.join(dirname,'*/*.ypts.txt')))
+zfiles = sorted(glob(path.join(dirname,'*/*.zpts.txt')))
 coordinate_file_tuple = zip(xfiles,yfiles,zfiles)
 
 if ALIGN:

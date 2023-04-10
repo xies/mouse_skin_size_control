@@ -7,17 +7,16 @@ Created on Tue Mar 15 17:16:59 2022
 """
 
 import numpy as np
-from skimage import io, filters
+from skimage import io, util
 from os import path
 from glob import glob
 from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -67,12 +66,12 @@ for header_ome in tqdm(header_ome_h2b):
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
     T = sr.register_stack(B,reference='previous',n_frames=20,axis=0) #Obtain the transformation matrices
     B_reg = sr.transform_stack(B,tmats=T) # Apply to both channels
-    # G_reg = sr.transform_stack(G,tmats=T)
+    G_reg = sr.transform_stack(G,tmats=T)
     
+    output_path = path.join( d,'B_reg.tif')
+    io.imsave(output_path,util.img_as_uint(B_reg/B_reg.max()),check_contrast=False)
     output_path = path.join( d,'G_reg.tif')
-    io.imsave(output_path,B_reg.astype(np.int16),check_contrast=False)
-    # output_path = path.join( d,'G_reg.tif') 
-    # io.imsave(output_path,G_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(G_reg/G_reg.max()),check_contrast=False)
     
     print(f'Saved with {output_path}')
 
@@ -101,9 +100,9 @@ for header_ome in tqdm(header_ome_fucci):
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     
     output_path = path.join( d,'R_reg.tif')
-    io.imsave(output_path,R_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(R_reg/R_reg.max()),check_contrast=False)
     output_path = path.join( d,'R_shg_reg.tif')
-    io.imsave(output_path,R_shg_reg.astype(np.int16),check_contrast=False)
+    io.imsave(output_path,util.img_as_uint(R_shg_reg/R_shg_reg.max()),check_contrast=False)
     
     print(f'Saved with {output_path}')
 

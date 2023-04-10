@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -35,15 +35,11 @@ df = pd.merge(cell_ts, tissue, how='inner', on=['basalID','Frame'])
 df['Relative nuclear height'] = df['Z_y'] - df['Z_x']
 
 #% Derive cell->tissue features
-
-# @todo: Alignment of cell to local tissue
 df['Cell alignment'] = np.abs(np.cos(df['Coronal angle'] - df['Planar angle']))
-
 df['Coronal area'] = df['Coronal area'] - df['Middle area']
 df['Coronal density'] = df['Num planar neighbors']/df['Coronal area']
 
-# @todo: look back in time and look at height!
-
+# Derive some neighborhood dynamics
 col_idx = len(df.columns)
 df['Neighbor mean height frame-1'] = np.nan
 df['Neighbor mean height frame-2'] = np.nan
@@ -56,12 +52,18 @@ for basalID in collated.keys():
         
         this_cell = df.iloc[idx]
         heights = this_cell['Mean neighbor height'].values
+        fucci_int = this_cell['FUCCI bg sub'].values
         
         for t in np.arange(1,this_len):
+            df.at[idx[t],'FUCCI bg sub frame-1'] = fucci_int[t-1]
             df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
             if t > 1:
                 df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]
+                df.at[idx[t],'FUCCI bg sub frame-2'] = fucci_int[t-2]
             
+df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
+df['NC ratio raw'] = df['Nuclear volume raw']/df['Volume (sm)']
+df['NC ratio normalized'] = df['Nuclear volume normalized']/df['Volume (sm)']
 # df['Neighbor max
 # df['Neighbor mean height frame -1 or -2'] = np.array([df['Neighbor mean height frame-2'],df['Neighbor mean height frame-1']]).max(axis=0).shape
 
@@ -81,6 +83,7 @@ df_ = df[df['Phase'] != '?']
 #                       'Specific GR b (sm)','Coronal density'],
 #             plot_kws={'alpha':0.5}
 #             ,kind='hist')
+
 
 
 sb.pairplot(df_,vars=['Volume','Planar component 1','Coronal area',

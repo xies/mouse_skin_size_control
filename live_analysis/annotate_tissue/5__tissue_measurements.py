@@ -34,12 +34,12 @@ Z_SHIFT = 10
 centroid_height_cutoff = 3.5 #microns above BM
 
 VISUALIZE = True
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
-'''
-NB: idx - the order in array in dense segmentation
+# FUCCI threshold (in stds)
+alpha_threshold = 1
+#NB: idx - the order in array in dense segmentation
 
-'''
 
 #%% Load the segmentation and coordinates
 
@@ -70,40 +70,83 @@ def tri_to_adjmat(tri):
 
 df = []
 
+# for expansion
+footprint = morphology.cube(3)
+
 for t in tqdm(range(15)):
-    # t = 2
+    # t = 4
     
+    #----- cell-centric msmts -----
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/t{t}.tif'))
+    manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     #NB: only use 0-index for the df_dense dataframe
     df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
                                                        properties=['label','area','centroid','solidity','bbox']))
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
-                                        ,'label':'CellposeID','area':'Nuclear volume','bbox-0':'Nuclear bbox top'
+                                        ,'label':'CellposeID','area':'Nuclear volume raw','bbox-0':'Nuclear bbox top'
                                         ,'bbox-3':'Nuclear bbox bottom'
                                         ,'solidity':'Nuclear solidity'})
+    
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
-    df_dense['Nuclear volume'] = df_dense['Nuclear volume'] * dx**2
+    df_dense['Nuclear volume raw'] = df_dense['Nuclear volume raw'] * dx**2
     df_dense['X'] = df_dense['X-pixels'] * dx**2
     df_dense['Y'] = df_dense['Y-pixels'] * dx**2
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
+   
+    # Load FUCCI channel + auto annotate cell cycle
+    im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
+    R = im[...,0]
+    for i,p in enumerate(measure.regionprops(dense_seg,intensity_image=R)):
+        df_dense.at[i,'FUCCI intensity'] = p['intensity_mean']
+        bbox = p['bbox']
+        local_fucci = R[bbox[0]:bbox[3],bbox[1]:bbox[4],bbox[2]:bbox[5]]
+        local_seg = p['image']
+        footprint = morphology.cube(3)
+        local_seg = morphology.dilation(local_seg,footprint=footprint)
+        
+        bg_mean = local_fucci[~local_seg].mean()
+        bg_std = local_fucci[~local_seg].std()
+        df_dense.at[i,'FUCCI background mean'] = bg_mean
+        df_dense.at[i,'FUCCI background std'] = bg_std
+        df_dense.at[i,'FUCCI bg sub'] = p['intensity_mean'] - bg_mean
+        
+    df_dense['FUCCI thresholded'] = 'Low'
+    I = df_dense['FUCCI intensity'] > df_dense['FUCCI background mean'] + alpha_threshold * df_dense['FUCCI background std']
+    df_dense.loc[I,'FUCCI thresholded'] = 'High'
+   
+    # Use thresholded mask to calculate nuclear volume
+    # Load raw images or pre-made masks
+    mask = io.imread(path.join(dirname,f'Misc visualizations/H2b masks/t{t}.tif')).astype(bool)
+    this_seg_dilated = morphology.dilation(dense_seg,footprint=footprint)
+    this_seg_dilated[~mask] = 0
+    threshed_volumes = pd.DataFrame(measure.regionprops_table(
+        this_seg_dilated, properties=['label','area']) )
+    threshed_volumes['area'] = threshed_volumes['area'] * dx**2
+    threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume'})
+    df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
 
-    #NB: best to use this since it guarantees one-to-one 
+    # Calculate a 'normalized nuc volume'
+    norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume'].mean()
+    df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume']/norm_factor
+
+    #----- map from cellpoose to manual -----
+    #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
     df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = dense_seg,
                                                        properties = ['label'],
                                                        extra_properties = [most_likely_label]))
     df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
     assert(np.isnan(df_manual['CellposeID']).sum() == 0)
     
-    # Reverse the mapping
+    # Reverse the mapping from CellposeID to basalID
     for _,this_cell in df_manual.iterrows():
          df_dense.loc[ df_dense['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
 
     dense_coords = np.array([df_dense['Y-pixels'],df_dense['X-pixels']]).T
     dense_coords_3d_um = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
+    #----- Cell-to-BM heights -----
     # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     heightmap_shifted = heightmap + Z_SHIFT
@@ -113,6 +156,7 @@ for t in tqdm(range(15)):
     # df_dense['Differentiating'] = df_dense['Height to BM'] > HEIGHT_CUTOFF
     df_dense = find_differentiating_cells(df_dense,centroid_height_cutoff,heightmap)
     
+    #----- Find border cells -----
     # Generate a dense mesh based sole only 2D/3D nuclear locations
     #% Use Delaunay triangulation in 2D to approximate the basal layer topology
     tri_dense = Delaunay(dense_coords)
@@ -127,6 +171,8 @@ for t in tqdm(range(15)):
     df_dense['Border'] = False
     df_dense.loc[ np.in1d(df_dense['CellposeID'],border_nuclei), 'Border'] = True
     
+    #----- 3D cell mesh for geometry -----
+    # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
     mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
     # mesh_sm = trimesh.smoothing.filter_laplacian(mesh,lamb=0.01)
@@ -135,6 +181,7 @@ for t in tqdm(range(15)):
     df_dense['Mean curvature'] = mean_curve
     df_dense['Gaussian curvature'] = gaussian_curve
     
+    #----- Use manual 3D topology to compute neighborhoods -----
     # Load the actual neighborhood topology
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d_um))
@@ -143,7 +190,6 @@ for t in tqdm(range(15)):
     A_diff[:,~df_dense['Differentiating']] = 0
     A_diff = A_diff + A_diff.T
     A_diff[A_diff > 1] = 1
-    
     A_planar = A - A_diff
     
     # Resave adjmat as planar v. diff
@@ -164,12 +210,14 @@ for t in tqdm(range(15)):
 
     df_dense['Mean neighbor dist'] = np.nan
     df_dense['Mean neighbor nuclear volume'] = np.nan
+    df_dense['Std neighbor nuclear volume'] = np.nan
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
     df_dense['Mean planar neighbor height'] = np.nan
     df_dense['Mean diff neighbor height'] = np.nan
     
+    # Use this to make specific neighborhood measurements
     props = measure.regionprops(dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
         
@@ -198,6 +246,10 @@ for t in tqdm(range(15)):
         if len(np.hstack([diff_neighbor_idx,planar_neighbor_idx])) > 0:
             neighbor_heights = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['Height to BM']
             df_dense.at[i,'Mean neighbor height'] = neighbor_heights.mean()
+            fucci_intensities = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI bg sub']
+            df_dense.at[i,'Mean neighbor FUCCI intensity'] = fucci_intensities.mean()
+            fucci_category = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI thresholded'] == 'High'
+            df_dense.at[i,'Frac neighbor FUCCI high'] = fucci_category.sum()/len(fucci_category)
             
         # Differentiating neighbor heights
         if len(diff_neighbor_idx) > 0:
@@ -215,7 +267,14 @@ for t in tqdm(range(15)):
                     
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
-                
+            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].std()
+            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].max()
+            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].min()
+            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].std()
+            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].max()
+            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].min()
+            
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
             Y = dense_coords[planar_neighbor_idx,0]
@@ -258,13 +317,12 @@ for t in tqdm(range(15)):
     # io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'), \
     #           util.img_as_uint(colorized/colorized.max()),check_contrast=False)
     
-    
-    
 df = pd.concat(df,ignore_index=True)
 
 #%
 df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
-
+print(f'Saved to: {dirname}')
+ 
 #%%
  
     # Colorize nuclei based on mean curvature (for inspection)

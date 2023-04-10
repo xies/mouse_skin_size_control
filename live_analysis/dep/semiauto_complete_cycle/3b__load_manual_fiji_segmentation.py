@@ -22,13 +22,26 @@ import matplotlib.pylab as plt
 # from basic_utils import *
 
 dirnames = {}
-dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
-dirnames['KO R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/06-08-2022/F1 RB-KO/R2/manual_track'
+dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F2 WT/R2/manual_track'
+dirnames['KO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2/manual_track'
 
-dx = 0.292435307476612
+dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/manual_track'
+dirnames['KO R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1/manual_track'
+
+dx = {}
+dx['WT R1'] = 0.292435307476612 * 1.5
+dx['KO R1'] = 0.292435307476612 * 1.5
+dx['WT R2'] = 0.292435307476612
+dx['KO R2'] = 0.292435307476612
+# dx = 1
 
 time_stamps = {}
-time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
+time_stamps['WT R1'] = [0,0.5,1,1.5,2,2.5,3,3.5,4.5,5,5.5,6,6.5,7]
+time_stamps['KO R1'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
+                        7.5,8,8.5,9,9.5,10]
+
+time_stamps['WT R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
+                        7.5,8,8.5,9,9.5,10]
 time_stamps['KO R2'] = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,
                         7.5,8,8.5,9,9.5,10]
 
@@ -63,23 +76,26 @@ for name,dirname in dirnames.items():
         # Parse lineage annotation
         lineageID = path.split(f)[1]
         
-        time_points = glob(path.join(f,'*.*.csv'))
+        time_points = glob(path.join(f,'*/*.*.csv'))
         
         track = pd.DataFrame()
         for i, this_time in enumerate(time_points):
             
             fname = path.basename(this_time)
+            dname = path.split(path.dirname(this_time))[1]
 
             # Parse cell cycle annotation (if applicable)
             basename = path.basename(this_time)
 
-            [cellID,frame,state,_] = fname.split('.')
+            _,motherID,cellID = dname.split('.')
+            [frame,state,_] = fname.split('.')
+            frame = frame[1:]
             
             _x = pd.read_csv(this_time)
             if not 'Area' in _x.columns:
                 _x = pd.read_csv(this_time,delimiter='\t')
                 
-            volume = _x['Area'].sum() * dx ** 2
+            volume = _x['Area'].sum() * dx[name] ** 2
             
             _tmp.at[i,'CellID'] = float(cellID)
             _tmp.at[i,'State'] = state
@@ -155,6 +171,7 @@ for name,dirname in dirnames.items():
             
             cell = pd.Series({'CellID': cellID
                               ,'LineageID':lineageID
+                              ,'MotherID':motherID
                                    ,'Genotype': genotype
                                    ,'Region': name
                                    ,'Directory':dirname
