@@ -9,6 +9,7 @@ Created on Tue Aug 9
 import numpy as np
 from cellpose import models
 from cellpose import io
+from scipy import ndimage
 
 from glob import glob
 from os import path
@@ -18,20 +19,18 @@ from time import time
 
 model = models.Cellpose(model_type='nuclei')
 
-'/home/xies/data/Skin/Confocal/11-02-2022 DS 09-29-2022/H2B-Cerulean FUCCI2 Phalloidin-647'
-#dirnames = ['/home/xies/data/Skin/NMS/11-17-2022 RB-KO tam control/M5 RB CreER tam/R2', '/home/xies/data/Skin/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1']
+dirnames = ['/home/xies/data/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/im_seq']
 
-diameter = 30 #OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 26 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
 cellprob_threshold = -0.1
-channels = [2]
 
 # Load the raw image (RGB,Z,X,Y)
 filenames = []
 for dirname in dirnames:
-	filenames = filenames + glob(path.join(dirname,'*.tif'))
+	filenames = filenames + glob(path.join(dirname,'t*.tif'))
 
-OVERWRITE = False
+OVERWRITE = True
 
 for f in filenames:
 	d = path.dirname(f)
@@ -46,7 +45,9 @@ for f in filenames:
 	tic = time()
 	print(f'Predicting on {f}')
 	im = io.imread(f)
-	masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True, channels=channels,
+	im = im[:,1,...]
+	im = ndimage.gaussian_filter(im,sigma=1)
+	masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True, 
 					cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
 	io.masks_flows_to_seg(im, masks,flows,diams,f)
 	# annoyingly, need to manually move
