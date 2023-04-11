@@ -17,13 +17,13 @@ from tqdm import tqdm
 from scipy.optimize import curve_fit
 
 from ifUtils import min_normalize_image
-from twophoton_util import parse_timecourse_directory
+from twophoton_util import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
 
-filelist = parse_timecourse_directory(dirname)
+filelist = parse_aligned_timecourse_directory(dirname)
 
 XX = 1024
 ZZ = 95

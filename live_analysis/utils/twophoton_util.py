@@ -19,27 +19,29 @@ def sort_by_day(filename):
     assert(len(day) == 1)
     return int(day[0])
 
-def parse_timecourse_directory(dirname):
+def parse_aligned_timecourse_directory(dirname):
     # Given a directory (of Prairie Instruments time course)
     # 
         
     filelist = pd.DataFrame()
-    filelist['B'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_align.tif')), key = sort_by_day)
-    filelist['G'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/G_align.tif')), key = sort_by_day)
-    filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_align.tif')), key = sort_by_day)
-    filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_align.tif')), key = sort_by_day)
+    filelist['B'] = sorted(glob(path.join(dirname,'*. Day*/B_align.tif')), key = sort_by_day)
+    filelist['G'] = sorted(glob(path.join(dirname,'*. Day*/G_align.tif')), key = sort_by_day)
+    filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/R_align.tif')), key = sort_by_day)
+    filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/R_shg_align.tif')), key = sort_by_day)
     T = len(filelist)
-    filelist.index = np.arange(1,T+1)
+    filelist.index = np.arange(0,T)
+    print(filelist)
     
     # t= 0 has no '_align'imp
-    s = pd.Series({'B': glob(path.join(dirname,'0. Day */ZSeries*/B_reg_reg.tif'))[0],
-                     'G': glob(path.join(dirname,'0. Day */ZSeries*/G_reg_reg.tif'))[0],
-                     'R': glob(path.join(dirname,'0. Day */ZSeries*/R_reg_reg.tif'))[0],
-                  'R_shg': glob(path.join(dirname,'0. Day */ZSeries*/R_shg_reg_reg.tif'))[0]},
-                  name=0)
+    # print(glob(path.join(dirname,'0. Day */B_reg_reg.tif')))
+    # s = pd.Series({'B': glob(path.join(dirname,'0. Day */B_reg.tif'))[0],
+    #                  'G': glob(path.join(dirname,'0. Day */G_reg.tif'))[0],
+    #                  'R': glob(path.join(dirname,'0. Day */R_reg_reg.tif'))[0],
+    #               'R_shg': glob(path.join(dirname,'0. Day */R_shg_reg_reg.tif'))[0]},
+    #               name=0)
     
-    filelist = filelist.append(s)
-    filelist = filelist.sort_index()
+    # filelist = filelist.append(s)
+    # filelist = filelist.sort_index()
     
     heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
 
@@ -54,10 +56,10 @@ def parse_unaligned_channels(dirname):
     # 
         
     filelist = pd.DataFrame()
-    filelist['B'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/B_reg_reg.tif')), key = sort_by_day)
-    filelist['G'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/G_reg_reg.tif')), key = sort_by_day)
-    filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_reg_reg.tif')), key = sort_by_day)
-    filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/ZSeries*/R_shg_reg_reg.tif')), key = sort_by_day)
+    filelist['B'] = sorted(glob(path.join(dirname,'*. Day*/B_reg_reg.tif')), key = sort_by_day)
+    filelist['G'] = sorted(glob(path.join(dirname,'*. Day*/G_reg_reg.tif')), key = sort_by_day)
+    filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/R_reg_reg.tif')), key = sort_by_day)
+    filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/R_shg_reg_reg.tif')), key = sort_by_day)
     T = len(filelist)
     
     return filelist
