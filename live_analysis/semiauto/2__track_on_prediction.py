@@ -48,7 +48,7 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 # segonly = io.imread(path.join(dirname,f'segmentation/cellpose_masks_filter_edited.tiff'))
-segonly = np.stack(
+# segonly = np.stack(
 
 if MANUAL:
     segtrack = io.imread(path.join(dirname,f'manual_tracking/manual_tracking_final.tiff'))

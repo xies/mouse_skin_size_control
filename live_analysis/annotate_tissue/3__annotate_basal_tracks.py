@@ -8,7 +8,6 @@ Created on Tue Sep  6 16:24:28 2022
 
 import numpy as np
 from skimage import io, measure, morphology
-from scipy import linalg
 from scipy.interpolate import UnivariateSpline
 import pandas as pd
 import matplotlib.pylab as plt
@@ -16,12 +15,11 @@ import matplotlib.pylab as plt
 from mathUtils import surface_area, parse_3D_inertial_tensor
 
 from os import path
-from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
 dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-ZZ = 70
+ZZ = 72
 XX = 460
 T = 15
 dx = 0.25
@@ -92,7 +90,7 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
     
     return gr_b,gr_f,gr_c,gr_sm_b,gr_sm_f,gr_sm_c
 
-#%% Load the basal cell tracking
+#%% Load the basal cell tracking and measure from the basal cortical tracking only
 
 basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
 allIDs = np.unique(basal_tracking)[1:]
@@ -137,7 +135,7 @@ for t,im in tqdm(enumerate(basal_tracking)):
 collated = {basalID: pd.DataFrame(cell) for basalID,cell in collated.items()}
 
 
-#%% Load "flattened" segmenations to look at apical v. basal area
+#%% Load "flattened" cortical segmenations to look at apical v. basal area
 # E.g. collagen orientation + fibrousness
 
 for t in tqdm(range(T)):
@@ -291,7 +289,7 @@ with open(path.join(dirname,'basal_with_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
 df = pd.concat(collated,ignore_index=True)
 
-#%% Visualize somethings
+ #%% Visualize somethings
 
 df = pd.concat(collated,ignore_index=True)
 

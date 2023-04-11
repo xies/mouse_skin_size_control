@@ -24,7 +24,6 @@ from mathUtils import *
 from tqdm import tqdm
 from glob import glob
 from os import path
-import csv
 
 dx = 0.25
 XX = 460
@@ -33,6 +32,7 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
+SAVE = False
 VISUALIZE = True
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
@@ -118,7 +118,7 @@ for t in tqdm(range(15)):
    
     # Use thresholded mask to calculate nuclear volume
     # Load raw images or pre-made masks
-    mask = io.imread(path.join(dirname,f'Misc visualizations/H2b masks/t{t}.tif')).astype(bool)
+    mask = io.imread(path.join(dirname,f'Misc/H2b masks/t{t}.tif')).astype(bool)
     this_seg_dilated = morphology.dilation(dense_seg,footprint=footprint)
     this_seg_dilated[~mask] = 0
     threshed_volumes = pd.DataFrame(measure.regionprops_table(
@@ -193,10 +193,11 @@ for t in tqdm(range(15)):
     A_planar = A - A_diff
     
     # Resave adjmat as planar v. diff
-    im = draw_adjmat_on_image(A_planar,dense_coords,[XX,XX])
-    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_planar.tif'),im.astype(np.uint16),check_contrast=False)
-    im = draw_adjmat_on_image(A_diff,dense_coords,[XX,XX])
-    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_diff.tif'),im.astype(np.uint16),check_contrast=False)
+    if SAVE:
+        im = draw_adjmat_on_image(A_planar,dense_coords,[XX,XX])
+        io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_planar.tif'),im.astype(np.uint16),check_contrast=False)
+        im = draw_adjmat_on_image(A_diff,dense_coords,[XX,XX])
+        io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_diff.tif'),im.astype(np.uint16),check_contrast=False)
     
     df_dense['Nuclear surface area'] = np.nan
     df_dense['Nuclear axial component'] = np.nan
@@ -304,26 +305,18 @@ for t in tqdm(range(15)):
     # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
     
     df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
-    # colorized = colorize_segmentation(dense_seg,
-    #                                   {k:v for k,v in zip(df_dense_['CellposeID'].values,df_dense_['basalID'].values)})
-    # io.imsave(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'),colorized,check_contrast=False)
-    
-    colorized = colorize_segmentation(dense_seg,
-                                      {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
-    io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized.astype(int8),check_contrast=False)
-    
-    # colorized = colorize_segmentation(dense_seg.astype(float),
-    #                                   {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Height to BM'].values)})
-    # io.imsave(path.join(dirname,f'3d_nuc_seg/height_to_BM/t{t}.tif'), \
-    #           util.img_as_uint(colorized/colorized.max()),check_contrast=False)
+    if SAVE:
+        colorized = colorize_segmentation(dense_seg,
+                                          {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
+        io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized.astype(np.int8),check_contrast=False)
     
 df = pd.concat(df,ignore_index=True)
 
-#%
-df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
-print(f'Saved to: {dirname}')
+if SAVE:
+    df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
+    print(f'Saved to: {dirname}')
  
-#%%
+#%% Colorize + visualze some other features on cell-by-cell basis
  
     # Colorize nuclei based on mean curvature (for inspection)
     # mean_colors = (mean-mean.min())/mean.max()

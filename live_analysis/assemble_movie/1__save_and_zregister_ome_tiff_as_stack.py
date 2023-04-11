@@ -14,9 +14,8 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 

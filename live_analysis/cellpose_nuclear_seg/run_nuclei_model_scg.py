@@ -19,7 +19,7 @@ from time import time
 
 model = models.Cellpose(model_type='nuclei')
 
-dirnames = ['/home/xies/data/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/im_seq']
+dirnames = ['/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/im_seq']
 
 diameter = 26 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
@@ -30,7 +30,7 @@ filenames = []
 for dirname in dirnames:
 	filenames = filenames + glob(path.join(dirname,'t*.tif'))
 
-OVERWRITE = True
+OVERWRITE = False
 
 for f in filenames:
 	d = path.dirname(f)

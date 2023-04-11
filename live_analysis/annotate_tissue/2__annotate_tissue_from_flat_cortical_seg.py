@@ -18,7 +18,6 @@ import matplotlib.pylab as plt
 from tqdm import tqdm
 import networkx as nx
 
-
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, draw_adjmat_on_image_3d
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
@@ -39,9 +38,9 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
-# for t in tqdm(range(15)):
+for t in tqdm(range(15)):
     
-    t = 7
+    # t = 7
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
@@ -124,7 +123,8 @@ def most_likely_label(labeled,im):
     
     
 
-#%%
+#%% Visualize adjacencies on the image itself (either in flat or in 3D)
+
 A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
 
 dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
