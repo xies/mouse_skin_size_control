@@ -55,11 +55,11 @@ results.sort_values().plot.bar()
 Niter = 100
 
 frac_withhold = 0.2
-N = len(df_g1s_balanced)
+N = len(df_g1s)
 
 models = []
 random_models = []
-R_sq = np.zeros(Niter)
+Rsq = np.zeros(Niter)
 
 for i in tqdm(range(Niter)):
     
@@ -75,6 +75,7 @@ for i in tqdm(range(Niter)):
     ypred = this_model.predict(X_test)
     Rsq[i] = metrics.r2_score(y_test,ypred)
     
+plt.figure()
 plt.hist(Rsq)
 
 mlr = this_model
@@ -83,8 +84,8 @@ result = permutation_importance(
 )
 mlr_importances = pd.Series(result.importances_mean, index=df_g1s.drop(columns=['time_g1s']).columns)
 
-forest_importances.plot.bar(yerr=result.importances_std)
-fig.tight_layout()
+plt.figure()
+mlr_importances.plot.bar(yerr=result.importances_std)
 plt.show()
 
 #%% Random forest regression
@@ -121,6 +122,14 @@ imp.columns = df_g1s.columns.drop('time_g1s')
 plt.figure()
 sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');
 plt.xticks(rotation=45);plt.ylabel('Importance')
+
+result = permutation_importance(
+    forest, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
+)
+forest_importances = pd.Series(result.importances_mean, index=df_g1s.drop(columns=['time_g1s']).columns)
+
+forest_importances.plot.bar(yerr=result.importances_std)
+plt.show()
 
 #%% Use Region1 -> Pred Region2
 
