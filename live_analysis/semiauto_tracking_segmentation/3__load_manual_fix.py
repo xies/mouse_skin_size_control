@@ -20,7 +20,7 @@ import pickle as pkl
 
 dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
-dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+# dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKOs/R2'
@@ -42,7 +42,9 @@ for name,dirname in dirnames.items():
     # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
     manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_final.tiff'))
     G = io.imread(path.join(dirname,'master_stack/G.tif'))
-    G_th = io.imread(path.join(dirname,'master_stack/G_th.tif'))
+    
+    equalize_adapthist(image, kernel_size=None, clip_limit=0.01, nbins=256)
+    # G_th = io.imread(path.join(dirname,'master_stack/G_th.tif'))
     
     #% Re-construct tracks with manually fixed tracking/segmentation
     
@@ -78,7 +80,7 @@ for name,dirname in dirnames.items():
                 # Measurement from intensity image(s)
                 h2b_this_frame = G[frame,...]
                 h2b_mean = h2b_this_frame[this_frame].mean()
-            
+                
                 
                 track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume,
                                            'Volume thresh': thresholded_volume,

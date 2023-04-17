@@ -25,28 +25,29 @@ from SelectFromCollection import SelectFromCollection
 '''
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1/'
 # filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1/'
-filenames = glob(path.join(dirname,'im_seq_decon/*_decon.tiff'))
+filenames = glob(path.join(dirname,'im_seq/t*.tif'))
 
 
 #%%
 
-T = 1
+T = 17
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
-SEG_DIR = 'im_seq'
+SEG_DIR = 'segmentation/cellpose'
+FLAT_DIR = 'Image flattening/heightmaps'
 
 # Some pruning parameters
 # MIN_SIZE_IN_PX = 2000
 _tmp = []
-for t in [2,3]:
+for t in tqdm(range(T)):
     
     predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
-    heightmaps = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_height_map.tif'))
+    heightmaps = io.imread(path.join(dirname,f'{FLAT_DIR}/t{t}.tif'))
     
     table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid','bbox'}))
     
@@ -66,7 +67,7 @@ df = pd.concat(_tmp)
 
 plt.figure()
 
-pts = plt.scatter(df['area'],df['Corrected Z'],alpha=0.05)
+pts = plt.scatter(df['area'],df['Corrected Z'],alpha=0.01)
 plt.ylabel('Corrected Z (to heightmap)')
 plt.xlabel('Cell size (fL)')
 # plt.xlim([0,25000])
@@ -92,9 +93,9 @@ df_ = df[I]
 
 OUT_SUBDIR = 'cellpose_pruned'
 
-for t in tqdm([2]):
+for t in tqdm(range(16)):
     
-    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_decon_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
     
     this_cellIDs = df_[df_['Time'] == t]['label']
     
