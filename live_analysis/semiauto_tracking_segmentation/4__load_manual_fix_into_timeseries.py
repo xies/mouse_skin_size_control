@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io, measure
+from skimage import io, measure, exposure, util, segmentation
 import seaborn as sb
 from os import path
 from glob import glob
@@ -41,13 +41,35 @@ for name,dirname in dirnames.items():
     
     # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
     manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_final.tiff'))
+    for t in tqdm(range(17)):
+        manual_segs[t,...] = segmentation.expand_labels(manual_segs[t,...],distance=1)    
+    
     G = io.imread(path.join(dirname,'master_stack/G.tif'))
     
-    equalize_adapthist(image, kernel_size=None, clip_limit=0.01, nbins=256)
-    # G_th = io.imread(path.join(dirname,'master_stack/G_th.tif'))
+    #@todo: image -> thersholded images
+    print('blah')
+    G_th = np.zeros_like(G,dtype=bool)
+    
+    kernel_size = (G.shape[1] // 3,
+                   G.shape[2] // 8,
+                   G.shape[3] // 8)
+    kernel_size = np.array(kernel_size)
+    
+    if not path.exists(path.join(dirname,'master_stack/G_clahe.tif')):
+        G_clahe = np.zeros_like(G,dtype=float)
+        for t, im_time in tqdm(enumerate(G)):
+            G_clahe[t,...] = exposure.equalize_adapthist(im_time, kernel_size=kernel_size, clip_limit=0.01, nbins=256)
+            for z, im in enumerate(G_clahe[t,...]):
+                G_th[t,z,...] = im > filters.threshold_otsu(im)
+        io.imsave(path.join(dirname,'master_stack/G_clahe.tif'),util.img_as_uint(G_clahe))
+    else:    
+        G_clahe = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
+        for t, im_time in tqdm(enumerate(G)):
+            for z, im in enumerate(G_clahe[t,...]):
+                G_th[t,z,...] = im > filters.threshold_otsu(im)
+        # G_th = io.imread(path.join(dirname,'master_stack/G_th.tif'))
     
     #% Re-construct tracks with manually fixed tracking/segmentation
-    
     if RECALCULATE:
         
         trackIDs = np.unique(manual_segs)
@@ -60,7 +82,6 @@ for name,dirname in dirnames.items():
             mask = manual_segs == trackID
             # mask_uncorrected = filtered_segs == trackID
             frames_with_this_track = np.where(np.any(np.any(np.any(mask,axis=1),axis=1), axis=1))[0]
-            
             
             for frame in frames_with_this_track:
                 
@@ -75,12 +96,9 @@ for name,dirname in dirnames.items():
                 
                 thresholded_volume = this_frame_threshed.sum() * dx**2
                 
-                # volume_uncorrected = this_frame_uncorrected.sum() * dx**2
-                
                 # Measurement from intensity image(s)
                 h2b_this_frame = G[frame,...]
                 h2b_mean = h2b_this_frame[this_frame].mean()
-                
                 
                 track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume,
                                            'Volume thresh': thresholded_volume,
@@ -111,10 +129,8 @@ for name,dirname in dirnames.items():
                 tracks[i] = track
         
         # Save to the manual folder    
-        with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
-            pkl.dump(tracks,file)
-        
-        # ts = pd.concat(tracks)
+        # with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+        #     pkl.dump(tracks,file)
     
     #% Load cell cycle annotations
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
@@ -123,7 +139,6 @@ for name,dirname in dirnames.items():
     # Load excel annotations
     filename = path.join(dirname,'cell_cycle_annotations.xlsx')
     anno = pd.read_excel(filename,usecols=range(5),index_col=0)
-    
     for track in tracks:
         
         track['Phase'] = 'NA'
@@ -157,8 +172,8 @@ for name,dirname in dirnames.items():
     # with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
     #     tracks = pkl.load(file)
     
+    # Construct the cell-centric metadata dataframe
     df = []
-    
     for track in tracks:
         
         birth_size = np.nan
@@ -210,22 +225,41 @@ for name,dirname in dirnames.items():
         
         
         df.append(pd.Series({'CellID':track.iloc[0].CellID
-                             ,'Region':name
-                             ,'Genotype':genotype
-                             ,'Birth frame': birth_frame
-                             ,'S phase frame': s_frame
-                             ,'Division frame':div_frame
-                             ,'Birth size': birth_size
-                             ,'S phase entry size':s_size
-                             ,'G1 length':g1_length
-                             ,'Total length':total_length
-                             ,'G1 growth':s_size - birth_size
-                             ,'Total growth':div_size - birth_size
-                             }))
+                   ,'Region':name
+                    ,'Genotype':genotype
+                    ,'Birth frame': birth_frame
+                    ,'S phase frame': s_frame
+                    ,'Division frame':div_frame
+                    ,'Birth size': birth_size
+                    ,'S phase entry size':s_size
+                    ,'G1 length':g1_length
+                    ,'Total length':total_length
+                    ,'G1 growth':s_size - birth_size
+                    ,'Total growth':div_size - birth_size
+                    }))
         
     df = pd.concat(df,ignore_index=True,axis=1).T
     
     df.to_csv(path.join(dirname,'dataframe.csv'))
+
+#%% Renormalize each movie frame
+#@todo: find and load each time point - functionalize the vol extraction
+#@todo: divide by avg vol
+
+# load all time points
+basal_segs = map(io.imread,glob(path.join(dirname,'cellpose_low_pass/cellpose_manual/*.tif')))
+
+_tmp = []
+for t in range(17):
+    this_frame = pd.DataFrame(measure.regionprops_table(basal_segs[t], properties=['area','label']))
+    this_frame['Frame'] = t
+    _tmp.append(this_frame)
+frame_averages = pd.concat(_tmp)
+frame_averages = frame_averages.groupby('Frame').mean()['area']
+
+for t in tracks:
+    t.
+
 
 #%% basic plotting
 
