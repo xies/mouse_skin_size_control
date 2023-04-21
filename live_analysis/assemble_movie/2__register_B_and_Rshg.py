@@ -16,7 +16,7 @@ from pystackreg import StackReg
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -39,7 +39,7 @@ OVERWRITE = False
 
 # assert(len(B_tifs) == len(R_tifs))
 
-manual_targetZ = {7:27}
+manual_targetZ = {5:11,7:27}
 for t in range(len(R_tifs)):
 # t = 6
     
