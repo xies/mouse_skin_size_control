@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -39,16 +39,14 @@ assert(len(G_tifs) == len(R_shg_tifs))
 
 manual_Ztarget = {}
 
-#%% Correlate each R_shg timepoint with first time point
-# R_shg is best channel to use bc it only has signal in the collagen layer.
-# Therefore it's easy to identify which z-stack is most useful.
+#%% 
 
 XX = 1024
 
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {1:15}
+manual_Ztarget = {1:33,5:21,16:30}
 APPLY = True
 
 ref_T = 0
@@ -59,20 +57,22 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
     with open(path.join(dirname,'alignment_information.pkl'),'rb') as f:
         [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
 
-#%%
-
 # Find the slice with maximum mean value in R_shg channel
 R_shg_ref = io.imread( R_shg_tifs[ref_T] )
 Z_ref = R_shg_ref.shape[ref_T]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 ref_img = R_shg_ref[Imax_ref,...]
 
-
 # variables to save:
 z_pos_in_original[ref_T] = Imax_ref
 
-for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
-# t = 14
+#%% Z-target and XY transform
+# Correlate each R_shg timepoint with first time point
+# R_shg is best channel to use bc it only has signal in the collagen layer.
+# Therefore it's easy to identify which z-stack is most useful.
+
+# for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
+for t in tqdm([16]):
     if t == ref_T:
         continue
     
@@ -110,8 +110,9 @@ for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
     B_transformed = B.copy();
     R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
     
-    if XY_reg and not OVERWRITE:
-        if t in XY_matrices.keys():
+    if XY_reg:
+        if t in XY_matrices.keys() and not OVERWRITE:
+            print('\n XY registration is pre-defined')
             T = XY_matrices[t]
         else:
             moving_img = R_shg_target[Imax_target,...]
@@ -231,7 +232,7 @@ s = pd.DataFrame({'B': glob(path.join(dirname,'*Day 0/B_reg.tif'))[0],
 filelist = pd.concat([filelist,s])
 filelist = filelist.sort_index()
 
-# Save individual day*.tif
+#%% Save individual day*.tif
 MAX = 2**16-1
 def fix_image_range(im, max_range):
     
@@ -265,15 +266,15 @@ R = np.zeros((T,Z_ref,XX,XX))
 G = np.zeros((T,Z_ref,XX,XX))
 
 for t in tqdm(range(T)):
-    R_ = io.imread(filelist.loc[t,'R'])
+    # R_ = io.imread(filelist.loc[t,'R'])
     G_ = io.imread(filelist.loc[t,'G'])
     # B_ = io.imread(filelist.loc[t,'B'])
     
-    R[t,...] = R_
+    # R[t,...] = R_
     G[t,...] = G_
     # B[t,...] = B_
     
-io.imsave(path.join(dirname,'R.tif'),util.img_as_uint(R/R.max()))
+# io.imsave(path.join(dirname,'R.tif'),util.img_as_uint(R/R.max()))
 io.imsave(path.join(dirname,'G.tif'),util.img_as_uint(G/G.max()))
 
 
