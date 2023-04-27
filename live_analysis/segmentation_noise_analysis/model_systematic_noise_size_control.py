@@ -27,7 +27,7 @@ def running_average(old_avg,X,N):
     return new_avg,N
 
 def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
-                   gamma_sigma=0.3,V0_CV=np.sqrt(0.03), set_size = 100, white_vol_noise=10,
+                   gamma_sigma=0.3,V0_CV=np.sqrt(0.03), set_size = 100, white_vol_noise={'rel':.1},
                     frame_biases=None,frame_noise=None,visualize=False, behavior ='sizer'):
     
     t = np.arange(0,end_time,sampling_rate)
@@ -59,10 +59,17 @@ def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
             V[ V > 2 * set_size] = np.nan
         elif behavior == 'adder':
             V[ V > set_size + V0] = np.nan
+        elif behavior == 'timer':
+            print(t)
+            division_time = (random.randn()*.25 + 1) * 3
+            print(division_time)
+            V[t - birth_time > division_time] = np.nan
     
         # Fixed white noise at every frame
-        V = V *(1+ white_vol_noise*np.random.randn(len(V)))
-        
+        if 'rel' in white_vol_noise.keys():
+            V = V * (1 + white_vol_noise['rel']*np.random.randn(len(V)))
+        elif 'fixed' in white_vol_noise.keys():
+            V = V + white_vol_noise['fixed']*set_size*np.random.randn(len(V))
         # Do frame-specific noise addition
         if frame_biases:
             for bad_frame,systematic_error in frame_biases.items():
@@ -113,20 +120,21 @@ end_time = 7
 sampling_rate = 0.5
 doubling = 3
 t = np.arange(0,end_time,sampling_rate)
-good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True,
-                                                         behavior = 'sizer')
+good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True
+                                                         ,white_vol_noise={'fixed':.1}
+                                                         ,behavior = 'timer')
 plt.plot(t,field_avg,'k--')
 
-bad_frames = {3: 0.7, 8: 1.2, 12:.4}
-plt.figure()
-bad_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True,
-                                                          frame_biases = bad_frames,
-                                                          behavior = 'sizer')
-plt.plot(t,field_avg,'k--')
+# bad_frames = {3: 0.7, 8: 1.2, 12:.4}
+# plt.figure()
+# bad_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True,
+#                                                           frame_biases = bad_frames,
+#                                                           behavior = 'timer')
+# plt.plot(t,field_avg,'k--')
 
-plt.figure()
-sb.regplot(good_cells,x='Birth size',y='Growth')
-sb.regplot(bad_cells,x='Birth size',y='Growth');plt.xlim([0,200]);plt.ylim([0,200])
+# plt.figure()
+# sb.regplot(good_cells,x='Birth size',y='Growth')
+# sb.regplot(bad_cells,x='Birth size',y='Growth');plt.xlim([0,200]);plt.ylim([0,200])
 
 #%% Perfect sizers or adders - explore effect of sfixed segmentation noise
 
@@ -144,7 +152,7 @@ size_duration_CI = np.zeros(len(fixed_noise_mag))
 for i,noise in enumerate(fixed_noise_mag):
     
     cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 3,
-                                                          white_vol_noise=noise, visualize=False,
+                                                          white_vol_noise={'fixed':noise}, visualize=False,
                                                              frame_biases = None,
                                                              behavior = 'adder')
     
