@@ -20,15 +20,25 @@ import pickle as pkl
 
 dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
+# dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
-dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKOs/R2'
+# dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 
 dx = 0.2920097/1.5
 # dx = 1
 
-RECALCULATE = True
+RECALCULATE = False
+
+def plot_cell_volume(track,x='Frame',y='Volume'):
+    t = track[x]
+    y = track[y]
+    if track.iloc[0]['Mitosis']:
+        t = t[:-1]
+        y = y[:-1]
+    plt.plot(t,y)
+    
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -39,43 +49,25 @@ for name,dirname in dirnames.items():
     
     genotype = name.split(' ')[0]
     
-    # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-    manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_final.tiff'))
-    for t in tqdm(range(17)):
-        manual_segs[t,...] = segmentation.expand_labels(manual_segs[t,...],distance=1)    
-    
-    G = io.imread(path.join(dirname,'master_stack/G.tif'))
-    
-    #@todo: image -> thersholded images
-    print('blah')
-    G_th = np.zeros_like(G,dtype=bool)
-    
-    kernel_size = (G.shape[1] // 3,
-                   G.shape[2] // 8,
-                   G.shape[3] // 8)
-    kernel_size = np.array(kernel_size)
-    
-    if not path.exists(path.join(dirname,'master_stack/G_clahe.tif')):
-        G_clahe = np.zeros_like(G,dtype=float)
-        for t, im_time in tqdm(enumerate(G)):
-            G_clahe[t,...] = exposure.equalize_adapthist(im_time, kernel_size=kernel_size, clip_limit=0.01, nbins=256)
-            for z, im in enumerate(G_clahe[t,...]):
-                G_th[t,z,...] = im > filters.threshold_otsu(im)
-        io.imsave(path.join(dirname,'master_stack/G_clahe.tif'),util.img_as_uint(G_clahe))
-    else:    
-        G_clahe = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
-        for t, im_time in tqdm(enumerate(G)):
-            for z, im in enumerate(G_clahe[t,...]):
-                G_th[t,z,...] = im > filters.threshold_otsu(im)
-        # G_th = io.imread(path.join(dirname,'master_stack/G_th.tif'))
-    
     #% Re-construct tracks with manually fixed tracking/segmentation
     if RECALCULATE:
+            
+        # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
+        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tiff'))
+        frame_averages = pd.read_csv(path.join(dirname,'real_cells_avg_size.csv'))
+        frame_averages = frame_averages.groupby('Frame').mean()['area']
+        # for t in tqdm(range(17)):
+        #     manual_segs[t,...] = segmentation.expand_labels(manual_segs[t,...],distance=1)    
+        
+        G = io.imread(path.join(dirname,'master_stack/G.tif'))
+        R = io.imread(path.join(dirname,'master_stack/R.tif'))
+        G_th = io.imread(path.join(dirname,'master_stack/G_clahe_th.tif'))
+        print('Loaded images')
         
         trackIDs = np.unique(manual_segs)
         
         tracks = []
-        for trackID in tqdm(trackIDs[1:]):
+        for trackID in tqdm(trackIDs[1:60]):
             
             track = []
             
@@ -92,26 +84,36 @@ for name,dirname in dirnames.items():
                 props = measure.regionprops(this_frame*1)
                 Z,Y,X = np.where(this_frame)
                 Z = Z.mean();Y = Y.mean();X = X.mean()
-                volume = this_frame.sum() * dx**2
-                
+                volume = this_frame.sum()
                 thresholded_volume = this_frame_threshed.sum() * dx**2
+                
+                if volume == 1000:
+                    volume = np.nan
+                    thresholded_volume = np.nan
+                volume = volume * dx**2
                 
                 # Measurement from intensity image(s)
                 h2b_this_frame = G[frame,...]
                 h2b_mean = h2b_this_frame[this_frame].mean()
                 
-                track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume,
-                                           'Volume thresh': thresholded_volume,
-                                                'H2b mean':h2b_mean},index=[frame]))
+                fucci_this_frame = R[frame,...]
+                fucci_mean = fucci_this_frame[this_frame].mean()
+                
+                track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume
+                                           ,'Volume thresh': thresholded_volume
+                                           ,'Volume normal': volume / (frame_averages.loc[frame] * dx**2)
+                                           # ,'H2b mean':h2b_mean
+                                           ,'FUCCI mean':fucci_mean},index=[frame]))
             
             track = pd.concat(track)
             track['CellID'] = trackID
             track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
+            track['Region'] = name
+            track['Genotype'] = genotype
             
             tracks.append(track)
 
             print(f'Done with CellID {trackID}')
-        
         
         #Go back and detect the missing frames and fill-in with NaNs
         for i,track in enumerate(tracks):
@@ -129,8 +131,8 @@ for name,dirname in dirnames.items():
                 tracks[i] = track
         
         # Save to the manual folder    
-        # with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
-        #     pkl.dump(tracks,file)
+        with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+            pkl.dump(tracks,file)
     
     #% Load cell cycle annotations
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
@@ -145,6 +147,7 @@ for name,dirname in dirnames.items():
         track['Birth frame'] = np.nan
         track['Division frame'] = np.nan
         track['S phase entry frame'] = np.nan
+        track['Mitosis'] = 'No'
         
         if track.iloc[0].CellID in anno.index:
             this_anno = anno.loc[track.iloc[0].CellID]
@@ -169,8 +172,8 @@ for name,dirname in dirnames.items():
         pkl.dump(tracks,file)
     
     
-    # with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
-    #     tracks = pkl.load(file)
+    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
+        tracks = pkl.load(file)
     
     # Construct the cell-centric metadata dataframe
     df = []
@@ -179,13 +182,17 @@ for name,dirname in dirnames.items():
         birth_size = np.nan
         div_size = np.nan
         s_size = np.nan
+        birth_size_normal = np.nan
+        div_size_normal = np.nan
+        s_size_normal = np.nan
         
         g1_length = np.nan
         total_length = np.nan
         
         birth_frame = track.iloc[0]['Birth frame']
         if not np.isnan(birth_frame):
-            birth_size = track[track['Frame'] == birth_frame]['Volume thresh'].values[0]
+            birth_size = track[track['Frame'] == birth_frame]['Volume'].values[0]
+            birth_size_normal = track[track['Frame'] == birth_frame]['Volume normal'].values[0]
         else:
             birth_frame = np.nan
         
@@ -197,6 +204,7 @@ for name,dirname in dirnames.items():
         if not div_frame in track['Frame']:
             track = track.append(pd.Series({'Frame':div_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
                                             ,'Volume':np.nan,'Volume thresh':np.nan
+                                            # ,'Volume normal':np.nan
                                  ,'CellID' : track.iloc[0].CellID, 'Age': (div_frame - track.iloc[0]['Frame']) * 12
                                  }),ignore_index=True)
             track = track.sort_values('Frame').reset_index(drop=True)
@@ -204,11 +212,13 @@ for name,dirname in dirnames.items():
         if not s_frame in track['Frame']:
             track = track.append(pd.Series({'Frame':s_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
                                             ,'Volume':np.nan,'Volume thresh':np.nan
+                                            #, 'Volume normal':np.nan
                                  ,'CellID' : track.iloc[0].CellID, 'Age': (s_frame - track.iloc[0]['Frame']) * 12
                                  }),ignore_index=True)
         
         if not np.isnan(div_frame):
-            div_size = track[track['Frame'] == div_frame]['Volume thresh'].values[0]
+            div_size = track[track['Frame'] == div_frame]['Volume'].values[0]
+            div_size_normal = track[track['Frame'] == div_frame]['Volume normal'].values[0]
             total_length = track[track['Frame'] == div_frame]['Age'].values[0]
         else:
             div_frame = np.nan
@@ -218,47 +228,37 @@ for name,dirname in dirnames.items():
             div_size = np.nan
         
         if not np.isnan(s_frame):
-            s_size = track[track['Frame'] == s_frame]['Volume thresh'].values[0]
+            s_size = track[track['Frame'] == s_frame]['Volume'].values[0]
+            s_size_normal = track[track['Frame'] == s_frame]['Volume normal'].values[0]
             g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
         else:
             s_frame = np.nan
         
         
-        df.append(pd.Series({'CellID':track.iloc[0].CellID
+        df.append({'CellID':track.iloc[0].CellID
                    ,'Region':name
                     ,'Genotype':genotype
                     ,'Birth frame': birth_frame
                     ,'S phase frame': s_frame
                     ,'Division frame':div_frame
                     ,'Birth size': birth_size
+                    ,'Birth size normal': birth_size_normal
                     ,'S phase entry size':s_size
+                    ,'S phase entry size normal': s_size_normal
+                    ,'Division size': div_size
+                    ,'Division size normal': div_size_normal
                     ,'G1 length':g1_length
+                    ,'SG2 length':total_length - g1_length
                     ,'Total length':total_length
                     ,'G1 growth':s_size - birth_size
                     ,'Total growth':div_size - birth_size
-                    }))
+                    ,'G1 growth normal':s_size_normal - birth_size_normal
+                    ,'Total growth normal':div_size_normal - birth_size_normal
+                    })
         
-    df = pd.concat(df,ignore_index=True,axis=1).T
+    df = pd.DataFrame(df)
     
     df.to_csv(path.join(dirname,'dataframe.csv'))
-
-#%% Renormalize each movie frame
-#@todo: find and load each time point - functionalize the vol extraction
-#@todo: divide by avg vol
-
-# load all time points
-basal_segs = map(io.imread,glob(path.join(dirname,'cellpose_low_pass/cellpose_manual/*.tif')))
-
-_tmp = []
-for t in range(17):
-    this_frame = pd.DataFrame(measure.regionprops_table(basal_segs[t], properties=['area','label']))
-    this_frame['Frame'] = t
-    _tmp.append(this_frame)
-frame_averages = pd.concat(_tmp)
-frame_averages = frame_averages.groupby('Frame').mean()['area']
-
-for t in tracks:
-    t.
 
 
 #%% basic plotting

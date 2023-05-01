@@ -15,6 +15,8 @@ from sklearn.utils.random import sample_without_replacement
 from tqdm import tqdm
 import seaborn as sb
 
+from itsample import sample
+
 random.seed(42)
 
 def running_average(old_avg,X,N):
@@ -26,22 +28,55 @@ def running_average(old_avg,X,N):
     
     return new_avg,N
 
+def pseudo_oscillator_density(x,wavelength=1/3,dc_magnitude=0.5):
+    # amplitude = (1-dc_magnitude) / wavelength / (1- np.cos(1/wavelength))
+    return np.sin(x/wavelength) + 0.5 + dc_magnitude
+
+# def pseudo_oscillator_monte_carlo(Nsample,oscillator_wavelength, ):
+    
+#     generated_numbers = []
+#     while len(generated_numbers) < Nsample:
+#         # Generates a 'pseudo oscillating' probability via Metropolis
+#         test_number = random.rand()
+        
+#         # normalization
+#         amplitude = (1-dc_magnitude) / oscillator_wavelength / (1- np.cos(1/oscillator_wavelength))
+        
+#         prob_of_test = amplitude * np.sin(test_number/ oscillator_wavelength) + dc_magnitude
+#         q = random.rand()
+#         if test_number > q:# Monte Carlo accept
+#             generated_numbers.append(test_number)
+        
+#     return generated_numbers
+
+#%%
+
 def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
                    gamma_sigma=0.3,V0_CV=np.sqrt(0.03), set_size = 100, white_vol_noise={'rel':.1},
-                    frame_biases=None,frame_noise=None,visualize=False, behavior ='sizer'):
+                    frame_biases=None,frame_noise=None,visualize=False, behavior ='sizer',synchrony=None):
     
     t = np.arange(0,end_time,sampling_rate)
     shadow_time = np.hstack((-t[::-1],t[1:]))
     
     valid_cells = []
+    shadow_cells = []
     running_avg = np.zeros(len(t))
     running_counters = np.zeros(len(t))
     
     while len(valid_cells) < Ncells:
 
+        # Generate with equal probability either
         # 'Shadow' cells that could be 'visible' in the tissue but are born before the movie starts
-        birth_time = random.choice(shadow_time,1)[0]
-        birth_index = np.where(t == birth_time)[0]
+        if synchrony:
+            wavelength = synchrony['wavelength']
+            dc_magnitude = synchrony['dc_magnitude']
+            birth_time = sample(lambda x: pseudo_oscillator_density(x,wavelength/2,dc_magnitude),1,lower_bd = 0,upper_bd =1,guess=0.5)[0]
+            birth_time = (birth_time - 0.5) * t.max() * 2
+        else:
+            birth_time = random.choice(shadow_time,1)[0]
+            
+        # Find the closet birth 'frame'
+        birth_index = np.where( (t-birth_time) > 0)[0]
         
         # Log normal birth size
         V0 = set_size*random.lognormal(mean=0, sigma = V0_CV)
@@ -54,7 +89,7 @@ def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
         V = V0*np.exp((t-birth_time)*gamma)
 
         # Determine "valid cell cycle" times
-        V[t < birth_time] = np.nan        
+        V[t < birth_time] = np.nan
         if behavior == 'sizer':
             V[ V > 2 * set_size] = np.nan
         elif behavior == 'adder':
@@ -115,25 +150,26 @@ def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
 
 #%% Visualize
 
-Ncells = 100
+Ncells = 50
 end_time = 7
 sampling_rate = 0.5
 doubling = 3
 t = np.arange(0,end_time,sampling_rate)
 good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True
                                                          ,white_vol_noise={'fixed':.1}
-                                                         ,behavior = 'timer')
+                                                         ,behavior = 'adder'
+                                                         ,synchrony={'wavelength':3/7,'dc_magnitude':0})
 plt.plot(t,field_avg,'k--')
 
 # bad_frames = {3: 0.7, 8: 1.2, 12:.4}
 # plt.figure()
 # bad_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True,
 #                                                           frame_biases = bad_frames,
-#                                                           behavior = 'timer')
+#                                                           behavior = 'adder')
 # plt.plot(t,field_avg,'k--')
 
-# plt.figure()
-# sb.regplot(good_cells,x='Birth size',y='Growth')
+plt.figure()
+sb.regplot(good_cells,x='Birth size',y='Growth')
 # sb.regplot(bad_cells,x='Birth size',y='Growth');plt.xlim([0,200]);plt.ylim([0,200])
 
 #%% Perfect sizers or adders - explore effect of sfixed segmentation noise
@@ -209,7 +245,7 @@ plt.figure();plt.errorbar(avg_duration, size_control_slope,size_control_CI);plt.
 #%% Systematic biases
 
 Niter = 10
-Ncells = 200
+Ncells = 100
 gamma_sigma = 0.2
 end_time = 7
 sampling_rate = 0.5
@@ -227,7 +263,8 @@ for i, num_bad_frames in tqdm(enumerate(np.arange(0,9))):
         
         bad_frames = {f : 1+0.2*random.randn() for f in sample_without_replacement(len(t),num_bad_frames)}
         new_cells,field_size,num_cells_in_tissue = simulate_cells(
-            end_time,sampling_rate, Ncells, 3, frame_biases= bad_frames, visualize=False,behavior='adder')
+            end_time,sampling_rate, Ncells, 3, frame_biases= bad_frames, visualize=False,behavior='adder'
+            ,synchrony={'wavelength':3/8,'dc_magnitude':1})
         
         linreg = sm.OLS(new_cells.dropna()['Growth'], sm.add_constant(new_cells.dropna()['Birth size'])).fit()
         size_control_slope[i,j] = linreg.params.values[1]
@@ -254,7 +291,7 @@ plt.legend(['Original','w/Systematic bias'])
 #%% Systematic corrections
 
 Niter = 10
-Ncells = 200
+Ncells = 100
 gamma_sigma = 0.2
 end_time = 7
 sampling_rate = 0.5
@@ -270,10 +307,11 @@ for i, num_bad_frames in tqdm(enumerate(np.arange(0,9))):
     
     for j in range(Niter):
         
-        bad_frames = {f : 1+0.4*random.randn() for f in sample_without_replacement(len(t),num_bad_frames)}
+        bad_frames = {f : 1+0.2*random.randn() for f in sample_without_replacement(len(t),num_bad_frames)}
         # bad_frames = None
         new_cells,field_size,num_cells_in_tissue = simulate_cells(
-            end_time,sampling_rate, Ncells, 3, frame_biases= bad_frames, visualize=False,behavior='sizer')
+            end_time,sampling_rate, Ncells, 3, frame_biases= bad_frames, visualize=False,behavior='sizer'
+            ,synchrony={'wavelength':1/3,'dc_magnitude':1})
         
         # Do some correction
         for f in range(len(t)):
