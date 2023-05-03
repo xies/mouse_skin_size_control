@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -43,6 +43,12 @@ df['Coronal density'] = df['Num planar neighbors']/df['Coronal area']
 col_idx = len(df.columns)
 df['Neighbor mean height frame-1'] = np.nan
 df['Neighbor mean height frame-2'] = np.nan
+df['FUCCI bg sub frame-1'] = np.nan
+df['FUCCI bg sub frame-2'] = np.nan
+df['Neighbor mean nuclear volume frame-1'] = np.nan
+df['Neighbor mean nuclear volume frame-2'] = np.nan
+df['Coronal density frame-1'] = np.nan
+df['Coronal density frame-2'] = np.nan
 # Call fate based on cell height
 # For each cell, load all frames, then grab the prev frame height data
 for basalID in collated.keys():
@@ -53,13 +59,19 @@ for basalID in collated.keys():
         this_cell = df.iloc[idx]
         heights = this_cell['Mean neighbor height'].values
         fucci_int = this_cell['FUCCI bg sub'].values
+        neighbor_vol = this_cell['Mean neighbor nuclear volume normalized'].values
+        cor_density = this_cell['Coronal density'].values
         
         for t in np.arange(1,this_len):
             df.at[idx[t],'FUCCI bg sub frame-1'] = fucci_int[t-1]
             df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
+            df.at[idx[t],'Neighbor mean nuclear volume frame-1'] = neighbor_vol[t-1]
+            df.at[idx[t],'Coronal density frame-1'] = cor_density[t-1]
             if t > 1:
                 df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]
                 df.at[idx[t],'FUCCI bg sub frame-2'] = fucci_int[t-2]
+                df.at[idx[t],'Neighbor mean nuclear volume frame-2'] = neighbor_vol[t-2]
+                df.at[idx[t],'Coronal density frame-2'] = cor_density[t-2]
             
 df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
 df['NC ratio raw'] = df['Nuclear volume raw']/df['Volume (sm)']
