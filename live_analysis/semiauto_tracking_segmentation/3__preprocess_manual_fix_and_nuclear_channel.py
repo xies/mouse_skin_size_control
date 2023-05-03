@@ -10,20 +10,18 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io, measure, exposure, util, segmentation, filters
+from skimage import io, measure, exposure, util, filters
 import seaborn as sb
 from os import path
-from glob import glob
 from tqdm import tqdm
 from scipy import ndimage
 
-import pickle as pkl
 
 from basicUtils import draw_gate,gate_on_selector
 
 # dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 # dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
@@ -34,6 +32,7 @@ dx = 0.2920097/1.5
 OVERWRITE = True
 
 dist2expand = 3
+
 
 #%% Calculate CLAHE and threshold masks
 
@@ -79,25 +78,24 @@ for name,dirname in dirnames.items():
     io.imsave(path.join(dirname,'master_stack/G_clahe_th.tif'),G_th)
     
 #%% Renormalize each movie frame
-#@todo: find and load each time point - functionalize the vol extraction
-#@todo: divide by avg vol
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 
+im = io.imread(path.join(dirname,'master_stack/R.tif'))
 
 _tmp = []
 for t in tqdm(range(16)):
     #@todo: load R channel to get FUCCI-high cells
-    im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
-    basal_seg = io.imread(path.join(dirname,f'cellpose_low_pass/cellpose_manual/t{t}_manual.tif'))
-    R = im[:,0,:,:]
+    # im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
+    basal_seg = io.imread(path.join(dirname,f'cellpose_pruned/t{t}_manual.tif'))
+    R = im[t,...]
     
     this_frame = pd.DataFrame(measure.regionprops_table(basal_seg,intensity_image=R, properties=['area','label','intensity_mean']))
     this_frame['Frame'] = t
     _tmp.append(this_frame)
     
 frame_averages = pd.concat(_tmp)
-# frame_averages.to_csv(path.join(dirname,'frame_averages.csv'))
+frame_averages.to_csv(path.join(dirname,'frame_averages.csv'))
 
 #%%
 

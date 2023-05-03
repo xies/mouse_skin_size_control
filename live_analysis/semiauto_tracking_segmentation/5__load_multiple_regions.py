@@ -24,12 +24,11 @@ from basicUtils import *
 
 dirnames = {}
 # dirnames['WT1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1'
 
-
 dirnames['RBKO1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 # dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1'
 
 genotypes = {'WT1':'WT','WT2':'WT','RBKO1':'RBKO','RBKO2':'RBKO'}
@@ -59,8 +58,8 @@ for name,dirname in dirnames.items():
     df['Log birth size'] = np.log(df['Birth size'])
     regions.append(df)
 
-df_all = pd.concat(regions)
-all_ts = pd.concat(all_ts)
+df_all = pd.concat(regions,ignore_index=True)
+all_ts = pd.concat(all_ts,ignore_index=True)
 
 #%%
 

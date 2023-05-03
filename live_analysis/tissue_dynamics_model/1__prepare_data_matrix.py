@@ -67,32 +67,40 @@ features_list = { # Cell geometry
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
                 
-                # Growth rates
+                # Growth rates and other central cell dynamics
                 ,'Specific GR spl':'sgr'
                 ,'Height to BM':'height_to_bm'
-                ,'Mean curvature':'mean_curve'
-                # ,'Gaussian curvature':'gaussian_curve'
                 
-                # Neighbor topolgy and
+                ,'FUCCI bg sub frame-1':'fucci_int_12h'
+                ,'FUCCI bg sub frame-2':'fucci_int_24h'
+                
+                # Neighbor topolgy and geometry
                 ,'Coronal angle':'cor_angle'
                 # ,'Coronal density':'cor_density'
                 ,'Cell alignment':'cell_align'
+                ,'Mean curvature':'mean_curve'
+                ,'Num diff neighbors':'neighb_diff'
+                ,'Num planar neighbors':'neighb_plan'
+                ,'Collagen fibrousness':'col_fib'
+                ,'Collagen alignment':'col_align'
+                # ,'Gaussian curvature':'gaussian_curve'
+                
+                # Neighborhood dynamics (averages of previous frame)
                 ,'Mean neighbor nuclear volume normalized':'mean_neighb_nuc_vol'
+                ,'Neighbor mean nuclear volume frame-1':'mean_neighb_nuc_vol_12h'
+                # ,'Neighbor mean nuclear volume frame-2':'mean_neighb_nuc_vol_24h'
                 ,'Std neighbor nuclear volume normalized':'std_neighb_nuc_vol'
                 # ,'Max neighbor nuclear volume normalized':'max_neighb_nuc_vol'
                 # ,'Min neighbor nuclear volume normalized':'min_neighb_nuc_vol'
                 ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
-                ,'FUCCI bg sub frame-1':'fucci_int_12h'
-                ,'FUCCI bg sub frame-2':'fucci_int_24h'
+
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
-                ,'Neighbor mean height frame-2':'neighb_height_24h'
-                ,'Num diff neighbors':'neighb_diff'
-                ,'Num planar neighbors':'neighb_plan'
-                ,'Collagen fibrousness':'col_fib'
-                ,'Collagen alignment':'col_align'}
+                # ,'Neighbor mean height frame-2':'neighb_height_24h'
+
+                }
 
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)

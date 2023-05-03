@@ -67,7 +67,8 @@ def parse_unaligned_channels(dirname):
 def plot_cell_volume(track,x='Frame',y='Volume'):
     t = track[x]
     y = track[y]
-    if track.iloc[0]['Mitosis']:
-        t = t[:-1]
-        y = y[:-1]
+    if 'Mitosis' in track.columns:
+        if track.iloc[0]['Mitosis']:
+            t = t[:-1]
+            y = y[:-1]
     plt.plot(t,y)

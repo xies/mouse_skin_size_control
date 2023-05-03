@@ -21,15 +21,15 @@ import pickle as pkl
 dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
 # dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
 # dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+# dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 
 dx = 0.2920097/1.5
 # dx = 1
 
-RECALCULATE = False
+RECALCULATE = True
 
 def plot_cell_volume(track,x='Frame',y='Volume'):
     t = track[x]
@@ -38,7 +38,6 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         t = t[:-1]
         y = y[:-1]
     plt.plot(t,y)
-    
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -53,8 +52,8 @@ for name,dirname in dirnames.items():
     if RECALCULATE:
             
         # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tiff'))
-        frame_averages = pd.read_csv(path.join(dirname,'real_cells_avg_size.csv'))
+        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif'))
+        frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
         # for t in tqdm(range(17)):
         #     manual_segs[t,...] = segmentation.expand_labels(manual_segs[t,...],distance=1)    
