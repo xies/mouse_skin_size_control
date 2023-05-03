@@ -14,15 +14,18 @@ import pandas as pd
 from imageUtils import most_likely_label
 import matplotlib.pyplot as plt
 
-seed_dir = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/cellpose_low_pass/cellpose_manual'
-target_dir = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/cellpose_clahe/'
+# seed_dir = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/cellpose_low_pass/cellpose_manual'
+# target_dir = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/cellpose_clahe/'
+
+seed_dir = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/3d_nuc_seg/cellpose_cleaned_manual'
+target_dir = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/cellpose_clahe'
 
 #%%
 
 df = []
-for t in tqdm(range(16)):
+for t in tqdm(range(15)):
     
-    seed_labels = io.imread(path.join(seed_dir,f't{t}_manual.tif'))
+    seed_labels = io.imread(path.join(seed_dir,f't{t}.tif'))
     target_labels = io.imread(path.join(target_dir,f't{t}_3d_nuc/t{t}_masks.tif'))
     
     _tmp = pd.DataFrame( measure.regionprops_table(seed_labels, intensity_image = target_labels
@@ -43,7 +46,7 @@ df = pd.concat(df,ignore_index=True)
 # df = df[df['area'] > cutoff]
 
 #%%
-for t in tqdm(range(16)):
+for t in tqdm(range(15)):
     
     target_labels = io.imread(path.join(target_dir,f't{t}_3d_nuc/t{t}_masks.tif'))
     
