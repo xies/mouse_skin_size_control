@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -46,7 +46,8 @@ XX = 1024
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {1:33,5:21,16:30}
+manual_Ztarget = {6:21}
+# ,5:9,
 APPLY = True
 
 ref_T = 0
@@ -72,7 +73,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 # for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
-for t in tqdm([16]):
+for t in tqdm([5,7]):
     if t == ref_T:
         continue
     
@@ -181,7 +182,9 @@ for t in tqdm([16]):
         io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
-
+XY_matrices[2] = 'manual'
+XY_matrices[5] = 'manual'
+XY_matrices[7] = 'manual'
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
@@ -209,73 +212,4 @@ print('DONE')
 #     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 
 # print('DONE')
-
-#%% Sort filenames by time (not alphanumeric) and then assemble each time point
-        
-# But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
-
-T = len(G_tifs)
-
-filelist = pd.DataFrame()
-filelist['B'] = sorted(glob(path.join(dirname,'*Day*/B_align.tif')), key = sort_by_day)
-filelist['G'] = sorted(glob(path.join(dirname,'*Day*/G_align.tif')), key = sort_by_day)
-filelist['R'] = sorted(glob(path.join(dirname,'*Day*/R_align.tif')), key = sort_by_day)
-filelist['R_shg'] = sorted(glob(path.join(dirname,'*Day*/R_shg_align.tif')), key = sort_by_day)
-filelist.index = np.arange(1,T)
-
-# t= 0 has no '_align'
-s = pd.DataFrame({'B': glob(path.join(dirname,'*Day 0/B_reg.tif'))[0],
-                  'G': glob(path.join(dirname,'*Day 0/G_reg.tif'))[0],
-                  'R': glob(path.join(dirname,'*Day 0/R_reg_reg.tif'))[0],
-                   'R_shg': glob(path.join(dirname,'*Day 0.5/R_shg_reg_reg.tif'))[0]},index=[0])
-
-filelist = pd.concat([filelist,s])
-filelist = filelist.sort_index()
-
-#%% Save individual day*.tif
-MAX = 2**16-1
-def fix_image_range(im, max_range):
-    
-    im = im.copy().astype(float)
-    im[im == 0] = np.nan
-    im = im - np.nanmin(im)
-    im = im / np.nanmax(im) * max_range
-    im[np.isnan(im)] = 0
-    return im.astype(np.uint16)
-
-for t in tqdm(range(T)):
-
-# stack = np.zeros((Z_ref,3,XX,XX))
-    
-    R = io.imread(filelist.loc[t,'R'])
-    G = io.imread(filelist.loc[t,'G'])
-    B = io.imread(filelist.loc[t,'B'])
-    
-    # Do some image range clean up
-    R_ = fix_image_range(R,MAX)
-    G_ = fix_image_range(G,MAX)
-    B_ = fix_image_range(B,MAX)
-
-    stack = np.stack((R_,G_,B_))
-    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.uint16),check_contrast=False)
-
-#%% Save master stack
-# Load file and concatenate them appropriately
-# FIJI default: CZT XY, but this is easier for indexing
-R = np.zeros((T,Z_ref,XX,XX))
-G = np.zeros((T,Z_ref,XX,XX))
-
-for t in tqdm(range(T)):
-    # R_ = io.imread(filelist.loc[t,'R'])
-    G_ = io.imread(filelist.loc[t,'G'])
-    # B_ = io.imread(filelist.loc[t,'B'])
-    
-    # R[t,...] = R_
-    G[t,...] = G_
-    # B[t,...] = B_
-    
-# io.imsave(path.join(dirname,'R.tif'),util.img_as_uint(R/R.max()))
-io.imsave(path.join(dirname,'G.tif'),util.img_as_uint(G/G.max()))
-
-
 

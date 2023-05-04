@@ -10,7 +10,9 @@ from glob import glob
 import pandas as pd
 from re import findall
 from os import path
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.interpolate import UnivariateSpline
 
 def sort_by_day(filename):
 
@@ -60,7 +62,7 @@ def parse_unaligned_channels(dirname):
     filelist['G'] = sorted(glob(path.join(dirname,'*. Day*/G_reg_reg.tif')), key = sort_by_day)
     filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/R_reg_reg.tif')), key = sort_by_day)
     filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/R_shg_reg_reg.tif')), key = sort_by_day)
-    T = len(filelist)
+    # T = len(filelist)
     
     return filelist
 
@@ -72,3 +74,30 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
             t = t[:-1]
             y = y[:-1]
     plt.plot(t,y)
+    
+    
+
+def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
+
+    X = cf[x]
+    Y = cf[y]
+    
+    I = (~np.isnan(X)) * (~np.isnan(Y))
+        
+    # Won't smooth 3 pts or fewer (cubic spline)
+    if len(X[I]) < 4:
+        Yhat = cf[y].values
+        
+    else:
+
+        
+        # Spline smooth
+        spl = UnivariateSpline(X[I], Y[I], k=3, s=smoothing_factor)
+        Yhat = spl(X)
+        
+    return Yhat
+    
+
+
+    
+    

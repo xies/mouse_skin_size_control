@@ -23,7 +23,7 @@ from basicUtils import *
 
 
 dirnames = {}
-# dirnames['WT1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1'
 
@@ -32,7 +32,6 @@ dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2
 # dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1'
 
 genotypes = {'WT1':'WT','WT2':'WT','RBKO1':'RBKO','RBKO2':'RBKO'}
-
 
 #%%
 
@@ -43,7 +42,11 @@ for name,dirname in dirnames.items():
     
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
         tracks = pkl.load(file)
-        
+    
+    for t in tracks:
+        t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
+        # t['Volume interp'] = smooth_growth_curve
+    
     all_tracks.append(tracks)
     
     tracks = pd.concat(tracks)
@@ -56,10 +59,14 @@ for name,dirname in dirnames.items():
     df['Division size'] = df['Birth size'] + df['Total growth']
     df['S entry size'] = df['Birth size'] + df['G1 growth']
     df['Log birth size'] = np.log(df['Birth size'])
+    df['Fold grown'] = df['Division size'] / df['Birth size']
     regions.append(df)
 
 df_all = pd.concat(regions,ignore_index=True)
 all_ts = pd.concat(all_ts,ignore_index=True)
+
+wt = df_all[df_all['Genotype'] == 'WT']
+rbko = df_all[df_all['Genotype'] == 'RBKO']
 
 #%%
 
@@ -94,15 +101,15 @@ def plot_reg_with_bin(x,y,data=None):
 #%%
 
 plt.subplot(2,1,1)
-X,Y = nonan_pairs(regions[0]['Log birth size'].astype(float),regions[0]['G1 length'].astype(float))
-plt.xlim([4,5.6]); plt.title('Wild type')
+X,Y = nonan_pairs(wt['Log birth size'].astype(float),wt['G1 length'].astype(float))
+plt.xlim([4,8]); plt.title('Wild type')
 plot_reg_with_bin(X,Y); plt.ylabel('G1 length (h)')
 
 
 plt.subplot(2,1,2)
-regions[1] = regions[1][regions[1]['Birth frame'] != 2]
-X,Y = nonan_pairs(regions[1]['Log birth size'].astype(float),regions[1]['G1 length'].astype(float))
-plt.xlim([4,5.6]); plt.title('RB1 -/-')
+# regions[1] = regions[1][regions[1]['Birth frame'] != 2]
+X,Y = nonan_pairs(rbko['Log birth size'].astype(float),rbko['G1 length'].astype(float))
+plt.xlim([4,8]); plt.title('RB1 -/-')
 plot_reg_with_bin(X,Y); plt.ylabel('G1 length (h)')
 
 # X,Y = nonan_pairs(regions[2]['Log birth size'].astype(float),regions[2]['G1 length'].astype(float))

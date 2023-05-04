@@ -17,13 +17,14 @@ from glob import glob
 from tqdm import tqdm
 
 import pickle as pkl
+from twophotonUtils import smooth_growth_curve
 
 dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
 # dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+# dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
-# dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 
 dx = 0.2920097/1.5
@@ -38,6 +39,8 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         t = t[:-1]
         y = y[:-1]
     plt.plot(t,y)
+    
+limit = {'WT R1':50,'WT R2':50,'RBKO R1':71,'RBKO R2':56}
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -52,7 +55,7 @@ for name,dirname in dirnames.items():
     if RECALCULATE:
             
         # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif'))
+        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tiff'))
         frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
         # for t in tqdm(range(17)):
@@ -66,7 +69,7 @@ for name,dirname in dirnames.items():
         trackIDs = np.unique(manual_segs)
         
         tracks = []
-        for trackID in tqdm(trackIDs[1:60]):
+        for trackID in tqdm(trackIDs[1:limit[name]]):
             
             track = []
             
@@ -99,7 +102,7 @@ for name,dirname in dirnames.items():
                 fucci_mean = fucci_this_frame[this_frame].mean()
                 
                 track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume
-                                           ,'Volume thresh': thresholded_volume
+                                           # ,'Volume thresh': thresholded_volume
                                            ,'Volume normal': volume / (frame_averages.loc[frame] * dx**2)
                                            # ,'H2b mean':h2b_mean
                                            ,'FUCCI mean':fucci_mean},index=[frame]))
@@ -137,7 +140,8 @@ for name,dirname in dirnames.items():
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
-    # Load excel annotations
+    # Load excel annotations of cell cycle
+    # Also smooth volume curve from existing raw curves
     filename = path.join(dirname,'cell_cycle_annotations.xlsx')
     anno = pd.read_excel(filename,usecols=range(5),index_col=0)
     for track in tracks:
@@ -165,11 +169,14 @@ for name,dirname in dirnames.items():
             #     track.loc[track['Frame'] == this_anno.Division,'Phase'] = 'Division'
             
             track['Mitosis'] = this_anno['Mitosis?'] == 'Yes'
-            
+        
+        track['Volume interp'] = smooth_growth_curve(track,y='Volume')
+        track['Volume normal interp'] = smooth_growth_curve(track,y='Volume normal')
+    
     # Save to the manual folder    
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
         pkl.dump(tracks,file)
-    
+
     
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
         tracks = pkl.load(file)
@@ -188,10 +195,14 @@ for name,dirname in dirnames.items():
         g1_length = np.nan
         total_length = np.nan
         
+        # Birth
         birth_frame = track.iloc[0]['Birth frame']
         if not np.isnan(birth_frame):
             birth_size = track[track['Frame'] == birth_frame]['Volume'].values[0]
             birth_size_normal = track[track['Frame'] == birth_frame]['Volume normal'].values[0]
+            birth_size_interp = track[track['Frame'] == birth_frame]['Volume interp'].values[0]
+            birth_size_normal_interp = track[track['Frame'] == birth_frame]['Volume normal interp'].values[0]
+            
         else:
             birth_frame = np.nan
         
@@ -202,7 +213,8 @@ for name,dirname in dirnames.items():
         # because that frame has bad quality -> fill in with NA
         if not div_frame in track['Frame']:
             track = track.append(pd.Series({'Frame':div_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
-                                            ,'Volume':np.nan,'Volume thresh':np.nan
+                                            ,'Volume':np.nan
+                                            ,'Volume thresh':np.nan
                                             # ,'Volume normal':np.nan
                                  ,'CellID' : track.iloc[0].CellID, 'Age': (div_frame - track.iloc[0]['Frame']) * 12
                                  }),ignore_index=True)
@@ -210,14 +222,18 @@ for name,dirname in dirnames.items():
             
         if not s_frame in track['Frame']:
             track = track.append(pd.Series({'Frame':s_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
-                                            ,'Volume':np.nan,'Volume thresh':np.nan
+                                            ,'Volume':np.nan
+                                            ,'Volume thresh':np.nan
                                             #, 'Volume normal':np.nan
                                  ,'CellID' : track.iloc[0].CellID, 'Age': (s_frame - track.iloc[0]['Frame']) * 12
                                  }),ignore_index=True)
         
+        # Division
         if not np.isnan(div_frame):
             div_size = track[track['Frame'] == div_frame]['Volume'].values[0]
             div_size_normal = track[track['Frame'] == div_frame]['Volume normal'].values[0]
+            div_size_interp = track[track['Frame'] == div_frame]['Volume interp'].values[0]
+            div_size_normal_interp = track[track['Frame'] == div_frame]['Volume normal interp'].values[0]
             total_length = track[track['Frame'] == div_frame]['Age'].values[0]
         else:
             div_frame = np.nan
@@ -226,13 +242,15 @@ for name,dirname in dirnames.items():
         if track.iloc[0].Mitosis:
             div_size = np.nan
         
+        # G1/S
         if not np.isnan(s_frame):
             s_size = track[track['Frame'] == s_frame]['Volume'].values[0]
             s_size_normal = track[track['Frame'] == s_frame]['Volume normal'].values[0]
+            s_size_interp = track[track['Frame'] == s_frame]['Volume interp'].values[0]
+            s_size_normal_interp = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
             g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
         else:
             s_frame = np.nan
-        
         
         df.append({'CellID':track.iloc[0].CellID
                    ,'Region':name
@@ -242,20 +260,34 @@ for name,dirname in dirnames.items():
                     ,'Division frame':div_frame
                     ,'Birth size': birth_size
                     ,'Birth size normal': birth_size_normal
+                    ,'Birth size interp': birth_size_interp
+                    ,'Birth size normal interp': birth_size_normal_interp
                     ,'S phase entry size':s_size
                     ,'S phase entry size normal': s_size_normal
+                    ,'S phase entry size interp':s_size_interp
+                    ,'S phase entry size normal interp': s_size_normal_interp
                     ,'Division size': div_size
                     ,'Division size normal': div_size_normal
+                    ,'Division size interp': div_size_interp
+                    ,'Division size normal interp': div_size_normal_interp
                     ,'G1 length':g1_length
                     ,'SG2 length':total_length - g1_length
                     ,'Total length':total_length
-                    ,'G1 growth':s_size - birth_size
-                    ,'Total growth':div_size - birth_size
-                    ,'G1 growth normal':s_size_normal - birth_size_normal
-                    ,'Total growth normal':div_size_normal - birth_size_normal
+                    # ,'G1 growth':s_size - birth_size
+                    # ,'Total growth':div_size - birth_size
+                    # ,'G1 growth normal':s_size_normal - birth_size_normal
+                    # ,'Total growth normal':div_size_normal - birth_size_normal
                     })
-        
     df = pd.DataFrame(df)
+    
+    df['G1 growth'] = df['S phase entry size'] - df['Birth size']
+    df['Total growth'] = df['Division size'] - df['Birth size']
+    df['G1 growth normal'] = df['S phase entry size normal'] - df['Birth size normal']
+    df['Total growth normal'] = df['Division size normal'] - df['Birth size normal']
+    df['G1 growth interp'] = df['S phase entry size interp'] - df['Birth size interp']
+    df['Total growth '] = df['Division size interp'] - df['Birth size interp']
+    df['G1 growth normal interp'] = df['S phase entry size normal interp'] - df['Birth size normal interp']
+    df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
     
     df.to_csv(path.join(dirname,'dataframe.csv'))
 
