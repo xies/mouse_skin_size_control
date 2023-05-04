@@ -21,22 +21,18 @@ from scipy.optimize import curve_fit
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-*.tif'))
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-17-2022 RB-KO tam control/M9 RB noCre tam/R1/'
-# filenames = glob(path.join(dirname,'tracking/H2B_stack.tif'))
 filenames = glob(path.join(dirname,'im_seq/t*.tif'))
 
 
 channel2use = 1
 
-def logit_curve(x,L,k,x0):
-    y = L / (1 + np.exp(-k*(x-x0)))
-    return y
-
-imstack = np.stack(map(io.imread,filenames))
+# imstack = np.stack(map(io.imread,filenames))
+imstack = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
 
 XX = 1024
-ZZ = 70
+ZZ = 80
 
 #%%
 
@@ -48,22 +44,23 @@ BOTTOM_Z_BOUND = 35
 
 z_shift = 0
 
-OVERWRITE = True
+OVERWRITE = False
 # im_list = map(lambda f: io.imread(f)[channel2use,...], filenames)
 
 # for t,im in tqdm(enumerate(im_list)):
 # for t,im in tqdm(enumerate(imstack)):
 
-for t in tqdm(np.arange(5,17)):
-    # im = imstack[t,...]
-    im = imstack[t,:,channel2use,...]
+for t in tqdm(np.arange(16)):
+    im = imstack[t,...]
+    # im = imstack[t,:,channel2use,...]
+    # im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))[:,1,:,:]
     
-    # if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
-    #     params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
-    #     XY_sigma = params['XY_sigma']
-    #     Z_sigma = params['Z_sigma']
-    #     TOP_Z_BOUND = params['TOP_Z_BOUND']
-    #     BOTTOM_Z_BOUND = params['BOTTOM_Z_BOUND']
+    if path.exists(path.join(dirname,f'Image flattening/params/t{t}.csv')) and not OVERWRITE:
+        params = pd.read_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'),index_col=0,header=0).T
+        XY_sigma = params['XY_sigma']
+        Z_sigma = params['Z_sigma']
+        TOP_Z_BOUND = params['TOP_Z_BOUND']
+        BOTTOM_Z_BOUND = params['BOTTOM_Z_BOUND']
         
     im_xy_blur = np.zeros_like(im[:,:,:],dtype=float)
     
@@ -107,6 +104,6 @@ for t in tqdm(np.arange(5,17)):
     # io.imsave(path.join(dirname,f'R1_height_img.tif'), height_image.astype(np.int16),check_contrast=False)
 
     
-# pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
-#               'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
+pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
+              'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
 
