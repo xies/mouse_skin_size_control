@@ -19,14 +19,15 @@ from scipy import ndimage
 
 from basicUtils import draw_gate,gate_on_selector
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
-dx = 0.2920097/1.5
+dx = 0.2920097
 # dx = 1
 
 OVERWRITE = True
 
-#%% Renormalize each movie frame
+#%% Renormalize volume for each movie frame
 
 im = io.imread(path.join(dirname,'master_stack/R.tif'))
 

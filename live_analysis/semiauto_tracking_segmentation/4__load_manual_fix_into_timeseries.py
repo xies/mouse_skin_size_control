@@ -24,8 +24,10 @@ dirnames = {}
 # dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 
-dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+# dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirnames['RBKO R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+
 
 dx = 0.2920097/1.5
 # dx = 1
@@ -40,7 +42,7 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         y = y[:-1]
     plt.plot(t,y)
     
-limit = {'WT R1':50,'WT R2':50,'RBKO R1':71,'RBKO R2':56}
+limit = {'WT R1':50,'WT R2':50,'RBKO R1':71,'RBKO R2':56,'RBKO R3':75}
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -55,7 +57,7 @@ for name,dirname in dirnames.items():
     if RECALCULATE:
             
         # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tiff'))
+        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif'))
         frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
         # for t in tqdm(range(17)):
@@ -63,7 +65,7 @@ for name,dirname in dirnames.items():
         
         G = io.imread(path.join(dirname,'master_stack/G.tif'))
         R = io.imread(path.join(dirname,'master_stack/R.tif'))
-        G_th = io.imread(path.join(dirname,'master_stack/G_clahe_th.tif'))
+        # G_th = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
         print('Loaded images')
         
         trackIDs = np.unique(manual_segs)
@@ -81,13 +83,13 @@ for name,dirname in dirnames.items():
                 
                 # Measurements from segmentation/ label iamge
                 this_frame = mask[frame,...]
-                this_frame_threshed = this_frame & G_th[frame,...]
+                # this_frame_threshed = this_frame & G_th[frame,...]
                 
                 props = measure.regionprops(this_frame*1)
                 Z,Y,X = np.where(this_frame)
                 Z = Z.mean();Y = Y.mean();X = X.mean()
                 volume = this_frame.sum()
-                thresholded_volume = this_frame_threshed.sum() * dx**2
+                # thresholded_volume = this_frame_threshed.sum() * dx**2
                 
                 if volume == 1000:
                     volume = np.nan

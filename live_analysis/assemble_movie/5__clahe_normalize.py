@@ -11,12 +11,14 @@ from skimage import io,exposure, filters, util
 from os import path
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 # G = io.imread(path.join(dirname,'master_stack/G.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/Cropped_images/'
-im = io.imread(path.join(dirname,'master_stack/G.tif'))
 
-#%%
+
+#%% Locally histogram-normalize
+
+im = io.imread(path.join(dirname,'master_stack/G.tif'))
 
 kernel_size = (im.shape[1] // 3, #~25
                im.shape[2] // 4, #~128

@@ -16,7 +16,9 @@ from pystackreg import StackReg
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -25,6 +27,7 @@ def sort_by_day(filename):
     day = day.groups()[0]
     return float(day)
 
+manual_targetZ = {}
 # Grab all registered B/R tifs
 B_tifs = sorted(glob(path.join(dirname,'*. Day*/B_reg.tif')),key=sort_by_day)
 G_tifs = sorted(glob(path.join(dirname,'*. Day*/G_reg.tif')),key=sort_by_day)
@@ -39,15 +42,14 @@ OVERWRITE = False
 
 # assert(len(B_tifs) == len(R_tifs))
 
-manual_targetZ = {5:11,7:27}
-for t in range(len(R_tifs)):
-# t = 6
+# for t in range(len(B_tifs)):
+t = 15
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
-    # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
-        print(f'Skipping t = {t} because its R_reg_reg.tif already exists')
-        continue
+    # if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
+    # # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
+    #     print(f'Skipping t = {t} because its R_reg_reg.tif already exists')
+    #     continue
     
     print(f'\n--- Started t = {t} ---')
     B = io.imread(B_tifs[t])
@@ -58,7 +60,8 @@ for t in range(len(R_tifs)):
     print('Done reading images')
     
     # Find the slice with maximum mean value in R_shg channel
-    Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
+    # Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
+    Imax = 7
     R_ref = R_shg[Imax,...]
     R_ref = filters.gaussian(R_ref,sigma=0.5)
     

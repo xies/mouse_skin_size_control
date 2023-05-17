@@ -180,6 +180,7 @@ for i in tqdm(range(Niter)):
     
 plt.hist(AUC)
 plt.hist(AP)
+
 #%% Random forest classifier
 
 from sklearn.model_selection import train_test_split
@@ -231,8 +232,8 @@ result = permutation_importance(
 forest_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
 
 forest_importances.plot.bar(yerr=result.importances_std)
-ax.set_ylabel("Mean accuracy decrease")
-fig.tight_layout()
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
 plt.show()
 
 #%%
@@ -257,8 +258,8 @@ logit_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
 
 plt.figure()
 logit_importances.plot.bar(yerr=result.importances_std)
-ax.set_ylabel("Mean accuracy decrease")
-fig.tight_layout()
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
 plt.show()
 
 # Partial dependence of the first 5 important features

@@ -24,13 +24,10 @@ from SelectFromCollection import SelectFromCollection
 
 '''
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1/'
-# filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1/'
-filenames = glob(path.join(dirname,'im_seq/t*.tif'))
-
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
 #%%
 
@@ -38,7 +35,7 @@ T = 17
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
-SEG_DIR = 'segmentation/cellpose'
+SEG_DIR = 'cellpose_clahe'
 FLAT_DIR = 'Image flattening/heightmaps'
 
 # Some pruning parameters
@@ -93,7 +90,7 @@ df_ = df[I]
 
 OUT_SUBDIR = 'cellpose_pruned'
 
-for t in tqdm(range(16)):
+for t in tqdm(range(T)):
     
     predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
     

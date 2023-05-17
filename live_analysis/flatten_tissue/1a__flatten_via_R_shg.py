@@ -7,21 +7,18 @@ Created on Thu Aug 11 13:32:00 2022
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from skimage import io, filters, exposure, util
+from skimage import io, filters, util
 from os import path
-from glob import glob
-from re import match
+from scipy.ndimage import gaussian_filter
 
 from tqdm import tqdm
-from scipy.optimize import curve_fit
 
 from ifUtils import min_normalize_image
-from twophoton_util import parse_aligned_timecourse_directory
+from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
@@ -29,11 +26,6 @@ XX = 1024
 ZZ = 95
 T = 19
 channel2use = 'R_shg'
-
-def logit_curve(x,L,k,x0):
-    # I = ~np.isnan(
-    y = L / (1 + np.exp(-k*(x-x0)))
-    return y
 
 #%% Calculate heightmaps
 '''
@@ -45,48 +37,64 @@ def logit_curve(x,L,k,x0):
 OVERWRITE = False
 
 XY_sigma = 25
-Z_sigma = 2.5
+Z_sigma = 3
 
-TOP_Z_BOUND = 45
-BOTTOM_Z_BOUND = 75
+TOP_Z_BOUND = 60
+BOTTOM_Z_BOUND = 10
 
 OFF_SET = 0
 
+z_shift = 0
+
 for t in tqdm(range(T)):
     
+    t = 0 
     f = filelist[channel2use].iloc[t]
     out_dir = path.split(path.dirname(f))[0]
-    if path.exists(path.join(dirname,f'flat/t{t}.tif')) and not OVERWRITE:
+    if path.exists(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) and not OVERWRITE:
         continue
     
     
     im = io.imread(f).astype(float)
     im = (im /im.max())* (2**16 -1)
     
-    im_xy_blur = np.zeros_like(im,dtype=float)
+    # im_xy_blur = np.zeros_like(im,dtype=float)
+    im_xyz_blur = gaussian_filter(im,sigma = [Z_sigma,XY_sigma,XY_sigma])
     
-    #XY_blur
-    for z,im_ in enumerate(im):
-        im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
+    # #XY_blur
+    # for z,im_ in enumerate(im):
+    #     im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
     
-    #Z_blur
-    im_z_blur = np.zeros_like(im_xy_blur)
-    im[:,np.all(im == 0,axis=0)] = np.nan
-    im[np.all(np.all(im == 0,axis=1),axis=1),...] = np.nan
-    for x in tqdm(range(XX)):
-        for y in range(XX):
-            im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
-    
-    # io.imsave(path.join(dirname,'blur.tif'), util.img_as_int(im_z_blur/im_z_blur.max()))
+    # #Z_blur
+    # im_z_blur = np.zeros_like(im_xy_blur)
+    # im[:,np.all(im == 0,axis=0)] = np.nan
+    # im[np.all(np.all(im == 0,axis=1),axis=1),...] = np.nan
+    # for x in range(XX):
+    #     for y in range(XX):
+    #         im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
+    io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), im_xyz_blur.astype(np.int16),check_contrast=False)
     
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
-    _tmp = im_z_blur.copy()
+    _tmp = im_xyz_blur.copy()
     _tmp[np.isnan(_tmp)] = 0
-    heightmap = _tmp.argmax(axis=0)
-    heightmap = np.diff(_tmp[TOP_Z_BOUND:BOTTOM_Z_BOUND,...],axis=0).argmax(axis=0) + TOP_Z_BOUND
+    heightmap = np.diff(_tmp,axis=0).argmax(axis=0)
+    heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
+    heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
     
-    io.imsave(path.join(out_dir,'heightmap.tif'),heightmap.astype(np.int8))
-        
+    io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), heightmap.astype(np.int16),check_contrast=False)
+    # io.imsave(path.join(dirname,f'R1_height_map.tif'), heightmap.astype(np.int16),check_contrast=False)
+    
+    # Construct height images
+    Iz = np.round(heightmap + z_shift).astype(int)
+    # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
+    flat = np.zeros((XX,XX))
+    height_image = np.zeros_like(im)
+    for x in range(XX):
+        for y in range(XX):
+            flat[y,x] = im[Iz[y,x],y,x]
+            height_image[Iz[y,x],y,x] = 1
+    
+    io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
 
 
 

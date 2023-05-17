@@ -21,7 +21,7 @@ import pickle as pkl
 
 dirnames = {}
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 # dx = 0.2920097
 dx = 1
@@ -53,7 +53,7 @@ for t in range(17):
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,f'manual_tracking/manual_tracking_final.tiff'))
+    segtrack = io.imread(path.join(dirname,f'manual_tracking/manual_tracking.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 
@@ -99,13 +99,13 @@ for track in tqdm(tracks):
             # filter¸segmentation image to only include tracked spots
             this_segtrack[this_seg == label] = trackID
         else:
-            # Create a 'ball' around spots missing
+            # Create a 'cube' around spots that are missing segmentations
             # print(f'Time {t} -- {i}: {ID}')
             y_low = max(0,y - radius); y_high = min(Y,y + radius)
             x_low = max(0,x - radius); x_high = min(X,x + radius)
             z_low = max(0,z - radius); z_high = min(Z,z + radius)
             this_segtrack[z_low:z_high, y_low:y_high, x_low:x_high] = trackID
-        # segtrack[t,...] = this_segtrack
+        segtrack[t,...] = this_segtrack
 
 io.imsave(path.join('/Users/xies/Desktop/filtered_segmentation.tif'),
       segtrack.astype(np.uint16))

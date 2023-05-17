@@ -15,7 +15,7 @@ import numpy as np
 from scipy.interpolate import UnivariateSpline
 
 def sort_by_day(filename):
-
+    
     # Use a function to regex the Day number and use that to sort
     day = findall('.(\d+)\. Day',filename)
     assert(len(day) == 1)
@@ -31,24 +31,22 @@ def parse_aligned_timecourse_directory(dirname):
     filelist['R'] = sorted(glob(path.join(dirname,'*. Day*/R_align.tif')), key = sort_by_day)
     filelist['R_shg'] = sorted(glob(path.join(dirname,'*. Day*/R_shg_align.tif')), key = sort_by_day)
     T = len(filelist)
-    filelist.index = np.arange(0,T)
-    print(filelist)
+    filelist.index = np.arange(1,T+1)
     
     # t= 0 has no '_align'imp
-    # print(glob(path.join(dirname,'0. Day */B_reg_reg.tif')))
-    # s = pd.Series({'B': glob(path.join(dirname,'0. Day */B_reg.tif'))[0],
-    #                  'G': glob(path.join(dirname,'0. Day */G_reg.tif'))[0],
-    #                  'R': glob(path.join(dirname,'0. Day */R_reg_reg.tif'))[0],
-    #               'R_shg': glob(path.join(dirname,'0. Day */R_shg_reg_reg.tif'))[0]},
-    #               name=0)
+    s = pd.Series({'B': glob(path.join(dirname,'0. Day */B_reg.tif'))[0],
+                      'G': glob(path.join(dirname,'0. Day */G_reg.tif'))[0],
+                      'R': glob(path.join(dirname,'0. Day */R_reg_reg.tif'))[0],
+                  'R_shg': glob(path.join(dirname,'0. Day */R_shg_reg_reg.tif'))[0]},
+                  name=0)
     
-    # filelist = filelist.append(s)
-    # filelist = filelist.sort_index()
+    filelist = filelist.append(s)
+    filelist = filelist.sort_index()
     
-    heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
+    # heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
 
-    if len(heightmaps) == len(filelist):
-        filelist['Heightmap'] = heightmaps
+    # if len(heightmaps) == len(filelist):
+    #     filelist['Heightmap'] = heightmaps
     
     return filelist
 

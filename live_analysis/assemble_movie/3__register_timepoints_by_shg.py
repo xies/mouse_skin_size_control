@@ -42,13 +42,15 @@ manual_Ztarget = {}
 #%% 
 
 XX = 1024
+TT = len(B_tifs)
 
-OVERWRITE = True
+OVERWRITE = False
 
 XY_reg = True
-manual_Ztarget = {6:21}
+manual_Ztarget = {}
 # ,5:9,
-APPLY = True
+APPLY_XY = True
+APPLY_PAD = True
 
 ref_T = 0
 
@@ -73,16 +75,16 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 # for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
-for t in tqdm([5,7]):
+for t in tqdm([15]):
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if APPLY and not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
-        print(f'Skipping t = {t}')
+    if not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
+        print(f'\n Skipping t = {t}')
         continue
     
-    print(f'Working on {R_shg_tifs[t]}')
+    print(f'\n Working on {R_shg_tifs[t]}')
     #Load the target
     R_shg_target = io.imread(R_shg_tifs[t]).astype(float)
     
@@ -123,7 +125,7 @@ for t in tqdm([5,7]):
             T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
             XY_matrices[t] = T
         
-        if APPLY:
+        if APPLY_XY:
             print('Applying transformation matrices')
             # Apply transformation matrix to each stacks
             
@@ -134,7 +136,7 @@ for t in tqdm([5,7]):
                 R_transformed[i,...] = sr.transform(R_slice,tmat=T)
                 R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...],tmat=T)
         
-    if APPLY:
+    if APPLY_PAD:
         # Z-pad the time point in reference to t - 1
         Z_target = R_shg_target.shape[0]
     
@@ -182,9 +184,7 @@ for t in tqdm([5,7]):
         io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
-XY_matrices[2] = 'manual'
-XY_matrices[5] = 'manual'
-XY_matrices[7] = 'manual'
+
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
