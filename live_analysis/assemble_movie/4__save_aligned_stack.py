@@ -31,17 +31,17 @@ R_shg = []
 
 for t in tqdm(range(len(filelist))):
     
-    # G_ = io.imread(filelist.loc[t,'G'])
-    # G.append(G_)
+    G_ = io.imread(filelist.loc[t,'G'])
+    G.append(G_)
     R_ = io.imread(filelist.loc[t,'R'])
     R.append(R_)
-    # R_shg_ = io.imread(filelist.loc[t,'R_shg'])
-    # R_shg.append(R_shg_)
+    R_shg_ = io.imread(filelist.loc[t,'R_shg'])
+    R_shg.append(R_shg_)
     
 print('Saving ...')
-# io.imsave(path.join(dirname,f'master_stack/G.tif'), np.stack(G).astype(np.uint16))
+io.imsave(path.join(dirname,f'master_stack/G.tif'), np.stack(G).astype(np.uint16))
 io.imsave(path.join(dirname,f'master_stack/R.tif'), np.stack(R).astype(np.uint16))
-# io.imsave(path.join(dirname,f'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
+io.imsave(path.join(dirname,f'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
    
 
 #%% Save individual day*.tif into the same directory

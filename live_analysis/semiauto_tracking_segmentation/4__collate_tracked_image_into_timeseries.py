@@ -23,10 +23,12 @@ dirnames = {}
 # dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
 # dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+# dirnames['WT R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 # dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 dirnames['RBKO R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+# dirnames['RBKO R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 
 dx = 0.2920097/1.5
@@ -42,7 +44,7 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         y = y[:-1]
     plt.plot(t,y)
     
-limit = {'WT R1':50,'WT R2':50,'RBKO R1':71,'RBKO R2':56,'RBKO R3':75}
+limit = {'WT R1':50,'WT R2':50,'WT R3':66,'RBKO R1':71,'RBKO R2':56,'RBKO R3':81, 'RBKO R4':53}
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -55,9 +57,10 @@ for name,dirname in dirnames.items():
     
     #% Re-construct tracks with manually fixed tracking/segmentation
     if RECALCULATE:
-            
+        
         # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif'))
+        # manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif')) 
+        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_curated_clahe.tif'))
         frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
         # for t in tqdm(range(17)):
@@ -138,7 +141,7 @@ for name,dirname in dirnames.items():
         with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
             pkl.dump(tracks,file)
     
-    #% Load cell cycle annotations
+    #% Load volume annotations
     with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
@@ -193,6 +196,12 @@ for name,dirname in dirnames.items():
         birth_size_normal = np.nan
         div_size_normal = np.nan
         s_size_normal = np.nan
+        birth_size_interp = np.nan
+        birth_size_normal_interp = np.nan
+        s_size_interp = np.nan
+        s_size_normal_interp = np.nan
+        div_size_interp = np.nan
+        div_size_normal_interp = np.nan
         
         g1_length = np.nan
         total_length = np.nan
@@ -279,7 +288,12 @@ for name,dirname in dirnames.items():
                     # ,'Total growth':div_size - birth_size
                     # ,'G1 growth normal':s_size_normal - birth_size_normal
                     # ,'Total growth normal':div_size_normal - birth_size_normal
-                    })
+                    })                    
+
+    # Save to the manual folder    
+    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+        pkl.dump(tracks,file)
+
     df = pd.DataFrame(df)
     
     df['G1 growth'] = df['S phase entry size'] - df['Birth size']
@@ -291,7 +305,7 @@ for name,dirname in dirnames.items():
     df['G1 growth normal interp'] = df['S phase entry size normal interp'] - df['Birth size normal interp']
     df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
     
-    df.to_csv(path.join(dirname,'dataframe.csv'))
+    df.to_csv(path.join(dirname,'manual_tracking/dataframe.csv'))
 
 
 #%% basic plotting

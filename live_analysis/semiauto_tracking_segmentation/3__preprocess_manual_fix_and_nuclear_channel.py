@@ -19,26 +19,23 @@ from scipy import ndimage
 
 from basicUtils import draw_gate,gate_on_selector
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
-
-dx = 0.2920097
-# dx = 1
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 OVERWRITE = True
 
 #%% Renormalize volume for each movie frame
 
-im = io.imread(path.join(dirname,'master_stack/R.tif'))
+# im = io.imread(path.join(dirname,'master_stack/R.tif'))
 
 _tmp = []
-for t in tqdm(range(17)):
-    #@todo: load R channel to get FUCCI-high cells
-    # im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
+for t in tqdm(range(14)):
+
     basal_seg = io.imread(path.join(dirname,f'cellpose_pruned/t{t}_manual.tif'))
     R = im[t,...]
     
-    this_frame = pd.DataFrame(measure.regionprops_table(basal_seg,intensity_image=R, properties=['area','label','intensity_mean']))
+    this_frame = pd.DataFrame(measure.regionprops_table(basal_seg,intensity_image=R,properties=['area','label',
+                                                                                          'intensity_mean']))
     this_frame['Frame'] = t
     _tmp.append(this_frame)
     

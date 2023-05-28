@@ -16,9 +16,9 @@ from pystackreg import StackReg
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F7 RBWT p107 het/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -27,7 +27,7 @@ def sort_by_day(filename):
     day = day.groups()[0]
     return float(day)
 
-manual_targetZ = {}
+manual_targetZ = {8:12}
 # Grab all registered B/R tifs
 B_tifs = sorted(glob(path.join(dirname,'*. Day*/B_reg.tif')),key=sort_by_day)
 G_tifs = sorted(glob(path.join(dirname,'*. Day*/G_reg.tif')),key=sort_by_day)
@@ -40,16 +40,16 @@ XX = 1024
 
 OVERWRITE = False
 
-# assert(len(B_tifs) == len(R_tifs))
+assert(len(B_tifs) == len(R_tifs))
 
-# for t in range(len(B_tifs)):
-t = 15
+for t in [8]:
+# t = 15
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    # if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
-    # # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
-    #     print(f'Skipping t = {t} because its R_reg_reg.tif already exists')
-    #     continue
+    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
+    # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
+        print(f'Skipping t = {t} because its R_reg_reg.tif already exists')
+        continue
     
     print(f'\n--- Started t = {t} ---')
     B = io.imread(B_tifs[t])
@@ -60,8 +60,7 @@ t = 15
     print('Done reading images')
     
     # Find the slice with maximum mean value in R_shg channel
-    # Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
-    Imax = 7
+    Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
     R_ref = R_shg[Imax,...]
     R_ref = filters.gaussian(R_ref,sigma=0.5)
     
@@ -85,15 +84,7 @@ t = 15
     #NB: Here, move the R channel wrt the B channel
     print('StackReg + transform')
     sr = StackReg(StackReg.RIGID_BODY)
-    T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices
-    
-    R_transformed = np.zeros_like(R).astype(float)
-    R_shg_transformed = np.zeros_like(R).astype(float)
-    for i, R_slice in enumerate(R):
-        R_transformed[i,...] = sr.transform(R_slice,tmat=T)
-        R_shg_transformed[i,...] = sr.transform(R_shg[i,...],tmat=T)
-    
-    
+    T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
     output_dir = path.dirname(B_tifs[t])
     # io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16),check_contrast=False)
     # io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16),check_contrast=False)

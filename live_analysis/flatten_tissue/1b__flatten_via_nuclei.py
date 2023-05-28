@@ -20,23 +20,18 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1/'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
 XX = 1024
 ZZ = 95
-T = 19
 channel2use = 'R_shg'
 TT = len(filelist)
 
 imstack = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
-
-#%%
-
-XX = 1024
 
 #%%
 
@@ -50,7 +45,7 @@ z_shift = 0
 
 OVERWRITE = True
 
-for t in tqdm([16]):
+for t in tqdm(range(TT)):
 
     # im = io.imread(filelist.loc[t,channel2use])
     im = imstack[t,...]
@@ -75,7 +70,7 @@ for t in tqdm([16]):
     #     for y in range(XX):
     #         im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
             
-    io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
     
     
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
@@ -86,7 +81,6 @@ for t in tqdm([16]):
     heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
     heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
     
-    io.imsave(path.join(dirname,f'Image flattening/xyz_blur_diff/t{t}.tif'), util.img_as_uint((_tmp_diff)/_tmp_diff.max()),check_contrast=False)
     io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), heightmap.astype(np.uint16),check_contrast=False)
     
     # Reconstruct flattened movie

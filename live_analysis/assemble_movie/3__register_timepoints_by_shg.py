@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -34,8 +34,8 @@ G_tifs = sorted(glob(path.join(dirname,'*Day*/G_reg.tif')),key=sort_by_day)
 R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/R_shg_reg_reg.tif')),key=sort_by_day)
 R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
 
-assert(len(G_tifs) == len(R_tifs))
-assert(len(G_tifs) == len(R_shg_tifs))
+# assert(len(G_tifs) == len(R_tifs))
+# assert(len(G_tifs) == len(R_shg_tifs))
 
 manual_Ztarget = {}
 
@@ -44,10 +44,10 @@ manual_Ztarget = {}
 XX = 1024
 TT = len(B_tifs)
 
-OVERWRITE = False
+OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {}
+manual_Ztarget = {10:6}
 # ,5:9,
 APPLY_XY = True
 APPLY_PAD = True
@@ -74,8 +74,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-# for t in tqdm( np.arange(0,len(G_tifs)) ): # 0-indexed
-for t in tqdm([15]):
+for t in tqdm( [10] ): # 0-indexed
     if t == ref_T:
         continue
     
@@ -91,7 +90,8 @@ for t in tqdm([15]):
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
     if t in z_pos_in_original.keys() and not OVERWRITE:
-        I_max_target = z_pos_in_original[t]
+        Imax_target = z_pos_in_original[t]
+        print('Target z-slice is pre-defined at {Imax_target}')
     else:
         if t in manual_Ztarget.keys():
             Imax_target = manual_Ztarget[t]
