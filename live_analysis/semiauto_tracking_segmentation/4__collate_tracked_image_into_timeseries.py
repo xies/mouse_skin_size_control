@@ -20,14 +20,13 @@ import pickle as pkl
 from twophotonUtils import smooth_growth_curve
 
 dirnames = {}
-# dirnames['WT R2'] = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1/'
-# dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 # dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-dirnames['RBKO R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+# dirnames['RBKO R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 
@@ -44,7 +43,9 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         y = y[:-1]
     plt.plot(t,y)
     
-limit = {'WT R1':50,'WT R2':50,'WT R3':66,'RBKO R1':71,'RBKO R2':56,'RBKO R3':81, 'RBKO R4':53}
+limit = {'WT R1':103,'WT R2':103,'WT R3':66,'RBKO R1':110,'RBKO R2':56,'RBKO R3':85, 'RBKO R4':53}
+
+mode = 'curated'
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
@@ -60,7 +61,7 @@ for name,dirname in dirnames.items():
         
         # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
         # manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif')) 
-        manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_curated_clahe.tif'))
+        manual_segs = io.imread(path.join(dirname,f'manual_tracking/{mode}_clahe.tif'))
         frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
         # for t in tqdm(range(17)):
@@ -138,11 +139,11 @@ for name,dirname in dirnames.items():
                 tracks[i] = track
         
         # Save to the manual folder    
-        with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+        with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'wb') as file:
             pkl.dump(tracks,file)
     
     #% Load volume annotations
-    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
+    with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
     # Load excel annotations of cell cycle
@@ -174,6 +175,8 @@ for name,dirname in dirnames.items():
             #     track.loc[track['Frame'] == this_anno.Division,'Phase'] = 'Division'
             
             track['Mitosis'] = this_anno['Mitosis?'] == 'Yes'
+            if track.iloc[0]['Mitosis']:
+                track.loc[track['Frame'] == this_anno.Division,'Volume'] = np.nan
         
         track['Volume interp'] = smooth_growth_curve(track,y='Volume')
         track['Volume normal interp'] = smooth_growth_curve(track,y='Volume normal')
@@ -308,7 +311,7 @@ for name,dirname in dirnames.items():
     df.to_csv(path.join(dirname,'manual_tracking/dataframe.csv'))
 
 
-#%% basic plotting
+sb#%% basic plotting
 
 
 

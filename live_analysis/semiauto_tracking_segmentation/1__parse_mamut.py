@@ -148,7 +148,7 @@ def construct_data_frame(cycling_tracks,cycling_links, cycling_spots):
 
 dirnames = []
 # dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1')
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1')
+dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1')
 
 all_tracks = []
 for dirname in dirnames:
