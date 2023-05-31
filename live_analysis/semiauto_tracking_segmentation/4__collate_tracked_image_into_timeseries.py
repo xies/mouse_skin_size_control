@@ -20,18 +20,23 @@ import pickle as pkl
 from twophotonUtils import smooth_growth_curve
 
 dirnames = {}
-dirnames['WT R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-dirnames['WT R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-# dirnames['WT R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+# dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
-# dirnames['RBKO R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-# dirnames['RBKO R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-
-dx = 0.2920097/1.5
-# dx = 1
+dx = {}
+dx['WT_R1'] = 0.2920097/1.5
+dx['WT_R2'] = 0.2920097/1.5
+dx['WT_R3'] = 0.206814922817745/1.5
+dx['RBKO_R1'] = 0.2920097/1.5
+dx['RBKO_R2'] = 0.2920097/1.5
+dx['RBKO_R3'] = 0.206814922817745/1.5
+dx['RBKO_R4'] = 0.206814922817745/1.5
 
 RECALCULATE = True
 
@@ -43,16 +48,16 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         y = y[:-1]
     plt.plot(t,y)
     
-limit = {'WT R1':103,'WT R2':103,'WT R3':66,'RBKO R1':110,'RBKO R2':56,'RBKO R3':85, 'RBKO R4':53}
+limit = {'WT_R1':51,'WT_R2':103,'WT_R3':66,'RBKO_R1':60,'RBKO_R2':52,'RBKO_R3':85, 'RBKO_R4':53}
 
-mode = 'curated'
+mode = 'manual'
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
 
 for name,dirname in dirnames.items():
     
-    print(f'Working on {name}')
+    print(f'---- Working on {name} ----')
     
     genotype = name.split(' ')[0]
     
@@ -98,7 +103,7 @@ for name,dirname in dirnames.items():
                 if volume == 1000:
                     volume = np.nan
                     thresholded_volume = np.nan
-                volume = volume * dx**2
+                volume = volume * dx[name]**2
                 
                 # Measurement from intensity image(s)
                 h2b_this_frame = G[frame,...]
@@ -109,7 +114,7 @@ for name,dirname in dirnames.items():
                 
                 track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume
                                            # ,'Volume thresh': thresholded_volume
-                                           ,'Volume normal': volume / (frame_averages.loc[frame] * dx**2)
+                                           ,'Volume normal': volume / (frame_averages.loc[frame] * dx[name]**2)
                                            # ,'H2b mean':h2b_mean
                                            ,'FUCCI mean':fucci_mean},index=[frame]))
             
@@ -139,16 +144,16 @@ for name,dirname in dirnames.items():
                 tracks[i] = track
         
         # Save to the manual folder    
-        with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'wb') as file:
+        with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
             pkl.dump(tracks,file)
     
     #% Load volume annotations
-    with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'rb') as file:
+    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
     # Load excel annotations of cell cycle
     # Also smooth volume curve from existing raw curves
-    filename = path.join(dirname,'cell_cycle_annotations.xlsx')
+    filename = path.join(dirname,f'{name}_cell_cycle_annotations.xlsx')
     anno = pd.read_excel(filename,usecols=range(5),index_col=0)
     for track in tracks:
         
@@ -182,11 +187,11 @@ for name,dirname in dirnames.items():
         track['Volume normal interp'] = smooth_growth_curve(track,y='Volume normal')
     
     # Save to the manual folder    
-    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
         pkl.dump(tracks,file)
 
     
-    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'rb') as file:
+    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
     # Construct the cell-centric metadata dataframe
@@ -294,7 +299,7 @@ for name,dirname in dirnames.items():
                     })                    
 
     # Save to the manual folder    
-    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed.pkl'),'wb') as file:
+    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
         pkl.dump(tracks,file)
 
     df = pd.DataFrame(df)
@@ -308,10 +313,11 @@ for name,dirname in dirnames.items():
     df['G1 growth normal interp'] = df['S phase entry size normal interp'] - df['Birth size normal interp']
     df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
     
-    df.to_csv(path.join(dirname,'manual_tracking/dataframe.csv'))
+    
+    df.to_csv(path.join(dirname,f'{name}_manual_tracking/dataframe_{mode}.csv'))
 
 
-sb#%% basic plotting
+#%% basic plotting
 
 
 

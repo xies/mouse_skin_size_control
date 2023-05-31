@@ -38,11 +38,11 @@ R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 
 XX = 1024
 
-OVERWRITE = False
+OVERWRITE = True
 
 assert(len(B_tifs) == len(R_tifs))
 
-for t in [8]:
+for t in [10]:
 # t = 15
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
@@ -85,10 +85,13 @@ for t in [8]:
     print('StackReg + transform')
     sr = StackReg(StackReg.RIGID_BODY)
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
-    output_dir = path.dirname(B_tifs[t])
-    # io.imsave(path.join(output_dir,'B_reg_reg.tif'),B_transformed.astype(np.int16),check_contrast=False)
-    # io.imsave(path.join(output_dir,'G_reg_reg.tif'),G_transformed.astype(np.int16),check_contrast=False)
-    
+
+    R_transformed = np.zeros_like(R).astype(float)
+    R_shg_transformed = np.zeros_like(R).astype(float)
+    for i, R_slice in enumerate(R):
+        R_transformed[i,...] = sr.transform(R_slice,tmat=T)
+        R_shg_transformed[i,...] = sr.transform(R_shg[i,...],tmat=T)
+
     print('Padding')
     # Z-pad the red + red_shg channel using Imax and Iz
     bottom_padding = Iz - Imax

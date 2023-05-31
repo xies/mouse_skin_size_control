@@ -26,15 +26,21 @@ dirnames = {}
 dirnames['WT1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 dirnames['WT3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+# dirnames['WT4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+
 # dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1'
 
-dirnames['RBKO1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+# dirnames['RBKO1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 dirnames['RBKO3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 genotypes = {'WT1':'WT','WT2':'WT','WT3':'WT',
              'RBKO1':'RBKO','RBKO2':'RBKO','RBKO3':'RBKO','RBKO4':'RBKO'}
+
+
+
+mode = 'manual'
 
 #%%
 
@@ -43,7 +49,7 @@ all_ts = []
 regions = []
 for name,dirname in dirnames.items():
     
-    with open(path.join(dirname,'manual_tracking','complete_cycles_fixed_curated.pkl'),'rb') as file:
+    with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
     for t in tracks:
@@ -58,11 +64,12 @@ for name,dirname in dirnames.items():
         
     all_ts.append(tracks)
     
-    df = pd.read_csv(path.join(dirname,'manual_tracking/dataframe_curated.csv'),index_col=0)
+    df = pd.read_csv(path.join(dirname,f'manual_tracking/dataframe_{mode}.csv'),index_col=0)
     df['Division size'] = df['Birth size'] + df['Total growth']
     df['S entry size'] = df['Birth size'] + df['G1 growth']
     df['Log birth size'] = np.log(df['Birth size'])
     df['Fold grown'] = df['Division size'] / df['Birth size']
+    df['SG2 growth'] = df['Total growth'] - df['G1 growth']
     regions.append(df)
 
 df_all = pd.concat(regions,ignore_index=True)
@@ -70,6 +77,8 @@ all_ts = pd.concat(all_ts,ignore_index=True)
 
 wt = df_all[df_all['Genotype'] == 'WT']
 rbko = df_all[df_all['Genotype'] == 'RBKO']
+
+sb.lmplot(df_all,x='Birth size',y='G1 growth',hue='Region')
 
 #%%
 
