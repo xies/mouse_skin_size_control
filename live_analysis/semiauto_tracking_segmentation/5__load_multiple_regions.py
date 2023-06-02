@@ -23,24 +23,32 @@ from basicUtils import *
 
 
 dirnames = {}
-dirnames['WT1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-dirnames['WT3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
-# dirnames['WT4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+# dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirnames['WT2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M1 WT/R1'
+dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-# dirnames['RBKO1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-dirnames['RBKO3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+mouse = {'WT_R1':'WT_M1','WT_R2':'WT_M1','RBKO_R1':'RBKO_M2','RBKO_R2':'RBKO_M2'
+         ,'WT_R3':'WT_M3','WT_R4':'WT_M3','RBKO_R3':'RBKO_M4','RBKO_R4':'RBKO_M4'}
 
-genotypes = {'WT1':'WT','WT2':'WT','WT3':'WT',
-             'RBKO1':'RBKO','RBKO2':'RBKO','RBKO3':'RBKO','RBKO4':'RBKO'}
+pairs = {'WT_M1':'Pair 1','RBKO_M2':'Pair 1','WT_M3':'Pair 2','RBKO_M4':'Pair 2'}
+
+dx = {}
+dx['WT_R1'] = 0.2920097/1.5
+dx['WT_R2'] = 0.2920097/1.5
+dx['WT_R3'] = 0.165243202683616/1.5
+dx['RBKO_R1'] = 0.2920097/1.5
+dx['RBKO_R2'] = 0.2920097/1.5
+dx['RBKO_R3'] = 0.165243202683616/1.5
+dx['RBKO_R4'] = 0.165243202683616/1.5
 
 
-
-mode = 'manual'
+mode = 'curated'
 
 #%%
 
@@ -49,27 +57,30 @@ all_ts = []
 regions = []
 for name,dirname in dirnames.items():
     
-    with open(path.join(dirname,'manual_tracking',f'complete_cycles_fixed_{mode}.pkl'),'rb') as file:
+    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
         tracks = pkl.load(file)
     
     for t in tracks:
         t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
         # t['Volume interp'] = smooth_growth_curve
-    
+        t['Genotype'] = name.split('_')[0]
+        t['Region'] = name
+        t['Mouse'] = mouse[name]
+        t['Pair'] = pairs[mouse[name]]
+        t['Volume'] = t['Volume'] / dx[name]**2
+        
     all_tracks.append(tracks)
     
-    tracks = pd.concat(tracks)
-    tracks['Genotype'] = genotypes[name]
-    tracks['Region'] = name
-        
-    all_ts.append(tracks)
+    all_ts.append(pd.concat(tracks))
     
-    df = pd.read_csv(path.join(dirname,f'manual_tracking/dataframe_{mode}.csv'),index_col=0)
+    df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
     df['Division size'] = df['Birth size'] + df['Total growth']
     df['S entry size'] = df['Birth size'] + df['G1 growth']
     df['Log birth size'] = np.log(df['Birth size'])
     df['Fold grown'] = df['Division size'] / df['Birth size']
     df['SG2 growth'] = df['Total growth'] - df['G1 growth']
+    df['Mouse'] = mouse[name]
+    df['Pair'] = pairs[mouse[name]]
     regions.append(df)
 
 df_all = pd.concat(regions,ignore_index=True)
@@ -78,7 +89,17 @@ all_ts = pd.concat(all_ts,ignore_index=True)
 wt = df_all[df_all['Genotype'] == 'WT']
 rbko = df_all[df_all['Genotype'] == 'RBKO']
 
-sb.lmplot(df_all,x='Birth size',y='G1 growth',hue='Region')
+sb.lmplot(df_all,x='Birth size',y='Total growth normal',hue='Mouse',row='Pair')
+
+#%%
+
+color = {'WT':'r','RBKO':'b'}
+for tracks in all_tracks:
+    
+    for t in tracks:
+        plt.plot(t.Frame,t['Volume normal'],color=color[t.iloc[0]['Genotype']],alpha=0.1)
+    
+    
 
 #%%
 

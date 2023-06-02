@@ -20,25 +20,31 @@ import pickle as pkl
 from twophotonUtils import smooth_growth_curve
 
 dirnames = {}
-# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-# dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
-# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 dx = {}
 dx['WT_R1'] = 0.2920097/1.5
 dx['WT_R2'] = 0.2920097/1.5
-dx['WT_R3'] = 0.206814922817745/1.5
+dx['WT_R3'] = 0.165243202683616/1.5
 dx['RBKO_R1'] = 0.2920097/1.5
 dx['RBKO_R2'] = 0.2920097/1.5
-dx['RBKO_R3'] = 0.206814922817745/1.5
-dx['RBKO_R4'] = 0.206814922817745/1.5
+dx['RBKO_R3'] = 0.165243202683616/1.5
+dx['RBKO_R4'] = 0.165243202683616/1.5
+
+0.206814922817745
 
 RECALCULATE = True
+
+
+#%%
+
 
 def plot_cell_volume(track,x='Frame',y='Volume'):
     t = track[x]
@@ -48,24 +54,38 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
         y = y[:-1]
     plt.plot(t,y)
     
-limit = {'WT_R1':51,'WT_R2':103,'WT_R3':66,'RBKO_R1':60,'RBKO_R2':52,'RBKO_R3':85, 'RBKO_R4':53}
+limit = {'WT_R1':51,'WT_R2':50,'WT_R3':66,'RBKO_R1':60,'RBKO_R2':89,'RBKO_R3':85, 'RBKO_R4':100}
 
-mode = 'manual'
+mode = 'curated'
 
+
+#%%
+
+
+#% Load volume annotations
+with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
+    tracks = pkl.load(file)
+    
+def 
+    
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
 
 for name,dirname in dirnames.items():
     
-    print(f'---- Working on {name} ----')
+    print(f'---- Working on {name} {mode} ----')
     
-    genotype = name.split(' ')[0]
+    genotype = name.split('_')[0]
     
     #% Re-construct tracks with manually fixed tracking/segmentation
     if RECALCULATE:
         
-        # filtered_segs = io.imread(path.join(dirname,'manual_tracking/filtered_segmentation.tif'))
-        # manual_segs = io.imread(path.join(dirname,'manual_tracking/manual_tracking_clahe.tif')) 
+        # Construct pathnames
+        paths = {}
+        df['Segmentation'] = path.join(f'manual_tracking/{mode}_clahe.tif')
+        df['H2b'] = path.join(dirname,'master_stack/G.tif')
+        df['FUCCI'] = path.join(dirname,'master_stack/R.tif')
+        
         manual_segs = io.imread(path.join(dirname,f'manual_tracking/{mode}_clahe.tif'))
         frame_averages = pd.read_csv(path.join(dirname,'high_fucci_avg_size.csv'))
         frame_averages = frame_averages.groupby('Frame').mean()['area']
@@ -74,9 +94,10 @@ for name,dirname in dirnames.items():
         
         G = io.imread(path.join(dirname,'master_stack/G.tif'))
         R = io.imread(path.join(dirname,'master_stack/R.tif'))
+        
+        
         # G_th = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
         print('Loaded images')
-        
         trackIDs = np.unique(manual_segs)
         
         tracks = []
@@ -103,7 +124,7 @@ for name,dirname in dirnames.items():
                 if volume == 1000:
                     volume = np.nan
                     thresholded_volume = np.nan
-                volume = volume * dx[name]**2
+                volume = volume 
                 
                 # Measurement from intensity image(s)
                 h2b_this_frame = G[frame,...]
@@ -112,7 +133,8 @@ for name,dirname in dirnames.items():
                 fucci_this_frame = R[frame,...]
                 fucci_mean = fucci_this_frame[this_frame].mean()
                 
-                track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume':volume
+                track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume pixels':volume
+                                           ,'Volume': volume* dx[name]**2
                                            # ,'Volume thresh': thresholded_volume
                                            ,'Volume normal': volume / (frame_averages.loc[frame] * dx[name]**2)
                                            # ,'H2b mean':h2b_mean
@@ -314,7 +336,7 @@ for name,dirname in dirnames.items():
     df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
     
     
-    df.to_csv(path.join(dirname,f'{name}_manual_tracking/dataframe_{mode}.csv'))
+    df.to_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'))
 
 
 #%% basic plotting
