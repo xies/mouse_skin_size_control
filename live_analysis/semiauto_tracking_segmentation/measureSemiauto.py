@@ -54,11 +54,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     
     # Parse the cell cycle annotation only to figure out where to stop
     anno = pd.read_excel(pathdict['Cell cycle annotations'],usecols=range(5),index_col=0,sheet_name=mode)
-    limit = anno.index.max()
-    
-    trackIDs = np.unique(manual_segs)
-    trackIDs = trackIDs[trackIDs > 0] # Nonzero
-    trackIDs[trackIDs > limit] = 0 # Smaller than the max annotation
+    trackIDs = anno.index
     
     tracks = []
     print('Working on each trackID...')
@@ -330,15 +326,25 @@ def recalibrate_pixel_size(tracks,cell_table,new_dx):
         
         t['Volume'] = t['Volume'] * rescaling_factor
         t['Volume interp'] = t['Volume interp'] * rescaling_factor
+        t['um_per_px'] = new_dx
         tracks[i] = t
         
     cell_table['Birth size'] = cell_table['Birth size'] * rescaling_factor
-    cell_table['S phase entry size'] = cell_table[' phase entry size'] * rescaling_factor
+    cell_table['S phase entry size'] = cell_table['S phase entry size'] * rescaling_factor
     cell_table['Division size'] = cell_table['Division size'] * rescaling_factor
     
+    cell_table['Birth size interp'] = cell_table['Birth size interp'] * rescaling_factor
+    cell_table['S phase entry size interp'] = cell_table['S phase entry size interp'] * rescaling_factor
+    cell_table['Division size interp'] = cell_table['Division size interp'] * rescaling_factor
     
+    cell_table['G1 growth'] = cell_table['S phase entry size'] - cell_table['Birth size']
+    cell_table['G1 growth interp'] = cell_table['S phase entry size interp'] - cell_table['Birth size interp']
+    cell_table['Total growth'] = cell_table['Division size'] - cell_table['Birth size']
+    cell_table['Total growth interp'] = cell_table['Division size interp'] - cell_table['Birth size interp']
     
-    cell_table['Birth size'] = cell_table['Birth size'] * rescaling_factor
+    cell_table['um_per_px'] = new_dx
+    
+    return tracks,cell_table
     
     
     
