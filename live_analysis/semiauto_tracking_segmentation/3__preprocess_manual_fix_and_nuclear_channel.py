@@ -19,7 +19,7 @@ from scipy import ndimage
 
 from basicUtils import draw_gate,gate_on_selector
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
 OVERWRITE = True
@@ -29,7 +29,7 @@ OVERWRITE = True
 im = io.imread(path.join(dirname,'master_stack/R.tif'))
 
 _tmp = []
-for t in tqdm(range(17)):
+for t in tqdm(range(15)):
 
     basal_seg = io.imread(path.join(dirname,f'cellpose_pruned/t{t}_manual.tif'))
     R = im[t,...]

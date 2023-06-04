@@ -47,41 +47,39 @@ dx['RBKO_R2'] = 0.206814922817744/1.5
 dx['RBKO_R3'] = 0.165243202683616/1.5
 dx['RBKO_R4'] = 0.165243202683616/1.5
 
-
-mode = 'curated'
-
 #%%
 
 all_tracks = []
 all_ts = []
 regions = []
 for name,dirname in dirnames.items():
-    
-    with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
-        tracks = pkl.load(file)
-    
-    for t in tracks:
-        t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
-        # t['Volume interp'] = smooth_growth_curve
-        t['Genotype'] = name.split('_')[0]
-        t['Region'] = name
-        t['Mouse'] = mouse[name]
-        t['Pair'] = pairs[mouse[name]]
-        t['Volume'] = t['Volume'] / dx[name]**2
+    for mode in ['curated','manual']:
         
-    all_tracks.append(tracks)
-    
-    all_ts.append(pd.concat(tracks))
-    
-    df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
-    df['Division size'] = df['Birth size'] + df['Total growth']
-    df['S entry size'] = df['Birth size'] + df['G1 growth']
-    df['Log birth size'] = np.log(df['Birth size'])
-    df['Fold grown'] = df['Division size'] / df['Birth size']
-    df['SG2 growth'] = df['Total growth'] - df['G1 growth']
-    df['Mouse'] = mouse[name]
-    df['Pair'] = pairs[mouse[name]]
-    regions.append(df)
+        with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
+            tracks = pkl.load(file)
+        
+        for t in tracks:
+            t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
+            # t['Volume interp'] = smooth_growth_curve
+            t['Genotype'] = name.split('_')[0]
+            t['Region'] = name
+            t['Mouse'] = mouse[name]
+            t['Pair'] = pairs[mouse[name]]
+            t['Volume'] = t['Volume'] / dx[name]**2
+            
+        all_tracks.append(tracks)
+        
+        all_ts.append(pd.concat(tracks))
+        
+        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
+        df['Division size'] = df['Birth size'] + df['Total growth']
+        df['S entry size'] = df['Birth size'] + df['G1 growth']
+        df['Log birth size'] = np.log(df['Birth size']) 
+        df['Fold grown'] = df['Division size'] / df['Birth size']
+        df['SG2 growth'] = df['Total growth'] - df['G1 growth']
+        df['Mouse'] = mouse[name]
+        df['Pair'] = pairs[mouse[name]]
+        regions.append(df)
 
 df_all = pd.concat(regions,ignore_index=True)
 all_ts = pd.concat(all_ts,ignore_index=True)
@@ -89,7 +87,7 @@ all_ts = pd.concat(all_ts,ignore_index=True)
 wt = df_all[df_all['Genotype'] == 'WT']
 rbko = df_all[df_all['Genotype'] == 'RBKO']
 
-sb.lmplot(df_all,x='Birth size normal',y='Total growth normal',hue='Mouse',row='Pair')
+sb.lmplot(wt,x='Birth size normal',y='Total growth normal',hue='Mode',row='Pair')
 
 #%%
 

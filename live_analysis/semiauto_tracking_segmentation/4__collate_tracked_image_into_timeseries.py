@@ -10,23 +10,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-from skimage import io, measure, exposure, util, segmentation
-import seaborn as sb
+from skimage import io, util
 from os import path
-from glob import glob
 from tqdm import tqdm
 
 import pickle as pkl
-from twophotonUtils import smooth_growth_curve
 
 from measureSemiauto import measure_track_timeseries_from_segmentations,cell_cycle_annotate,collate_timeseries_into_cell_centric_table
 
 dirnames = {}
-# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-# dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 
-# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
@@ -57,6 +54,7 @@ RECALCULATE = True
 for name,dirname in dirnames.items():
     
     for mode in ['curated','manual']:
+        mode = 'manual'
         print(f'---- Working on {name} {mode} ----')
         
         genotype = name.split('_')[0]
