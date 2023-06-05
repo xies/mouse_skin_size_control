@@ -89,7 +89,7 @@ for ID in tqdm(df['basalID'].unique()):
     
     combined_ = combined_.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'})
     df = pd.concat((df,combined_),ignore_index=True)
-
+    
 df['Dropped'] = False
 
 #%% Construct graph 1) Isolate each single cells and construct a generation branch
@@ -254,7 +254,7 @@ for linID in lineageIDs2merge:
 
 ## Save as pkl intermediate
 with open(path.join(dirname,'manual_basal_tracking_lineage/lineage_trees.pkl'),'wb') as f:
-    pkl.dump(trees,f)
+    pkl.dump((trees,df),f)
 
 #%%
         
