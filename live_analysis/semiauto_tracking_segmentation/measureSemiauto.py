@@ -15,6 +15,11 @@ from tqdm import tqdm
 from twophotonUtils import smooth_growth_curve
 
 
+import warnings
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+
 def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     '''
     Given a dictionary of filenames to: 'Segmentation':tracked labels
@@ -96,18 +101,20 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
                                        ,'H2b mean':h2b_mean
                                        ,'FUCCI mean':fucci_mean},index=[frame]))
         
-        track = pd.concat(track)
-        track['CellID'] = trackID
-        track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
-        track['Region'] = name
-        track['Genotype'] = genotype
-        track['Mouse'] = mouse
-        track['Pair'] = pair
-        track['um_per_px'] = dx
-        track['Directory'] = dirname
-        track['Mode'] = mode
-        
-        tracks.append(track)
+        if len(track) > 0:
+            
+            track = pd.concat(track)
+            track['CellID'] = trackID
+            track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
+            track['Region'] = name
+            track['Genotype'] = genotype
+            track['Mouse'] = mouse
+            track['Pair'] = pair
+            track['um_per_px'] = dx
+            track['Directory'] = dirname
+            track['Mode'] = mode
+            
+            tracks.append(track)
 
         
     print('Detecting missing frames and filling-in...')
