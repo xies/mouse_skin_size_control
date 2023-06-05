@@ -13,6 +13,7 @@ import pandas as pd
 from os import path
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import pickle as pkl
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
@@ -151,9 +152,29 @@ for t in range(TT):
             
             sisterA_basalID = mothers_in_frame.iloc[sister[0]]['basalID']
             sisterB_basalID = mothers_in_frame.iloc[sister[1]]['basalID']
+            
+            sisterA = df[df['basalID'] == sisterA_basalID]
+            sisterB = df[df['basalID'] == sisterB_basalID]
+            
+            # Edit the 'lineageID'
+            new_linID = min(sisterA_basalID,sisterB_basalID)
+            df.loc[df['basalID'] == sisterA_basalID,'LineageID'] = new_linID
+            df.loc[df['basalID'] == sisterB_basalID,'LineageID'] = new_linID
+            
+            # Edit sisterB's mother to be sisterA's mother as well
+            # In table:
+            unified_mother = sisterA[sisterA['Generation'] == 0]
+            mother2update = sisterB[sisterB['Generation'] == 0]
+            df.loc[mother2update.index,'SpotID'] = unified_mother['SpotID']
+            
+            # In the trees:
+            treeB = trees[sisterB_basalID]
+            treeB = nx.relabel_nodes(treeB,{mother2update['SpotID'].iloc[0]:
+                                            unified_mother['SpotID'].iloc[0]})
+            trees[sisterB_basalID] = treeB
     
 
-#%% Link across generations
+#% Link across generations
 
 cellIDs = df['basalID'].unique()
 for ID in tqdm(cellIDs):
@@ -230,9 +251,12 @@ for linID in lineageIDs2merge:
     trees[ID2keep] = combined_tree
     for others in IDs2delete:
         del trees[others]
-    
 
- #%%
+## Save as pkl intermediate
+with open(path.join(dirname,'manual_basal_tracking_lineage/lineage_trees.pkl'),'wb') as f:
+    pkl.dump(trees,f)
+
+#%%
         
             
 
