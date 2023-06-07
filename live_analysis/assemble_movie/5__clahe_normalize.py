@@ -11,7 +11,9 @@ from skimage import io,exposure, filters, util
 from os import path
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
+
 # G = io.imread(path.join(dirname,'master_stack/G.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/Cropped_images/'
 

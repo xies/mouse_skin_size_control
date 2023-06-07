@@ -39,6 +39,7 @@ for t in tqdm(range(TT)):
     cells.append( df )
 
 cells = pd.concat(cells,ignore_index=True)
+cells['basalID generation'] = 1
 cells['Generation'] = 1
 
 # Wrangle the field names
@@ -64,6 +65,7 @@ for ID in tqdm(df['basalID'].unique()):
     mother_['basalID'] = ID
     mother_['LineageID'] = ID
     mother_['Frame'] = mother_frame
+    mother_['basalID generation'] = 0
     mother_['Generation'] = 0
     mother_['SpotID'] = str(SPOT_ID)
     SPOT_ID += 1
@@ -83,6 +85,7 @@ for ID in tqdm(df['basalID'].unique()):
     daughters_ = pd.concat((daughter1_,daughter2_),ignore_index=True)
     daughters_['basalID'] = ID
     daughters_['LineageID'] = ID
+    daughters_['basalID generation'] = 2
     daughters_['Generation'] = 2
     daughters_['Frame'] = daughter_frame
     combined_ = pd.concat((mother_,daughters_),ignore_index=True)
@@ -92,7 +95,7 @@ for ID in tqdm(df['basalID'].unique()):
     
 df['Dropped'] = False
 
-#%% Construct graph 1) Isolate each single cells and construct a generation branch
+#%% Construct graph. 1) Isolate each single cells and construct a generation branch
 
 cellIDs = df['basalID'].unique()
 
@@ -103,10 +106,10 @@ for ID in tqdm(cellIDs):
     
     # Find all 
     tree = nx.DiGraph()
-    c = this_cell[this_cell['Generation'] == 1].sort_values('Frame')
-    m = this_cell[this_cell['Generation'] == 0].iloc[0]
-    d1 = this_cell[this_cell['Generation'] == 2].iloc[0]
-    d2 = this_cell[this_cell['Generation'] == 2].iloc[1]
+    c = this_cell[this_cell['basalID generation'] == 1].sort_values('Frame')
+    m = this_cell[this_cell['basalID generation'] == 0].iloc[0]
+    d1 = this_cell[this_cell['basalID generation'] == 2].iloc[0]
+    d2 = this_cell[this_cell['basalID generation'] == 2].iloc[1]
     
     for idx,row in this_cell.iterrows():
         tree.add_node(row['SpotID'])
@@ -132,14 +135,14 @@ for ID in tqdm(cellIDs):
 naive_df = df.copy()
 naive_trees = trees.copy()
 
-#%% Link sisters that share the same mother coordinate
+#%% Construct graph. 2) Link sisters that share the same mother coordinate
 
 from scipy.spatial import distance_matrix
 df = naive_df.copy()
 trees = naive_trees.copy()
 
 for t in range(TT):
-    mothers_in_frame = df[(df['Generation'] == 0) & (df['Frame'] == t)]
+    mothers_in_frame = df[(df['basalID generation'] == 0) & (df['Frame'] == t)]
     if len(mothers_in_frame)>1:
         coords = mothers_in_frame[['Z','Y','X']].values
         D = distance_matrix(coords,coords)
@@ -163,8 +166,8 @@ for t in range(TT):
             
             # Edit sisterB's mother to be sisterA's mother as well
             # In table:
-            unified_mother = sisterA[sisterA['Generation'] == 0]
-            mother2update = sisterB[sisterB['Generation'] == 0]
+            unified_mother = sisterA[sisterA['basalID generation'] == 0]
+            mother2update = sisterB[sisterB['basalID generation'] == 0]
             df.loc[mother2update.index,'SpotID'] = unified_mother['SpotID']
             
             # In the trees:
@@ -174,21 +177,21 @@ for t in range(TT):
             trees[sisterB_basalID] = treeB
     
 
-#% Link across generations
+#%% Construct graph. 3) Link across generations
 
 cellIDs = df['basalID'].unique()
 for ID in tqdm(cellIDs):
 
     
     this_cell = df[df['basalID'] == ID]
-    c = this_cell[this_cell['Generation'] % 2 == 1].sort_values('Frame')
+    c = this_cell[this_cell['basalID generation'] == 1].sort_values('Frame')
     # m = this_cell[this_cell['Generation'] == 0].iloc[0]
     
     
     last_frame = c.iloc[-1]
     
     # Only look at mothers within this frame
-    daughters_born_next_frame = df[(df['Generation'] == 0) & (df['Frame'] == last_frame.Frame)]
+    daughters_born_next_frame = df[(df['basalID generation'] == 0) & (df['Frame'] == last_frame.Frame)]
     if len(daughters_born_next_frame) > 0: 
         
         D = euclidean_distance(daughters_born_next_frame,last_frame)
@@ -208,7 +211,7 @@ for ID in tqdm(cellIDs):
             
             # 1) Edit the candidate cell's entries
             # Retrieve daughter cell's generation entry and +; amend the LineageID
-            df.loc[df['basalID'] == daughter_basalID,'Generation'] = df.loc[df['basalID'] == daughter_basalID,'Generation']+ 2
+            df.loc[df['basalID'] == daughter_basalID,'Generation'] = df.loc[df['basalID'] == daughter_basalID,'Generation'] + 1
             df.loc[df['basalID'] == daughter_basalID,'LineageID'] = this_cell.iloc[0]['LineageID']
 
             # Edit the tree annotation in daughter so that its mother same SpotID as the current dividing cell
@@ -219,8 +222,8 @@ for ID in tqdm(cellIDs):
             
             # 2) Edit the current cell annotation so that the daughter annotation corresponds to the actual tracked basalID
             # Which daughter is the correct one?
-            d_ = this_cell[this_cell['Generation'] == 2]
-            real_daughter_first_frame = daughter_cell[daughter_cell['Generation']==1].sort_values('Frame').iloc[0]
+            d_ = this_cell[this_cell['basalID generation'] == 2]
+            real_daughter_first_frame = daughter_cell[daughter_cell['basalID generation']==1].sort_values('Frame').iloc[0]
             daughter2edit = d_.iloc[np.where(euclidean_distance(real_daughter_first_frame,d_) == 0)]['SpotID']
             
             # Flag this daughter for drop from dataframe
@@ -229,7 +232,7 @@ for ID in tqdm(cellIDs):
             this_tree = nx.relabel_nodes(this_tree,{daughter2edit.iloc[0]:real_daughter_first_frame['SpotID']})
             trees[ID] = this_tree
             
-#%% Merge trees with the same lineageID
+#%% Construct graph. 4) Merge trees with the same lineageID
 
 basalIDs2merge = set(df['basalID']) - set(df['LineageID'])
 

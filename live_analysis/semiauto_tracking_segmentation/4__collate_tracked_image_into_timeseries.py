@@ -27,16 +27,18 @@ dirnames = {}
 # dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 # dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 dx = {}
 dx['WT_R1'] = 0.206814922817744/1.5
 dx['WT_R2'] = 0.206814922817744/1.5
 dx['WT_R3'] = 0.165243202683616/1.5
+dx['WT_R4'] = 0.165243202683616/1.5
 dx['RBKO_R1'] = 0.206814922817744/1.5
 dx['RBKO_R2'] = 0.206814922817744/1.5
 dx['RBKO_R3'] = 0.165243202683616/1.5
@@ -49,7 +51,6 @@ mouse = {'WT_R1':'WT_M1','WT_R2':'WT_M1','RBKO_R1':'RBKO_M2','RBKO_R2':'RBKO_M2'
 
 pairs = {'WT_M1':'Pair 1','RBKO_M2':'Pair 1','WT_M3':'Pair 2','RBKO_M4':'Pair 2'}
 
-limit = {'WT_R1':51,'WT_R2':50,'WT_R3':66,'RBKO_R1':60,'RBKO_R2':89,'RBKO_R3':85, 'RBKO_R4':100}
 
 RECALCULATE = True
 
@@ -61,6 +62,8 @@ for name,dirname in dirnames.items():
     for mode in ['curated','manual']:
 
         print(f'---- Working on {name} {mode} ----')
+        if name == 'WT_R4' and mode == 'manual':
+            continue
         
         genotype = name.split('_')[0]
         

@@ -47,7 +47,7 @@ TT = len(B_tifs)
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {10:6}
+manual_Ztarget = {11:26,10:6}
 # ,5:9,
 APPLY_XY = True
 APPLY_PAD = True
@@ -74,7 +74,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [10] ): # 0-indexed
+for t in tqdm( [10,11] ): # 0-indexed
     if t == ref_T:
         continue
     

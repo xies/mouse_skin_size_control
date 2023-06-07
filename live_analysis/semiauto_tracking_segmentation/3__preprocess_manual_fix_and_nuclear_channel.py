@@ -19,8 +19,8 @@ from scipy import ndimage
 
 from basicUtils import draw_gate,gate_on_selector
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 OVERWRITE = True
 
@@ -55,7 +55,7 @@ real_cells.to_csv(path.join(dirname,'real_cells_avg_size.csv'))
 
 #%%
 real_cells['FUCCI thresh'] = 'Low'
-fucci_high_selector = draw_gate(real_cells,x='area',y='intensity_mean',alpha=0.05)
+fucci_high_selector = draw_gate(real_cells,x='area',y='intensity_mean',alpha=0.01)
 
 #%%
 I = gate_on_selector(fucci_high_selector,real_cells,'area','intensity_mean')
