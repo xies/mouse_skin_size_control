@@ -19,7 +19,8 @@ import matplotlib.pylab as plt
 import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -47,7 +48,7 @@ TT = len(B_tifs)
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {11:26,10:6}
+manual_Ztarget = {}
 # ,5:9,
 APPLY_XY = True
 APPLY_PAD = True
@@ -74,7 +75,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [10,11] ): # 0-indexed
+for t in tqdm( [4] ): # 0-indexed
     if t == ref_T:
         continue
     

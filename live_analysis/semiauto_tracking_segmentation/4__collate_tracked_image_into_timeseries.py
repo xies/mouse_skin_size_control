@@ -27,9 +27,9 @@ dirnames = {}
 # dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
-dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
@@ -59,7 +59,7 @@ RECALCULATE = True
 
 for name,dirname in dirnames.items():
     
-    for mode in ['curated','manual']:
+    for mode in ['curated']:
 
         print(f'---- Working on {name} {mode} ----')
         if name == 'WT_R4' and mode == 'manual':
@@ -67,33 +67,33 @@ for name,dirname in dirnames.items():
         
         genotype = name.split('_')[0]
         
+        # Construct pathnames
+        pathdict = {}
+        pathdict['Segmentation'] = path.join(dirname,f'manual_tracking/{mode}_clahe.tif')
+        pathdict['H2B'] = path.join(dirname,'master_stack/G.tif')
+        pathdict['FUCCI'] = path.join(dirname,'master_stack/R.tif')
+        pathdict['Frame averages'] = path.join(dirname,'high_fucci_avg_size.csv')
+        pathdict['Cell cycle annotations'] = path.join(dirname,f'{name}_cell_cycle_annotations.xlsx')
+        
+        # Construct metadata
+        metadata = {}
+        metadata['um_per_px'] = dx[name]
+        metadata['Region'] = name
+        metadata['Mouse'] = mouse[name]
+        metadata['Pair'] = pairs[mouse[name]]
+        metadata['Genotype'] = genotype
+        metadata['Mode'] = mode
+        metadata['Dirname'] = dirname
+        
+        
         #% Re-construct tracks with manually fixed tracking/segmentation
-        if RECALCULATE:
-            
-            # Construct pathnames
-            pathdict = {}
-            pathdict['Segmentation'] = path.join(dirname,f'manual_tracking/{mode}_clahe.tif')
-            pathdict['H2B'] = path.join(dirname,'master_stack/G.tif')
-            pathdict['FUCCI'] = path.join(dirname,'master_stack/R.tif')
-            pathdict['Frame averages'] = path.join(dirname,'high_fucci_avg_size.csv')
-            pathdict['Cell cycle annotations'] = path.join(dirname,f'{name}_cell_cycle_annotations.xlsx')
-            
-            # Construct metadata
-            metadata = {}
-            metadata['um_per_px'] = dx[name]
-            metadata['Region'] = name
-            metadata['Mouse'] = mouse[name]
-            metadata['Pair'] = pairs[mouse[name]]
-            metadata['Genotype'] = genotype
-            metadata['Mode'] = mode
-            metadata['Dirname'] = dirname
-            
-            tracks = measure_track_timeseries_from_segmentations(name,pathdict,metadata)
-            tracks = cell_cycle_annotate(tracks,pathdict,metadata)
-            
-            # Save to the manual tracking folder    
-            with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
-                pkl.dump(tracks,file)
+        # if RECALCULATE:
+        tracks = measure_track_timeseries_from_segmentations(name,pathdict,metadata)
+        tracks = cell_cycle_annotate(tracks,pathdict,metadata)
+        
+        # Save to the manual tracking folder    
+        with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
+            pkl.dump(tracks,file)
             
         # Construct the cell-centric metadata dataframe
         df,tracks = collate_timeseries_into_cell_centric_table(tracks,metadata)
