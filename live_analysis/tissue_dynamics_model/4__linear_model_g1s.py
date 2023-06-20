@@ -48,6 +48,9 @@ reg = reg.fit(X_train,y_train)
 
 results = pd.Series(reg.coef_, reg.feature_names_in_)
 results.sort_values().plot.bar()
+plt.tight_layout()
+plt.ylabel('Effect size')
+plt.title('Linear regression for G1S timing')
 
 #%% Cross-validation
 
@@ -76,6 +79,8 @@ for i in tqdm(range(Niter)):
     
 plt.figure()
 plt.hist(Rsq)
+plt.xlabel('R^2')
+plt.title('Linear regression G1/S timing')
 
 mlr = this_model
 result = permutation_importance(
@@ -85,7 +90,8 @@ mlr_importances = pd.Series(result.importances_mean, index=df_g1s.drop(columns=[
 
 plt.figure()
 mlr_importances.plot.bar(yerr=result.importances_std)
-plt.show()
+plt.title('Linear regression G1/S timing')
+plt.ylabel('Permutation importance')
 
 #%% Random forest regression
 
@@ -93,7 +99,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree
 
-Niter = 100
+Niter = 10
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
 importance = np.zeros((Niter,df_g1s.shape[1]-1))
@@ -113,22 +119,52 @@ for i in tqdm(range(Niter)):
     Rsq[i] = np.corrcoef(y_pred,y_test)[0,1]
     importance[i,:] = forest.feature_importances_
     
-plt.hist(Rsq)
+plt.hist(Rsq); plt.xlabel('R-squared'); plt.ylabel('Counts'); plt.title('RF regression model of G1/S timing')
 
 imp = pd.DataFrame(importance)
 imp.columns = df_g1s.columns.drop('time_g1s')
 
 plt.figure()
 sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');
-plt.xticks(rotation=45);plt.ylabel('Importance')
+plt.xticks(rotation=90);plt.ylabel('Importance')
+plt.title('RF regression model of G1/S timing')
+plt.tight_layout()
+
 
 result = permutation_importance(
     forest, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
 )
+
 forest_importances = pd.Series(result.importances_mean, index=df_g1s.drop(columns=['time_g1s']).columns)
 
-forest_importances.plot.bar(yerr=result.importances_std)
+# plt.figure()
+# forest_importances.plot.bar(yerr=result.importances_std)
+# plt.title('RF regression model of G1/S timing')
+# plt.ylabel('Permutation importance')
+# plt.show()
+
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-5:]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-5:]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
 plt.show()
+
+#%%
+
+from numpy import random, corrcoef
+
+Nsample = 100
+
+x = random.lognormal(mean=np.log(72),sigma=sqrt(0.03),size=(Nsample))
+
+bins = np.arange(0,10*24,12)
+
+x_hat = bins[np.digitize(x,bins)]
+
+plt.scatter(x,x_hat)
+Rsq = corrcoef(x,x_hat)[0,1]**2
+plt.title(f'Rsq = {Rsq}')
 
 #%% Use Region1 -> Pred Region2
 

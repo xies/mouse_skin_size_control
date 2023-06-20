@@ -178,16 +178,18 @@ for i in tqdm(range(Niter)):
     C_random[i,:,:] = confusion_matrix(labels,ypred>0.5,normalize='all')
     
     
-plt.hist(AUC)
-plt.hist(AP)
+plt.figure();plt.hist(AUC);plt.xlabel('AUC');plt.title('MLR classification cross-validation, 20% withheld')
+plt.figure();plt.hist(AP);plt.xlabel('Average precision');plt.title('MLR classification cross-validation, 20% withheld')
 
 #%% Random forest classifier
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import plot_tree
+from sklearn import metrics
 
-Niter = 100
+Niter = 10
+frac_withhold = 0.2
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
 importance = np.zeros((Niter,df_g1s.shape[1]))
@@ -216,27 +218,35 @@ for i in tqdm(range(Niter)):
     AUC[i] = metrics.auc(fpr,tpr)
     AP[i] = metrics.average_precision_score(y_test,y_pred)
     
-plt.hist(AUC); plt.hist(AP)
+plt.figure();plt.hist(AUC);plt.xlabel('AUC');plt.title('RF classification cross-validation, 20% withheld')
+plt.figure();plt.hist(AP);plt.xlabel('Average precision');plt.title('RF classification cross-validation, 20% withheld')
 
+plt.figure()
 imp = pd.DataFrame(importance)
 imp.columns = df_g1s_balanced.columns.drop('G1S_logistic')
 
+imp.mean().plot.bar(yerr=imp.std())
+plt.ylabel('Feature importance (impurity decrease)')
+plt.tight_layout()
+plt.title('RF classify; 20% withheld')
 
-#%%
+#%% RF: Permutation importance
 
 from sklearn.inspection import permutation_importance, partial_dependence
 
 result = permutation_importance(
     forest, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
 )
-forest_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
+forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
 
-forest_importances.plot.bar(yerr=result.importances_std)
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-5:]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-5:]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
 plt.ylabel("Mean accuracy decrease")
 plt.tight_layout()
 plt.show()
 
-#%%
+#%% 
 
 from sklearn.linear_model import LogisticRegression
 
