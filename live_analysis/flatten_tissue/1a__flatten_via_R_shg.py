@@ -18,13 +18,13 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
 XX = 1024
 ZZ = 95
-T = 19
+T = 16
 channel2use = 'R_shg'
 
 #%% Calculate heightmaps
@@ -34,13 +34,13 @@ channel2use = 'R_shg'
 3. Take the arg-maximum of the derivative (within a predefined range) as the Iz stack
 '''
 
-OVERWRITE = False
+OVERWRITE = True
 
-XY_sigma = 25
-Z_sigma = 3
+XY_sigma = 30
+Z_sigma = 10
 
-TOP_Z_BOUND = 60
-BOTTOM_Z_BOUND = 10
+TOP_Z_BOUND = 40
+BOTTOM_Z_BOUND = 5
 
 OFF_SET = 0
 
@@ -48,7 +48,6 @@ z_shift = 0
 
 for t in tqdm(range(T)):
     
-    t = 0 
     f = filelist[channel2use].iloc[t]
     out_dir = path.split(path.dirname(f))[0]
     if path.exists(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) and not OVERWRITE:
@@ -77,16 +76,16 @@ for t in tqdm(range(T)):
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp = im_xyz_blur.copy()
     _tmp[np.isnan(_tmp)] = 0
-    heightmap = np.diff(_tmp,axis=0).argmax(axis=0)
-    heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
-    heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
+    heightmap = np.diff(-_tmp[BOTTOM_Z_BOUND:TOP_Z_BOUND,...],axis=0).argmax(axis=0)
+    heightmap = heightmap + BOTTOM_Z_BOUND
     
     io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), heightmap.astype(np.int16),check_contrast=False)
     # io.imsave(path.join(dirname,f'R1_height_map.tif'), heightmap.astype(np.int16),check_contrast=False)
     
-    # Construct height images
+    # Reconstruct flattened movie
     Iz = np.round(heightmap + z_shift).astype(int)
-    # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
+    
+    # NB: tried using np,take and np.choose, doesn't work bc of size limit. DO NOT use np.take
     flat = np.zeros((XX,XX))
     height_image = np.zeros_like(im)
     for x in range(XX):
@@ -95,7 +94,6 @@ for t in tqdm(range(T)):
             height_image[Iz[y,x],y,x] = 1
     
     io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.int16),check_contrast=False)
-
 
 
 #%% Reconstruct flattened movie and return a boundary image
@@ -108,7 +106,6 @@ OFF_SET = -5
 filelist = parse_timecourse_directory(dirname)
 
 assert('Heightmap' in filelist.columns)
-
     
 for t in tqdm(range(T)):
     if path.exists(path.join(dirname,f'flat/t{t}.tif')) and not OVERWRITE:

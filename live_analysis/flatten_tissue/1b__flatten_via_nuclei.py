@@ -20,7 +20,7 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2/'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
@@ -36,11 +36,11 @@ TT = imstack.shape[0]
 #%%
 
 XY_sigma = 35
-Z_sigma = 8
+Z_sigma = 10
 
 TOP_Z_BOUND = 3
 BOTTOM_Z_BOUND = 50
-
+ 
 z_shift = 0
 
 OVERWRITE = True
@@ -70,7 +70,7 @@ for t in tqdm(range(TT)):
     #     for y in range(XX):
     #         im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
             
-    # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
+    io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
     
     
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position

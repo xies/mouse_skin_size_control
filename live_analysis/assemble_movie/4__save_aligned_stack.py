@@ -19,7 +19,8 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R1'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
@@ -38,9 +39,11 @@ for t in tqdm(range(len(filelist))):
     R_shg_ = io.imread(filelist.loc[t,'R_shg'])
     R_shg.append(R_shg_)
     
-print('Saving ...')
+print('Saving G ...')
 io.imsave(path.join(dirname,f'master_stack/G.tif'), np.stack(G).astype(np.uint16))
+print('Saving R ...')
 io.imsave(path.join(dirname,f'master_stack/R.tif'), np.stack(R).astype(np.uint16))
+print('Saving R_shg ...')
 io.imsave(path.join(dirname,f'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
    
 
