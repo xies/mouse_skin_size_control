@@ -20,7 +20,7 @@ import pickle as pkl
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -48,8 +48,7 @@ TT = len(B_tifs)
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {}
-# ,5:9,
+manual_Ztarget = {1:25,2:29,6:27,7:19,9:16,11:21,12:13,13:30,15:11,16:30}
 APPLY_XY = True
 APPLY_PAD = True
 
@@ -65,7 +64,9 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
 R_shg_ref = io.imread( R_shg_tifs[ref_T] )
 Z_ref = R_shg_ref.shape[ref_T]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
+Imax_ref = 45
 ref_img = R_shg_ref[Imax_ref,...]
+print(f'Reference z-slice: {Imax_ref}')
 
 # variables to save:
 z_pos_in_original[ref_T] = Imax_ref
@@ -75,7 +76,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [4] ): # 0-indexed
+for t in tqdm( [12,13,15]): # 0-indexed
     if t == ref_T:
         continue
     
@@ -92,7 +93,7 @@ for t in tqdm( [4] ): # 0-indexed
     # If specified, use the manually determined ref_z
     if t in z_pos_in_original.keys() and not OVERWRITE:
         Imax_target = z_pos_in_original[t]
-        print('Target z-slice is pre-defined at {Imax_target}')
+        print(f'Target z-slice is pre-defined at {Imax_target}')
     else:
         if t in manual_Ztarget.keys():
             Imax_target = manual_Ztarget[t]

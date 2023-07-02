@@ -16,9 +16,9 @@ from pystackreg import StackReg
 from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F7 RBWT p107 het/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -27,7 +27,7 @@ def sort_by_day(filename):
     day = day.groups()[0]
     return float(day)
 
-manual_targetZ = {8:12}
+manual_targetZ = {1:14,2:27}
 # Grab all registered B/R tifs
 B_tifs = sorted(glob(path.join(dirname,'*. Day*/B_reg.tif')),key=sort_by_day)
 G_tifs = sorted(glob(path.join(dirname,'*. Day*/G_reg.tif')),key=sort_by_day)
@@ -38,11 +38,11 @@ R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
 assert(len(B_tifs) == len(R_tifs))
 
-for t in [10]:
+for t in range(17):
 # t = 15
     
     output_dir = path.split(path.dirname(R_tifs[t]))[0]
