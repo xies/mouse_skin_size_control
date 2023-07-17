@@ -21,7 +21,7 @@ import pickle as pkl
 
 dirnames = {}
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT//R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 # dx = 0.2920097
 dx = 1
@@ -48,7 +48,7 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(16):
+for t in range(17):
     segonly.append(io.imread(path.join(dirname,f'cellpose_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 

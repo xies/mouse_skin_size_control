@@ -16,10 +16,13 @@ from glob import glob
 from tqdm import tqdm
 
 from sklearn.decomposition import PCA
-from mathUtils import z_standardize
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+
+
+def z_standardize(x):
+    return (x - np.nanmean(x))/np.std(x)
 
 def plot_principle_component(df,pca,comp):
     
@@ -34,11 +37,12 @@ def plot_principle_component(df,pca,comp):
 
 #%% NaN check
 
-df_pca = df.drop(columns = ['basalID','CellposeID','G1S frame','Phase','Border','Differentiating',
+df_pca = df.drop(columns = ['basalID','CellposeID','G1S frame','Phase','Border','Differentiating'
                             # 'Mean diff neighbor height','Neighbor mean height frame-2',
-                            'Volume','Growth rate f','Growth rate b',
-                            'Collagen orientation','Basal orientation','Coronal angle','Nuclear planar orientation'
-                            'Z_y','X-pixels_x','Y-pixels_x','X-pixels_y','Y-pixels_y','X_y','Y_y','Z_x','X_x','Y_x'
+                            ,'Volume','Growth rate f','Growth rate b'
+                            ,'FUCCI thresholded'
+                            ,'Collagen orientation','Basal orientation','Coronal angle','Nuclear planar orientation'
+                            ,'Z_y','X-pixels_x','Y-pixels_x','X-pixels_y','Y-pixels_y','X_y','Y_y','Z_x','X_x','Y_x'
                             ])
 
 for col in df_pca.columns[df_pca.columns != 'G1S_logistic']:
@@ -48,7 +52,7 @@ print(df_pca.columns.values[ np.any(np.isnan(df_pca.values),axis=0)])
 print(np.isnan(df_pca.values).sum(axis=0))
 
 X = df_pca.values
-I = np.all(~np.isnan(X),axis=1)
+I = np.all(~np.isnan(X),axis=0)
 df_pca = df_pca.loc[I]
 
 N,P = X.shape

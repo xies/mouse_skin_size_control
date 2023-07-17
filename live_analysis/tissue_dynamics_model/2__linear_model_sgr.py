@@ -80,8 +80,11 @@ params['effect size'] = np.sqrt(params['coef']**2 /(1-Rsqfull))
 order = np.argsort( np.abs(params['coef']) )[::-1][0:10]
 params = params.iloc[order]
 
-plt.bar(range(len(params)),params['coef'],yerr=params['err'])
+# plt.bar(range(len(params)),params['coef'],yerr=params['err'])
+params.plot.bar(y='coef',yerr='err',x='var')
 plt.ylabel('Regression coefficients')
+
+
 
 #%% Cross-validation on the same dataset
 
