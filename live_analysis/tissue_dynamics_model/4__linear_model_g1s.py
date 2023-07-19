@@ -33,6 +33,15 @@ df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
 #Trim out G2 cells
 df_g1s = df_g1s[df_g1s['time_g1s'] >= 0]
 
+
+X = df_g1s.drop(columns=['time_g1s'])
+y = df_g1s['time_g1s']
+
+#Add interaction effects ?
+X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
+
+#%% Establish the theoretical maximum R2 based on time resolution alone
+
 from numpy import random, corrcoef
 
 Nsample = 10000
@@ -49,9 +58,6 @@ plt.title(f'Maximum expected Rsq = {max_exp_Rsq}')
 
 #%%
 
-X = df_g1s.drop(columns=['time_g1s'])
-y = df_g1s['time_g1s']
-
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 
@@ -67,7 +73,7 @@ plt.tight_layout()
 plt.ylabel('Effect size')
 plt.title('Linear regression for G1S timing')
 
-#%% Cross-validation
+#%% Cross-validation using MLR
 
 Niter = 100
 
@@ -98,10 +104,8 @@ plt.xlabel('R^2')
 plt.title('Linear regression G1/S timing')
 
 mlr = this_model
-result = permutation_importance(
-    mlr, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
-)
-mlr_importances = pd.Series(result.importances_mean, index=df_g1s.drop(columns=['time_g1s']).columns)
+result = permutation_importance(mlr, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2)
+mlr_importances = pd.Series(result.importances_mean, index=X.columns)
 
 plt.figure()
 mlr_importances.plot.bar(yerr=result.importances_std)
@@ -117,13 +121,12 @@ from sklearn.tree import plot_tree
 Niter = 100
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
-importance = np.zeros((Niter,df_g1s.shape[1]-1))
+importance = np.zeros((Niter,len(X.columns)))
 
 for i in tqdm(range(Niter)):
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
     
-    X = df_g1s.drop(columns='time_g1s'); y = df_g1s['time_g1s']
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
     
     forest.fit(X_train,y_train)
@@ -141,7 +144,7 @@ plt.xlim([0,1])
 plt.legend(['Expected maximum R2 based on 12h resolution',f'Mean RF R2: {Rsq.mean()}','RF R2'])
 
 imp = pd.DataFrame(importance)
-imp.columns = df_g1s.columns.drop('time_g1s')
+imp.columns = X.columns
 
 plt.figure()
 sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');
