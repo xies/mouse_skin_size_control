@@ -16,72 +16,16 @@ from pystackreg import StackReg
 from tqdm import tqdm
 import matplotlib.pylab as plt
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/05-08-2022/F1 RB-KO/R2'
+from twophotonUtils import parse_unaligned_channels
+
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-18-2023 R26CreER Rb-fl ablation test/F1 black/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 # Grab all registered B/R tifs
-B_tifs = glob(path.join(dirname,'Day*/ZSeries*/B_reg_reg.tif'))
-G_tifs = glob(path.join(dirname,'Day*/ZSeries*/G_reg_reg.tif'))
-R_shg_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_shg_reg_reg.tif'))
-R_tifs = glob(path.join(dirname,'Day*/ZSeries*/R_reg_reg.tif'))
-
-
-########################################################################################
-# Author: Ujash Joshi, University of Toronto, 2017                                     #
-# Based on Octave implementation by: Benjamin Eltzner, 2014 <b.eltzner@gmx.de>         #
-# Octave/Matlab normxcorr2 implementation in python 3.5                                #
-# Details:                                                                             #
-# Normalized cross-correlation. Similiar results upto 3 significant digits.            #
-# https://github.com/Sabrewarrior/normxcorr2-python/master/norxcorr2.py                #
-# http://lordsabre.blogspot.ca/2017/09/matlab-normxcorr2-implemented-in-python.html    #
-########################################################################################
-
-from scipy.signal import fftconvolve
-
-def normxcorr2(template, image, mode="full"):
-    """
-    Input arrays should be floating point numbers.
-    :param template: N-D array, of template or filter you are using for cross-correlation.
-    Must be less or equal dimensions to image.
-    Length of each dimension must be less than length of image.
-    :param image: N-D array
-    :param mode: Options, "full", "valid", "same"
-    full (Default): The output of fftconvolve is the full discrete linear convolution of the inputs. 
-    Output size will be image size + 1/2 template size in each dimension.
-    valid: The output consists only of those elements that do not rely on the zero-padding.
-    same: The output is the same size as image, centered with respect to the ‘full’ output.
-    :return: N-D array of same dimensions as image. Size depends on mode parameter.
-    """
-
-    # If this happens, it is probably a mistake
-    if np.ndim(template) > np.ndim(image) or \
-            len([i for i in range(np.ndim(template)) if template.shape[i] > image.shape[i]]) > 0:
-        print("normxcorr2: TEMPLATE larger than IMG. Arguments may be swapped.")
-
-    template = template - np.mean(template)
-    image = image - np.mean(image)
-
-    a1 = np.ones(template.shape)
-    # Faster to flip up down and left right then use fftconvolve instead of scipy's correlate
-    ar = np.flipud(np.fliplr(template))
-    out = fftconvolve(image, ar.conj(), mode=mode)
-
-    image = fftconvolve(np.square(image), a1, mode=mode) - \
-            np.square(fftconvolve(image, a1, mode=mode)) / (np.prod(template.shape))
-
-    # Remove small machine precision errors after subtraction
-    image[np.where(image < 0)] = 0
-
-    template = np.sum(np.square(template))
-    out = out / np.sqrt(image * template)
-
-    # Remove any divisions by 0 or very close to 0
-    out[np.where(np.logical_not(np.isfinite(out)))] = 0
-
-    return np.abs(out)
-                  
-                  
+# filelist = parse_unaligned_channels(dirname)
+       
 #%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
@@ -110,7 +54,7 @@ Iz_target_slice = np.zeros(len(R_tifs))
 output_dir = path.split(path.dirname(R_tifs[target_T]))[0]
 
 #Load the target
-R_shg_target = io.imread(R_shg_tifs[target_T])
+# R_shg_target = io.imread(R_shg_tifs[target_T])
 
 # Find simlar in the next time point
 Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
@@ -123,7 +67,7 @@ T = sr.register(ref_img,target_img) #Obtain the transformation matrices
 
 B = io.imread(B_tifs[target_T])
 G = io.imread(G_tifs[target_T])
-R = io.imread(R_tifs[target_T])
+# R = io.imread(R_tifs[target_T])
 
 T = transform.SimilarityTransform(matrix=T)
 
@@ -131,13 +75,13 @@ print('Applying transformation matrices')
 # Apply transformation matrix to each stacks
 B_transformed = np.zeros_like(B)
 G_transformed = np.zeros_like(G)
-R_transformed = np.zeros_like(R)
-R_shg_transformed = np.zeros_like(R)
+# R_transformed = np.zeros_like(R)
+# R_shg_transformed = np.zeros_like(R)
 for i, B_slice in enumerate(B):
     B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
     G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
-    R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
-    R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
+    # R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
+    # R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
     
 # Z-pad the time point in reference to t - 1
 Z_target = R_shg_target.shape[0]
@@ -145,46 +89,46 @@ Z_target = R_shg_target.shape[0]
 print('Padding')
 top_padding = Imax_ref - Imax_target
 if top_padding > 0: # the needs padding
-    R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
+    # R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
     G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
     B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
-    R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
+    # R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
     
 elif top_padding < 0: # then needs trimming 
-    R_padded = R[-top_padding:,...]
+    # R_padded = R[-top_padding:,...]
     G_padded = G[-top_padding:,...]
     B_padded = B[-top_padding:,...]
-    R_shg_padded = R_shg_target[-top_padding:,...]
+    # R_shg_padded = R_shg_target[-top_padding:,...]
     
 elif top_padding == 0:
-    R_padded = R
+    # R_padded = R
     G_padded = G
     B_padded = B
-    R_shg_padded = R_shg_target
+    # R_shg_padded = R_shg_target
     
 delta_ref = Z_ref - Imax_ref
 delta_target = Z_target - Imax_target
 bottom_padding = delta_ref - delta_target
 if bottom_padding > 0: # the needs padding
-    R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    # R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    # R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     
 elif bottom_padding < 0: # then needs trimming
-    R_padded = R_padded[0:bottom_padding,...]
+    # R_padded = R_padded[0:bottom_padding,...]
     G_padded = G_padded[0:bottom_padding,...]
     B_padded = B_padded[0:bottom_padding,...]
-    R_shg_padded = R_shg_padded[0:bottom_padding,...]
+    # R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
 print('Saving')
 output_dir = path.dirname(B_tifs[target_T])
 io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
 io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
 
-output_dir = path.dirname(R_tifs[target_T])
-io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
-io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
+# output_dir = path.dirname(R_tifs[target_T])
+# io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
+# io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
     
 #%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
 # But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.

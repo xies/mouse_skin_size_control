@@ -20,7 +20,7 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
@@ -62,7 +62,8 @@ for t in tqdm(range(TT)):
     # im_xy_blur = np.zeros_like(im[:,:,:],dtype=float)
     #XY_blur
     # for z,im_ in enumerate(im[:,:,:]):
-    #     im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma)
+    #     im_xy_blur[z,...] = filters.gaussian(im_,sigma = XY_sigma) 
+    
         
     # #Z_blur
     # im_z_blur = np.zeros_like(im_xy_blur)
@@ -70,7 +71,7 @@ for t in tqdm(range(TT)):
     #     for y in range(XX):
     #         im_z_blur[:,y,x] = filters.gaussian(im_xy_blur[:,y,x], sigma= Z_sigma)
             
-    io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
     
     
     # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position

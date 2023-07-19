@@ -9,30 +9,22 @@ Created on Sun Mar 20 21:41:31 2022
 import numpy as np
 from skimage import io, filters, util
 from os import path
-from glob import glob
-from re import match
 from tqdm import tqdm
 from pystackreg import StackReg
 from mathUtils import normxcorr2
+
+from twophotonUtils import parse_unreigstered_channels
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
-#%% Reading the first ome-tiff file using imread reads entire stack
+filelist = parse_unreigstered_channels(dirname)
 
-def sort_by_day(filename):
-    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(filename)[0])[1])
-    day = day.groups()[0]
-    return float(day)
+#%% Manually set the Z-slice (in R/R_shg)
 
 manual_targetZ = {1:14,2:27}
-# Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*. Day*/B_reg.tif')),key=sort_by_day)
-G_tifs = sorted(glob(path.join(dirname,'*. Day*/G_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'*. Day*/R_shg_reg.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'*. Day*/R_reg.tif')),key=sort_by_day)
 
 #%%
 
@@ -40,22 +32,19 @@ XX = 1024
 
 OVERWRITE = False
 
-assert(len(B_tifs) == len(R_tifs))
-
-for t in range(17):
-# t = 15
+for t in tqdm(range(17)):
     
-    output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if path.exists(path.join(path.dirname(R_tifs[t]),'R_reg_reg.tif'))  and not OVERWRITE:
+    output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
+    if path.exists(path.join(path.dirname(filelist.loc[t,'R']),'R_reg_reg.tif'))  and not OVERWRITE:
     # and path.exists(path.join(path.dirname(B_tifs[t]),'B_reg_reg.tif'))  and not OVERWRITE:
         print(f'Skipping t = {t} because its R_reg_reg.tif already exists')
         continue
     
     print(f'\n--- Started t = {t} ---')
-    B = io.imread(B_tifs[t])
-    R_shg = io.imread(R_shg_tifs[t])
-    G = io.imread(G_tifs[t])
-    R = io.imread(R_tifs[t])
+    B = io.imread(filelist.loc[t,'B'])
+    R_shg = io.imread(filelist.loc[t,'R_shg'])
+    G = io.imread(filelist.loc[t,'G'])
+    R = io.imread(filelist.loc[t,'R'])
     
     print('Done reading images')
     
@@ -113,7 +102,7 @@ for t in range(17):
         R_padded = R_padded[0:top_padding,...]
         R_shg_padded = R_shg_padded[0:top_padding,...]
     
-    output_dir = path.dirname(R_tifs[t])
+    output_dir = path.dirname(filelist.loc[t,'G'])
     
     print('Saving')
     io.imsave(path.join(output_dir,'R_reg_reg.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
