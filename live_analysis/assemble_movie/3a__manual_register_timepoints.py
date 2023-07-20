@@ -95,16 +95,16 @@ if top_padding > 0: # the needs padding
     # R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
     
 elif top_padding < 0: # then needs trimming 
-    # R_padded = R[-top_padding:,...]
-    G_padded = G[-top_padding:,...]
-    B_padded = B[-top_padding:,...]
-    # R_shg_padded = R_shg_target[-top_padding:,...]
+    # R_padded = R_transformed[-top_padding:,...]
+    G_padded = G_transformed[-top_padding:,...]
+    B_padded = B_transformed[-top_padding:,...]
+    # R_shg_padded = R_shg_transformed[-top_padding:,...]
     
 elif top_padding == 0:
-    # R_padded = R
-    G_padded = G
-    B_padded = B
-    # R_shg_padded = R_shg_target
+    # R_padded = R_transformed
+    G_padded = G_transformed
+    B_padded = B_transformed
+    # R_shg_padded = R_shg_transformed
     
 delta_ref = Z_ref - Imax_ref
 delta_target = Z_target - Imax_target
