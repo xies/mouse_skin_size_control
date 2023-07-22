@@ -37,10 +37,9 @@ G_tifs = sorted(glob(path.join(dirname,'*. Day*/' + 'G_reg.tif')), key = sort_by
 # Therefore it's easy to identify which z-stack is most useful.
 
 XX = 1024
-OVERWRITE = True
 
 ref_T = 0
-target_T = 2
+target_T = 3
 
 ###
 B_ref = io.imread(B_tifs[ref_T])
@@ -48,7 +47,7 @@ B_target = io.imread(B_tifs[target_T])
 G_target = io.imread(G_tifs[target_T])
 
 # Grab the manually determined reference slice
-Imax_ref = 61
+Imax_ref = 62
 ref_img = B_ref[Imax_ref,...]
 ref_img = ref_img / ref_img.max()
 Z_ref = B_ref.shape[0]
@@ -56,7 +55,7 @@ Z_ref = B_ref.shape[0]
 output_dir = path.split(path.dirname(B_tifs[target_T]))[0]
 
 # Grab the target slice
-Imax_target = 65
+Imax_target = 72
 target_img = B_target[Imax_target,...]
 target_img = target_img / target_img.max()
 
@@ -65,9 +64,9 @@ print('\n Starting stackreg')
 sr = StackReg(StackReg.RIGID_BODY)
 T = sr.register(ref_img,target_img)
 
-# T = transform.SimilarityTransform(matrix=T)
-theta = np.deg2rad(4)
-T = transform.SimilarityTransform(rotation=theta,translation=[80,-75])
+T = transform.SimilarityTransform(matrix=T)
+T1 = transform.SimilarityTransform(translation=[30,-30],rotation=np.deg2rad(2))
+T = T+T1
 
 print('Applying transformation matrices')
 # Apply transformation matrix to each stacks
