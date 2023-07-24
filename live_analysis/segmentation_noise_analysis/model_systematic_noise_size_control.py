@@ -33,7 +33,6 @@ def pseudo_oscillator_density(x,wavelength=1/3,dc_magnitude=0.5):
     return np.sin(x/wavelength) + 0.5 + dc_magnitude
 
 # def pseudo_oscillator_monte_carlo(Nsample,oscillator_wavelength, ):
-    
 #     generated_numbers = []
 #     while len(generated_numbers) < Nsample:
 #         # Generates a 'pseudo oscillating' probability via Metropolis
@@ -150,13 +149,13 @@ def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
 
 #%% Visualize
 
-Ncells = 50
+Ncells = 100
 end_time = 7
 sampling_rate = 0.5
 doubling = 3
 t = np.arange(0,end_time,sampling_rate)
 good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True
-                                                         ,white_vol_noise={'fixed':.1}
+                                                         ,white_vol_noise={'fixed':0.1}
                                                          ,behavior = 'adder'
                                                          ,synchrony={'wavelength':3/7,'dc_magnitude':0})
 plt.plot(t,field_avg,'k--')
@@ -172,14 +171,13 @@ plt.figure()
 sb.regplot(good_cells,x='Birth size',y='Growth')
 # sb.regplot(bad_cells,x='Birth size',y='Growth');plt.xlim([0,200]);plt.ylim([0,200])
 
-#%% Perfect sizers or adders - explore effect of sfixed segmentation noise
+#%% Perfect sizers or adders - explore effect of fixed segmentation noise
 
 Ncells = 200
 end_time = 7
 sampling_rate = 0.5
 
-fixed_noise_mag = np.arange(.01,.15,.02)
-
+fixed_noise_mag = np.linspace(.05,.8,10)
 size_control_slope = np.zeros(len(fixed_noise_mag))
 size_control_CI = np.zeros(len(fixed_noise_mag))
 size_duration_slope = np.zeros(len(fixed_noise_mag))
@@ -188,7 +186,7 @@ size_duration_CI = np.zeros(len(fixed_noise_mag))
 for i,noise in enumerate(fixed_noise_mag):
     
     cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 3,
-                                                          white_vol_noise={'fixed':noise}, visualize=False,
+                                                          white_vol_noise={'rel':noise}, visualize=False,
                                                              frame_biases = None,
                                                              behavior = 'adder')
     
@@ -205,6 +203,7 @@ for i,noise in enumerate(fixed_noise_mag):
 
 plt.figure();plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Fixed noise magnitude'); plt.ylabel('Size control slope - growth'); 
 # plt.figure();plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration')
+
 
 #%% Perfect sizers or adders - explore effect of sampling rate
 

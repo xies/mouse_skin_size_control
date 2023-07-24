@@ -225,8 +225,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         # Birth
         birth_frame = track.iloc[0]['Birth frame']
         if not np.isnan(birth_frame):
-            print(track.CellID)
-            print(birth_frame)
+
             birth_size = track[track['Frame'] == birth_frame]['Volume'].values[0]
             birth_size_normal = track[track['Frame'] == birth_frame]['Volume normal'].values[0]
             birth_size_interp = track[track['Frame'] == birth_frame]['Volume interp'].values[0]

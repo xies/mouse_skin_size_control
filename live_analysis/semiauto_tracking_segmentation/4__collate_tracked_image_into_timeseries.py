@@ -94,7 +94,7 @@ for name,dirname in dirnames.items():
         tracks = measure_track_timeseries_from_segmentations(name,pathdict,metadata)
         tracks = cell_cycle_annotate(tracks,pathdict,metadata)
         
-        # Save to the manual tracking folder    
+        # Save to the manual tracking folder
         with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'wb') as file:
             pkl.dump(tracks,file)
             
