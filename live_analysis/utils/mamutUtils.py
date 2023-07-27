@@ -81,6 +81,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
             
         spots = pd.DataFrame()
         # Construct a cleaned-up dataframe
+        spots['LABEL'] = spots_['LABEL']
         spots['ID'] = spots_['ID']
         spots['X'] = spots_['POSITION_X']
         spots['Y'] = spots_['POSITION_Y']
@@ -93,8 +94,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         spots['Terminus'] = False
         
         
-        # Build a daughter(s) tree into the spots dataframe
-        
+        # For each spot, figure out how many incoming links + outgoing links (i.e. mother/daughters)
         for idx,spot in spots.iterrows():
             links_from_this_spot = link[link['SPOT_SOURCE_ID'] == spot.ID]
             
@@ -109,23 +109,25 @@ def construct_data_frame_dense(_tracks,_links,_spots):
             elif len(links_from_this_spot) == 0:
                 spots.at[idx,'Terminus'] = True
         
-        # From first cell division, initiate a Track object and traverse until we hit either: 1) division or 2) terminus
-        # If Division, complete current Track and try to initiate another Track object
-        # If Terminus, delete current Track object
+        print(spots)
+        # For each cell, follow track and built up Track object until we hit either Division or Terminus
+        # If Division, complete current Track and add daughter cells onto stack of things to track
+        # If Terminus, complete current Track and check if there are other things to trace
         
-        divisions = spots[ spots['Division'] == True ]
-        first_division = divisions.sort_values('Frame').iloc[0]
+        # divisions = spots[ spots['Division'] == True ]
+        # first_division = divisions.sort_values('Frame').iloc[0]
         
-        daughter_a = spots[spots['ID'] == first_division['Left']]
-        daughter_b = spots[spots['ID'] == first_division['Right']]
+        # daughter_a = spots[spots['ID'] == first_division['Left']]
+        # daughter_b = spots[spots['ID'] == first_division['Right']]
         
         tracks_ = []
         
-        spots2trace = [daughter_a, daughter_b]
+        spots2trace = [spots.head(1)]
         while len(spots2trace) > 0:
         
             # Pop from list
             spot = spots2trace.pop()
+            print(spot)
             print(f'Tracing from {spot.ID}')
             track = [spot]
             while not spot.iloc[0]['Division'] and not spot.iloc[0]['Terminus']:
@@ -133,6 +135,9 @@ def construct_data_frame_dense(_tracks,_links,_spots):
                 next_spot = spots[spots.ID == spot['Left'].iloc[0]]
                 track.append(next_spot)
                 spot = next_spot
+            if spot.iloc[0]['Terminus']:
+                # Tracking ended, no further daughters
+                tracks_.append(pd.concat(track))
             if spot.iloc[0]['Division']:
                 # If we found a division, then this is a complete cell cycle
                 tracks_.append(pd.concat(track))

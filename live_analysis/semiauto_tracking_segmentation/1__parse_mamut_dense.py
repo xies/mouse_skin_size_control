@@ -41,12 +41,6 @@ for dirname in dirnames:
     
 #%%
 
-rbko = all_tracks[0]
-# wt = all_tracks[1]
-
-# wtlength  = (np.array([len(t) for t in wt])* 12)
-rbkolength  = (np.array([len(t) for t in rbko])* 12)
-
 # plt.boxplot([wtlength,rbkolength],labels=['WT','RB-KO'])
 # plt.ylabel('Cell cycle length (h)')
 
