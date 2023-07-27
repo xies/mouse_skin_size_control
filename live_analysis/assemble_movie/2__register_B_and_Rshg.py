@@ -7,7 +7,7 @@ Created on Sun Mar 20 21:41:31 2022
 """
 
 import numpy as np
-from skimage import io, filters, util
+from skimage import io, filters, util, transform
 from os import path
 from tqdm import tqdm
 from pystackreg import StackReg
@@ -18,21 +18,21 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
 
-filelist = parse_unreigstered_channels(dirname,folder_str='R*/*.*')
+filelist = parse_unreigstered_channels(dirname,folder_str='*.*')
 
 #%% Manually set the Z-slice (in R/R_shg)
 
-manual_targetZ = {}
+manual_targetZ = {0:54,1:60,2:55,3:61,4:63,5:41,6:48}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = False
+OVERWRITE = True
 
-for t in tqdm(range(6)):
+for t in tqdm([6]):
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
     if path.exists(path.join(path.dirname(filelist.loc[t,'R']),'R_reg_reg.tif'))  and not OVERWRITE:
@@ -74,12 +74,15 @@ for t in tqdm(range(6)):
     print('StackReg + transform')
     sr = StackReg(StackReg.RIGID_BODY)
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
-
+    T = transform.SimilarityTransform(T)
+    
+    T = transform.SimilarityTransform(translation=[-15,-5],rotation=np.deg2rad(0))
+    
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)
     for i, R_slice in enumerate(R):
-        R_transformed[i,...] = sr.transform(R_slice,tmat=T)
-        R_shg_transformed[i,...] = sr.transform(R_shg[i,...],tmat=T)
+        R_transformed[i,...] = transform.warp(R_slice,T)
+        R_shg_transformed[i,...] = transform.warp(R_shg[i,...],T)
 
     print('Padding')
     # Z-pad the red + red_shg channel using Imax and Iz

@@ -21,16 +21,16 @@ from glob import glob
 from pystackreg import StackReg
 from tqdm import tqdm
 
-from twophotonUtils import sort_by_day
+from twophotonUtils import sort_by_prefix
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-18-2023 R26CreER Rb-fl ablation test/F1 black/R3'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*. Day*/' + 'B_reg.tif')), key = sort_by_day)
-G_tifs = sorted(glob(path.join(dirname,'*. Day*/' + 'G_reg.tif')), key = sort_by_day)
+B_tifs = sorted(glob(path.join(dirname,'*. */' + 'B_reg.tif')), key = sort_by_prefix)
+G_tifs = sorted(glob(path.join(dirname,'*. */' + 'G_reg.tif')), key = sort_by_prefix)
 
 #%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
 # R_shg is best channel to use bc it only has signal in the collagen layer.

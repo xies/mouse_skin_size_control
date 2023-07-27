@@ -98,7 +98,7 @@ for header_ome in tqdm(header_ome_fucci):
     # Use StackReg
     print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
-    T = sr.register_stack(R,reference='previous',axis=0) #Obtain the transformation matrices
+    T = sr.register_stack(R_shg,reference='previous',axis=0) #Obtain the transformation matrices
     R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     

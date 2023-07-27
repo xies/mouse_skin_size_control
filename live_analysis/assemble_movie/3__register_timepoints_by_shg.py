@@ -18,9 +18,11 @@ from mathUtils import normxcorr2
 import matplotlib.pylab as plt
 import pickle as pkl
 
+from twophotonUtils import parse_unaligned_channels
+
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -29,11 +31,13 @@ def sort_by_day(filename):
     day = day.groups()[0]
     return float(day)
 
+filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
+
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*Day*/B_reg.tif')),key=sort_by_day)
-G_tifs = sorted(glob(path.join(dirname,'*Day*/G_reg.tif')),key=sort_by_day)
-R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/R_shg_reg_reg.tif')),key=sort_by_day)
-R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
+# B_tifs = sorted(glob(path.join(dirname,'*Day*/B_reg.tif')),key=sort_by_day)
+# G_tifs = sorted(glob(path.join(dirname,'*Day*/G_reg.tif')),key=sort_by_day)
+# R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/R_shg_reg_reg.tif')),key=sort_by_day)
+# R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
 
 # assert(len(G_tifs) == len(R_tifs))
 # assert(len(G_tifs) == len(R_shg_tifs))
@@ -43,12 +47,12 @@ manual_Ztarget = {}
 #%% 
 
 XX = 1024
-TT = len(B_tifs)
+TT = len(filelist)
 
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {1:25,2:29,6:27,7:19,9:16,11:21,12:13,13:30,15:11,16:30}
+manual_Ztarget = {2:43}
 APPLY_XY = True
 APPLY_PAD = True
 
@@ -61,10 +65,10 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
         [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
 
 # Find the slice with maximum mean value in R_shg channel
-R_shg_ref = io.imread( R_shg_tifs[ref_T] )
+R_shg_ref = io.imread( filelist.loc[ref_T,'R_shg'] )
 Z_ref = R_shg_ref.shape[ref_T]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 45
+Imax_ref = 49
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -76,18 +80,18 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [12,13,15]): # 0-indexed
+for t in tqdm( [6] ): # 0-indexed
     if t == ref_T:
         continue
     
-    output_dir = path.split(path.dirname(R_tifs[t]))[0]
-    if not OVERWRITE and path.exists(path.join(path.dirname(B_tifs[t]),'B_align.tif')):
+    output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
+    if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
         print(f'\n Skipping t = {t}')
         continue
     
-    print(f'\n Working on {R_shg_tifs[t]}')
+    print(f'\n Working on t = {t}')
     #Load the target
-    R_shg_target = io.imread(R_shg_tifs[t]).astype(float)
+    R_shg_target = io.imread(filelist.loc[t,'R_shg']).astype(float)
     
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
@@ -108,9 +112,9 @@ for t in tqdm( [12,13,15]): # 0-indexed
         z_pos_in_original[t] = Imax_target
     
     # Perform transformations
-    B = util.img_as_float(io.imread(B_tifs[t]))
-    G = util.img_as_float(io.imread(G_tifs[t]))
-    R = util.img_as_float(io.imread(R_tifs[t]))
+    B = util.img_as_float(io.imread(filelist.loc[t,'B']))
+    G = util.img_as_float(io.imread(filelist.loc[t,'G']))
+    R = util.img_as_float(io.imread(filelist.loc[t,'R']))
     
     B_transformed = B.copy();
     R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
@@ -131,12 +135,15 @@ for t in tqdm( [12,13,15]): # 0-indexed
             print('Applying transformation matrices')
             # Apply transformation matrix to each stacks
             
+            T = transform.SimilarityTransform(T)
+            T = T + transform.SimilarityTransform(translation=[-10,-40],rotation=np.deg2rad(-1))
+            
             for i, G_slice in enumerate(G):
-                B_transformed[i,...] = sr.transform(B[i,...].astype(float),tmat=T)
-                G_transformed[i,...] = sr.transform(G_slice,tmat=T)
+                B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
+                G_transformed[i,...] = transform.warp(G_slice,T)
             for i, R_slice in enumerate(R):
-                R_transformed[i,...] = sr.transform(R_slice,tmat=T)
-                R_shg_transformed[i,...] = sr.transform(R_shg_target[i,...],tmat=T)
+                R_transformed[i,...] = transform.warp(R_slice,T)
+                R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...],T)
         
     if APPLY_PAD:
         # Z-pad the time point in reference to t - 1
@@ -178,11 +185,11 @@ for t in tqdm( [12,13,15]): # 0-indexed
             R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
         print('Saving')
-        output_dir = path.dirname(R_tifs[t])
+        output_dir = path.dirname(filelist.loc[t,'G'])
         io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
         
-        output_dir = path.dirname(R_tifs[t])
+        output_dir = path.dirname(filelist.loc[t,'R'])
         io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
