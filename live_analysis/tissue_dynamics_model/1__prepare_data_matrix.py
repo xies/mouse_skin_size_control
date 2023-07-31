@@ -43,9 +43,10 @@ N,P = df_.shape
 
 features_list = { # Cell geometry
                 'Age':'age'
-                
+                ,'Region':'region'
                 # ,'Differentiating':'diff'
-                # ,'Z_x':'z','Y_x':'y','X_x':'x'
+                ,'Y_x':'y','X_x':'x'
+                # ,'Z_x':'z'
                 ,'Volume':'vol_sm'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
@@ -84,6 +85,10 @@ features_list = { # Cell geometry
                 ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'
                 # ,'Gaussian curvature':'gaussian_curve'
+                
+                # Cell dynamics
+                ,'Delta curvature':'delta_curvature'
+                ,'Delta height':'delta_height'
                 
                 # Neighborhood dynamics (averages of previous frame)
                 ,'Mean neighbor nuclear volume normalized':'mean_neighb_nuc_vol'

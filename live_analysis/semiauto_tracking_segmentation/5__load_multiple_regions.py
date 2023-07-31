@@ -104,7 +104,7 @@ for t in tracks:
 
 #%%
 
-sb.relplot(all_ts,x='Age',y='Volume normal',col='Pair',row='Mode',hue='Genotype',kind='line')
+sb.relplot(all_ts,x='Age',y='Volume',col='Pair',row='Mode',hue='Genotype',kind='line')
 
 #%%
 

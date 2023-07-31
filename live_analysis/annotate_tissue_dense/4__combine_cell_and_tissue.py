@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 ZZ = 72
 XX = 460
 T = 15
@@ -49,29 +49,46 @@ df['Neighbor mean nuclear volume frame-1'] = np.nan
 df['Neighbor mean nuclear volume frame-2'] = np.nan
 df['Coronal density frame-1'] = np.nan
 df['Coronal density frame-2'] = np.nan
+df['Delta curvature'] = np.nan
+df['Delta height'] = np.nan
 # Call fate based on cell height
 # For each cell, load all frames, then grab the prev frame height data
+# Some dynamics
 for basalID in collated.keys():
     idx = np.where(df['basalID'] == basalID)[0]
     this_len = len(idx)
     if this_len > 1:
         
-        this_cell = df.iloc[idx]
+        this_cell = df.iloc[idx]        
+        # Dynamics
         heights = this_cell['Mean neighbor height'].values
         fucci_int = this_cell['FUCCI bg sub'].values
         neighbor_vol = this_cell['Mean neighbor nuclear volume normalized'].values
         cor_density = this_cell['Coronal density'].values
+        curvature = this_cell['Mean curvature'].values
+        bm_height = this_cell['Height to BM'].values
         
+        # Compute d/dt
+        # df.at[idx[1:],'Delta curvature'] = np.diff(this_cell['Mean curvature'])
+        # df.at[idx[1:],'Delta height'] = np.diff(this_cell['Height to BM'])
+        
+        # The prev frame
         for t in np.arange(1,this_len):
+            # 12h before
             df.at[idx[t],'FUCCI bg sub frame-1'] = fucci_int[t-1]
             df.at[idx[t],'Neighbor mean height frame-1'] = heights[t-1]
             df.at[idx[t],'Neighbor mean nuclear volume frame-1'] = neighbor_vol[t-1]
             df.at[idx[t],'Coronal density frame-1'] = cor_density[t-1]
+            df.at[idx[t],'Delta curvature'] = curvature[t] - curvature[t-1]
+            df.at[idx[t],'Delta height'] = bm_height[t] - bm_height[t-1]
+            
             if t > 1:
+                # 24h before
                 df.at[idx[t],'Neighbor mean height frame-2'] = heights[t-2]
                 df.at[idx[t],'FUCCI bg sub frame-2'] = fucci_int[t-2]
                 df.at[idx[t],'Neighbor mean nuclear volume frame-2'] = neighbor_vol[t-2]
                 df.at[idx[t],'Coronal density frame-2'] = cor_density[t-2]
+        
             
 df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
 df['NC ratio raw'] = df['Nuclear volume raw']/df['Volume (sm)']

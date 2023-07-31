@@ -23,9 +23,6 @@ from numpy import random
 from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import scale 
 
-def z_standardize(x):
-    return (x - np.nanmean(x))/np.std(x)
-
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)
 df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
