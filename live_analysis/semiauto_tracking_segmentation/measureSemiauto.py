@@ -105,7 +105,10 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
             
             track = pd.concat(track)
             track['CellID'] = trackID
-            track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
+            if 'Time stamps' in metadata.keys():
+                track['Age'] = metadata['Time stamps'][track['Frame'].values.astype(int)]
+            else:
+                track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
             track['Region'] = name
             track['Genotype'] = genotype
             track['Mouse'] = mouse
@@ -133,12 +136,18 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
                                  }),ignore_index=True)
             track = track.sort_values('Frame').reset_index(drop=True)
     
-    print('Smoothing...')
+    print('Smoothing and calculating growth rates...')
     
     for i,track in enumerate(tracks):
         
-        track['Volume interp'] = smooth_growth_curve(track,y='Volume')
-        track['Volume normal interp'] = smooth_growth_curve(track,y='Volume normal')
+        track['Volume interp'],spl = smooth_growth_curve(track,y='Volume')
+        track['Volume normal interp'],spl_norm = smooth_growth_curve(track,y='Volume normal')
+
+        track['Growth rate'] = spl.derivative(1)(track['Age'])
+        track['Growth rate normal'] = spl_normal.iloc[0].derivative(1)(track['Age'])
+        
+        # track['Growth rate back'] = np.diff(track['Volume'])
+        # track['Growth rate interp'] = track['Spline interp'].iloc[0].derivateve(1)(track['Age'])
 
         tracks[i] = track
 
@@ -224,12 +233,12 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         
         # Birth
         birth_frame = track.iloc[0]['Birth frame']
-        if not np.isnan(birth_frame):
-
-            birth_size = track[track['Frame'] == birth_frame]['Volume'].values[0]
-            birth_size_normal = track[track['Frame'] == birth_frame]['Volume normal'].values[0]
-            birth_size_interp = track[track['Frame'] == birth_frame]['Volume interp'].values[0]
-            birth_size_normal_interp = track[track['Frame'] == birth_frame]['Volume normal interp'].values[0]
+        if (not np.isnan(birth_frame)) and (birth_frame in track['Frame'].values):
+                
+                birth_size = track[track['Frame'] == birth_frame]['Volume'].values[0]
+                birth_size_normal = track[track['Frame'] == birth_frame]['Volume normal'].values[0]
+                birth_size_interp = track[track['Frame'] == birth_frame]['Volume interp'].values[0]
+                birth_size_normal_interp = track[track['Frame'] == birth_frame]['Volume normal interp'].values[0]
             
         else:
             birth_frame = np.nan

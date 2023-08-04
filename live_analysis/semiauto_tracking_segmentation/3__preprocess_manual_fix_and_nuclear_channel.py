@@ -21,7 +21,7 @@ from basicUtils import draw_gate,gate_on_selector
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 
 
 OVERWRITE = True
@@ -31,9 +31,9 @@ OVERWRITE = True
 im = io.imread(path.join(dirname,'master_stack/R.tif'))
 
 _tmp = []
-for t in tqdm(range(17)):
+for t in tqdm(range(7)):
 
-    basal_seg = io.imread(path.join(dirname,f'cellpose_pruned/t{t}_manual.tif'))
+    basal_seg = io.imread(path.join(dirname,f'cellpose_pruned/t{t}_manual.tiff'))
     R = im[t,...]
     
     this_frame = pd.DataFrame(measure.regionprops_table(basal_seg,intensity_image=R,properties=['area','label',

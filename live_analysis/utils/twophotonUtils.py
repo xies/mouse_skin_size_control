@@ -22,7 +22,7 @@ def sort_by_prefix(filename):
     
     return int(day[0])
 
-def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/'):
+def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',INCLUDE_ZERO=True):
     # Given a directory (of Prairie Instruments time course)
     # 
         
@@ -34,15 +34,16 @@ def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/'):
     T = len(filelist)
     filelist.index = np.arange(1,T+1)
     
-    # t= 0 has no '_align'imp
-    s = pd.Series({'B': glob(path.join(dirname,folder_str, 'B_reg.tif'))[0],
-                      'G': glob(path.join(dirname,folder_str, 'G_reg.tif'))[0],
-                      'R': glob(path.join(dirname,folder_str, 'R_reg_reg.tif'))[0],
-                  'R_shg': glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif'))[0]},
-                  name=0)
-    
-    filelist = filelist.append(s)
-    filelist = filelist.sort_index()
+    if INCLUDE_ZERO:
+        # t= 0 has no '_align'imp
+        s = pd.Series({'B': glob(path.join(dirname,folder_str, 'B_reg.tif'))[0],
+                          'G': glob(path.join(dirname,folder_str, 'G_reg.tif'))[0],
+                          'R': glob(path.join(dirname,folder_str, 'R_reg_reg.tif'))[0],
+                      'R_shg': glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif'))[0]},
+                      name=0)
+        
+        filelist = filelist.append(s)
+        filelist = filelist.sort_index()
     
     # heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
 
@@ -98,6 +99,7 @@ def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
     # Won't smooth 3 pts or fewer (cubic spline)
     if len(X[I]) < 4:
         Yhat = cf[y].values
+        spl = np.nan
         
     else:
 
@@ -106,7 +108,7 @@ def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
         spl = UnivariateSpline(X[I], Y[I], k=3, s=smoothing_factor)
         Yhat = spl(X)
         
-    return Yhat
+    return Yhat, spl
     
 
 

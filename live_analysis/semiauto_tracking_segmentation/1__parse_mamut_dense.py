@@ -31,10 +31,10 @@ dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 
 
 all_tracks = []
 for dirname in dirnames:
-    _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='MaMuT/ablation')
+    _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='MaMuT/nonablation')
     tracks = construct_data_frame_dense(_tracks, _links, _spots)
 
-    with open(path.join(dirname,'MaMuT/complete_cycles.pkl'),'wb') as file:
+    with open(path.join(dirname,'MaMuT/nonablation/dense_tracks.pkl'),'wb') as file:
         pkl.dump(tracks,file)
 
     all_tracks.append(tracks)
