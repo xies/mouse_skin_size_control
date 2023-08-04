@@ -20,11 +20,12 @@ from twophotonUtils import parse_aligned_timecourse_directory
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1/'
 
-filelist = parse_aligned_timecourse_directory(dirname)
+filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*')
 
-#%% Stack channels & save into single tif
+    #%% Stack channels & save into single tif
 
 G = []
 R = []
@@ -45,7 +46,6 @@ print('Saving R ...')
 io.imsave(path.join(dirname,f'master_stack/R.tif'), np.stack(R).astype(np.uint16))
 print('Saving R_shg ...')
 io.imsave(path.join(dirname,f'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
-   
 
 #%% Save individual day*.tif into the same directory
 

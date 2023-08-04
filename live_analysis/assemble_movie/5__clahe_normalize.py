@@ -10,6 +10,7 @@ import numpy as np
 from skimage import io,exposure, filters, util
 from os import path
 from tqdm import tqdm
+from scipy.ndimage import gaussian_filter
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2'
 
@@ -35,3 +36,7 @@ for t, im_time in tqdm(enumerate(im)):
 
 io.imsave(path.join(dirname,'master_stack/G_clahe.tif'),util.img_as_uint(im_clahe))
 
+# 3d Blur
+
+clahe_blur = gaussian_filter(im_clahe,sigma=[1,1,1])
+io.imsave(path.join(dirname,'master_stack/G_clahe_blur.tif'),util.img_as_uint(clahe_blur))

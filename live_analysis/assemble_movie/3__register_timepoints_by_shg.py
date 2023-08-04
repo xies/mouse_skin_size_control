@@ -22,7 +22,9 @@ from twophotonUtils import parse_unaligned_channels
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2'
+
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1/'
+
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -52,7 +54,7 @@ TT = len(filelist)
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {2:43}
+manual_Ztarget = {2:19}
 APPLY_XY = True
 APPLY_PAD = True
 
@@ -68,7 +70,7 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
 R_shg_ref = io.imread( filelist.loc[ref_T,'R_shg'] )
 Z_ref = R_shg_ref.shape[ref_T]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 49
+# Imax_ref = 31
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -80,7 +82,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [6] ): # 0-indexed
+for t in tqdm( [5] ): # 0-indexed
     if t == ref_T:
         continue
     
@@ -136,7 +138,7 @@ for t in tqdm( [6] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[-10,-40],rotation=np.deg2rad(-1))
+            # T = T + transform.SimilarityTransform(translation=[-10,-40],rotation=np.deg2rad(-1))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)

@@ -92,7 +92,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         spots['Right'] = None
         spots['Division'] = False
         spots['Terminus'] = False
-        
+        spots = spots.sort_values('Frame')
         
         # For each spot, figure out how many incoming links + outgoing links (i.e. mother/daughters)
         for idx,spot in spots.iterrows():

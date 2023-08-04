@@ -36,13 +36,13 @@ def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',INCLUDE_ZER
     
     if INCLUDE_ZERO:
         # t= 0 has no '_align'imp
-        s = pd.Series({'B': glob(path.join(dirname,folder_str, 'B_reg.tif'))[0],
-                          'G': glob(path.join(dirname,folder_str, 'G_reg.tif'))[0],
-                          'R': glob(path.join(dirname,folder_str, 'R_reg_reg.tif'))[0],
-                      'R_shg': glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif'))[0]},
-                      name=0)
-        
-        filelist = filelist.append(s)
+        s = pd.DataFrame({'B': sorted(glob(path.join(dirname,folder_str, 'B_reg.tif')))[0],
+                          'G': sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')))[0],
+                          'R': sorted(glob(path.join(dirname,folder_str, 'R_reg_reg.tif')))[0],
+                      'R_shg': sorted(glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif')))[0]},
+                         index=[0])
+
+        filelist = pd.concat((s,filelist))
         filelist = filelist.sort_index()
     
     # heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
