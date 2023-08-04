@@ -12,7 +12,6 @@ from re import findall
 from os import path
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import UnivariateSpline
 
 def sort_by_prefix(filename):
     
@@ -87,30 +86,4 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
             t = t[:-1]
             y = y[:-1]
     plt.plot(t,y)
-    
-
-def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
-
-    X = cf[x]
-    Y = cf[y]
-    
-    I = (~np.isnan(X)) * (~np.isnan(Y))
-        
-    # Won't smooth 3 pts or fewer (cubic spline)
-    if len(X[I]) < 4:
-        Yhat = cf[y].values
-        spl = np.nan
-        
-    else:
-
-        
-        # Spline smooth
-        spl = UnivariateSpline(X[I], Y[I], k=3, s=smoothing_factor)
-        Yhat = spl(X)
-        
-    return Yhat, spl
-    
-
-
-    
     

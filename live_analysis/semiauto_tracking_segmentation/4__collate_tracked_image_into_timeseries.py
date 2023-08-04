@@ -34,25 +34,25 @@ dirnames = {}
 # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-dirnames['RBKO_p107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 dx = {}
 dx['WT_R1'] = 0.206814922817744/1.5
 dx['WT_R2'] = 0.206814922817744/1.5
-dx['WT_R3'] = 0.165243202683616/1.5
-dx['WT_R4'] = 0.165243202683616/1.5
+dx['WT_R3'] = 0.165243202683616
+dx['WT_R4'] = 0.165243202683616
 dx['RBKO_R1'] = 0.206814922817744/1.5
 dx['RBKO_R2'] = 0.206814922817744/1.5
-dx['RBKO_R3'] = 0.165243202683616/1.5
-dx['RBKO_R4'] = 0.165243202683616/1.5
-dx['RBKO_p107het_R2'] = 0.165243202683616/1.5
+dx['RBKO_R3'] = 0.165243202683616
+dx['RBKO_R4'] = 0.165243202683616
+dx['RBKOp107het_R2'] = 0.165243202683616
 
 
 mouse = {'WT_R1':'WT_M1','WT_R2':'WT_M1','RBKO_R1':'RBKO_M2','RBKO_R2':'RBKO_M2'
          ,'WT_R3':'WT_M3','WT_R4':'WT_M3','RBKO_R3':'RBKO_M4','RBKO_R4':'RBKO_M4'
-         ,'RBKO_p107het_R2':'RBKO_p107het'}
+         ,'RBKOp107het_R2':'RBKOp107het_M1'}
 
-pairs = {'WT_M1':'Pair 1','RBKO_M2':'Pair 1','WT_M3':'Pair 2','RBKO_M4':'Pair 2','RBKO_p107het':'Pair 3'}
+pairs = {'WT_M1':'Pair 1','RBKO_M2':'Pair 1','WT_M3':'Pair 2','RBKO_M4':'Pair 2','RBKOp107het_M1':'Pair 3'}
 
 
 RECALCULATE = True

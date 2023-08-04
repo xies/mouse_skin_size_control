@@ -72,10 +72,12 @@ df_manual = df_all[df_all['Mode'] == 'manual']
 
 wt = df_all[df_all['Genotype'] == 'WT']
 wt_curated = wt[wt['Mode'] == 'curated']
-wt_manual = wt[wt['Mode'] == 'manual']
+# wt_manual = wt[wt['Mode'] == 'manual']
 rbko = df_all[df_all['Genotype'] == 'RBKO']
 rbko_curated = rbko[rbko['Mode'] == 'curated']
-rbko_manual = rbko[rbko['Mode'] == 'manual']
+
+rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
+# rbko_manual = rbko[rbko['Mode'] == 'manual']
 
 #%%
 

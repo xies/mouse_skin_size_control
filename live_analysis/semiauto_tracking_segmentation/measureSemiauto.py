@@ -11,9 +11,7 @@ import pandas as pd
 
 from skimage import io
 from tqdm import tqdm
-
-from twophotonUtils import smooth_growth_curve
-
+from scipy.interpolate import UnivariateSpline
 
 import warnings
 with warnings.catch_warnings():
@@ -130,10 +128,10 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         for f in skipped_frames:
             
             missing_frame = f+1
-            track = track.append(pd.Series({'Frame':missing_frame,'X':np.nan,'Y':np.nan,'Z':np.nan,'Volume':np.nan
+            track = pd.concat([track,pd.Series({'Frame':missing_frame,'X':np.nan,'Y':np.nan,'Z':np.nan,'Volume':np.nan
                                  ,'CellID' : track.iloc[0].CellID, 'Age': (missing_frame - track.iloc[0]['Frame']) * 12
                                  ,'Region':name,'Genotype':genotype
-                                 }),ignore_index=True)
+                                 })],ignore_index=True)
             track = track.sort_values('Frame').reset_index(drop=True)
     
     print('Smoothing and calculating growth rates...')
@@ -143,8 +141,10 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         track['Volume interp'],spl = smooth_growth_curve(track,y='Volume')
         track['Volume normal interp'],spl_norm = smooth_growth_curve(track,y='Volume normal')
 
-        track['Growth rate'] = spl.derivative(1)(track['Age'])
-        track['Growth rate normal'] = spl_normal.iloc[0].derivative(1)(track['Age'])
+        if not spl == None:
+        
+            track['Growth rate'] = spl.derivative(1)(track['Age'])
+            track['Growth rate normal'] = spl_norm.derivative(1)(track['Age'])
         
         # track['Growth rate back'] = np.diff(track['Volume'])
         # track['Growth rate interp'] = track['Spline interp'].iloc[0].derivateve(1)(track['Age'])
@@ -364,6 +364,29 @@ def recalibrate_pixel_size(tracks,cell_table,new_dx):
     return tracks,cell_table
     
     
+    
+def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
+
+    X = cf[x]
+    Y = cf[y]
+    
+    I = (~np.isnan(X)) * (~np.isnan(Y))
+        
+    # Won't smooth 3 pts or fewer (cubic spline)
+    if len(X[I]) < 4:
+        Yhat = cf[y].values
+        spl = None
+        
+    else:
+
+        # Spline smooth
+        spl = UnivariateSpline(X[I], Y[I], k=3, s=smoothing_factor)
+        Yhat = spl(X)
+        
+    return Yhat, spl
+    
+
+
     
     
     
