@@ -24,8 +24,10 @@ dirnames = {}
 
 # dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 # dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Nonablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+dirnames['Nonablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 
 #%%
 
@@ -34,8 +36,6 @@ ts_all = {}
 regions = {}
 for name,dirname in dirnames.items():
     for mode in ['curated']:
-        if name == 'WT_R4' and mode == 'manual':
-            continue
         
         with open(path.join(dirname,'manual_tracking',f'{name}_dense_{mode}.pkl'),'rb') as file:
             tracks = pkl.load(file)
@@ -59,21 +59,22 @@ for name,dirname in dirnames.items():
 df_all = pd.concat(regions,ignore_index=True)
 ts_all = pd.concat(ts_all,ignore_index=True)
 
+#%%
 
 plt.subplot(1,2,1)
-for t in all_tracks['Nonablation_R3_curated']:
-    plt.plot(t.Age, t['Volume normal'],'b-')
+for t in all_tracks['Nonablation_R4_curated']:
+    plt.plot(t.Age, t['Volume normal interp'],'b-')
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([0.5,2.5])
+# plt.ylim([0.5,2.5])
 plt.title('Non neighbors')
     
 plt.subplot(1,2,2)
-for t in all_tracks['Ablation_R3_curated']:
-    plt.plot(t.Age, t['Volume normal'],'r-')
+for t in all_tracks['Ablation_R4_curated']:
+    plt.plot(t.Age, t['Volume normal interp'],'r-')
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([0.5,2.5])
+# plt.ylim([0.5,2.5])
 plt.title('Neighbors')
     
 # sb.relplot(ts_all,x='Age',y='Volume normal',hue='Region', kind='line')
@@ -81,6 +82,7 @@ plt.title('Neighbors')
 #%%
 
 ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
+ts_all['Specific GR normal'] = ts_all['Growth rate normal'] / ts_all['Volume normal']
 
 sb.catplot(ts_all,x='Region',y='Specific GR',kind='violin')
 
@@ -102,3 +104,5 @@ def find_closest_ablation(df,ablations):
 plt.figure()
 ts_all['Distance to ablation'] = find_closest_ablation(ts_all,ablation_coords)
 sb.regplot(ts_all,x='Distance to ablation',y='Specific GR')
+
+

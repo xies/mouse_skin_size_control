@@ -78,7 +78,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         
         link = _links[i]
         spots_ = _spots[i]
-            
+        
         spots = pd.DataFrame()
         # Construct a cleaned-up dataframe
         spots['LABEL'] = spots_['LABEL']
@@ -109,7 +109,6 @@ def construct_data_frame_dense(_tracks,_links,_spots):
             elif len(links_from_this_spot) == 0:
                 spots.at[idx,'Terminus'] = True
         
-        print(spots)
         # For each cell, follow track and built up Track object until we hit either Division or Terminus
         # If Division, complete current Track and add daughter cells onto stack of things to track
         # If Terminus, complete current Track and check if there are other things to trace
@@ -127,8 +126,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         
             # Pop from list
             spot = spots2trace.pop()
-            print(spot)
-            print(f'Tracing from {spot.ID}')
+            print(f'Tracing from {spot.ID.values}')
             track = [spot]
             while not spot.iloc[0]['Division'] and not spot.iloc[0]['Terminus']:
                 # Trace the linkages
