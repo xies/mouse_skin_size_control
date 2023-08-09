@@ -23,8 +23,7 @@ from twophotonUtils import parse_unaligned_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1/'
-
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -54,7 +53,7 @@ TT = len(filelist)
 OVERWRITE = True
 
 XY_reg = True
-manual_Ztarget = {2:19}
+manual_Ztarget = {1:60,2:49,3:51,4:63,5:56}
 APPLY_XY = True
 APPLY_PAD = True
 

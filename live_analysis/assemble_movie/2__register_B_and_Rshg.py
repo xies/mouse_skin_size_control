@@ -23,7 +23,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25Cre
 filelist = parse_unreigstered_channels(dirname,folder_str='*.*/')
 
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {}
+manual_targetZ = {0:60,1:71,3:62,4:66}
 
 #%%
 
@@ -31,7 +31,7 @@ XX = 1024
 
 OVERWRITE = True
 
-for t in tqdm(range(6)):
+for t in tqdm([4]):
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
     if path.exists(path.join(path.dirname(filelist.loc[t,'R']),'R_reg_reg.tif'))  and not OVERWRITE:
@@ -49,6 +49,7 @@ for t in tqdm(range(6)):
     
     # Find the slice with maximum mean value in R_shg channel
     Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
+    print(f'R_shg max std at {Imax}')
     R_ref = R_shg[Imax,...]
     R_ref = filters.gaussian(R_ref,sigma=0.5)
     
@@ -74,15 +75,15 @@ for t in tqdm(range(6)):
     sr = StackReg(StackReg.RIGID_BODY)
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
     T = transform.SimilarityTransform(T)
-    
-    # T = T + transform.SimilarityTransform(translation=[-5,10],rotation=np.deg2rad(0))
+    # 
+    T = transform.SimilarityTransform(translation=[10,15],rotation=np.deg2rad(0))
     
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)
     for i, R_slice in enumerate(R):
         R_transformed[i,...] = transform.warp(R_slice,T)
         R_shg_transformed[i,...] = transform.warp(R_shg[i,...],T)
-
+    
     print('Padding')
     # Z-pad the red + red_shg channel using Imax and Iz
     bottom_padding = Iz - Imax

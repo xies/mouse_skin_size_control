@@ -19,6 +19,8 @@ from twophotonUtils import parse_aligned_timecourse_directory
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
+
 
 filelist = parse_aligned_timecourse_directory(dirname)
 
