@@ -20,7 +20,7 @@ from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 
 filelist = parse_aligned_timecourse_directory(dirname,INCLUDE_ZERO=False)
 
@@ -29,7 +29,7 @@ ZZ = 95
 channel2use = 'R_shg'
 TT = len(filelist)
 
-imstack = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
+imstack = io.imread(path.join(dirname,'master_stack/G.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
 

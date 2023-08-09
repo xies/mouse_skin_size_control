@@ -22,7 +22,7 @@ import pickle as pkl
 dirnames = {}
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 
 # dx = 0.2920097
 dx = 1
@@ -49,8 +49,8 @@ with open(path.join(dirname,'MaMuT/nonablation','dense_tracks.pkl'),'rb') as fil
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(7):
-    segonly.append(io.imread(path.join(dirname,f'cellpose_clahe_blur/t{t}_3d_nuc/t{t}_masks.tif')))
+for t in range(6):
+    segonly.append(io.imread(path.join(dirname,f'cellpose_B_blur/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 
 if MANUAL:

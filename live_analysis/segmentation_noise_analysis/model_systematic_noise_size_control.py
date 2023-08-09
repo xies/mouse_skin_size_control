@@ -173,7 +173,7 @@ sb.regplot(good_cells,x='Birth size',y='Growth')
 
 #%% Perfect sizers or adders - explore effect of fixed segmentation noise
 
-Ncells = 200
+Ncells = 2000
 end_time = 7
 sampling_rate = 0.5
 
@@ -186,9 +186,9 @@ size_duration_CI = np.zeros(len(fixed_noise_mag))
 for i,noise in enumerate(fixed_noise_mag):
     
     cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 3,
-                                                          white_vol_noise={'rel':noise}, visualize=False,
+                                                          white_vol_noise={'fixed':noise}, visualize=False,
                                                              frame_biases = None,
-                                                             behavior = 'adder')
+                                                             behavior = 'sizer')
     
     # plt.figure(); sb.regplot(cells,x='Birth size',y='Growth');plt.xlim([0,200]);  plt.ylim([0,200])
     
@@ -201,7 +201,7 @@ for i,noise in enumerate(fixed_noise_mag):
     size_duration_slope[i] = linreg.params.values[1]
     size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
 
-plt.figure();plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Fixed noise magnitude'); plt.ylabel('Size control slope - growth'); 
+plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Additive noise magnitude'); plt.ylabel('Size control slope - growth'); 
 # plt.figure();plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration')
 
 

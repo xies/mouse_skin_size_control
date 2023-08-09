@@ -209,6 +209,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     genotype = metadata['Genotype']
     dirname = metadata['Dirname']
     mode = metadata['Mode']
+    time = metadata['Time stamps']
     
     print(f'Generating cell table for {name}')
     
@@ -248,32 +249,40 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         
         # it's possible that the div/s frame isn't in the segmentation frame
         # because that frame has bad quality -> fill in with NA
-        if not div_frame in track['Frame']:
-            track = track.append(pd.Series({'Frame':div_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
+        
+        if (not np.isnan(div_frame)) and (not div_frame in track['Frame']):
+            age = time[int(div_frame)] - track.iloc[0]['Age']
+            track = pd.concat([track,pd.DataFrame({'Frame':div_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
                                             ,'Volume':np.nan
                                             ,'Volume thresh':np.nan
                                             # ,'Volume normal':np.nan
-                                 ,'CellID' : track.iloc[0].CellID, 'Age': (div_frame - track.iloc[0]['Frame']) * 12
-                                 }),ignore_index=True)
+                                            ,'CellID' : track.iloc[0].CellID,
+                                            'Age': age},index=[int(div_frame)]
+                                               )],ignore_index=True)
             track = track.sort_values('Frame').reset_index(drop=True)
             
-        if not s_frame in track['Frame']:
-            track = track.append(pd.Series({'Frame':s_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
+        if (not np.isnan(s_frame)) and (not s_frame in track['Frame']):
+            s_age = time[int(s_frame)] - track.iloc[0]['Age']
+            track = pd.concat([track,pd.DataFrame({'Frame':s_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
                                             ,'Volume':np.nan
                                             ,'Volume thresh':np.nan
                                             #, 'Volume normal':np.nan
-                                 ,'CellID' : track.iloc[0].CellID, 'Age': (s_frame - track.iloc[0]['Frame']) * 12
-                                 }),ignore_index=True)
+                                            ,'CellID' : track.iloc[0].CellID,
+                                            'Age': s_age}
+                                                ,index=[int(s_frame)])
+                                         ],ignore_index=True)
         
         # Division
         if not np.isnan(div_frame):
+            # print(div_frame)
+            # print(track['CellID'])
             div_size = track[track['Frame'] == div_frame]['Volume'].values[0]
             div_size_normal = track[track['Frame'] == div_frame]['Volume normal'].values[0]
             div_size_interp = track[track['Frame'] == div_frame]['Volume interp'].values[0]
             div_size_normal_interp = track[track['Frame'] == div_frame]['Volume normal interp'].values[0]
             total_length = track[track['Frame'] == div_frame]['Age'].values[0]
         else:
-            div_frame = np.nan
+            div_size = np.nan
         
         # Delete mitotic volumes
         if track.iloc[0].Mitosis:

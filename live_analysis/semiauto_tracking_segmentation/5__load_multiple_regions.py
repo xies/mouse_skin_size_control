@@ -81,13 +81,25 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(df_all,x='Birth size normal',y='Total growth normal',col='Mode',row='Pair',hue='Genotype')
-# plt.ylim([0,2])
+sb.lmplot(df_all,x='Birth size normal',y='G1 growth normal',col='Mode',row='Pair',hue='Genotype')
+plt.ylim([-0.25,1.5])
 
 #%%
 
-sb.lmplot(df,x='Birth size normal',y='Total length',col='Genotype',
-          robust=False,hue='Pair')
+sb.lmplot(df_all,x='Birth size normal',y='Total length',row='Pair',
+          robust=False,hue='Genotype')
+
+#%%
+
+g = sb.FacetGrid(df_all, hue="Genotype", col ='Pair')
+g.map(sb.histplot,'G1 length')
+plt.legend()
+
+#%%
+
+sb.catplot(df_all,x='Pair',y='S phase entry size normal',hue='Genotype',kind='violin')
+
+sb.catplot(df_all,x='Pair',y='Birth size normal',hue='Genotype',kind='violin')
 
 #%%
 

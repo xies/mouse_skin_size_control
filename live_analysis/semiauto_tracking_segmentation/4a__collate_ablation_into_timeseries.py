@@ -24,21 +24,29 @@ with warnings.catch_warnings():
 
 dirnames = {}
 dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirnames['Nonablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+
 
 dx = {}
-dx['Ablation_R1'] = 0.14599609375*1.5
-dx['Nonablation_R1'] = 0.14599609375*1.5
+dx['Ablation_R1'] = 0.14599609375/1.5
+dx['Nonablation_R1'] = 0.14599609375/1.5
+dx['Ablation_R3'] = 0.194661458333333/1.5
+dx['Nonablation_R3'] = 0.194661458333333/1.5
 
-mouse = {'Ablation_R1':'WT_F1','Nonablation_R1':'WT_F1'}
-subdir_str = {'Ablation_R1':'ablation','Nonablation_R1':'nonablation'}
+mouse = {'Ablation_R1':'WT_F1','Nonablation_R1':'WT_F1','Ablation_R3':'WT_F1','Nonablation_R3':'WT_F1'}
+subdir_str = {'Ablation_R1':'ablation','Nonablation_R1':'nonablation','Ablation_R3':'ablation',
+              'Nonablation_R3':'nonablation'}
 
-pairs = {'WT_F1':np.nan,'WT_F1':np.nan}
+pairs = {'WT_F1':np.nan}
 
 RECALCULATE = True
 
 timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
-              ,'Nonablation_R1':np.array([0,2,4,7,11,23,36])}
+              ,'Nonablation_R1':np.array([0,2,4,7,11,23,36])
+              ,'Ablation_R3':np.array([0,12,16,20,24,36])
+              ,'Nonablation_R3':np.array([0,12,16,20,24,36])}
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)

@@ -27,15 +27,15 @@ from SelectFromCollection import SelectFromCollection
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 
 #%%
 
-T = 7
+T = 6
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
-SEG_DIR = 'cellpose_clahe'
+SEG_DIR = 'cellpose_B_blur'
 FLAT_DIR = 'Image flattening/heightmaps'
 
 # Some pruning parameters
@@ -88,7 +88,7 @@ df_ = df[I]
 
 #%% # Reconstruct the filtered segmentation predictions
 
-OUT_SUBDIR = 'cellpose_pruned'
+OUT_SUBDIR = 'cellpose_B_blur_pruned'
 
 for t in tqdm(range(T)):
     

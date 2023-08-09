@@ -22,8 +22,10 @@ from basicUtils import *
 
 dirnames = {}
 
-dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+# dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+# dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirnames['Nonablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 
 #%%
 
@@ -58,16 +60,45 @@ df_all = pd.concat(regions,ignore_index=True)
 ts_all = pd.concat(ts_all,ignore_index=True)
 
 
-for t in all_tracks['Nonablation_R1_curated']:
-    plt.plot(t.Age, t['Volume interp'],'b-')
+plt.subplot(1,2,1)
+for t in all_tracks['Nonablation_R3_curated']:
+    plt.plot(t.Age, t['Volume normal'],'b-')
+plt.xlabel('Time since ablation (h)')
+plt.ylabel('Volume (px)')
+plt.ylim([0.5,2.5])
+plt.title('Non neighbors')
     
+plt.subplot(1,2,2)
+for t in all_tracks['Ablation_R3_curated']:
+    plt.plot(t.Age, t['Volume normal'],'r-')
+plt.xlabel('Time since ablation (h)')
+plt.ylabel('Volume (px)')
+plt.ylim([0.5,2.5])
+plt.title('Neighbors')
+    
+# sb.relplot(ts_all,x='Age',y='Volume normal',hue='Region', kind='line')
 
-for t in all_tracks['Ablation_R1_curated']:
-    plt.plot(t.Age, t['Volume interp'],'r-')
-    
 #%%
 
+ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
 
+sb.catplot(ts_all,x='Region',y='Specific GR',kind='violin')
 
-spl.derivative(1)([0,2,4,7])
+ablation_coords = pd.read_csv(path.join(dirnames['Ablation_R3'],'manual_tracking/ablation_xyz.csv')
+                              ,index_col=0,names=['T','Z','Y','X'],header=0)
 
+def find_closest_ablation(df,ablations):
+    Ncells = len(df)
+    Nablations = len(ablations)
+    D = np.zeros((Ncells,Nablations))
+    for i in range(Nablations):
+        abl = ablations.iloc[i]
+        dx = df['X'] - abl['X']
+        dy = df['Y'] - abl['Y']
+        
+        D[:,i] = dx**2 + dy**2
+    return D.min(axis=1)
+
+plt.figure()
+ts_all['Distance to ablation'] = find_closest_ablation(ts_all,ablation_coords)
+sb.regplot(ts_all,x='Distance to ablation',y='Specific GR')
