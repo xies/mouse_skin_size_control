@@ -12,34 +12,28 @@ import numpy as np
 import pandas as pd
 from skimage import io, util
 from os import path
-from glob import glob
 
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
-from twophotonUtils import parse_aligned_timecourse_directory
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-
-filelist = parse_aligned_timecourse_directory(dirname,INCLUDE_ZERO=False)
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1/'
 
 XX = 1024
 ZZ = 95
-channel2use = 'R_shg'
-TT = len(filelist)
 
-imstack = io.imread(path.join(dirname,'master_stack/G.tif'))
+imstack = io.imread(path.join(dirname,'master_stack/R_shg.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
 
 #%%
 
-XY_sigma = 35
+XY_sigma = 30
 Z_sigma = 10
 
-TOP_Z_BOUND = 3
-BOTTOM_Z_BOUND = 50
+TOP_Z_BOUND = 0
+BOTTOM_Z_BOUND = 35
  
 z_shift = 0
 
@@ -56,7 +50,6 @@ for t in tqdm(range(TT)):
         Z_sigma = params['Z_sigma'].values
         TOP_Z_BOUND = params['TOP_Z_BOUND'].values
         BOTTOM_Z_BOUND = params['BOTTOM_Z_BOUND'].values
-        
         
     im_z_blur = gaussian_filter(im,sigma=[Z_sigma,XY_sigma,XY_sigma])
     # im_xy_blur = np.zeros_like(im[:,:,:],dtype=float)

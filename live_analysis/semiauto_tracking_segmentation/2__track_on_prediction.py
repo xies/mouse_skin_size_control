@@ -32,7 +32,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT/ablation','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT/nonablation','dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif

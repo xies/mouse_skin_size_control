@@ -25,6 +25,8 @@ dirnames = {}
 # dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
+dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
+
 # dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Nonablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 dirnames['Nonablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
@@ -68,7 +70,7 @@ plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
 # plt.ylim([0.5,2.5])
 plt.title('Non neighbors')
-    
+
 plt.subplot(1,2,2)
 for t in all_tracks['Ablation_R4_curated']:
     plt.plot(t.Age, t['Volume normal interp'],'r-')
@@ -86,23 +88,8 @@ ts_all['Specific GR normal'] = ts_all['Growth rate normal'] / ts_all['Volume nor
 
 sb.catplot(ts_all,x='Region',y='Specific GR',kind='violin')
 
-ablation_coords = pd.read_csv(path.join(dirnames['Ablation_R3'],'manual_tracking/ablation_xyz.csv')
-                              ,index_col=0,names=['T','Z','Y','X'],header=0)
-
-def find_closest_ablation(df,ablations):
-    Ncells = len(df)
-    Nablations = len(ablations)
-    D = np.zeros((Ncells,Nablations))
-    for i in range(Nablations):
-        abl = ablations.iloc[i]
-        dx = df['X'] - abl['X']
-        dy = df['Y'] - abl['Y']
-        
-        D[:,i] = dx**2 + dy**2
-    return D.min(axis=1)
 
 plt.figure()
-ts_all['Distance to ablation'] = find_closest_ablation(ts_all,ablation_coords)
 sb.regplot(ts_all,x='Distance to ablation',y='Specific GR')
 
 

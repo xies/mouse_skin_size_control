@@ -19,14 +19,13 @@ from twophotonUtils import parse_aligned_timecourse_directory
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1/'
 
-
-filelist = parse_aligned_timecourse_directory(dirname)
+imstack = io.imread(path.join(dirname,'master_stack/R_shg.tif'))
 
 XX = 1024
-ZZ = 95
-T = 16
+ZZ = 68
+T = 5
 channel2use = 'R_shg'
 
 #%% Calculate heightmaps
@@ -50,13 +49,7 @@ z_shift = 0
 
 for t in tqdm(range(T)):
     
-    f = filelist[channel2use].iloc[t]
-    out_dir = path.split(path.dirname(f))[0]
-    if path.exists(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif')) and not OVERWRITE:
-        continue
-    
-    
-    im = io.imread(f).astype(float)
+    im = io
     im = (im /im.max())* (2**16 -1)
     
     # im_xy_blur = np.zeros_like(im,dtype=float)
