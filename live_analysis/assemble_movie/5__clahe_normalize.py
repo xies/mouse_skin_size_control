@@ -14,13 +14,13 @@ from scipy.ndimage import gaussian_filter
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 
 # G = io.imread(path.join(dirname,'master_stack/G.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/Cropped_images/'
-
 
 #%% Locally histogram-normalize
 

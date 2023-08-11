@@ -18,12 +18,12 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R3'
 
 filelist = parse_unreigstered_channels(dirname,folder_str='*.*/')
 
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {}
+manual_targetZ = {3:5}
 
 #%%
 
@@ -31,7 +31,7 @@ XX = 1024
 
 OVERWRITE = True
 
-for t in tqdm(range(5)):
+for t in tqdm([3]):
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
     if path.exists(path.join(path.dirname(filelist.loc[t,'R']),'R_reg_reg.tif'))  and not OVERWRITE:
@@ -76,7 +76,7 @@ for t in tqdm(range(5)):
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
     T = transform.SimilarityTransform(T)
     # 
-    T = transform.SimilarityTransform(translation=[10,15],rotation=np.deg2rad(0))
+    # T = transform.SimilarityTransform(translation=[0,0],rotation=np.deg2rad(0))
     
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)

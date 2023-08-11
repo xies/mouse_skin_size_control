@@ -27,20 +27,18 @@ from mamutUtils import load_mamut_densely, construct_data_frame_dense
 
 dirnames = []
 # dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2')
-# dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1')
-dirnames.append('/Users/xies/Downloads/Control Region 1/')
+dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1/MaMuT/ablation')
 
 all_tracks = []
 for dirname in dirnames:
     _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='')
     tracks = construct_data_frame_dense(_tracks, _links, _spots)
-    # tracks = construct_data_frame_dense(_tracks.iloc[1:3], _links[1:3], _spots[1:3])
+    tracks = construct_data_frame_dense(_tracks, _links, _spots)
 
-    # tracks[2]
-    # with open(path.join(dirname,'dense_tracks.pkl'),'wb') as file:
-    #     pkl.dump(tracks,file)
+    with open(path.join(dirname,'dense_tracks.pkl'),'wb') as file:
+        pkl.dump(tracks,file)
 
-    # all_tracks.append(tracks)
+    all_tracks.append(tracks)
     
 #%%
 

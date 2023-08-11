@@ -23,7 +23,7 @@ from twophotonUtils import parse_unaligned_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -43,21 +43,21 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 # assert(len(G_tifs) == len(R_tifs))
 # assert(len(G_tifs) == len(R_shg_tifs))
 
-manual_Ztarget = {}
-
 #%% 
 
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = True
+OVERWRITE = False
 
 XY_reg = True
-manual_Ztarget = {1:60,2:49,3:51,4:63,5:56}
 APPLY_XY = True
 APPLY_PAD = True
 
 ref_T = 0
+
+
+manual_Ztarget = {}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -81,7 +81,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [5] ): # 0-indexed
+for t in tqdm( range(5) ): # 0-indexed
     if t == ref_T:
         continue
     
