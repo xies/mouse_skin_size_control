@@ -199,6 +199,28 @@ def cell_cycle_annotate(tracks,pathdict,metadata):
     
     return tracks
 
+
+def annotate_ablation_distance(tracks,metadata):
+
+    ablations = metadata['Ablated cell coords']
+    for i,t in enumerate(tracks):
+        dx = t['X'] - ablations['X']
+        dy = t['Y'] - ablations['Y']
+        D = np.sqrt(dx**2 + dy**2)
+        t['Distance to ablated cell'] = D.min()
+        tracks[i] = t
+        
+    return tracks
+    
+    # for i in range(Nablations):
+    #     abl = ablations.iloc[i]
+    #     dx = df['X'] - abl['X']
+    #     dy = df['Y'] - abl['Y']
+        
+    #     D[:,i] = dx**2 + dy**2
+    # return D.min(axis=1)
+
+
 def collate_timeseries_into_cell_centric_table(tracks,metadata):
     
     
