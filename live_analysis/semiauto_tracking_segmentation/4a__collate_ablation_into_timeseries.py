@@ -24,9 +24,9 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 dirnames = {}
-dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+# dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 # dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-# dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
+dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 # dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
 
 dx = {}
@@ -54,11 +54,9 @@ timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
 
 for name,dirname in dirnames.items():
     
-    for mode in ['Ablation','Nonablation']:
+    for mode in ['Nonablation']:
 
         print(f'---- Working on {name} {mode} ----')
-        if name == 'Ablation_R5' and mode == 'nonablation':
-            continue
         
         # Load ablation coordinates        
         ablation_coords = pd.read_csv(path.join(dirnames[name],'manual_tracking/ablation_xyz.csv')
@@ -90,18 +88,13 @@ for name,dirname in dirnames.items():
         tracks = annotate_ablation_distance(tracks,metadata)
         tracks = cell_cycle_annotate(tracks,pathdict,metadata)
         
-        # Save to the manual tracking folder
-        with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'wb') as file:
-            pkl.dump(tracks,file)
-        
-
         
         # Construct the cell-centric metadata dataframe
         df,tracks = collate_timeseries_into_cell_centric_table(tracks,metadata)
         
-        df.to_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'))
+        df.to_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'))
         # Save to the manual tracking folder    
-        with open(path.join(dirname,'manual_tracking',f'{name}_dense_{mode}.pkl'),'wb') as file:
+        with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'wb') as file:
             pkl.dump(tracks,file)
 
 

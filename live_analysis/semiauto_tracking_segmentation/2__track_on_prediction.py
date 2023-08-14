@@ -22,7 +22,7 @@ import pickle as pkl
 dirnames = {}
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2/'
 
 # dx = 0.2920097
 dx = 1
@@ -54,7 +54,7 @@ for t in range(5):
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/manual_tracking_60.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R4_Nonablation.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 

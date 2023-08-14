@@ -61,7 +61,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     
     tracks = []
     print('Working on each trackID...')
-    for trackID in tqdm(trackIDs):
+    for trackID in trackIDs:
         
         track = []
         
@@ -124,7 +124,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     for i,track in enumerate(tracks):
         
         frames = track['Frame']
-        skipped_frames = frames[:-1][np.diff(frames) > 1] # the 'before skip' frame
+        skipped_frames = frames.iloc[:-1][np.diff(frames) > 1] # the 'before skip' frame
         for f in skipped_frames:
             
             missing_frame = f+1
@@ -233,7 +233,8 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     mode = metadata['Mode']
     time = metadata['Time stamps']
     
-    print(f'Generating cell table for {name}')
+    print(f'Generating cell table for {name}_{mode}')
+    print('--')
     
     df = []
     for track in tracks:
@@ -254,7 +255,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         g1_length = np.nan
         total_length = np.nan
         
-        # Birth
+        # If birth frame is not NAN, then parse the birth size
         birth_frame = track.iloc[0]['Birth frame']
         if (not np.isnan(birth_frame)) and (birth_frame in track['Frame'].values):
                 
@@ -263,15 +264,12 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
                 birth_size_interp = track[track['Frame'] == birth_frame]['Volume interp'].values[0]
                 birth_size_normal_interp = track[track['Frame'] == birth_frame]['Volume normal interp'].values[0]
             
-        else:
-            birth_frame = np.nan
         
         div_frame = track.iloc[0]['Division frame']
         s_frame = track.iloc[0]['S phase entry frame']
         
         # it's possible that the div/s frame isn't in the segmentation frame
         # because that frame has bad quality -> fill in with NA
-        
         if (not np.isnan(div_frame)) and (not div_frame in track['Frame']):
             age = time[int(div_frame)] - track.iloc[0]['Age']
             track = pd.concat([track,pd.DataFrame({'Frame':div_frame,'X':np.nan,'Y':np.nan,'Z':np.nan
@@ -294,7 +292,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
                                                 ,index=[int(s_frame)])
                                          ],ignore_index=True)
         
-        # Division
+        # If division isn't in the 
         if not np.isnan(div_frame):
             # print(div_frame)
             # print(track['CellID'])
@@ -303,23 +301,19 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
             div_size_interp = track[track['Frame'] == div_frame]['Volume interp'].values[0]
             div_size_normal_interp = track[track['Frame'] == div_frame]['Volume normal interp'].values[0]
             total_length = track[track['Frame'] == div_frame]['Age'].values[0]
-        else:
-            div_size = np.nan
         
         # Delete mitotic volumes
         if track.iloc[0].Mitosis:
             div_size = np.nan
         
-        # G1/S
-        if not np.isnan(s_frame):
+        # Grab cell size at S phase entry; s_frame must NOT be the first frame (i.e. two frames to observe transition point)
+        if not np.isnan(s_frame) and s_frame > 0:
             s_size = track[track['Frame'] == s_frame]['Volume'].values[0]
             s_size_normal = track[track['Frame'] == s_frame]['Volume normal'].values[0]
             s_size_interp = track[track['Frame'] == s_frame]['Volume interp'].values[0]
             s_size_normal_interp = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
             g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
-        else:
-            s_frame = np.nan
-        
+
         df.append({'CellID':track.iloc[0].CellID
                     ,'um_per_px':dx
                     ,'Region':name

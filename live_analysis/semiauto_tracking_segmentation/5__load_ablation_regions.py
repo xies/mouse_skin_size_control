@@ -27,19 +27,15 @@ dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/0
 dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
 
-# dirnames['Nonablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirnames['Nonablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-dirnames['Nonablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
-
 #%%
 
 all_tracks = {}
 ts_all = {}
 regions = {}
 for name,dirname in dirnames.items():
-    for mode in ['curated']:
+    for mode in ['Ablation','Nonablation']:
         
-        with open(path.join(dirname,'manual_tracking',f'{name}_dense_{mode}.pkl'),'rb') as file:
+        with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'rb') as file:
             tracks = pkl.load(file)
         
         for t in tracks:
@@ -50,7 +46,7 @@ for name,dirname in dirnames.items():
         
         ts_all[name+'_'+mode] = pd.concat(tracks)
         
-        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
+        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'),index_col=0)
         df['Division size'] = df['Birth size'] + df['Total growth']
         df['S entry size'] = df['Birth size'] + df['G1 growth']
         df['Log birth size'] = np.log(df['Birth size']) 
@@ -64,19 +60,21 @@ ts_all = pd.concat(ts_all,ignore_index=True)
 #%%
 
 plt.subplot(1,2,1)
-for t in all_tracks['Nonablation_R4_curated']:
-    plt.plot(t.Age, t['Volume normal interp'],'b-')
+for t in all_tracks['Ablation_R4_Nonablation']:
+    plt.plot(t.Age, t['Volume interp'],'b-')
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
 # plt.ylim([0.5,2.5])
+plt.ylim([0,200])
 plt.title('Non neighbors')
 
 plt.subplot(1,2,2)
-for t in all_tracks['Ablation_R4_curated']:
-    plt.plot(t.Age, t['Volume normal interp'],'r-')
+for t in all_tracks['Ablation_R4_Ablation']:
+    plt.plot(t.Age, t['Volume interp'],'r-')
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
 # plt.ylim([0.5,2.5])
+plt.ylim([0,200])
 plt.title('Neighbors')
     
 # sb.relplot(ts_all,x='Age',y='Volume normal',hue='Region', kind='line')
@@ -86,10 +84,13 @@ plt.title('Neighbors')
 ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
 ts_all['Specific GR normal'] = ts_all['Growth rate normal'] / ts_all['Volume normal']
 
-sb.catplot(ts_all,x='Region',y='Specific GR',kind='violin')
+sb.catplot(ts_all,x='Mode',y='Specific GR',kind='violin')
 
 
 plt.figure()
-sb.regplot(ts_all,x='Distance to ablation',y='Specific GR')
+sb.regplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1})
 
+#%%
+
+sb.catplot(ts_all, x= 'Distance to ablated cell',y = 'Specific GR normal')
 

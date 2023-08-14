@@ -26,8 +26,8 @@ from mamutUtils import load_mamut_densely, construct_data_frame_dense
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-# dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2')
-dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1/MaMuT/ablation')
+# dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/MaMuT/nonablation')
+dirnames.append('/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2/MaMuT/nonablation')
 
 all_tracks = []
 for dirname in dirnames:
