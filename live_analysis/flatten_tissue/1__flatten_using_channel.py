@@ -18,12 +18,12 @@ from scipy.ndimage import gaussian_filter
 
 #%%
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2/'
 
 XX = 1024
 ZZ = 95
 
-imstack = io.imread(path.join(dirname,'master_stack/R_shg.tif'))
+imstack = io.imread(path.join(dirname,'master_stack/G.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
 
