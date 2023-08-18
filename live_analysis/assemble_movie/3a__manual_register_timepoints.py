@@ -17,6 +17,7 @@ from tqdm import tqdm
 import matplotlib.pylab as plt
 
 from twophotonUtils import parse_unaligned_channels
+from mathUtils import normxcorr2
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-18-2023 R26CreER Rb-fl ablation test/F1 black/R1'
@@ -29,42 +30,43 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 OVERWRITE = True
 
-ref_T = 0
-target_T = `
+ref_T = 1
+target_T = 0
 
-ref_chan = 
+ref_chan = 'B'
+target_chan = 'B'
 
-R_shg_ref = io.imread( R_shg_tifs[3] )
 
-###
+#Load the ref
+ref_stack = io.imread( filelist.loc[ref_T,ref_chan] )
+#Load the target
+target_stack = io.imread(filelist.loc[target_T,target_chan])
+
+#%%
 
 # Find the slice with maximum mean value in R_shg channel
-Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-ref_img = R_shg_ref[Imax_ref,...]
-Z_ref = R_shg_ref.shape[0]
+Imax_ref = ref_stack.std(axis=2).std(axis=1).argmax() # Find max contrast slice
+ref_img = ref_stack[Imax_ref,...]
+Z_ref = ref_stack.shape[0]
 
-CC = np.zeros(len(R_tifs))
-Iz_target_slice = np.zeros(len(R_tifs))
+# Use xcorr2 to find the z-slice on the target that has max CC with the reference
+CC = np.zeros(target_stack.shape[0])
+for z,im in enumerate(target_stack):
+    CC[z] = normxcorr2(ref_img, im).max()
+Imax_target = CC.argmax()
+target_img = target_stack[Imax_target]
+print(f'Target z-slice automatically determined to be {Imax_target}')
 
-output_dir = path.split(path.dirname(R_tifs[target_T]))[0]
-
-#Load the target
-# R_shg_target = io.imread(R_shg_tifs[target_T])
-
-# Find simlar in the next time point
-Imax_target = R_shg_target.std(axis=2).std(axis=1).argmax()
-target_img = R_shg_target[Imax_target,...]
 
 print('\n Starting stackreg')
 # Use StackReg to 'align' the two z slices
 sr = StackReg(StackReg.RIGID_BODY)
 T = sr.register(ref_img,target_img) #Obtain the transformation matrices
 
-B = io.imread(B_tifs[target_T])
-G = io.imread(G_tifs[target_T])
+B = io.imread(filelist.loc[target_T,'B'])
+G = io.imread(filelist.loc[target_T,'G'])
 # R = io.imread(R_tifs[target_T])
 
-T = transform.SimilarityTransform(matrix=T)
 
 print('Applying transformation matrices')
 # Apply transformation matrix to each stacks
@@ -79,7 +81,7 @@ for i, B_slice in enumerate(B):
     # R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
     
 # Z-pad the time point in reference to t - 1
-Z_target = R_shg_target.shape[0]
+Z_target = target_stack.shape[0]
 
 print('Padding')
 top_padding = Imax_ref - Imax_target
@@ -117,7 +119,7 @@ elif bottom_padding < 0: # then needs trimming
     # R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
 print('Saving')
-output_dir = path.dirname(B_tifs[target_T])
+output_dir = path.dirname(filelist[target_T,'B'])
 io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
 io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
 
@@ -125,44 +127,6 @@ io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
 # io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
 # io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
     
-#%% Sort filenames by time (not alphanumeric) and then assemble 'master stack'
-# But exclude R_shg since 4-channel tifs are annoying to handle for FIJI loading.
-
-T = len(B_tifs)-1
-# Use a function to regex the Day number and use that to sort
-def sort_by_number(filename):
-    day = match('Day (\d+)',path.split(path.split(path.split(filename)[0])[0])[1])
-    day = day.groups()[0]
-    return int(day)
-
-filelist = pd.DataFrame()
-filelist['B'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/B_align.tif')), key = sort_by_number)
-filelist['G'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/G_align.tif')), key = sort_by_number)
-filelist['R'] = sorted(glob(path.join(dirname,'Day*/ZSeries*/R_align.tif')), key = sort_by_number)
-filelist.index = np.arange(1,T+1)
-
-# t= 0 has no '_align'
-s = pd.Series({'B': glob(path.join(dirname,'Day 3.5/ZSeries*/B_reg_reg.tif'))[0],
-                 'G': glob(path.join(dirname,'Day 3.5/ZSeries*/G_reg_reg.tif'))[0],
-                 'R': glob(path.join(dirname,'Day 3.5/ZSeries*/R_reg_reg.tif'))[0]}, name=0)
-
-filelist = filelist.append(s)
-filelist = filelist.sort_index()
-
-# Load file and concatenate them appropriately
-# FIJI default: CZT XY, but this is easier for indexing
-stack = np.zeros((T,Z_ref,3,XX,XX))
-
-for t in range(T):
-    R = io.imread(filelist.loc[t,'R'])
-    G = io.imread(filelist.loc[t,'G'])
-    B = io.imread(filelist.loc[t,'B'])
-    
-    stack[t,:,0,:,:] = R
-    stack[t,:,1,:,:] = G
-    stack[t,:,2,:,:] = B
-    
-io.imsave(path.join(dirname,'master_stack.tif'),stack.astype(np.int16))
 
 
 
