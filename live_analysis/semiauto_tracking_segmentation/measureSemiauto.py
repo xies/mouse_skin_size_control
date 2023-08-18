@@ -140,17 +140,23 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         
         track['Volume interp'],spl = smooth_growth_curve(track,y='Volume')
         track['Volume normal interp'],spl_norm = smooth_growth_curve(track,y='Volume normal')
-
+        track['Growth rate'] = np.nan
+        track['Growth rate normal'] = np.nan
+        track['Specific GR normal'] = np.nan
+        track['Specific GR'] = np.nan
+         
+        
         if not spl == None:
         
             track['Growth rate'] = spl.derivative(1)(track['Age'])
             track['Growth rate normal'] = spl_norm.derivative(1)(track['Age'])
+            track['Specific GR'] = track['Growth rate'] / track['Volume interp']
+            track['Specific GR normal'] = track['Growth rate normal'] / track['Volume normal interp']
         
         # track['Growth rate back'] = np.diff(track['Volume'])
         # track['Growth rate interp'] = track['Spline interp'].iloc[0].derivateve(1)(track['Age'])
 
         tracks[i] = track
-
 
     print(f'Done with {name}')
     
@@ -196,6 +202,9 @@ def cell_cycle_annotate(tracks,pathdict,metadata):
             track['Mitosis'] = this_anno['Mitosis?'] == 'Yes'
             if track.iloc[0]['Mitosis']:
                 track.loc[track['Frame'] == this_anno.Division,'Volume'] = np.nan
+
+    for t in tracks:
+        t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
     
     return tracks
 
@@ -204,10 +213,11 @@ def annotate_ablation_distance(tracks,metadata):
 
     ablations = metadata['Ablated cell coords']
     for i,t in enumerate(tracks):
-        dx = t['X'] - ablations['X']
-        dy = t['Y'] - ablations['Y']
-        D = np.sqrt(dx**2 + dy**2)
-        t['Distance to ablated cell'] = D.min()
+        for j,row in t.iterrows():
+            dx = row['X'] - ablations['X']
+            dy = row['Y'] - ablations['Y']
+            D = np.sqrt(dx**2 + dy**2)
+            t['Distance to ablated cell'] = D.min()
         tracks[i] = t
         
     return tracks
@@ -352,10 +362,16 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     df['Total growth'] = df['Division size'] - df['Birth size']
     df['G1 growth normal'] = df['S phase entry size normal'] - df['Birth size normal']
     df['Total growth normal'] = df['Division size normal'] - df['Birth size normal']
+
     df['G1 growth interp'] = df['S phase entry size interp'] - df['Birth size interp']
     df['Total growth '] = df['Division size interp'] - df['Birth size interp']
     df['G1 growth normal interp'] = df['S phase entry size normal interp'] - df['Birth size normal interp']
     df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
+    df['Division size'] = df['Birth size'] + df['Total growth']
+    df['S entry size'] = df['Birth size'] + df['G1 growth']
+    df['Log birth size'] = np.log(df['Birth size']) 
+    df['Fold grown'] = df['Division size'] / df['Birth size']
+    df['SG2 growth'] = df['Total growth'] - df['G1 growth']
     
     return df, tracks
 
