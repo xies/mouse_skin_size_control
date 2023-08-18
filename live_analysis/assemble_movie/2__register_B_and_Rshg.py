@@ -18,20 +18,21 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R3'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R3'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
 filelist = parse_unreigstered_channels(dirname,folder_str='*.*/')
 
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {3:5}
+manual_targetZ = {}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
-for t in tqdm([3]):
+for t in tqdm(range(6)):
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
     if path.exists(path.join(path.dirname(filelist.loc[t,'R']),'R_reg_reg.tif'))  and not OVERWRITE:

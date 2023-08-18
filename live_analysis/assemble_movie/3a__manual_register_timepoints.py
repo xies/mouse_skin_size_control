@@ -18,26 +18,21 @@ import matplotlib.pylab as plt
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-18-2023 R26CreER Rb-fl ablation test/F1 black/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-18-2023 R26CreER Rb-fl ablation test/F1 black/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
-#%% Reading the first ome-tiff file using imread reads entire stack
+filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
-# Grab all registered B/R tifs
-# filelist = parse_unaligned_channels(dirname)
-       
-#%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
-# R_shg is best channel to use bc it only has signal in the collagen layer.
-# Therefore it's easy to identify which z-stack is most useful.
+#%% Specify source and target
 
 XX = 1024
 OVERWRITE = True
 
-assert(len(B_tifs) == len(R_tifs))
-assert(len(G_tifs) == len(R_shg_tifs))
+ref_T = 0
+target_T = `
 
-ref_T = 2
-target_T = 9
+ref_chan = 
 
 R_shg_ref = io.imread( R_shg_tifs[3] )
 

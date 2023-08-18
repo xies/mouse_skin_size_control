@@ -23,25 +23,10 @@ from twophotonUtils import parse_unaligned_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
-
-#%% Reading the first ome-tiff file using imread reads entire stack
-
-def sort_by_day(filename):
-    day = match('\d+. Day (\d+\.?5?)',path.split(path.split(filename)[0])[1])
-    day = day.groups()[0]
-    return float(day)
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
-
-# Grab all registered B/R tifs
-# B_tifs = sorted(glob(path.join(dirname,'*Day*/B_reg.tif')),key=sort_by_day)
-# G_tifs = sorted(glob(path.join(dirname,'*Day*/G_reg.tif')),key=sort_by_day)
-# R_shg_tifs = sorted(glob(path.join(dirname,'*Day*/R_shg_reg_reg.tif')),key=sort_by_day)
-# R_tifs = sorted(glob(path.join(dirname,'*Day*/R_reg_reg.tif')),key=sort_by_day)
-
-# assert(len(G_tifs) == len(R_tifs))
-# assert(len(G_tifs) == len(R_shg_tifs))
 
 #%% 
 
@@ -81,7 +66,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( range(5) ): # 0-indexed
+for t in tqdm( range(6) ): # 0-indexed
     if t == ref_T:
         continue
     
