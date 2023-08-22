@@ -119,9 +119,9 @@ elif bottom_padding < 0: # then needs trimming
     # R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
 print('Saving')
-output_dir = path.dirname(filelist[target_T,'B'])
-io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.int16))
-io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.int16))
+output_dir = path.dirname(filelist.loc[target_T,'B'])
+io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.uint16))
+io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.uint16))
 
 # output_dir = path.dirname(R_tifs[target_T])
 # io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))

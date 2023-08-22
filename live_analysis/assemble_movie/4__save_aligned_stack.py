@@ -23,8 +23,9 @@ from twophotonUtils import parse_aligned_timecourse_directory
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
-filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*')
+filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*',INCLUDE_ZERO=False)
 
 #%% Stack channels & save into single tif
 
@@ -64,34 +65,6 @@ io.imsave(path.join(dirname,'master_stack/B.tif'), np.stack(B).astype(np.uint16)
 # io.imsave(path.join(dirname,'master_stack/G_blur.tif'),np.stack(G_blur).astype(np.uint16))
 print('Saving B_blur ...')
 io.imsave(path.join(dirname,'master_stack/B_blur.tif'),np.stack(B_blur).astype(np.uint16))
-
-#%% Save individual day*.tif into the same directory
-
-MAX = 2**16-1
-def fix_image_range(im, max_range):
-    
-    im = im.copy().astype(float)
-    im[im == 0] = np.nan
-    im = im - np.nanmin(im)
-    im = im / np.nanmax(im) * max_range
-    im[np.isnan(im)] = 0
-    return im.astype(np.uint16)
-
-for t in tqdm(range(T)):
-
-# stack = np.zeros((Z_ref,3,XX,XX))
-    
-    R = io.imread(filelist.loc[t,'R'])
-    G = io.imread(filelist.loc[t,'G'])
-    B = io.imread(filelist.loc[t,'B'])
-    
-    # Do some image range clean up
-    R_ = fix_image_range(R,MAX)
-    G_ = fix_image_range(G,MAX)
-    B_ = fix_image_range(B,MAX)
-
-    stack = np.stack((R_,G_,B_))
-    io.imsave(path.join(dirname,f'im_seq/t{t}.tif'),stack.astype(np.uint16),check_contrast=False)
 
 
 
