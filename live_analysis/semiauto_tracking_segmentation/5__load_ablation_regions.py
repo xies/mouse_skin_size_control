@@ -25,8 +25,9 @@ dirnames = {}
 dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
-dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
-# dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+# dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
+dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
 #%%
 
@@ -59,30 +60,41 @@ nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
 
+# tracks = all_tracks['Ablation_R11']
+tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Nonablation'].groupby(['Region','CellID'])]
+
 plt.subplot(1,2,1)
-for t in all_tracks['Ablation_R5_Nonablation']:
-    plt.plot(t.Age, t['Volume normal interp'],'b-')
+for t in tracks:
+    plt.plot(t.Age, t['Specific GR normal'],'b-',alpha=0.1)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([0.5,2.5])
+plt.ylim([-0.1,0.1])
 # plt.ylim([0,200])
 plt.title('Non neighbors')
 
+tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Ablation'].groupby(['Region','CellID'])]
+
 plt.subplot(1,2,2)
-for t in all_tracks['Ablation_R5_Ablation']:
-    plt.plot(t.Age, t['Volume normal interp'],'r-')
+for t in tracks:
+    plt.plot(t.Age, t['Specific GR normal'],'r-',alpha=0.1)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([0.5,2.5])
+plt.ylim([-0.1,0.1])
 # plt.ylim([0,200])
 plt.title('Neighbors')
 
 #%%
 
+sb.lmplot(ts_all,x='Volume',y='Specific GR',hue='Region',col='Mode')
+
+#%%
+
 # ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
 # ts_all['Specific GR normal'] = ts_all['Growth rate normal'] / ts_all['Volume normal']
+sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box')
 
-sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box',hue='Region')
+# sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box',hue='Region')
+
 
 
 plt.figure()

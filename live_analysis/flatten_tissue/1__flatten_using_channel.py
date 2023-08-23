@@ -19,6 +19,7 @@ from scipy.ndimage import gaussian_filter
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3/'
 
 XX = 1024
 ZZ = 95
@@ -27,19 +28,21 @@ imstack = io.imread(path.join(dirname,'master_stack/G.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
 
+SIGN = 1
+
 #%%
 
-XY_sigma = 30
+XY_sigma = 25
 Z_sigma = 10
 
 TOP_Z_BOUND = 0
 BOTTOM_Z_BOUND = 35
- 
+
 z_shift = 0
 
 OVERWRITE = True
 
-for t in tqdm(range(TT)):
+for t in tqdm(range(7)):
 
     # im = io.imread(filelist.loc[t,channel2use])
     im = imstack[t,...]
@@ -67,10 +70,10 @@ for t in tqdm(range(TT)):
     # io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
     
     
-    # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp = im_z_blur.copy().astype(float)
+    # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
     _tmp[np.isnan(_tmp)] = 0
-    _tmp_diff = -np.diff(_tmp,axis=0)
+    _tmp_diff = SIGN * np.diff(_tmp,axis=0)
     heightmap = _tmp_diff.argmax(axis=0)
     heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
     heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND

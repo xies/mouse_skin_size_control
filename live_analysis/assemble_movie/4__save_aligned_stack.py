@@ -50,21 +50,21 @@ for t in tqdm(range(len(filelist))):
     
     B_ = io.imread(filelist.loc[t,'B'])
     B.append(B_)
-    B_blur.append(gaussian_filter(B_,sigma=[.5,.5,.5]))
+    # B_blur.append(gaussian_filter(B_,sigma=[.5,.5,.5]))
     
-# print('Saving G ...')
-# io.imsave(path.join(dirname,'master_stack/G.tif'), np.stack(G).astype(np.uint16))
-print('Saving R ...')
-io.imsave(path.join(dirname,'master_stack/R.tif'), np.stack(R).astype(np.uint16))
-print('Saving R_shg ...')
-io.imsave(path.join(dirname,'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
-print('Saving B ...')
-io.imsave(path.join(dirname,'master_stack/B.tif'), np.stack(B).astype(np.uint16))
+print('Saving G ...')
+io.imsave(path.join(dirname,'master_stack/G.tif'), np.stack(G).astype(np.uint16))
+# print('Saving R ...')
+# io.imsave(path.join(dirname,'master_stack/R.tif'), np.stack(R).astype(np.uint16))
+# print('Saving R_shg ...')
+# io.imsave(path.join(dirname,'master_stack/R_shg.tif'), np.stack(R_shg).astype(np.uint16))
+# print('Saving B ...')
+# io.imsave(path.join(dirname,'master_stack/B.tif'), np.stack(B).astype(np.uint16))
 
 # print('Saving G_blur ...')
 # io.imsave(path.join(dirname,'master_stack/G_blur.tif'),np.stack(G_blur).astype(np.uint16))
-print('Saving B_blur ...')
-io.imsave(path.join(dirname,'master_stack/B_blur.tif'),np.stack(B_blur).astype(np.uint16))
+# print('Saving B_blur ...')
+# io.imsave(path.join(dirname,'master_stack/B_blur.tif'),np.stack(B_blur).astype(np.uint16))
 
 
 

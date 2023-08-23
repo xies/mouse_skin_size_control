@@ -12,6 +12,7 @@ import pandas as pd
 from skimage import io
 from tqdm import tqdm
 from scipy.interpolate import UnivariateSpline
+from scipy.optimize import curve_fit
 
 import warnings
 with warnings.catch_warnings():
@@ -324,6 +325,12 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
             s_size_normal_interp = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
             g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
 
+        # Exponential fit parameters
+        
+        params,_ = exponential_fit(track,x='Age',y='Volume normal')
+        V0 = params[0]
+        gamma = params[1]
+
         df.append({'CellID':track.iloc[0].CellID
                     ,'um_per_px':dx
                     ,'Region':name
@@ -350,6 +357,8 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
                     ,'G1 length':g1_length
                     ,'SG2 length':total_length - g1_length
                     ,'Total length':total_length
+                    ,'Exponential growth rate':gamma
+                    ,'Exponential initial':V0
                     # ,'G1 growth':s_size - birth_size
                     # ,'Total growth':div_size - birth_size
                     # ,'G1 growth normal':s_size_normal - birth_size_normal
@@ -426,7 +435,28 @@ def smooth_growth_curve(cf,x='Age',y='Volume',smoothing_factor=1e10):
         
     return Yhat, spl
     
+def exponential(t, V0, gamma):
+    return np.exp(gamma*t)*V0
 
+def exponential_fit(cf,x='Age',y='Volume normal'):
+
+    X = cf[x]
+    Y = cf[y]
+    
+    I = (~np.isnan(X)) * (~np.isnan(Y))
+    X = X[I]
+    Y = Y[I]
+    
+    if len(X) < 4:
+        params = np.array([np.nan, np.nan])
+        pCOV = np.nan
+    else:
+        init_guess = [Y.mean(),0.01]
+        params, pCOV = curve_fit(exponential,X,Y,p0=init_guess)
+        
+    return params, pCOV
+        
+        
 
     
     
