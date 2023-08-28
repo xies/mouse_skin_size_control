@@ -51,7 +51,7 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
 
 # Find the slice with maximum mean value in R_shg channel
 R_shg_ref = io.imread( filelist.loc[ref_T,'R_shg'] )
-Z_ref = R_shg_ref.shape[ref_T]
+Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
 # Imax_ref = 31
 ref_img = R_shg_ref[Imax_ref,...]
@@ -184,7 +184,7 @@ with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 
 print('DONE')
-
+ 
 #%%
 #% Manually input any alignment matrix and save
 

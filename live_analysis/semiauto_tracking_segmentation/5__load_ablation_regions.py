@@ -22,11 +22,11 @@ from basicUtils import *
 
 dirnames = {}
 
-dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
+# dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+# dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+# dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 # dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
-dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+# dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
 #%%
@@ -60,15 +60,38 @@ nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
 
+pairs = zip(range(6),range(1,7))
+colors = {'Ablation':'r','Nonablation':'b'}
+
+for first,second in pairs:
+    
+    for (_,mode),track in ts_all.groupby(['CellID','Mode']):
+        
+        plt.plot([0,200],[0,200],'k--')
+        plt.subplot(2,3,first+1)
+        t1 = track[track['Frame'] == first]['Volume normal']
+        t2 = track[track['Frame'] == second]['Volume normal']
+        if len(t1) == 1 and len(t2) == 1:
+            plt.scatter(t1,t2,color=colors[mode],alpha=0.2)
+        
+    plt.title(f'{first} v. {second}')
+    plt.xlim([0,2]); plt.ylim([0,2])
+
+
+#%%
+
 # tracks = all_tracks['Ablation_R11']
+field2plot = 'Volume normal'
+YMIN = 0
+YMAX = 2.5
 tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Nonablation'].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,1)
 for t in tracks:
-    plt.plot(t.Age, t['Specific GR normal'],'b-',alpha=0.1)
+    plt.plot(t.Age, t[field2plot],'b-',alpha=0.1)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([-0.1,0.1])
+plt.ylim([YMIN,YMAX])
 # plt.ylim([0,200])
 plt.title('Non neighbors')
 
@@ -76,10 +99,10 @@ tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Ablation'].groupby(['Region','C
 
 plt.subplot(1,2,2)
 for t in tracks:
-    plt.plot(t.Age, t['Specific GR normal'],'r-',alpha=0.1)
+    plt.plot(t.Age, t[field2plot],'r-',alpha=0.1)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([-0.1,0.1])
+plt.ylim([YMIN,YMAX])
 # plt.ylim([0,200])
 plt.title('Neighbors')
 
