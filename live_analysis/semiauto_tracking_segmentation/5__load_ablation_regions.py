@@ -119,7 +119,6 @@ sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box')
 # sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box',hue='Region')
 
 
-
 plt.figure()
 sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1},hue='Mode')
 

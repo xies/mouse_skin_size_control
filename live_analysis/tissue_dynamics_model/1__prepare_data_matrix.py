@@ -89,6 +89,9 @@ features_list = { # Cell geometry
                 # Cell dynamics
                 ,'Delta curvature':'delta_curvature'
                 ,'Delta height':'delta_height'
+                ,'Neighbor planar number frame-1':'num_planar_neighb_12h'
+                # ,'Volume frame-1':'vol_12h'
+                # ,'Volume frame-2':'vol_24h'
                 
                 # Neighborhood dynamics (averages of previous frame)
                 ,'Mean neighbor nuclear volume normalized':'mean_neighb_nuc_vol'

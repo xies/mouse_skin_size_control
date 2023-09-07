@@ -24,7 +24,7 @@ dirnames = {}
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 
-dirnames ='/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
 
 # dx = 0.2920097
 dx = 1
@@ -51,7 +51,7 @@ with open(path.join(dirname,'MaMuT/nonablation','dense_tracks.pkl'),'rb') as fil
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(7):
+for t in range(8):
     segonly.append(io.imread(path.join(dirname,f'cellpose_B_clahe_blur/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 

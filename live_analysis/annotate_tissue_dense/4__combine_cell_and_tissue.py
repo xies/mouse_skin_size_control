@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -47,10 +47,13 @@ df['FUCCI bg sub frame-1'] = np.nan
 df['FUCCI bg sub frame-2'] = np.nan
 df['Neighbor mean nuclear volume frame-1'] = np.nan
 df['Neighbor mean nuclear volume frame-2'] = np.nan
+df['Neighbor planar number frame-1'] = np.nan
 df['Coronal density frame-1'] = np.nan
 df['Coronal density frame-2'] = np.nan
 df['Delta curvature'] = np.nan
 df['Delta height'] = np.nan
+df['Volume frame-1'] = np.nan
+df['Volume frame-2'] = np.nan
 # Call fate based on cell height
 # For each cell, load all frames, then grab the prev frame height data
 # Some dynamics
@@ -60,13 +63,15 @@ for basalID in collated.keys():
     if this_len > 1:
         
         this_cell = df.iloc[idx]        
-        # Dynamics
+        # Environment dynamics
         heights = this_cell['Mean neighbor height'].values
         fucci_int = this_cell['FUCCI bg sub'].values
         neighbor_vol = this_cell['Mean neighbor nuclear volume normalized'].values
+        neighbor_numb = this_cell['Num planar neighbors'].values
         cor_density = this_cell['Coronal density'].values
         curvature = this_cell['Mean curvature'].values
         bm_height = this_cell['Height to BM'].values
+        vol = this_cell['Volume (sm)'].values
         
         # Compute d/dt
         # df.at[idx[1:],'Delta curvature'] = np.diff(this_cell['Mean curvature'])
@@ -81,6 +86,8 @@ for basalID in collated.keys():
             df.at[idx[t],'Coronal density frame-1'] = cor_density[t-1]
             df.at[idx[t],'Delta curvature'] = curvature[t] - curvature[t-1]
             df.at[idx[t],'Delta height'] = bm_height[t] - bm_height[t-1]
+            df.at[idx[t],'Neighbor planar number frame-1'] = neighbor_numb[t-1]
+            df.at[idx[t],'Volume frame-1'] = vol[t-1]
             
             if t > 1:
                 # 24h before
@@ -88,6 +95,7 @@ for basalID in collated.keys():
                 df.at[idx[t],'FUCCI bg sub frame-2'] = fucci_int[t-2]
                 df.at[idx[t],'Neighbor mean nuclear volume frame-2'] = neighbor_vol[t-2]
                 df.at[idx[t],'Coronal density frame-2'] = cor_density[t-2]
+                df.at[idx[t],'Volume frame-2'] = vol[t-2]
         
             
 df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
