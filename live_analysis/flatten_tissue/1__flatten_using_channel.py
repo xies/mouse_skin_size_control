@@ -10,7 +10,7 @@ Optimized for Mesa et al organization
 
 import numpy as np
 import pandas as pd
-from skimage import io, util
+from skimage import io
 from os import path
 
 from tqdm import tqdm
@@ -19,30 +19,30 @@ from scipy.ndimage import gaussian_filter
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2'
 
 XX = 1024
 ZZ = 95
 
-imstack = io.imread(path.join(dirname,'master_stack/G.tif'))
+imstack = io.imread(path.join(dirname,'master_stack/R_shg.tif'))
 ZZ = imstack.shape[1]
 TT = imstack.shape[0]
 
-SIGN = 1
+SIGN = -1
 
 #%%
 
 XY_sigma = 25
 Z_sigma = 10
 
-TOP_Z_BOUND = 0
-BOTTOM_Z_BOUND = 35
+TOP_Z_BOUND = 10
+BOTTOM_Z_BOUND = 40
 
 z_shift = 0
 
 OVERWRITE = True
 
-for t in tqdm(range(7)):
+for t in tqdm(range(imstack.shape[0])):
 
     # im = io.imread(filelist.loc[t,channel2use])
     im = imstack[t,...]
@@ -53,7 +53,8 @@ for t in tqdm(range(7)):
         Z_sigma = params['Z_sigma'].values
         TOP_Z_BOUND = params['TOP_Z_BOUND'].values
         BOTTOM_Z_BOUND = params['BOTTOM_Z_BOUND'].values
-        
+        continue
+    
     im_z_blur = gaussian_filter(im,sigma=[Z_sigma,XY_sigma,XY_sigma])
     # im_xy_blur = np.zeros_like(im[:,:,:],dtype=float)
     #XY_blur

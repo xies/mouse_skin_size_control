@@ -19,7 +19,6 @@ from tqdm import tqdm
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/'
 
-
 OVERWRITE = False
 
 #%% Reading the first ome-tiff file using imread reads entire stack
@@ -99,7 +98,7 @@ for header_ome in tqdm(header_ome_fucci):
     # Use StackReg
     print(f'Registering {d}')
     sr = StackReg(StackReg.TRANSLATION) # There should only be slight sliding motion within a single stack
-    T = sr.register_stack(R_shg,reference='previous',axis=0) #Obtain the transformation matrices
+    T = sr.register_stack(R,reference='previous',axis=0) #Obtain the transformation matrices
     R_reg = sr.transform_stack(R,tmats=T) # Apply to both channels
     R_shg_reg = sr.transform_stack(R_shg,tmats=T) # Apply to both channels
     

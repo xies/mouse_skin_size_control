@@ -16,6 +16,7 @@ from scipy.ndimage import gaussian_filter
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1'
 
 # G = io.imread(path.join(dirname,'master_stack/G.tif'))
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/Cropped_images/'
@@ -39,5 +40,4 @@ io.imsave(path.join(dirname,'master_stack/B_clahe.tif'),util.img_as_uint(im_clah
 
 # 3d Blur
 io.imsave(path.join(dirname,'master_stack/B_clahe_blur.tif'),util.img_as_uint(clahe_blur))
-
 
