@@ -63,12 +63,12 @@ timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
               ,'Ablation_R11':np.array([0,0.1,22,25,29,33,37])
               ,'Ablation_R12':np.array([0,0.1,16,20,21,27,32,46])}
 
-                    #%% Load and collate manual track+segmentations
+#%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
 
 for name,dirname in dirnames.items():
     
-    for mode in ['Ablation','Nonablation']:
+    for mode in ['Nonablation']:
 
         print(f'---- Working on {name} {mode} ----')
         
