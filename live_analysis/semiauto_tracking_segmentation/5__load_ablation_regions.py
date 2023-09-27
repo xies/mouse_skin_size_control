@@ -26,10 +26,10 @@ dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/0
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 # dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
-dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+# dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 # dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
-dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
+# dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
 
 #%%
 
@@ -62,27 +62,27 @@ nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
 
-sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box')
-sb.catplot(df_all,x='Mode',y='Exponential growth rate',kind='box')
-sb.catplot(df_all,x='Mode',y='S phase entry size normal',kind='box')
+sb.catplot(ts_all,x='Mouse',hue='Mode',y='Specific GR normal',kind='box')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
 
 #%%
 
-pairs = zip(range(6),range(1,7))
+pairs = zip(range(7),range(1,8))
 colors = {'Ablation':'r','Nonablation':'b'}
 
 for first,second in pairs:
     
-    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablations_R12'].groupby(['CellID','Mode']):
+    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R12'].groupby(['CellID','Mode']):
+        plt.subplot(2,4,first+1)
+        plt.plot([0,2],[0,2],'k--')
         
-        plt.plot([0,200],[0,200],'k--')
-        plt.subplot(2,3,first+1)
-        t1 = track[track['Frame'] == first]['Volume']
-        t2 = track[track['Frame'] == second]['Volume']
+        t1 = track[track['Frame'] == first]['Volume normal']
+        t2 = track[track['Frame'] == second]['Volume normal']
         if len(t1) == 1 and len(t2) == 1:
             plt.scatter(t1,t2,color=colors[mode],alpha=0.2)
         
-    plt.title(f'{first} v. {second}')
+    # plt.title(f'{first} v. {second}')
     # plt.xlim([0,2]); plt.ylim([0,2])
 
 #%%
@@ -124,23 +124,30 @@ plt.figure()
 sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1},hue='Mode')
 
 
-
 #%%
 
 from basicUtils import ttest_from_groupby
 
-T,P = ttest_from_groupby(df_all,'Mode','S phase entry size')
-print(f'S phase entry size, P = {P}')
+for mousename,mouse in df_all.groupby('Mouse'):
+    
+    print(f'--- {mousename} ---')
+    # T,P = ttest_from_groupby(mouse,'Mode','S phase entry size')
+    # print(f'S phase entry size, P = {P}')
+    
+    T,P = ttest_from_groupby(mouse,'Mode','S phase entry size normal')
+    print(f'S phase entry size normal, P = {P}')
+    
+    T,P = ttest_from_groupby(mouse,'Mode','Exponential growth rate')
+    print(f'Exponential growth rate, P = {P}')
 
-T,P = ttest_from_groupby(df_all,'Mode','S phase entry size normal')
-print(f'S phase entry size normal, P = {P}')
 
-
-T,P = ttest_from_groupby(ts_all,'Mode','Specific GR')
-print(f'Specific GR, P = {P}')
-
-T,P = ttest_from_groupby(ts_all,'Mode','Specific GR normal')
-print(f'Specific GR nromal, P = {P}')
+for mousename,mouse in ts_all.groupby('Mouse'):
+    print(f'--- {mousename} ---')
+    T,P = ttest_from_groupby(mouse,'Mode','Specific GR')
+    print(f'Specific GR, P = {P}')
+    
+    T,P = ttest_from_groupby(mouse,'Mode','Specific GR normal')
+    print(f'Specific GR nromal, P = {P}')
 
 
 

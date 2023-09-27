@@ -94,7 +94,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
             fucci_mean = fucci_this_frame[this_frame].mean()
             
             track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume pixels':volume
-                                       ,'Volume': volume * dx**2
+                                       ,'Volume': volume * dx**2 *dz
                                        # ,'Volume thresh': thresholded_volume
                                        ,'Volume normal': volume / (frame_averages.loc[frame]) # work only with pixels no need to calibrate
                                        ,'H2b mean':h2b_mean
@@ -113,6 +113,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
             track['Mouse'] = mouse
             track['Pair'] = pair
             track['um_per_px'] = dx
+            track['um_per_slice'] = dz
             track['Directory'] = dirname
             track['Mode'] = mode
             
@@ -236,6 +237,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     
     
     dx = metadata['um_per_px']
+    dz = metadata['um_per_slice']
     name = metadata['Region']
     mouse = metadata['Mouse']
     pair = metadata['Pair']
@@ -333,6 +335,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
 
         df.append({'CellID':track.iloc[0].CellID
                     ,'um_per_px':dx
+                    ,'um_per_slice',dz
                     ,'Region':name
                     ,'Genotype':genotype
                     ,'Mouse':mouse
