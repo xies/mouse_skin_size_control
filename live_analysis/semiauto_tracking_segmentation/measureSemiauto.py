@@ -49,6 +49,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     
     # parse metadata
     dx = metadata['um_per_px']
+    dz = metadata['um_per_slice']
     name = metadata['Region']
     mouse = metadata['Mouse']
     pair = metadata['Pair']
@@ -335,7 +336,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
 
         df.append({'CellID':track.iloc[0].CellID
                     ,'um_per_px':dx
-                    ,'um_per_slice',dz
+                    ,'um_per_slice':dz
                     ,'Region':name
                     ,'Genotype':genotype
                     ,'Mouse':mouse

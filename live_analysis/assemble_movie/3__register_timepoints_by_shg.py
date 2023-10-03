@@ -24,7 +24,7 @@ from twophotonUtils import parse_unaligned_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -33,7 +33,7 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = True
+OVERWRITE = False
 
 XY_reg = True
 APPLY_XY = True
@@ -41,7 +41,7 @@ APPLY_PAD = True
 
 ref_T = 1
 
-manual_Ztarget = {5:24}
+manual_Ztarget = {}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -65,7 +65,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [5] ): # 0-indexed
+for t in tqdm( range(1,7) ): # 0-indexed
     if t == ref_T:
         continue
     

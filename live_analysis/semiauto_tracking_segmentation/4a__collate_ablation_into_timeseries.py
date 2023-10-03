@@ -24,16 +24,17 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 dirnames = {}
-dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
-dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
-dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
+# dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+# dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
+# dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
+# dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
+# dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
 # Mouse 2
-dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
-dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
-dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2'
+# dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
+# dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
+# dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2'
+dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 dx = {}
 dx['Ablation_R1'] = 0.14599609375/1.5
@@ -44,6 +45,7 @@ dx['Ablation_R6'] = 0.194661458333333/1.5
 dx['Ablation_R11'] = 0.194661458333333/1.5
 dx['Ablation_R12'] = 0.194661458333333/1.5
 dx['Ablation_R13'] = 0.194661458333333/1.5
+dx['Ablation_R14'] = 0.194661458333333/1.5
 
 dz = {}
 dz['Ablation_R1'] = 1
@@ -54,6 +56,7 @@ dz['Ablation_R6'] = 1
 dz['Ablation_R11'] = .7
 dz['Ablation_R12'] = .7
 dz['Ablation_R13'] = .7
+dz['Ablation_R14'] = .7
 
 mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R3':'WT_F1'
@@ -62,7 +65,8 @@ mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R6':'WT_F1'
          ,'Ablation_R11':'WT_M5'
          ,'Ablation_R12':'WT_M5'
-         ,'Ablation_R13':'WT_M5'}
+         ,'Ablation_R13':'WT_M5'
+         ,'Ablation_R14':'WT_M5'}
 
 pairs = {'WT_F1':np.nan,'WT_M5':np.nan}
 
@@ -75,7 +79,8 @@ timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
               ,'Ablation_R6':np.array([0,8,12,16,19])
               ,'Ablation_R11':np.array([0,0.1,22,25,29,33,37])
               ,'Ablation_R12':np.array([0,0.1,16,20,21,27,32,46])
-              ,'Ablation_R13':np.array([0,0.1,16,20,21,27,32,46])}
+              ,'Ablation_R13':np.array([0,0.1,16,20,21,27,32,46])
+              ,'Ablation_R14':np.array([0,0.1,16,22,28,33,48])}
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)

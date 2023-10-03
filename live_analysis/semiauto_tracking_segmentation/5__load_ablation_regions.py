@@ -26,12 +26,13 @@ dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/0
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 # dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
-# dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
-# dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
-dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
-# dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
+dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
-#%%
+# dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
+
+# dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
+# dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
+# dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 all_tracks = {}
 ts_regions = {}
@@ -47,11 +48,6 @@ for name,dirname in dirnames.items():
         ts_regions[name+'_'+mode] = pd.concat(tracks)
         
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'),index_col=0)
-        # df['Division size'] = df['Birth size'] + df['Total growth']
-        # df['S entry size'] = df['Birth size'] + df['G1 growth']
-        # df['Log birth size'] = np.log(df['Birth size']) 
-        # df['Fold grown'] = df['Division size'] / df['Birth size']
-        # df['SG2 growth'] = df['Total growth'] - df['G1 growth']
         regions[name+'_'+mode] = df
 
 df_all = pd.concat(regions,ignore_index=True)
@@ -62,34 +58,40 @@ nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
 
-sb.catplot(ts_all,x='Mouse',hue='Mode',y='Specific GR normal',kind='box')
+# sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
+sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='box')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
 
 #%%
 
-pairs = zip(range(7),range(1,8))
+pairs = zip(range(1),range(1,2))
 colors = {'Ablation':'r','Nonablation':'b'}
+
+R = []
 
 for first,second in pairs:
     
-    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R12'].groupby(['CellID','Mode']):
+    
+    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R6'].groupby(['CellID','Mode']):
         plt.subplot(2,4,first+1)
         plt.plot([0,2],[0,2],'k--')
         
-        t1 = track[track['Frame'] == first]['Volume normal']
-        t2 = track[track['Frame'] == second]['Volume normal']
+        t1 = track[track['Frame'] == first]['Volume normal'].values
+        t2 = track[track['Frame'] == second]['Volume normal'].values
         if len(t1) == 1 and len(t2) == 1:
+            R.append([t1,t2])
             plt.scatter(t1,t2,color=colors[mode],alpha=0.2)
         
     # plt.title(f'{first} v. {second}')
     # plt.xlim([0,2]); plt.ylim([0,2])
+R = np.squeeze(np.array(R))
 
 #%%
 
 field2plot = 'Volume normal'
 YMIN = 0
-YMAX = 2
+YMAX = 3
 tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Nonablation'].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,1)
