@@ -6,13 +6,6 @@ Created on Wed Jul 19 14:04:52 2023
 @author: xies
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sun May 22 22:29:22 2022
-
-@author: xies
-"""
 
 import numpy as np
 from skimage import io, transform, util
@@ -25,6 +18,9 @@ from twophotonUtils import return_prefix
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
+
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -47,7 +43,7 @@ B_target = io.imread(B_tifs[target_T])
 G_target = io.imread(G_tifs[target_T])
 
 # Grab the manually determined reference slice
-Imax_ref = 24
+Imax_ref = 20
 ref_img = B_ref[Imax_ref,...]
 ref_img = ref_img / ref_img.max()
 Z_ref = B_ref.shape[0]
@@ -55,7 +51,7 @@ Z_ref = B_ref.shape[0]
 output_dir = path.split(path.dirname(B_tifs[target_T]))[0]
 
 # Grab the target slice
-Imax_target = 31
+Imax_target = 9
 target_img = B_target[Imax_target,...]
 target_img = target_img / target_img.max()
 
@@ -65,7 +61,7 @@ sr = StackReg(StackReg.RIGID_BODY)
 T = sr.register(ref_img,target_img)
 
 T = transform.SimilarityTransform(matrix=T)
-# T1 = transform.SimilarityTransform(translation=[30,-30],rotation=np.deg2rad(2))
+# T1 = transform.SimilarityTransform(translation=[-20,10],rotation=np.deg2rad(0))
 # T = T+T1
 
 print('Applying transformation matrices')
@@ -95,6 +91,8 @@ elif top_padding == 0:
     G_padded = G_transformed
     B_padded = B_transformed
     # R_shg_padded = R_shg_target
+    
+# bottom_padding = B_ref.shape[0]
     
 delta_ref = Z_ref - Imax_ref
 delta_target = Z_target - Imax_target

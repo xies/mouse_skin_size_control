@@ -25,6 +25,7 @@ from twophotonUtils import parse_unaligned_channels
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -65,7 +66,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( range(1,7) ): # 0-indexed
+for t in tqdm( range(1,8) ): # 0-indexed
     if t == ref_T:
         continue
     

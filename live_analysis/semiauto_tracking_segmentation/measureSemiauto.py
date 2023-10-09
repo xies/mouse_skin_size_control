@@ -322,11 +322,35 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         
         # Grab cell size at S phase entry; s_frame must NOT be the first frame (i.e. two frames to observe transition point)
         if not np.isnan(s_frame) and s_frame > 0:
-            s_size = track[track['Frame'] == s_frame]['Volume'].values[0]
-            s_size_normal = track[track['Frame'] == s_frame]['Volume normal'].values[0]
-            s_size_interp = track[track['Frame'] == s_frame]['Volume interp'].values[0]
-            s_size_normal_interp = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
-            g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
+            
+            if s_frame - 1 in track.Frame.values:
+                #NB: Use average size between the last FUCCI-high and first FUCCI low frame
+                first_low_size = track[track['Frame'] == s_frame]['Volume'].values[0]
+                last_high_size = track[track['Frame'] == s_frame-1]['Volume'].values[0]
+                s_size = (first_low_size + last_high_size)/2
+                
+                first_low_size = track[track['Frame'] == s_frame]['Volume normal'].values[0]
+                last_high_size = track[track['Frame'] == s_frame-1]['Volume normal'].values[0]
+                s_size_normal = (first_low_size + last_high_size)/2
+                
+                first_low_size = track[track['Frame'] == s_frame]['Volume interp'].values[0]
+                last_high_size = track[track['Frame'] == s_frame-1]['Volume interp'].values[0]
+                s_size_interp = (first_low_size + last_high_size)/2
+                
+                first_low_size = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
+                last_high_size = track[track['Frame'] == s_frame-1]['Volume normal interp'].values[0]
+                s_size_normal_interp = (first_low_size + last_high_size)/2
+                
+                first_low_age = track[track['Frame'] == s_frame]['Age'].values[0]
+                last_high_age = track[track['Frame'] == s_frame-1]['Age'].values[0]
+                g1_length = (first_low_age+last_high_age)/2
+            
+            ## This uses the exact value @ first observed FUCCI-low frame
+            # s_size = track[track['Frame'] == s_frame]['Volume'].values[0]
+            # s_size_normal = track[track['Frame'] == s_frame]['Volume normal'].values[0]
+            # s_size_interp = track[track['Frame'] == s_frame]['Volume interp'].values[0]
+            # s_size_normal_interp = track[track['Frame'] == s_frame]['Volume normal interp'].values[0]
+            # g1_length = track[track['Frame'] == s_frame]['Age'].values[0]
 
         # Exponential fit parameters
         
@@ -460,8 +484,4 @@ def exponential_fit(cf,x='Age',y='Volume normal'):
         
     return params, pCOV
         
-        
 
-    
-    
-    

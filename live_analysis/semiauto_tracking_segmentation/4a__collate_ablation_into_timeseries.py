@@ -19,6 +19,8 @@ import pickle as pkl
 from measureSemiauto import measure_track_timeseries_from_segmentations, \
     cell_cycle_annotate,collate_timeseries_into_cell_centric_table,annotate_ablation_distance
 
+from twophotonUtils import parse_XML_timestamps
+
 import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -72,20 +74,34 @@ pairs = {'WT_F1':np.nan,'WT_M5':np.nan}
 
 RECALCULATE = True
 
-timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
-              ,'Ablation_R3':np.array([0,12,16,20,24,36])
-              ,'Ablation_R4':np.array([0,12,16,20,24,36])
-              ,'Ablation_R5':np.array([0,8,12,16,19])
-              ,'Ablation_R6':np.array([0,8,12,16,19])
-              ,'Ablation_R11':np.array([0,0.1,22,25,29,33,37])
-              ,'Ablation_R12':np.array([0,0.1,16,20,21,27,32,46])
-              ,'Ablation_R13':np.array([0,0.1,16,20,21,27,32,46])
-              ,'Ablation_R14':np.array([0,0.1,16,22,28,33,48])}
+# timestamps = {'Ablation_R1':np.array([0,2,4,7,11,23,36])
+#               ,'Ablation_R3':np.array([0,12,16,20,24,36])
+#               ,'Ablation_R4':np.array([0,12,16,20,24,36])
+#               ,'Ablation_R5':np.array([0,8,12,16,19])
+#               ,'Ablation_R6':np.array([0,8,12,16,19])
+#               ,'Ablation_R11':np.array([0,0.1,22,25,29,33,37])
+#               ,'Ablation_R12':np.array([0,0.1,16,20,21,27,32,46])
+#               ,'Ablation_R13':np.array([0,0.1,16,20,21,27,32,46])
+#               ,'Ablation_R14':np.array([0,0.1,16,22,28,33,48])}
+
+beginning = {'Ablation_R1':1,
+             'Ablation_R3':1,
+             'Ablation_R4':1,
+             'Ablation_R5':1,
+             'Ablation_R6':1,
+             'Ablation_R11':0,
+             'Ablation_R12':0,
+             'Ablation_R13':0,
+             'Ablation_R14':0
+             }
 
 #%% Load and collate manual track+segmentations
 # Dictionary of manual segmentation (there should be no first or last time point)
 
 for name,dirname in dirnames.items():
+    
+    timestamps = list(parse_XML_timestamps(dirname, beginning=beginning[name]).values())
+    timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
     
     for mode in ['Ablation','Nonablation']:
 
@@ -113,7 +129,7 @@ for name,dirname in dirnames.items():
         metadata['Genotype'] = 'WT'
         metadata['Mode'] = mode
         metadata['Dirname'] = dirname
-        metadata['Time stamps'] = timestamps[name]
+        metadata['Time stamps'] = timestamps
         metadata['Ablated cell coords'] = ablation_coords
         
         #% Re-construct tracks with manually fixed tracking/segmentation
@@ -124,12 +140,13 @@ for name,dirname in dirnames.items():
         # Construct the cell-centric metadata dataframe
         df,tracks = collate_timeseries_into_cell_centric_table(tracks,metadata)
         
+        
         df.to_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'))
         # Save to the manual tracking folder    
         with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'wb') as file:
             pkl.dump(tracks,file)
-
-
+        
+        
 #%%
 
 

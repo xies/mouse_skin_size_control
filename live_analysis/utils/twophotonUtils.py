@@ -13,6 +13,11 @@ from os import path
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+import xml.etree.ElementTree as ET
+from dateutil import parser
+from collections import OrderedDict
+
 def return_prefix(filename):
     
     # Use a function to regex the Day number and use that to sort
@@ -21,7 +26,7 @@ def return_prefix(filename):
     
     return int(day[0])
 
-def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',INCLUDE_ZERO=True):
+def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',ZERO_SPECIAL=True):
     # Given a directory (of Prairie Instruments time course)
     # 
     
@@ -34,7 +39,7 @@ def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',INCLUDE_ZER
     T = len(filelist)
 
     
-    if INCLUDE_ZERO:
+    if ZERO_SPECIAL:
         # t= 0 has no '_align'imp
         s = pd.DataFrame({'B': sorted(glob(path.join(dirname,folder_str, 'B_reg.tif')))[0],
                           'G': sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')))[0],
@@ -45,11 +50,6 @@ def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',INCLUDE_ZER
         filelist = pd.concat((s,filelist))
         filelist = filelist.sort_index()
 
-    
-    # heightmaps = sorted(glob(path.join(dirname,'*/heightmap.tif')),key=sort_by_day)
-
-    # if len(heightmaps) == len(filelist):
-    #     filelist['Heightmap'] = heightmaps
     
     return filelist
 
@@ -119,4 +119,32 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
             t = t[:-1]
             y = y[:-1]
     plt.plot(t,y)
+    
+
+def parse_XML_timestamps(region_dir,beginning=0):
+    
+    T = len(glob(path.join(region_dir,'[0-9].*/')))
+    timestamps = OrderedDict()
+        
+    for t in range(beginning,beginning+T):
+
+        subfolders = glob(path.join(region_dir,f'{t}.*/ZSeries*/'))
+        
+        for d in subfolders:
+            ome_tifs = glob(path.join(d,'*.ome.tif'))
+            xmls = glob(path.join(d,'*.xml'))
+            if len(ome_tifs) > 40:
+                if len(findall('1020nm',path.split(path.split(d)[0])[1])) == 0:
+
+                    tree = ET.parse(xmls[0])
+                    timestr = tree.getroot().attrib['date']
+                    timestamp = parser.parse(timestr)
+                
+        timestamps[t] = timestamp
+
+    return timestamps
+
+
+    
+    
     

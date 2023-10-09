@@ -24,14 +24,12 @@ dirnames = {}
 
 dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
 dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
-# dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
 dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
 # dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
-
-# dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
-# dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
+dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
+dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
 # dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 all_tracks = {}
@@ -48,6 +46,18 @@ for name,dirname in dirnames.items():
         ts_regions[name+'_'+mode] = pd.concat(tracks)
         
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'),index_col=0)
+        
+        #@todo: move into 4__ so it's pre-computed
+        print('--- Save the pre-ablation size as special field ---')
+        init_vol = np.ones(len(df))* np.nan
+        init_vol_norm = np.ones(len(df)) * np.nan
+        for i,t in enumerate(tracks):
+            if len(t[t['Frame'] == 0]['Volume'].values) > 0:
+                init_vol[i] = t[t['Frame'] == 0]['Volume'].values
+                init_vol_norm[i] = t[t['Frame'] == 0]['Volume normal'].values
+        df['Initial volume'] = init_vol
+        df['Initial volume normal'] = init_vol_norm
+        
         regions[name+'_'+mode] = df
 
 df_all = pd.concat(regions,ignore_index=True)
@@ -112,6 +122,23 @@ plt.ylabel('Volume (px)')
 plt.ylim([YMIN,YMAX])
 plt.title('Neighbors')
 
+#%% Bin by initial size
+
+initial_sizes = df_all['Initial volume normal']
+bins = np.linspace(0,2.5,12)
+which_bin = np.digitize(initial_sizes,bins).astype(float)
+# Delete the nans
+which_bin[ np.isnan(initial_sizes)] = np.nan
+
+for i in range(10):
+    I = which_bin == i
+    if I.sum() > 5:
+        print(f'--Initial size bin = {bins[i]}')
+        # T,P = ttest_from_groupby(df_all[I],'Mode','Exponential growth rate')
+        print(df_all[I].groupby(['Mouse','Mode'])['S phase entry size normal'].mean())
+        print(df_all[I].groupby(['Mouse','Mode'])['Exponential growth rate'].mean())
+
+
 #%%
 
 # ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
@@ -150,6 +177,7 @@ for mousename,mouse in ts_all.groupby('Mouse'):
     
     T,P = ttest_from_groupby(mouse,'Mode','Specific GR normal')
     print(f'Specific GR nromal, P = {P}')
+
 
 
 
