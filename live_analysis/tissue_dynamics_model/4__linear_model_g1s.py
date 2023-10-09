@@ -10,18 +10,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
 from basicUtils import *
-from os import path
 
 from numpy import random
 from sklearn import metrics
-from sklearn.inspection import permutation_importance, partial_dependence
 
-from numpy import random
-from sklearn.metrics import roc_curve, auc
-from sklearn.preprocessing import scale 
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)

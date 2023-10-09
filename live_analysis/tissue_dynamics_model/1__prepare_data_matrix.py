@@ -10,14 +10,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
 from sklearn.covariance import EmpiricalCovariance
-from basicUtils import *
 from os import path
 
-from numpy import random
-from sklearn.preprocessing import scale 
 from numpy.linalg import eig
 
 def z_standardize(x):
@@ -103,10 +98,13 @@ features_list = { # Cell geometry
                 ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
-
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
                 ,'Neighbor mean height frame-1':'neighb_height_12h'
                 # ,'Neighbor mean height frame-2':'neighb_height_24h'
+                
+                # Bookkeeping for LMM groups or drop for OLS
+                ,'basalID':'cellID'
+                ,'Region':'region'
 
                 }
 
@@ -114,9 +112,10 @@ df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
 
 # Standardize
-for col in df_g1s.columns:
+for col in df_g1s.columns.drop(['region','cellID']):
     df_g1s[col] = z_standardize(df_g1s[col])
 
+# Put back categoricals that were broken
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
 
@@ -137,7 +136,7 @@ Inan = df_g1s.isnull().any(axis=1).values
 df_ = df_[~Inan]
 df_g1s = df_g1s[~Inan]
 
-C = EmpiricalCovariance().fit(df_g1s)
+C = EmpiricalCovariance().fit(df_g1s.drop(columns=['region','cellID','G1S_logistic']))
 sb.heatmap(C.covariance_,xticklabels=df_g1s.columns,yticklabels=df_g1s.columns)
 L,D = eig(C.covariance_)
 
