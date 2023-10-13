@@ -20,6 +20,8 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-07-2023 R26RCre RB-fl p107-het homo/M3 p107homo/No tam/R1'
+
 filelist = parse_unreigstered_channels(dirname,folder_str='*.*/')
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)

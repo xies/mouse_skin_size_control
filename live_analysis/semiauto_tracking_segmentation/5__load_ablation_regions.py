@@ -27,10 +27,10 @@ dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/0
 dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
 dirnames['Ablation_R6'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
 
-# dirnames['Ablation_R11'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
 dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
 dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
-# dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
 all_tracks = {}
 ts_regions = {}
@@ -47,7 +47,7 @@ for name,dirname in dirnames.items():
         
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'),index_col=0)
         
-        #@todo: move into 4__ so it's pre-computed
+        #@todo: move into semiauto so it's pre-computed
         print('--- Save the pre-ablation size as special field ---')
         init_vol = np.ones(len(df))* np.nan
         init_vol_norm = np.ones(len(df)) * np.nan
@@ -67,11 +67,13 @@ ablation = ts_all[ts_all['Mode'] == 'Ablation']
 nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
+df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
-sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='box')
+sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='swarm')
+plt.ylim([0.5,2])
 
 #%%
 
@@ -82,8 +84,7 @@ R = []
 
 for first,second in pairs:
     
-    
-    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R6'].groupby(['CellID','Mode']):
+    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R16'].groupby(['CellID','Mode']):
         plt.subplot(2,4,first+1)
         plt.plot([0,2],[0,2],'k--')
         
@@ -99,24 +100,25 @@ R = np.squeeze(np.array(R))
 
 #%%
 
+name = 'Ablation_R3'
 field2plot = 'Volume normal'
 YMIN = 0
 YMAX = 3
-tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Nonablation'].groupby(['Region','CellID'])]
+tracks = [v for k,v in ts_all[(ts_all['Mode'] == 'Nonablation') & (ts_all['Region'] == name)].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,1)
 for t in tracks:
-    plt.plot(t.Age, t[field2plot],'b-',alpha=0.1)
+    plt.plot(t.Age, t[field2plot],'b-',alpha=0.3)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
 plt.ylim([YMIN,YMAX])
 plt.title('Non neighbors')
 
-tracks = [v for k,v in ts_all[ts_all['Mode'] == 'Ablation'].groupby(['Region','CellID'])]
+tracks = [v for k,v in ts_all[(ts_all['Mode'] == 'Ablation') & (ts_all['Region'] == name)].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,2)
 for t in tracks:
-    plt.plot(t.Age, t[field2plot],'r-',alpha=0.1)
+    plt.plot(t.Age, t[field2plot],'r-',alpha=0.3)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
 plt.ylim([YMIN,YMAX])
@@ -125,7 +127,7 @@ plt.title('Neighbors')
 #%% Bin by initial size
 
 initial_sizes = df_all['Initial volume normal']
-bins = np.linspace(0,2.5,12)
+bins = np.linspace(0,2.5,10)
 which_bin = np.digitize(initial_sizes,bins).astype(float)
 # Delete the nans
 which_bin[ np.isnan(initial_sizes)] = np.nan
@@ -136,8 +138,8 @@ for i in range(10):
         print(f'--Initial size bin = {bins[i]}')
         # T,P = ttest_from_groupby(df_all[I],'Mode','Exponential growth rate')
         print(df_all[I].groupby(['Mouse','Mode'])['S phase entry size normal'].mean())
-        print(df_all[I].groupby(['Mouse','Mode'])['Exponential growth rate'].mean())
-
+        # print(df_all[I].groupby(['Mouse','Mode'])['Exponential growth rate'].mean())
+        
 
 #%%
 

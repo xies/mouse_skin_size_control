@@ -20,6 +20,8 @@ from tqdm import tqdm
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23'
 
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-07-2023 R26RCre RB-fl p107-het homo/M3 p107homo/No tam'
+
 OVERWRITE = False
 
 #%% Reading the first ome-tiff file using imread reads entire stack
