@@ -45,67 +45,12 @@ plt.scatter(x,x_hat)
 max_exp_Rsq = corrcoef(x,x_hat)[0,1]**2
 plt.title(f'Maximum expected Rsq = {max_exp_Rsq}')
 
-#%%
-
-from sklearn import linear_model
-from sklearn.model_selection import train_test_split
-
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
-
-reg = linear_model.RidgeCV()
-reg = reg.fit(X_train,y_train)
-
-
-results = pd.Series(reg.coef_, reg.feature_names_in_)
-results.sort_values().plot.bar()
-plt.tight_layout()
-plt.ylabel('Effect size')
-plt.title('Linear regression for G1S timing')
-
-#%% Cross-validation using MLR
-
-Niter = 100
-
-frac_withhold = 0.2
-N = len(df_g1s)
-
-models = []
-random_models = []
-Rsq = np.zeros(Niter)
-
-for i in tqdm(range(Niter)):
-    
-    num_withold = np.round(frac_withhold * N).astype(int)
-    
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold)
-    
-    reg = linear_model.RidgeCV()
-    this_model = reg.fit(X_train,y_train)
-    models.append(this_model)
-    
-    # predict on the withheld data
-    ypred = this_model.predict(X_test)
-    Rsq[i] = metrics.r2_score(y_test,ypred)
-    
-plt.figure()
-plt.hist(Rsq)
-plt.xlabel('R^2')
-plt.title('Linear regression G1/S timing')
-
-mlr = this_model
-result = permutation_importance(mlr, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2)
-mlr_importances = pd.Series(result.importances_mean, index=X.columns)
-
-plt.figure()
-mlr_importances.plot.bar(yerr=result.importances_std)
-plt.title('Linear regression G1/S timing')
-plt.ylabel('Permutation importance')
-
 #%% Random forest regression
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree
+
 
 Niter = 100
 sum_res = np.zeros(Niter)

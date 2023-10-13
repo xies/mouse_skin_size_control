@@ -7,7 +7,7 @@ Created on Tue Aug 23 00:02:34 2022
 """
 
 import numpy as np
-from skimage import io, measure, draw, util
+from skimage import io, measure, draw, util, morphology
 from scipy.spatial import distance, Voronoi, Delaunay
 import pandas as pd
 
@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 # from matplotlib.path import Path
 # from roipoly import roipoly
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
-from mathUtils import *
+from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, argsort_counter_clockwise
 
 from tqdm import tqdm
 from glob import glob
@@ -66,6 +66,20 @@ def tri_to_adjmat(tri):
         A[idx,neighbor_idx] = True
     return A
 
+# Find distance to nearest manually annotated point in points-list
+def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
+    distances = np.zeros(len(dense_3d_coords))
+
+    for i,row in dense_3d_coords.iterrows():
+        dx = row['X'] - annotation_coords_3d['X']
+        dy = row['Y'] - annotation_coords_3d['Y']
+        dz = row['Z'] - annotation_coords_3d['Z']
+        D = np.sqrt(dx**2 + dy**2 + dz**2)
+        
+        distances[i] = D.min()
+            
+    return distances
+        
 #%%
 
 df = []
@@ -74,7 +88,6 @@ df = []
 footprint = morphology.cube(3)
 
 for t in tqdm(range(15)):
-    # t = 4
     
     #----- cell-centric msmts -----
     dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
@@ -90,8 +103,8 @@ for t in tqdm(range(15)):
     
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
     df_dense['Nuclear volume raw'] = df_dense['Nuclear volume raw'] * dx**2
-    df_dense['X'] = df_dense['X-pixels'] * dx**2
-    df_dense['Y'] = df_dense['Y-pixels'] * dx**2
+    df_dense['X'] = df_dense['X-pixels'] * dx
+    df_dense['Y'] = df_dense['Y-pixels'] * dx
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
    
@@ -185,6 +198,14 @@ for t in tqdm(range(15)):
     # Load the actual neighborhood topology
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d_um))
+    
+    #----- Use macrophase annotations to find distance to them -----
+    macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
+    macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
+    macrophage_xyz['X'] = macrophage_xyz['X'] * dx
+    macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
+    df_dense['Distance to closest macrophage'] = \
+        find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
     
     A_diff = A.copy()
     A_diff[:,~df_dense['Differentiating']] = 0
