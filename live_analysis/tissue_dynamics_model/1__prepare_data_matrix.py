@@ -79,6 +79,7 @@ features_list = { # Cell geometry
                 ,'Num planar neighbors':'neighb_plan'
                 ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'
+                ,'Distance to closest macrophage':'macrophage'
                 # ,'Gaussian curvature':'gaussian_curve'
                 
                 # Cell dynamics

@@ -24,12 +24,12 @@ from SelectFromCollection import SelectFromCollection
 
 '''
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/RBKO1'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/02-11-2023 Rb Cre-plusminus Tamoxifen control/H2B Cerulean FUCCI2 K10-633/WT1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
 
 #%%
 
@@ -37,15 +37,15 @@ T = 8
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
-SEG_DIR = 'cellpose_clahe'
+SEG_DIR = '3d_cyto_seg'
 FLAT_DIR = 'Image flattening/heightmaps'
 
 # Some pruning parameters
 # MIN_SIZE_IN_PX = 2000
 _tmp = []
-for t in tqdm(range(T)):
+for t in tqdm([9,11]):
     
-    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}/t{t}_masks.tif'))
     heightmaps = io.imread(path.join(dirname,f'{FLAT_DIR}/t{t}.tif'))
     
     table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid','bbox'}))
@@ -90,11 +90,11 @@ df_ = df[I]
 
 #%% # Reconstruct the filtered segmentation predictions
 
-OUT_SUBDIR = 'cellpose_clahe_pruned'
+OUT_SUBDIR = '3d_cyto_seg'
 
-for t in tqdm(range(T)):
+for t in tqdm([9,11]):
     
-    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
+    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}/t{t}_masks.tif'))
     
     this_cellIDs = df_[df_['Time'] == t]['label']
     

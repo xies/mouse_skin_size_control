@@ -32,7 +32,7 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-SAVE = False
+SAVE = True
 VISUALIZE = True
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
@@ -144,7 +144,7 @@ for t in tqdm(range(15)):
     norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume'].mean()
     df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume']/norm_factor
 
-    #----- map from cellpoose to manual -----
+    #----- map from cellpose to manual -----
     #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
     df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = dense_seg,
                                                        properties = ['label'],

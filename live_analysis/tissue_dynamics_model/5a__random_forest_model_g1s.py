@@ -22,6 +22,7 @@ df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
 #Trim out G2 cells
 df_g1s = df_g1s[df_g1s['time_g1s'] >= 0]
 
+df_g1s = df_g1s.drop(columns=['cellID'])
 
 X = df_g1s.drop(columns=['time_g1s'])
 y = df_g1s['time_g1s']
@@ -35,7 +36,7 @@ from numpy import random, corrcoef
 
 Nsample = 10000
 
-x = random.lognormal(mean=np.log(48),sigma=sqrt(0.03),size=(Nsample))
+x = random.lognormal(mean=np.log(48),sigma=np.sqrt(0.03),size=(Nsample))
 
 bins = np.arange(0,10*24,12)
 
