@@ -72,7 +72,7 @@ df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
 sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='swarm')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
 plt.ylim([0.5,2])
 
 #%%

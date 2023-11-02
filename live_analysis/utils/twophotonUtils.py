@@ -145,6 +145,33 @@ def parse_XML_timestamps(region_dir,beginning=0):
     return timestamps
 
 
+def parse_voxel_resolution_from_XML(region_dir):
+    
+    xmls = glob(path.join(region_dir,'*.*/ZSeries*/*.xml'))
+    
+    tree = ET.parse(xmls[0])
+    root = tree.getroot()
+    
+    for child in root:
+        if child.tag == 'PVStateShard':
+            PVState = child
+            break
+    
+    for child in PVState:
+        if child.attrib['key'] == 'micronsPerPixel':
+            microns_resolution = child
+        
+    for child in microns_resolution:
+        if child.attrib['index'] == 'XAxis':
+            dx = child.attrib['value']
+        if child.attrib['index'] == 'ZAxis':
+            dz = child.attrib['value']
+
+    return float(dx),float(dz)
+
+
+    
+    
     
     
     

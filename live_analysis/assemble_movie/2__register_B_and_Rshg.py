@@ -20,20 +20,20 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-07-2023 R26RCre RB-fl p107-het homo/M3 p107homo/No tam/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Right ear DMSO/3 days post-DMSO/R1'
 
-filelist = parse_unreigstered_channels(dirname,folder_str='*.*/')
+filelist = parse_unreigstered_channels(dirname)
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {}
+manual_targetZ = {0:14,1:15,2:30,5:25}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = False
+OVERWRITE = True
 
-for t in tqdm(filelist.index):
+for t in tqdm([5]):
     
     # Check for overwriting
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
@@ -76,10 +76,10 @@ for t in tqdm(filelist.index):
     #NB: Here, move the R channel wrt the B channel
     print('StackReg + transform')
     sr = StackReg(StackReg.RIGID_BODY)
-    T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
-    T = transform.SimilarityTransform(T)
-    # 
-    # T = transform.SimilarityTransform(translation=[0,0],rotation=np.deg2rad(0))
+    # T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
+    # T = transform.SimilarityTransform(T)
+    
+    T = transform.SimilarityTransform(translation=[5,0],rotation=np.deg2rad(0))
     
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)

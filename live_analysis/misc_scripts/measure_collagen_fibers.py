@@ -24,7 +24,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 XX = 460
 Z = 70
-T = 15    
+T = 1
 
 #%%
 
@@ -47,8 +47,8 @@ for t in range(T):
     #           util.img_as_uint(G/im_blur))
     # io.imsave(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.tif'),
     #           thetas.astype(int))
-    np.save(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy'),
-              [Gx,Gy])
+    # np.save(path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy'),
+    #           [Gx,Gy])
     
 #%%
 

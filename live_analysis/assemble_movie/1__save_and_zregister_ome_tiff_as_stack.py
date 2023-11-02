@@ -14,13 +14,7 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23'
-
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-07-2023 R26RCre RB-fl p107-het homo/M3 p107homo/No tam'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo'
 
 OVERWRITE = False
 
@@ -31,7 +25,7 @@ def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
 
-subfolders = glob(path.join(dirname,'R*/*/ZSeries*/'))
+subfolders = glob(path.join(dirname,'Right */3 days */R*/*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

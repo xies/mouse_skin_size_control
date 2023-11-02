@@ -20,12 +20,7 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
-
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Left ear 4OHT/3 days post-tam/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -34,7 +29,8 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = False
+OVERWRITE = True
+ALIGN_TO_ALIGNED = False
 
 XY_reg = True
 APPLY_XY = True
@@ -42,7 +38,7 @@ APPLY_PAD = True
 
 ref_T = 1
 
-manual_Ztarget = {}
+manual_Ztarget = {0:24,5:48}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -51,10 +47,15 @@ if path.exists(path.join(dirname,'alignment_information.pkl')):
         [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
 
 # Find the slice with maximum mean value in R_shg channel
-R_shg_ref = io.imread( filelist.loc[ref_T,'R_shg'] )
+if ALIGN_TO_ALIGNED:
+    ref_subdir = path.dirname(filelist.loc[ref_T,'R_shg'])
+    R_shg_ref = io.imread(path.join(ref_subdir,'R_shg_align.tif'))
+else:
+    R_shg_ref = io.imread( filelist.loc[ref_T,'R_shg'] )
+
 Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-# Imax_ref = 31
+Imax_ref = 15
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -66,7 +67,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( range(1,8) ): # 0-indexed
+for t in tqdm( [0] ): # 0-indexed
     if t == ref_T:
         continue
     
@@ -122,7 +123,7 @@ for t in tqdm( range(1,8) ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            # T = T + transform.SimilarityTransform(translation=[-10,-40],rotation=np.deg2rad(-1))
+            T = T + transform.SimilarityTransform(translation=[-20,0],rotation=np.deg2rad(-.5))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
