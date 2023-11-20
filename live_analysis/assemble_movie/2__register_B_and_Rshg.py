@@ -15,25 +15,20 @@ from mathUtils import normxcorr2
 
 from twophotonUtils import parse_unreigstered_channels
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R3'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R1'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
-
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Right ear DMSO/3 days post-DMSO/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R5'
 
 filelist = parse_unreigstered_channels(dirname)
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {0:14,1:15,2:30,5:25}
+manual_targetZ = {}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
-for t in tqdm([5]):
+for t in tqdm(filelist.index):
     
     # Check for overwriting
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
@@ -76,10 +71,10 @@ for t in tqdm([5]):
     #NB: Here, move the R channel wrt the B channel
     print('StackReg + transform')
     sr = StackReg(StackReg.RIGID_BODY)
-    # T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
-    # T = transform.SimilarityTransform(T)
+    T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
+    T = transform.SimilarityTransform(T)
     
-    T = transform.SimilarityTransform(translation=[5,0],rotation=np.deg2rad(0))
+    # T = T + transform.SimilarityTransform(translation=[5,0],rotation=np.deg2rad(0))
     
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)

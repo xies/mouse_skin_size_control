@@ -20,7 +20,7 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Left ear 4OHT/3 days post-tam/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Pre tam/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -36,9 +36,9 @@ XY_reg = True
 APPLY_XY = True
 APPLY_PAD = True
 
-ref_T = 1
+ref_T = 0
 
-manual_Ztarget = {0:24,5:48}
+manual_Ztarget = {2:36,3:32}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -55,7 +55,7 @@ else:
 
 Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 15
+Imax_ref = 36
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -67,7 +67,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [0] ): # 0-indexed
+for t in tqdm( [3] ): # 0-indexed
     if t == ref_T:
         continue
     
@@ -123,7 +123,7 @@ for t in tqdm( [0] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[-20,0],rotation=np.deg2rad(-.5))
+            # T = T + transform.SimilarityTransform(translation=[0,-20],rotation=np.deg2rad(1))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -180,7 +180,6 @@ for t in tqdm( [0] ): # 0-indexed
         io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
-
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)

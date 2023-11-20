@@ -14,7 +14,7 @@ from pystackreg import StackReg
 from re import findall
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/'
 
 OVERWRITE = False
 
@@ -25,7 +25,7 @@ def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
 
-subfolders = glob(path.join(dirname,'Right */3 days */R*/*/ZSeries*/'))
+subfolders = glob(path.join(dirname,'R1/*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

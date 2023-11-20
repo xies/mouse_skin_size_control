@@ -23,7 +23,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25Cre
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Left ear 4OHT/3 days post-tam/R1'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Pre tam/R1'
 
 filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*',ZERO_SPECIAL=False)
 
