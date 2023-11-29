@@ -15,6 +15,7 @@ from re import findall
 from tqdm import tqdm
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam'
 
 OVERWRITE = False
 

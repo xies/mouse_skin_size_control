@@ -104,7 +104,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 from numpy import random
 from sklearn import metrics
 
-Niter = 100
+Niter = 1000
 
 frac_withhold = 0.2
 N = len(df_g1s_balanced)
