@@ -169,9 +169,12 @@ for i in tqdm(range(Niter)):
     ypred = ypred[IdropNA]
     labels = df_withheld['G1S_logistic'].values[IdropNA]
     
+    # Compute some scoring metrics
+    # AUC
     fpr, tpr, _ = metrics.roc_curve(labels, ypred)
     AUC_random[i] = metrics.auc(fpr,tpr)
     
+    # average precision
     precision,recall,th = metrics.precision_recall_curve(labels,ypred)
     AP_random[i] = metrics.average_precision_score(labels,ypred)
     
