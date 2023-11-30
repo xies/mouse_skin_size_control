@@ -19,8 +19,10 @@ from tqdm import tqdm
 
 from numpy import random
 from sklearn.metrics import roc_curve, auc, average_precision_score
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale 
 from scipy.stats import stats
+from sklearn.ensemble import RandomForestClassifier
 
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
@@ -29,7 +31,7 @@ df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)
 
 df_g1s = df_g1s.drop(columns='time_g1s')
-df_g1s = df_g1s.drop(columns='fucci_int_24h')
+df_g1s = df_g1s.drop(columns=['fucci_int_24h','fucci_int_12h'])
 
 #%% Robust LM for smoothed specific growth rate
 
@@ -62,8 +64,6 @@ param_names_in_order = params.iloc[order]['var'].values
 #%% Recursive feature drop
 
 from sklearn.feature_selection import RFE
-from sklearn.model_selection import train_test_split
-from sklearn import linear_model
 
 X = df_g1s.drop(columns='G1S_logistic')
 X['Intercept'] = 1
@@ -100,7 +100,7 @@ for i in range(10):
 
     # Compute current model
     # model = linear_model.LogisticRegression()
-    from sklearn.ensemble import RandomForestClassifier
+    
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train,y_train)
     largest_effect_param = X_train.columns[np.argmax(np.abs(model.feature_importances_))]
@@ -149,10 +149,15 @@ plt.ylim([0.3,1])
 
 Niter = 100
 
+X = df_g1s.drop(columns='G1S_logistic')
+X['Intercept'] = 1
+X_sorted = X[param_names_in_order]
+y = df_g1s['G1S_logistic']
+
 AUC_full = np.zeros(Niter)
 AUC_random = np.zeros(Niter)
 AUC_no_vol_sm = np.zeros(Niter)
-AUC_no_sgr = np.zeros(Niter)
+AUC_no_other = np.zeros((9,Niter))
 
 for i in tqdm(range(Niter)):
     
@@ -173,13 +178,14 @@ for i in tqdm(range(Niter)):
     fpr, tpr, _ = roc_curve(y_test, y_pred_no_vol_sm)
     AUC_no_vol_sm[i] = auc(fpr,tpr)
     
-    # Vol-drop model
-    X_train,X_test,y_train,y_test = train_test_split(X_sorted.drop(columns='sgr'),y,test_size=0.7,random_state = i)
-    model_no_sgr = RandomForestClassifier(n_estimators=100, random_state=42)
-    model_no_sgr.fit(X_train,y_train)
-    y_pred_no_sgr = model_no_sgr.predict(X_test)
-    fpr, tpr, _ = roc_curve(y_test, y_pred_no_sgr)
-    AUC_no_sgr[i] = auc(fpr,tpr)
+    for j,f in enumerate(features2drop[1:]):
+        # Other-drop model
+        X_train,X_test,y_train,y_test = train_test_split(X_sorted.drop(columns=f),y,test_size=0.7,random_state = i)
+        model_no_other = RandomForestClassifier(n_estimators=100, random_state=42)
+        model_no_other.fit(X_train,y_train)
+        y_pred_no_other = model_no_other.predict(X_test)
+        fpr, tpr, _ = roc_curve(y_test, y_pred_no_other)
+        AUC_no_other[j,i] = auc(fpr,tpr)
     
     # Random model
     X_random = pd.DataFrame(random.randn(*X_sorted.shape),index=X_sorted.index)
@@ -191,10 +197,11 @@ for i in tqdm(range(Niter)):
     AUC_random[i] = auc(fpr,tpr)
 
 
-plt.hist(AUC_full)
-plt.hist(AUC_no_vol_sm)
-plt.hist(AUC_no_sgr)
-plt.hist(AUC_random)
+plt.hist(AUC_full,histtype='step',density=True)
+plt.hist(AUC_no_vol_sm,histtype='step',density=True)
+plt.hist(AUC_no_other.flatten(),histtype='step',density=True)
+plt.hist(AUC_random,histtype='step',density=True)
 
-plt.legend(['Full','No cell size','No SGR','Random'])
+plt.legend(['Full','No cell size','No other single 9 top feature','Random'])
 plt.xlabel('AUC')
+
