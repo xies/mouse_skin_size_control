@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 model = models.Cellpose(model_type='nuclei')
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-22-2023 R26Cre Rb0fl p107-homo Topical tam/M3 RB-fl p107-homo/Left ear 4OHT/3 days post-tam/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1'
 
 diameter = 26 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
@@ -33,11 +33,11 @@ cellprob_threshold = -0.1
 
 OVERWRITE = False
 
-G = io.imread(path.join(dirname,'master_stack/B_decon_blur_clahe.tif'))
+G = io.imread(path.join(dirname,'master_stack/G_clahe.tif'))
 
 for t,im in tqdm(enumerate(G)):
     
-    f = path.join(dirname,f'cellpose_B_decon_blur_clahe/t{t}.tif')
+    f = path.join(dirname,f'cellpose_G_clahe/t{t}.tif')
     d = path.dirname(f)
 
     basename = path.splitext(path.basename(f))[0] # i.e. 't9'

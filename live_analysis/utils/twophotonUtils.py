@@ -96,7 +96,7 @@ def parse_unaligned_channels(dirname,folder_str='*. Day*/'):
     # filelist['G'] = sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')), key = return_prefix)
     G = glob(path.join(dirname,folder_str, 'G_reg.tif'))
     idx = [return_prefix(f) for f in G]
-    filelist.loc[idx,'G'] = B
+    filelist.loc[idx,'G'] = G
     
     R = glob(path.join(dirname,folder_str, 'R_reg_reg.tif'))
     idx = [return_prefix(f) for f in R]

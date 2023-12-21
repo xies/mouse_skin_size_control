@@ -70,7 +70,7 @@ def load_mamut_densely(dirname,subdir_str='MaMuT/'):
 def construct_data_frame_dense(_tracks,_links,_spots):
     # For each track, extract individual time series into a dataframe and return a list of all tracks
     # @todo: think about how to deal with multiple generations
-    # Will return multiple generations if
+    # Will return multiple generations if there are any?
     
     tracks = []
     

@@ -29,10 +29,10 @@ B_blur = []
 R = []
 R_shg = []
 
-for t in tqdm(range(len(filelist))):
+for t in tqdm(filelist.index):
     
-    # G_ = io.imread(filelist.loc[t,'G'])
-    # G.append(G_)
+    G_ = io.imread(filelist.loc[t,'G'])
+    G.append(G_)
     # G_blur.append(gaussian_filter(G_,sigma=[.5,.5,.5]))
     
     R_ = io.imread(filelist.loc[t,'R'])
@@ -45,8 +45,8 @@ for t in tqdm(range(len(filelist))):
     B.append(B_)
     # B_blur.append(gaussian_filter(B_,sigma=[.5,.5,.5]))
     
-# print('Saving G ...')
-# io.imsave(path.join(dirname,'master_stack/G.tif'), np.stack(G).astype(np.uint16))
+print('Saving G ...')
+io.imsave(path.join(dirname,'master_stack/G.tif'), np.stack(G).astype(np.uint16))
 print('Saving R ...')
 io.imsave(path.join(dirname,'master_stack/R.tif'), np.stack(R).astype(np.uint16))
 print('Saving R_shg ...')

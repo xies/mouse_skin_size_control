@@ -20,7 +20,6 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1'
 dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
@@ -30,7 +29,7 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = True
+OVERWRITE = False
 ALIGN_TO_ALIGNED = False
 
 XY_reg = True
@@ -39,7 +38,8 @@ APPLY_PAD = True
 
 ref_T = 10
 
-manual_Ztarget = {}
+# manual_Ztarget = {22:29}
+manual_Ztarget = z_pos_in_original
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -56,6 +56,7 @@ else:
 
 Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
+Imax_ref = 17
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -67,14 +68,15 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [16] ): # 0-indexed
+for t in tqdm( filelist.index ): # 0-indexed
+
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
-    if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
-        print(f'\n Skipping t = {t}')
-        continue
+    # if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
+    #     print(f'\n Skipping t = {t}')
+    #     continue
     
     print(f'\n Working on t = {t}')
     #Load the target
@@ -123,7 +125,7 @@ for t in tqdm( [16] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[0,30],rotation=np.deg2rad(0))
+            T = T + transform.SimilarityTransform(translation=[-25,35],rotation=np.deg2rad(-3))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
