@@ -26,14 +26,14 @@ from mamutUtils import load_mamut_and_prune_for_complete_cycles, construct_data_
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/')
+dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/')
 
 all_tracks = []
 for dirname in dirnames:
     cycling_tracks, cycling_links, cycling_spots = load_mamut_and_prune_for_complete_cycles(dirname)
     tracks = construct_data_frame_complete_cycles(cycling_tracks, cycling_links, cycling_spots)
 
-    with open(path.join(dirname,'MaMuT/dense_tracks.pkl'),'wb') as file:
+    with open(path.join(dirname,'MaMuT/complete_cycles.pkl'),'wb') as file:
         pkl.dump(tracks,file)
 
     all_tracks.append(tracks)

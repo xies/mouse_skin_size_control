@@ -39,8 +39,13 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
     print('Loading segmentation...')
     manual_segs = io.imread(pathdict['Segmentation'])
     
-    frame_averages = pd.read_csv(pathdict['Frame averages'],index_col=0)
-    frame_averages = frame_averages.groupby('Frame')['area'].mean()
+    if pathdict['Frame averages'] != '':
+        frame_averages = pd.read_csv(pathdict['Frame averages'],index_col=0)
+        frame_averages = frame_averages.groupby('Frame')['area'].mean()
+        NORMALIZE = True
+    else:
+        NORMALIZE = False
+        
     print('Loading H2B...')
     G = io.imread(pathdict['H2B'])
     print('Loading FUCCI...')
@@ -93,20 +98,26 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
             
             fucci_this_frame = R[frame,...]
             fucci_mean = fucci_this_frame[this_frame].mean()
-            
+            if NORMALIZE:
+                vol_norm = volume / (frame_averages.loc[frame]) # work only with pixels no need to calibrate
+            else:
+                vol_norm = np.nan
             track.append(pd.DataFrame({'Frame':frame,'X':X,'Y':Y,'Z':Z,'Volume pixels':volume
                                        ,'Volume': volume * dx**2 *dz
-                                       # ,'Volume thresh': thresholded_volume
-                                       ,'Volume normal': volume / (frame_averages.loc[frame]) # work only with pixels no need to calibrate
+                                       ,'Volume normal': vol_norm
                                        ,'H2b mean':h2b_mean
                                        ,'FUCCI mean':fucci_mean},index=[frame]))
+            
         
         if len(track) > 0:
             
             track = pd.concat(track)
             track['CellID'] = trackID
             if 'Time stamps' in metadata.keys():
-                track['Age'] = metadata['Time stamps'][track['Frame'].values.astype(int)]
+                track['Age'] = metadata['Time stamps'][(track['Frame'] - track.iloc[0]['Frame']).astype(int)]
+                if track.iloc[0].Age > 0:
+                    what
+                
             else:
                 track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
             track['Region'] = name
@@ -152,9 +163,10 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         if not spl == None:
         
             track['Growth rate'] = spl.derivative(1)(track['Age'])
-            track['Growth rate normal'] = spl_norm.derivative(1)(track['Age'])
             track['Specific GR'] = track['Growth rate'] / track['Volume interp']
-            track['Specific GR normal'] = track['Growth rate normal'] / track['Volume normal interp']
+            if NORMALIZE:
+                track['Growth rate normal'] = spl_norm.derivative(1)(track['Age'])
+                track['Specific GR normal'] = track['Growth rate normal'] / track['Volume normal interp']
         
         # track['Growth rate back'] = np.diff(track['Volume'])
         # track['Growth rate interp'] = track['Spline interp'].iloc[0].derivateve(1)(track['Age'])
@@ -397,16 +409,18 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     
     df['G1 growth'] = df['S phase entry size'] - df['Birth size']
     df['Total growth'] = df['Division size'] - df['Birth size']
+    
     df['G1 growth normal'] = df['S phase entry size normal'] - df['Birth size normal']
     df['Total growth normal'] = df['Division size normal'] - df['Birth size normal']
-
+    
     df['G1 growth interp'] = df['S phase entry size interp'] - df['Birth size interp']
-    df['Total growth '] = df['Division size interp'] - df['Birth size interp']
+    df['Total growth interp'] = df['Division size interp'] - df['Birth size interp']
+    
     df['G1 growth normal interp'] = df['S phase entry size normal interp'] - df['Birth size normal interp']
     df['Total growth normal interp'] = df['Division size normal interp'] - df['Birth size normal interp']
-    df['Division size'] = df['Birth size'] + df['Total growth']
+    
     df['S entry size'] = df['Birth size'] + df['G1 growth']
-    df['Log birth size'] = np.log(df['Birth size']) 
+    df['Log birth size'] = np.log(df['Birth size'])
     df['Fold grown'] = df['Division size'] / df['Birth size']
     df['SG2 growth'] = df['Total growth'] - df['G1 growth']
     

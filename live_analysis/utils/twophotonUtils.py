@@ -123,7 +123,7 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
 
 def parse_XML_timestamps(region_dir,beginning=0):
     
-    T = len(glob(path.join(region_dir,'[0-9].*/')))
+    T = len(glob(path.join(region_dir,'*. Day*/')))
     timestamps = OrderedDict()
         
     for t in range(beginning,beginning+T):

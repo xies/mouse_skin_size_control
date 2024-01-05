@@ -12,10 +12,7 @@ from os import path
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1'
-
-# G = io.imread(path.join(dirname,'master_stack/G.tif'))
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/Cropped_images/'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post ethanol/R1'
 
 #%% Locally histogram-normalize
 

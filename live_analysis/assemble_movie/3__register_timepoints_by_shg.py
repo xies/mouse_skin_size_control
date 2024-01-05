@@ -20,7 +20,7 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post ethanol/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -29,7 +29,7 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = False
+OVERWRITE = True
 ALIGN_TO_ALIGNED = False
 
 XY_reg = True
@@ -38,8 +38,7 @@ APPLY_PAD = True
 
 ref_T = 10
 
-# manual_Ztarget = {22:29}
-manual_Ztarget = z_pos_in_original
+manual_Ztarget = {19:33}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -56,7 +55,6 @@ else:
 
 Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 17
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -68,15 +66,15 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( filelist.index ): # 0-indexed
+for t in tqdm( [21] ): # 0-indexed
 
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
-    # if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
-    #     print(f'\n Skipping t = {t}')
-    #     continue
+    if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
+        print(f'\n Skipping t = {t}')
+        continue
     
     print(f'\n Working on t = {t}')
     #Load the target
@@ -175,20 +173,20 @@ for t in tqdm( filelist.index ): # 0-indexed
     
         print('Saving')
         output_dir = path.dirname(filelist.loc[t,'G'])
-        io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
+        # io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
         
         output_dir = path.dirname(filelist.loc[t,'R'])
-        io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
-        io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
+        # io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
+        # io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 
+#%%
 print('DONE')
  
-#%%
 #% Manually input any alignment matrix and save
 
 # t = 5

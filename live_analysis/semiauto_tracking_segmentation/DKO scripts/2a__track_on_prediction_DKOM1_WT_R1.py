@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 import pickle as pkl
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
 
 # dx = 0.2920097
 dx = 1
@@ -29,7 +29,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
@@ -47,24 +47,23 @@ with open(path.join(dirname,'MaMuT','dense_tracks.pkl'),'rb') as file:
 
 segonly = []
 for t in range(17):
-    segonly.append(io.imread(path.join(dirname,f'cellpose_B_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
+    segonly.append(io.imread(path.join(dirname,f'cellpose_G_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R4_Nonablation.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/DKOM1_WT_R1_manual_tracking.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 
 #%%
+
 # Load dfield files
 dfields = {}
-for t in range(1,15):
-    if t == 9:
-        continue
+for t in range(1,18):
     dfield_file = glob(path.join(dirname,f'{t+10}. Day */dfield.tif'))
     
-    assert(len(dfield_file) == 1)
-    dfields[t] = io.imread(path.join(dfield_file[0]))
+    if len(dfield_file) == 1:
+        dfields[t] = io.imread(path.join(dfield_file[0]))
     
 #%% Use tracks and extract segmentation; generate a filtered segmentation image
 # where only tracked spots are shown + put 3D markers on un-segmented spots
@@ -86,13 +85,7 @@ for track in tqdm(tracks):
         z = int(np.round(spot['Z']))
         t = int(spot['Frame'])
         
-        if t == 9: # t=9 is warped version of 19.Day9.5, which will be replaced by frame t=10 which is unwarped
-            continue
-        if t > 9:
-            t = t - 1 # these are the wrong frame number since t=9 is a dummy frame
-            
-        if t != 0 and t != 9:
-            
+        if t in dfields.keys():
             dfield = dfields[t]
             warped_coords = np.array([z,y,x]).astype(int)
             unwarped_coords = np.round(warped_coords + dfield[tuple(warped_coords)][::-1])
