@@ -26,7 +26,7 @@ dx = 1
 
 #%% Load parsed tracks, previous manual segtrack, additional segonly
 
-MANUAL = False
+MANUAL = True
 
 # Load preliminary tracks
 with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
@@ -46,12 +46,12 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(17):
+for t in range(18):
     segonly.append(io.imread(path.join(dirname,f'cellpose_G_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/DKOM1_WT_R1_manual_tracking.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/curated_clahe.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 

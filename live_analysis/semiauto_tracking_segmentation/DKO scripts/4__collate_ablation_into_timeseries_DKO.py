@@ -26,17 +26,20 @@ with warnings.catch_warnings():
 
 dirnames = {}
 
-dirnames['DKOM1_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirnames['DKO_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirnames['WT_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
 
 dx = {}
-dx['DKOM1_R1'] = 0.165243202683616
+dx['DKO_R1'] = 0.2919921875
+dx['WT_R1'] = 0.2919921875
 dz = {}
-dz['DKOM1_R1'] = 0.7
+dz['DKO_R1'] = 0.7
+dz['WT_R1'] = 0.7
 
-mouse = {'DKOM1_R1':'DKOM1'}
+mouse = {'DKO_R1':'DKOM1','WT_R1':'DKOM1'}
 
 pairs = {'DKOM1':'Pair 1'}
-beginning = {'DKOM1_R1':10}
+beginning = {'DKO_R1':10,'WT_R1':10}
 
 RECALCULATE = True
 

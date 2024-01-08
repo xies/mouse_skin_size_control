@@ -19,12 +19,7 @@ from tqdm import tqdm
 
 import pickle as pkl
 
-dirnames = {}
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-14-2023 R26CreER Rb-fl no tam ablation 24hr/M5 white/R3'
-
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1'
 
 # dx = 0.2920097
 dx = 1
@@ -34,7 +29,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT/Nonablation','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
@@ -51,12 +46,12 @@ with open(path.join(dirname,'MaMuT/Nonablation','dense_tracks.pkl'),'rb') as fil
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(8):
-    segonly.append(io.imread(path.join(dirname,f'cellpose_B_clahe_blur/t{t}_3d_nuc/t{t}_masks.tif')))
+for t in range(18):
+    segonly.append(io.imread(path.join(dirname,f'cellpose_G_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R4_Nonablation.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/curated_clahe.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 

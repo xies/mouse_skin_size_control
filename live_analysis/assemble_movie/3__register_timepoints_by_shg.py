@@ -20,7 +20,7 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post ethanol/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -38,7 +38,7 @@ APPLY_PAD = True
 
 ref_T = 10
 
-manual_Ztarget = {19:33}
+manual_Ztarget = {}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -66,7 +66,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [21] ): # 0-indexed
+for t in tqdm( [17] ): # 0-indexed
 
     if t == ref_T:
         continue
@@ -123,7 +123,7 @@ for t in tqdm( [21] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[-25,35],rotation=np.deg2rad(-3))
+            T = T + transform.SimilarityTransform(translation=[0,30],rotation=np.deg2rad(0))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -173,12 +173,12 @@ for t in tqdm( [21] ): # 0-indexed
     
         print('Saving')
         output_dir = path.dirname(filelist.loc[t,'G'])
-        # io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
+        io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
         
         output_dir = path.dirname(filelist.loc[t,'R'])
-        # io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
-        # io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
+        io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
+        io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
     
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')

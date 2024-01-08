@@ -12,7 +12,7 @@ from os import path
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post ethanol/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2'
 
 #%% Locally histogram-normalize
 

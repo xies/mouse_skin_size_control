@@ -16,17 +16,14 @@ from tqdm import tqdm
 
 from twophotonUtils import return_prefix
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R2'
-
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R2'
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
 # Grab all registered B/R tifs
-B_tifs = sorted(glob(path.join(dirname,'*. */' + 'B_reg.tif')), key = return_prefix)
-G_tifs = sorted(glob(path.join(dirname,'*. */' + 'G_reg.tif')), key = return_prefix)
+B_tifs = sorted(glob(path.join(dirname,'14. */' + 'B_reg.tif')), key = return_prefix)
+R_tifs = sorted(glob(path.join(dirname,'14. */' + 'R_reg.tif')), key = return_prefix)
+R_shg_tifs = sorted(glob(path.join(dirname,'14. */' + 'R_shg_reg.tif')), key = return_prefix)
 
 #%% Correlate each R_shg timepoint with subsequent timepoint (Nope, using first time point instead)
 # R_shg is best channel to use bc it only has signal in the collagen layer.
@@ -34,25 +31,22 @@ G_tifs = sorted(glob(path.join(dirname,'*. */' + 'G_reg.tif')), key = return_pre
 
 XX = 1024
 
-ref_T = 1
-target_T = 0
-
 ###
-B_ref = io.imread(B_tifs[ref_T])
-B_target = io.imread(B_tifs[target_T])
-G_target = io.imread(G_tifs[target_T])
+ref = io.imread(B_tifs[0])
+target = io.imread(R_tifs[0])
+other_target = io.imread(R_shg_tifs[0])
 
 # Grab the manually determined reference slice
-Imax_ref = 20
-ref_img = B_ref[Imax_ref,...]
+Imax_ref = 63
+ref_img = ref[Imax_ref,...]
 ref_img = ref_img / ref_img.max()
-Z_ref = B_ref.shape[0]
+Z_ref = ref.shape[0]
 
-output_dir = path.split(path.dirname(B_tifs[target_T]))[0]
+output_dir = path.split(path.dirname(B_tifs[0]))[0]
 
 # Grab the target slice
-Imax_target = 9
-target_img = B_target[Imax_target,...]
+Imax_target = 56
+target_img = target[Imax_target,...]
 target_img = target_img / target_img.max()
 
 print('\n Starting stackreg')
@@ -66,47 +60,45 @@ T = transform.SimilarityTransform(matrix=T)
 
 print('Applying transformation matrices')
 # Apply transformation matrix to each stacks
-B_transformed = np.zeros_like(B_target)
-G_transformed = np.zeros_like(G_target)
+target_transformed = np.zeros_like(target)
+other_target_transformed = np.zeros_like(other_target)
 
-for i, B_slice in enumerate(B_target):
-    B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
-    G_transformed[i,...] = transform.warp(G_target[i,...].astype(float),T)
+for i, R_slice in enumerate(target):
+    target_transformed[i,...] = transform.warp(R_slice.astype(float),T)
+    other_target_transformed[i,...] = transform.warp(other_target[i,...].astype(float),T)
 
 # Z-pad the time point in reference to t - 1
-Z_target = B_target.shape[0]
+Z_target = target.shape[0]
 
 print('Padding')
 top_padding = Imax_ref - Imax_target
 if top_padding > 0: # the needs padding
-    G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-    B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
+    target_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),target_transformed), axis= 0)
+    other_target_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),other_target_transformed), axis= 0)
     
 elif top_padding < 0: # then needs trimming 
-    G_padded = G_transformed[-top_padding:,...]
-    B_padded = B_transformed[-top_padding:,...]
+    target_padded = target_transformed[-top_padding:,...]
+    other_target_padded = other_target_transformed[-top_padding:,...]
     
 elif top_padding == 0:
     # R_padded = R
-    G_padded = G_transformed
-    B_padded = B_transformed
+    target_padded = target_transformed
+    other_target_padded = other_target_transformed
     # R_shg_padded = R_shg_target
-    
-# bottom_padding = B_ref.shape[0]
     
 delta_ref = Z_ref - Imax_ref
 delta_target = Z_target - Imax_target
 bottom_padding = delta_ref - delta_target
 if bottom_padding > 0: # the needs padding
-    G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    target_padded = np.concatenate( (target_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    other_target_padded = np.concatenate( (other_target_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     
 elif bottom_padding < 0: # then needs trimming
-    G_padded = G_padded[0:bottom_padding,...]
-    B_padded = B_padded[0:bottom_padding,...]
+    target_padded = target_padded[0:bottom_padding,...]
+    other_target_padded = other_target_padded[0:bottom_padding,...]
     
 print('Saving')
-output_dir = path.dirname(B_tifs[target_T])
-io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()))
-io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()))
+output_dir = path.dirname(R_tifs[0])
+io.imsave(path.join(output_dir,'R_reg_reg.tif'),util.img_as_uint(target_padded/target_padded.max()))
+io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),util.img_as_uint(other_target_padded/other_target_padded.max()))
 

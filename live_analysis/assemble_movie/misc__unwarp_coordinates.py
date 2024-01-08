@@ -19,28 +19,28 @@ dfield = io.imread(path.join(dirname,'dfield.tif'))
 
 #%%
 
-test_image = np.zeros_like(raw)
+# test_image = np.zeros_like(raw)
 
-# test_image[40,500,500] = (2**16)-1
-test_image[40,100,100] = (2**16)-1
-# test_image[40,800,800] = (2**16)-1
+# # test_image[40,500,500] = (2**16)-1
+# test_image[40,100,100] = (2**16)-1
+# # test_image[40,800,800] = (2**16)-1
 
-io.imsave('/Users/xies/Desktop/test.tif',test_image)
+# io.imsave('/Users/xies/Desktop/test.tif',test_image)
 
-#%%
+# #%%
 
-test_warped = io.imread('/Users/xies/Desktop/test_warp.tif')
+# test_warped = io.imread('/Users/xies/Desktop/test_warp.tif')
 
-#%% Read out the 'rough' input coords
+# #%% Read out the 'rough' input coords
 
-input_coords = np.array([40,100,100])
-warped_coords = (input_coords - dfield[40,100,100]).astype(int)
+# input_coords = np.array([40,100,100])
+# warped_coords = (input_coords - dfield[40,100,100]).astype(int)
 
-target_coords = np.array(list(map(np.mean,np.where(test_warped > 0))))
+# target_coords = np.array(list(map(np.mean,np.where(test_warped > 0))))
 
-actual_diff = target_coords - input_coords
+# actual_diff = target_coords - input_coords
 
-print(f'Actual diff {actual_diff}')
+# print(f'Actual diff {actual_diff}')
 
 #%%
 
@@ -52,3 +52,4 @@ new_coords = [c + dfield[tuple(c)][::-1] for c in coords2unwarp]
 
 new_pts = pd.DataFrame(new_coords,columns=['axis-0','axis-1','axis-2'])
 new_pts.to_csv('/Users/xies/Desktop/new_pts.csv')
+

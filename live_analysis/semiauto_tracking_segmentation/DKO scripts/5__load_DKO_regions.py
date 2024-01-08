@@ -34,7 +34,8 @@ dirnames = {}
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 # dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirnames['DKOM1_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirnames['DKO_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirnames['WT_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
 
 #%%
 
@@ -66,9 +67,12 @@ for name,dirname in dirnames.items():
 df_all = pd.concat(regions,ignore_index=True)
 all_ts = pd.concat(all_ts,ignore_index=True)
 
+wt = df_all[df_all['Genotype'] == 'WT']
+dko = df_all[df_all['Genotype'] == 'DKO']
+
 #%%
 
-for t in all_tracks['DKOM1_R1_curated']:
+for t in all_tracks['WT_R1_curated']:
     plt.plot(t.Frame,t.Volume)
 
 #%%
@@ -77,7 +81,7 @@ sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Mode',row='Pair',hue='Genotyp
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='Total length',row='Pair',
+sb.lmplot(df_all,x='Birth size',y='G1 length',row='Pair',
           robust=False,hue='Genotype')
 
 #%%
@@ -150,10 +154,6 @@ plt.title('Wild type')
 plot_reg_with_bin(X,Y); plt.ylabel('G1 length (h)')
 
 
-
-
-# X,Y = nonan_pairs(regions[2]['Log birth size'].astype(float),regions[2]['G1 length'].astype(float))
-# plot_reg_with_bin(X,Y)
 
 #%%
 
