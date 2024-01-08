@@ -19,7 +19,7 @@ import matplotlib.pylab as plt
 from twophotonUtils import parse_unaligned_channels
 from mathUtils import normxcorr2
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -28,8 +28,8 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 OVERWRITE = True
 
-ref_T = 24
-target_T = 25
+ref_T = 26
+target_T = 27
 
 ref_chan = 'R_shg'
 target_chan = 'R_shg'
@@ -44,7 +44,7 @@ target_stack = io.imread(filelist.loc[target_T,target_chan])
 
 # Find the slice with maximum mean value in R_shg channel
 Imax_ref = ref_stack.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 8
+Imax_ref = 43
 print(f'Reference z-slice automatically determined to be {Imax_ref}')
 
 ref_img = ref_stack[Imax_ref,...]
@@ -55,7 +55,7 @@ Z_ref = ref_stack.shape[0]
 # for z,im in enumerate(target_stack):
 #     CC[z] = normxcorr2(ref_img, im).max()
 # Imax_target = CC.argmax()
-Imax_target = 27
+Imax_target = 34
 target_img = target_stack[Imax_target]
 print(f'Target z-slice automatically determined to be {Imax_target}')
 
@@ -68,19 +68,20 @@ T = sr.register(ref_img,target_img) #Obtain the transformation matrices
 
 B = io.imread(filelist.loc[target_T,'B'])
 G = io.imread(filelist.loc[target_T,'G'])
-# R = io.imread(R_tifs[target_T])
+R = io.imread(filelist.loc[target_T,'R'])
+R_shg = io.imread(filelist.loc[target_T,'R_shg'])
 
 print('Applying transformation matrices')
 # Apply transformation matrix to each stacks
 B_transformed = np.zeros_like(B)
 G_transformed = np.zeros_like(G)
-# R_transformed = np.zeros_like(R)
-# R_shg_transformed = np.zeros_like(R)
+R_transformed = np.zeros_like(R)
+R_shg_transformed = np.zeros_like(R_shg)
 for i, B_slice in enumerate(B):
     B_transformed[i,...] = transform.warp(B_slice.astype(float),T)
     G_transformed[i,...] = transform.warp(G[i,...].astype(float),T)
-    # R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
-    # R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...].astype(float),T)
+    R_transformed[i,...] = transform.warp(R[i,...].astype(float),T)
+    R_shg_transformed[i,...] = transform.warp(R_shg[i,...].astype(float),T)
     
 # Z-pad the time point in reference to t - 1
 Z_target = target_stack.shape[0]
@@ -88,37 +89,37 @@ Z_target = target_stack.shape[0]
 print('Padding')
 top_padding = Imax_ref - Imax_target
 if top_padding > 0: # the needs padding
-    # R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
+    R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
     G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
     B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
-    # R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
+    R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
     
 elif top_padding < 0: # then needs trimming 
-    # R_padded = R_transformed[-top_padding:,...]
+    R_padded = R_transformed[-top_padding:,...]
     G_padded = G_transformed[-top_padding:,...]
     B_padded = B_transformed[-top_padding:,...]
-    # R_shg_padded = R_shg_transformed[-top_padding:,...]
+    R_shg_padded = R_shg_transformed[-top_padding:,...]
     
 elif top_padding == 0:
-    # R_padded = R_transformed
+    R_padded = R_transformed
     G_padded = G_transformed
     B_padded = B_transformed
-    # R_shg_padded = R_shg_transformed
+    R_shg_padded = R_shg_transformed
     
 delta_ref = Z_ref - Imax_ref
 delta_target = Z_target - Imax_target
 bottom_padding = delta_ref - delta_target
 if bottom_padding > 0: # the needs padding
-    # R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-    # R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
+    R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
     
 elif bottom_padding < 0: # then needs trimming
-    # R_padded = R_padded[0:bottom_padding,...]
+    R_padded = R_padded[0:bottom_padding,...]
     G_padded = G_padded[0:bottom_padding,...]
     B_padded = B_padded[0:bottom_padding,...]
-    # R_shg_padded = R_shg_padded[0:bottom_padding,...]
+    R_shg_padded = R_shg_padded[0:bottom_padding,...]
     
 print('Saving')
 output_dir = path.dirname(filelist.loc[target_T,'B'])
@@ -126,8 +127,8 @@ io.imsave(path.join(output_dir,'B_align.tif'),B_padded.astype(np.uint16))
 io.imsave(path.join(output_dir,'G_align.tif'),G_padded.astype(np.uint16))
 
 # output_dir = path.dirname(R_tifs[target_T])
-# io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.int16))
-# io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.int16))
+io.imsave(path.join(output_dir,'R_align.tif'),R_padded.astype(np.uint16))
+io.imsave(path.join(output_dir,'R_shg_align.tif'),R_shg_padded.astype(np.uint16))
     
 
 

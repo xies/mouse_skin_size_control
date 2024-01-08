@@ -25,7 +25,7 @@ def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
 
-subfolders = glob(path.join(dirname,'R1/*/ZSeries*/'))
+subfolders = glob(path.join(dirname,'R3/*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

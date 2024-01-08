@@ -20,7 +20,7 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -29,7 +29,6 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 TT = len(filelist)
 
-OVERWRITE = True
 ALIGN_TO_ALIGNED = False
 
 XY_reg = True
@@ -66,13 +65,14 @@ z_pos_in_original[ref_T] = Imax_ref
 # R_shg is best channel to use bc it only has signal in the collagen layer.
 # Therefore it's easy to identify which z-stack is most useful.
 
-for t in tqdm( [17] ): # 0-indexed
+OVERWRITE = True
+for t in tqdm( filelist.index ): # 0-indexed
 
     if t == ref_T:
         continue
     
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
-    if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'B']),'B_align.tif')):
+    if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'G']),'G_align.tif')):
         print(f'\n Skipping t = {t}')
         continue
     

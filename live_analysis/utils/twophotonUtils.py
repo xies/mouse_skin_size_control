@@ -26,30 +26,47 @@ def return_prefix(filename):
     
     return int(day[0])
 
-def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',ZERO_SPECIAL=True):
+def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',SPECIAL=[]):
     # Given a directory (of Prairie Instruments time course)
-    # 
+    #
     
-    filelist = pd.DataFrame()
+    B = glob(path.join(dirname,folder_str, 'B_align.tif'))
+    idx = [return_prefix(f) for f in B]
+    filelist = pd.DataFrame(index=idx)
+    filelist.loc[idx,'B'] = B
     
-    filelist['B'] = sorted(glob(path.join(dirname,folder_str, 'B_align.tif')), key = return_prefix)
-    filelist['G'] = sorted(glob(path.join(dirname,folder_str, 'G_align.tif')), key = return_prefix)
-    filelist['R'] = sorted(glob(path.join(dirname,folder_str, 'R_align.tif')), key = return_prefix)
-    filelist['R_shg'] = sorted(glob(path.join(dirname,folder_str, 'R_shg_align.tif')), key = return_prefix)
-    T = len(filelist)
+    G = glob(path.join(dirname,folder_str, 'G_align.tif'))
+    idx = [return_prefix(f) for f in G]
+    filelist.loc[idx,'G'] = G
+        
+    R = glob(path.join(dirname,folder_str, 'R_align.tif'))
+    idx = [return_prefix(f) for f in R]
+    filelist.loc[idx,'R'] = R
+    
+    R_shg = glob(path.join(dirname,folder_str, 'R_shg_align.tif'))
+    idx = [return_prefix(f) for f in R_shg]
+    filelist.loc[idx,'R_shg'] = R
+    
+    # T = len(filelist)
 
-    
-    if ZERO_SPECIAL:
+    for t in SPECIAL:
         # t= 0 has no '_align'imp
-        s = pd.DataFrame({'B': sorted(glob(path.join(dirname,folder_str, 'B_reg.tif')))[0],
-                          'G': sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')))[0],
-                          'R': sorted(glob(path.join(dirname,folder_str, 'R_reg_reg.tif')))[0],
-                      'R_shg': sorted(glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif')))[0]},
-                         index=[0])
-        filelist.index = np.arange(1,T+1)
-        filelist = pd.concat((s,filelist))
-        filelist = filelist.sort_index()
-
+        # s = pd.DataFrame({'B': sorted(glob(path.join(dirname,folder_str, 'B_reg.tif')))[0],
+        #                   'G': sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')))[0],
+        #                   'R': sorted(glob(path.join(dirname,folder_str, 'R_reg_reg.tif')))[0],
+        #               'R_shg': sorted(glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif')))[0]},
+        #                  index=[t])
+        B = glob(path.join(dirname,f'{t}. Day */B_reg.tif'))[0]
+        filelist.loc[t,'B'] = B
+        G = glob(path.join(dirname,f'{t}. Day */G_reg.tif'))[0]
+        filelist.loc[t,'G'] = G
+        R = glob(path.join(dirname,f'{t}. Day */R_reg_reg.tif'))[0]
+        filelist.loc[t,'R'] = R
+        R_shg = glob(path.join(dirname,f'{t}. Day */R_shg_reg_reg.tif'))[0]
+        filelist.loc[t,'R_shg'] = R_shg
+        
+        # filelist = pd.concat((s,filelist))
+    filelist = filelist.sort_index()
     
     return filelist
 
@@ -69,7 +86,7 @@ def parse_unreigstered_channels(dirname,folder_str='*. Day*/',sort_func=return_p
     # filelist['G'] = sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')), key = return_prefix)
     G = glob(path.join(dirname,folder_str, 'G_reg.tif'))
     idx = [return_prefix(f) for f in G]
-    filelist.loc[idx,'G'] = B
+    filelist.loc[idx,'G'] = G
     
     R = glob(path.join(dirname,folder_str, 'R_reg.tif'))
     idx = [return_prefix(f) for f in R]

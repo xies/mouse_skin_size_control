@@ -16,9 +16,9 @@ from scipy.ndimage import gaussian_filter
 
 from twophotonUtils import parse_aligned_timecourse_directory
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 
-filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*',ZERO_SPECIAL=False)
+filelist = parse_aligned_timecourse_directory(dirname,folder_str='*.*',SPECIAL=[10])
 
 #%% Stack channels & save into single tif
 
