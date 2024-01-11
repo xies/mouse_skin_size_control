@@ -15,7 +15,7 @@ from mathUtils import normxcorr2
 
 from twophotonUtils import parse_unreigstered_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Pre DMSO/R2'
 
 filelist = parse_unreigstered_channels(dirname)
 filelist = filelist.dropna()

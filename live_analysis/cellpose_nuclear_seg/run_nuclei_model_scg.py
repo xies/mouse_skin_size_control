@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 model = models.Cellpose(model_type='nuclei')
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post ethanol/R1'
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 
 diameter = 26 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
