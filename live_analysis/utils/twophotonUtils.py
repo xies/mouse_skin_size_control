@@ -26,7 +26,7 @@ def return_prefix(filename):
     
     return int(day[0])
 
-def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',SPECIAL=[]):
+def parse_aligned_timecourse_directory(dirname,folder_str='*. */',SPECIAL=[]):
     # Given a directory (of Prairie Instruments time course)
     #
     
@@ -56,13 +56,14 @@ def parse_aligned_timecourse_directory(dirname,folder_str='*. Day*/',SPECIAL=[])
         #                   'R': sorted(glob(path.join(dirname,folder_str, 'R_reg_reg.tif')))[0],
         #               'R_shg': sorted(glob(path.join(dirname,folder_str, 'R_shg_reg_reg.tif')))[0]},
         #                  index=[t])
-        B = glob(path.join(dirname,f'{t}. Day */B_reg.tif'))[0]
+        
+        B = glob(path.join(dirname,f'{t}. */B_reg.tif'))[0]
         filelist.loc[t,'B'] = B
-        G = glob(path.join(dirname,f'{t}. Day */G_reg.tif'))[0]
+        G = glob(path.join(dirname,f'{t}. */G_reg.tif'))[0]
         filelist.loc[t,'G'] = G
-        R = glob(path.join(dirname,f'{t}. Day */R_reg_reg.tif'))[0]
+        R = glob(path.join(dirname,f'{t}. */R_reg_reg.tif'))[0]
         filelist.loc[t,'R'] = R
-        R_shg = glob(path.join(dirname,f'{t}. Day */R_shg_reg_reg.tif'))[0]
+        R_shg = glob(path.join(dirname,f'{t}. */R_shg_reg_reg.tif'))[0]
         filelist.loc[t,'R_shg'] = R_shg
         
         # filelist = pd.concat((s,filelist))

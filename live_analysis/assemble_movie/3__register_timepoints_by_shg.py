@@ -20,7 +20,9 @@ import pickle as pkl
 
 from twophotonUtils import parse_unaligned_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
+# dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R2'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -35,7 +37,7 @@ XY_reg = True
 APPLY_XY = True
 APPLY_PAD = True
 
-ref_T = 10
+ref_T = 1
 
 manual_Ztarget = {}
 
@@ -123,7 +125,7 @@ for t in tqdm( filelist.index ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[0,30],rotation=np.deg2rad(0))
+            # T = T + transform.SimilarityTransform(translation=[0,30],rotation=np.deg2rad(0))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)

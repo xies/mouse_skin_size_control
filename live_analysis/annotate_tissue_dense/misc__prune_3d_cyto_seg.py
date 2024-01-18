@@ -6,23 +6,28 @@ Created on Wed Sep 14 19:20:32 2022
 @author: xies
 """
 
-from skimage import io,measure
+from skimage import io
+from tqdm import tqdm
+import numpy as np
+from os import path
+from imageUtils import most_likely_label
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
-def most_likely_label(labeled,im):
-    label = 0
-    if len(im[im>0]) > 0:
-        unique,counts = np.unique(im[im > 0],return_counts=True)
-        label = unique[counts.argmax()]
-    return label
+# def most_likely_label(labeled,im):
+#     label = 0
+#     if len(im[im>0]) > 0:
+#         unique,counts = np.unique(im[im > 0],return_counts=True)
+#         label = unique[counts.argmax()]
+#     return label
 
 #%%
 
-for t in tqdm(range(15)):
+for t in tqdm([9]):
     
     nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
+    # cyto_seg = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_raw/t{t}_masks.tif'))
     
     #% Find correspondnence
     
@@ -46,4 +51,5 @@ for t in tqdm(range(15)):
             cyto_seg[cyto_seg == cytoID] = cyto_dict[cytoID]
             
     io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_cleaned/t{t}.tif'), cyto_seg.astype(np.int16))
+    
     

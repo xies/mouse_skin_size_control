@@ -15,9 +15,12 @@ from mathUtils import normxcorr2
 
 from twophotonUtils import parse_unreigstered_channels
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Pre DMSO/R2'
+# dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Pre DMSO/R2'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R2/'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R3'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R2'
 
-filelist = parse_unreigstered_channels(dirname)
+filelist = parse_unreigstered_channels(dirname,folder_str='*.*')
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)
 manual_targetZ = {}
@@ -74,7 +77,7 @@ for t in tqdm(filelist.index):
     T = sr.register(target/target.max(),R_ref) #Obtain the transformation matrices   
     T = transform.SimilarityTransform(T)
     
-    # T = T + transform.SimilarityTransform(translation=[5,0],rotation=np.deg2rad(0))
+    # T = transform.SimilarityTransform(translation=[-145,150],rotation=np.deg2rad(1))
     
     R_transformed = np.zeros_like(R).astype(float)
     R_shg_transformed = np.zeros_like(R).astype(float)

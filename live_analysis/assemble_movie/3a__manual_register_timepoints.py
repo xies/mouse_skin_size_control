@@ -19,7 +19,8 @@ import matplotlib.pylab as plt
 from twophotonUtils import parse_unaligned_channels
 from mathUtils import normxcorr2
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -28,8 +29,8 @@ filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 XX = 1024
 OVERWRITE = True
 
-ref_T = 26
-target_T = 27
+ref_T = 4
+target_T = 6
 
 ref_chan = 'R_shg'
 target_chan = 'R_shg'
@@ -44,7 +45,7 @@ target_stack = io.imread(filelist.loc[target_T,target_chan])
 
 # Find the slice with maximum mean value in R_shg channel
 Imax_ref = ref_stack.std(axis=2).std(axis=1).argmax() # Find max contrast slice
-Imax_ref = 43
+Imax_ref = 10
 print(f'Reference z-slice automatically determined to be {Imax_ref}')
 
 ref_img = ref_stack[Imax_ref,...]
@@ -55,7 +56,7 @@ Z_ref = ref_stack.shape[0]
 # for z,im in enumerate(target_stack):
 #     CC[z] = normxcorr2(ref_img, im).max()
 # Imax_target = CC.argmax()
-Imax_target = 34
+Imax_target = 4
 target_img = target_stack[Imax_target]
 print(f'Target z-slice automatically determined to be {Imax_target}')
 
@@ -64,7 +65,7 @@ print('\n Starting stackreg')
 # Use StackReg to 'align' the two z slices
 sr = StackReg(StackReg.RIGID_BODY)
 T = sr.register(ref_img,target_img) #Obtain the transformation matrices
-# T = transform.SimilarityTransform(translation=[60,-50],rotation=np.deg2rad(10))
+T = T + transform.SimilarityTransform(translation=[5,0],rotation=np.deg2rad(2))
 
 B = io.imread(filelist.loc[target_T,'B'])
 G = io.imread(filelist.loc[target_T,'G'])
