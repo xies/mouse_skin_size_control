@@ -27,7 +27,7 @@ with warnings.catch_warnings():
 
 dirnames = {}
 # dirnames['Ablation_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R1/'
-dirnames['Ablation_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
+# dirnames['Ablation_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-23-2023 R26CreER Rb-fl no tam ablation/R2/'
 # dirnames['Ablation_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R1'
 # dirnames['Ablation_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2'
 # dirnames['Ablation_R5'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-31-2023 R26CreER Rb-fl no tam ablation 8hr/F1 Black/R1'
@@ -39,6 +39,7 @@ dirnames['Ablation_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/0
 # dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2'
 # dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 # dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
 
 dx = {}
 dx['Ablation_R1'] = 0.14599609375/1.5
@@ -52,6 +53,7 @@ dx['Ablation_R12'] = 0.194661458333333/1.5
 dx['Ablation_R13'] = 0.194661458333333/1.5
 dx['Ablation_R14'] = 0.194661458333333/1.5
 dx['Ablation_R16'] = 0.194661458333333/1.5
+dx['Ablation_R18'] = 0.2919922/1.5
 
 dz = {}
 dz['Ablation_R1'] = 1
@@ -65,6 +67,7 @@ dz['Ablation_R12'] = .7
 dz['Ablation_R13'] = .7
 dz['Ablation_R14'] = .7
 dz['Ablation_R16'] = 1
+dz['Ablation_R18'] = .7
 
 mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R2':'WT_F1'
@@ -76,9 +79,11 @@ mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R12':'WT_M5'
          ,'Ablation_R13':'WT_M5'
          ,'Ablation_R14':'WT_M5'
-         ,'Ablation_R16':'WT_M5'}
+         ,'Ablation_R16':'WT_M5'
+         ,'Ablation_R18':'WT_Mnonclip'}
 
-pairs = {'WT_F1':np.nan,'WT_M5':np.nan}
+
+pairs = {'WT_F1':np.nan,'WT_M5':np.nan,'WT_Mnonclip':np.nan}
 
 RECALCULATE = True
 
@@ -102,7 +107,8 @@ beginning = {'Ablation_R1':1,
              'Ablation_R12':0,
              'Ablation_R13':0,
              'Ablation_R14':0,
-             'Ablation_R16':0
+             'Ablation_R16':0,
+             'Ablation_R18':0
              }
 
 #%% Load and collate manual track+segmentations
@@ -113,7 +119,7 @@ for name,dirname in dirnames.items():
     timestamps = list(parse_XML_timestamps(dirname, beginning=beginning[name]).values())
     timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
     
-    for mode in ['Nonablation']:
+    for mode in ['Ablation','Nonablation']:
 
         print(f'---- Working on {name} {mode} ----')
         

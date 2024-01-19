@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 import pickle as pkl
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
 
 # dx = 0.2920097
 dx = 1
@@ -29,7 +29,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT/Ablation','dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
@@ -46,8 +46,8 @@ with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
 #     io.imsave(path.splitext(f)[0] + '_prob.tif',data['flows'][3])
 
 segonly = []
-for t in range(18):
-    segonly.append(io.imread(path.join(dirname,f'cellpose_G_clahe/t{t}_3d_nuc/t{t}_masks.tif')))
+for t in range(7):
+    segonly.append(io.imread(path.join(dirname,f'cellpose_G_clahe_blur/t{t}_3d_nuc/t{t}_masks.tif')))
 segonly = np.stack(segonly)
 
 if MANUAL:

@@ -26,7 +26,7 @@ from mamutUtils import load_mamut_densely, construct_data_frame_dense
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/MaMuT/')
+dirnames.append('/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/MaMuT/Nonablation')
 
 all_tracks = []
 for dirname in dirnames:
