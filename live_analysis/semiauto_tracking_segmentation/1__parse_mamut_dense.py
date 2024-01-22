@@ -30,7 +30,7 @@ dirnames.append('/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclippe
 
 all_tracks = []
 for dirname in dirnames:
-    _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='')
+    _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='MaMuT/Nonablation')
     tracks = construct_data_frame_dense(_tracks, _links, _spots)
     tracks = construct_data_frame_dense(_tracks, _links, _spots)
 

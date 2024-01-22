@@ -40,16 +40,33 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 alpha_threshold = 1
 #NB: idx - the order in array in dense segmentation
 
+#%%
+
+for t in tqdm(range(14)):
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_cleaned/t{t}.tif'))
+    # clean up
+    cleaned_seg = np.zeros_like(cyto_seg)
+    
+    all_labels = np.unique(cyto_seg)[1:]
+    for l in all_labels:
+        mask = cyto_seg == l
+        sublabels = morphology.label(mask)
+        df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
+        if df_.sort_values('area').iloc[-1]['area'] > 100:
+            sublabels2keep = df_.sort_values('area')['label'].values[-1]
+            cleaned_seg[ sublabels == sublabels2keep ] = l
+    
+    io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
 
 #%%
 
 df = []
 
-for t in [6,7,8,9]:
+for t in range(14):
 # t = 8
     
-    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
+    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned/t{t}.tif'))
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_cleaned/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     #% Label transfer from nuc3D -> cyto3D

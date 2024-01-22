@@ -31,6 +31,7 @@ dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/
 dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
 dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
+dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
 
 all_tracks = {}
 ts_regions = {}
@@ -84,7 +85,7 @@ R = []
 
 for first,second in pairs:
     
-    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R16'].groupby(['CellID','Mode']):
+    for (_,mode),track in ts_all[ts_all['Region'] == 'Ablation_R18'].groupby(['CellID','Mode']):
         plt.subplot(2,4,first+1)
         plt.plot([0,2],[0,2],'k--')
         

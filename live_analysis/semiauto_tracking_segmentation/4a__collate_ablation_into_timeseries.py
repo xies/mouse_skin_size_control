@@ -116,7 +116,7 @@ beginning = {'Ablation_R1':1,
 
 for name,dirname in dirnames.items():
     
-    timestamps = list(parse_XML_timestamps(dirname, beginning=beginning[name]).values())
+    timestamps = list(parse_XML_timestamps(dirname, subdir_str='*.*', beginning=beginning[name]).values())
     timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
     
     for mode in ['Ablation','Nonablation']:
@@ -155,7 +155,6 @@ for name,dirname in dirnames.items():
         
         # Construct the cell-centric metadata dataframe
         df,tracks = collate_timeseries_into_cell_centric_table(tracks,metadata)
-        
         
         df.to_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'))
         # Save to the manual tracking folder    

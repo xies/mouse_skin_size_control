@@ -18,7 +18,7 @@ from twophotonUtils import parse_unreigstered_channels
 # dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Pre DMSO/R2'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R2/'
 dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R3'
-dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R2'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R3'
 
 filelist = parse_unreigstered_channels(dirname,folder_str='*.*')
 filelist = filelist.dropna()
