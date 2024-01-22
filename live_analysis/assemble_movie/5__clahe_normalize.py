@@ -36,3 +36,17 @@ io.imsave(path.join(dirname,'master_stack/G_clahe.tif'),util.img_as_uint(im_clah
 # 3d Blur
 io.imsave(path.join(dirname,'master_stack/G_clahe_blur.tif'),util.img_as_uint(clahe_blur))
 
+
+#%% One off
+
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO ear/M3 p107homo Rbfl/Left ear/Post tam/R2/21. Day 10.5'
+im = io.imread(path.join(dirname,'G_align.tif'))
+
+kernel_size = (25, #~25
+               128, #~128
+               128)
+kernel_size = np.array(kernel_size)
+
+im = exposure.equalize_adapthist(im/im.max(), kernel_size=kernel_size, clip_limit=0.01, nbins=256)
+
+io.imsave(path.join(dirname,'G_align_clahe.tif'),util.img_as_uint(im))
