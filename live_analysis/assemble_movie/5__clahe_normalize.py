@@ -39,8 +39,8 @@ io.imsave(path.join(dirname,'master_stack/G_clahe_blur.tif'),util.img_as_uint(cl
 
 #%% One off
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/11-07-2023 DKO ear/M3 p107homo Rbfl/Left ear/Post tam/R2/21. Day 10.5'
-im = io.imread(path.join(dirname,'G_align.tif'))
+dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R2/23. Day 11.5'
+im = io.imread(path.join(dirname,'G_reg.tif'))
 
 kernel_size = (25, #~25
                128, #~128
@@ -48,5 +48,7 @@ kernel_size = (25, #~25
 kernel_size = np.array(kernel_size)
 
 im = exposure.equalize_adapthist(im/im.max(), kernel_size=kernel_size, clip_limit=0.01, nbins=256)
+im = gaussian_filter(im,sigma=[.5,.5,.5])
 
 io.imsave(path.join(dirname,'G_align_clahe.tif'),util.img_as_uint(im))
+

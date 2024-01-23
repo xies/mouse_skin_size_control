@@ -23,7 +23,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 #%%
 
-for t in tqdm([9]):
+for t in tqdm([11]):
     
     nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     # cyto_seg = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
@@ -52,4 +52,4 @@ for t in tqdm([9]):
             
     io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_cleaned/t{t}.tif'), cyto_seg.astype(np.int16))
     
-    
+     
