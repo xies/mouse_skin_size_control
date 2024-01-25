@@ -38,19 +38,26 @@ h2b_tam_after_r2 = io.imread(path.join(dirname,'Left ear/Post tam/R2/21. Day 10.
 fucci_tam_before_r2 = io.imread(path.join(dirname,'Left ear/Post tam/R2/10. Day 5','R_reg_reg.tif'))
 fucci_tam_after_r2 = io.imread(path.join(dirname,'Left ear/Post tam/R2/21. Day 10.5','R_align.tif'))
 
-seg_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t0.tif'))
-seg_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t13.tif'))
-h2b_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/11. Day 5.5','G_reg.tif'))
-h2b_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/23. Day 11.5','G_reg.tif'))
+# seg_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t0.tif'))
+# seg_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t13.tif'))
+# h2b_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/11. Day 5.5','G_reg.tif'))
+# h2b_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/23. Day 11.5','G_reg.tif'))
 # fucci_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/11. Day 5.5','R_reg_reg.tif'))
 # fucci_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/23. Day 11.5','R_reg_reg.tif'))
 
-seg_dmso_before = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t0.tif'))
-seg_dmso_after = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t10.tif'))
-h2b_dmso_before = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/10. Day 5 (0)','G_reg.tif'))
-h2b_dmso_after = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/22. Day 11 (12)','G_align.tif'))
-fucci_dmso_before = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/10. Day 5 (0)','R_reg_reg.tif'))
-fucci_dmso_after = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/22. Day 11 (12)','R_align.tif'))
+seg_dmso_before_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t0.tif'))
+seg_dmso_after_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t10.tif'))
+h2b_dmso_before_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/10. Day 5 (0)','G_reg.tif'))
+h2b_dmso_after_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/22. Day 11 (12)','G_align.tif'))
+fucci_dmso_before_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/10. Day 5 (0)','R_reg_reg.tif'))
+fucci_dmso_after_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/22. Day 11 (12)','R_align.tif'))
+
+seg_dmso_before_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/cellpose_basal_layer_cleaned_byhand','t0.tif'))
+seg_dmso_after_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/cellpose_basal_layer_cleaned_byhand','t10.tif'))
+h2b_dmso_before_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/10. Day 5','G_reg.tif'))
+h2b_dmso_after_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/20. Day 10','G_align.tif'))
+fucci_dmso_before_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/10. Day 5','R_reg_reg.tif'))
+fucci_dmso_after_r2 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R2/20. Day 10','R_align.tif'))
 
 #%%
 
@@ -70,7 +77,7 @@ tam_before['Time'] = 0
 tam_after = measure_intensity_two_channels(seg_tam_after_r1,h2b_tam_after_r1,fucci_tam_after_r1)
 tam_after['Genotype'] = '4OHT'
 tam_after['Region'] = '4OHT R1'
-tam_after['Time'] = 5
+tam_after['Time'] = 1
 tam = pd.concat((tam_before,tam_after),ignore_index=True)
 
 tam_before = measure_intensity_two_channels(seg_tam_before_r2,h2b_tam_before_r2,fucci_tam_before_r2)
@@ -80,18 +87,28 @@ tam_before['Time'] = 0
 tam_after = measure_intensity_two_channels(seg_tam_after_r2,h2b_tam_after_r2,fucci_tam_after_r2)
 tam_after['Genotype'] = '4OHT'
 tam_after['Region'] = '4OHT R2'
-tam_after['Time'] = 5.5
+tam_after['Time'] = 1
 tam = pd.concat((tam,tam_before,tam_after),ignore_index=True)
 
-dmso_before = measure_intensity_two_channels(seg_dmso_before,h2b_dmso_before,fucci_dmso_before)
+dmso_before = measure_intensity_two_channels(seg_dmso_before_r1,h2b_dmso_before_r1,fucci_dmso_before_r1)
 dmso_before['Genotype'] = 'DMSO'
 dmso_before['Region'] = 'DMSO R1'
 dmso_before['Time'] = 0
-dmso_after = measure_intensity_two_channels(seg_dmso_after,h2b_dmso_after,fucci_dmso_after)
+dmso_after = measure_intensity_two_channels(seg_dmso_after_r1,h2b_dmso_after_r1,fucci_dmso_after_r1)
 dmso_after['Genotype'] = 'DMSO'
 dmso_after['Region'] = 'DMSO R1'
-dmso_after['Time'] = 6
+dmso_after['Time'] = 1
 dmso = pd.concat((dmso_before,dmso_after),ignore_index=True)
+
+dmso_before = measure_intensity_two_channels(seg_dmso_before_r2,h2b_dmso_before_r2,fucci_dmso_before_r2)
+dmso_before['Genotype'] = 'DMSO'
+dmso_before['Region'] = 'DMSO R2'
+dmso_before['Time'] = 0
+dmso_after = measure_intensity_two_channels(seg_dmso_after_r2,h2b_dmso_after_r2,fucci_dmso_after_r2)
+dmso_after['Genotype'] = 'DMSO'
+dmso_after['Region'] = 'DMSO R2'
+dmso_after['Time'] = 1
+dmso = pd.concat((dmso,dmso_before,dmso_after),ignore_index=True)
 
 df = pd.concat((tam,dmso),ignore_index=True)
 
@@ -125,4 +142,11 @@ CV = CV.rename(columns={'area':'CV'})
 
 sb.relplot(CV,x='Time',y='CV',hue='Genotype',kind='line')
 
+#%%
+CV = df_real.groupby(['Genotype','Region','Time'])['area'].std()/df_real.groupby(['Genotype','Region','Time'])['area'].mean()
+CV = pd.DataFrame(CV)
+CV = CV.rename(columns={'area':'CV'})
+CV = CV.reset_index()
+
+sb.pointplot(CV,x='Time',y='CV',hue='Region',dodge=True)
 

@@ -39,7 +39,8 @@ dirnames = {}
 # dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2'
 # dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 # dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
-dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
+# dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
+dirnames['Ablation_R20'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 dx = {}
 dx['Ablation_R1'] = 0.14599609375/1.5
@@ -54,6 +55,7 @@ dx['Ablation_R13'] = 0.194661458333333/1.5
 dx['Ablation_R14'] = 0.194661458333333/1.5
 dx['Ablation_R16'] = 0.194661458333333/1.5
 dx['Ablation_R18'] = 0.2919922/1.5
+dx['Ablation_R20'] = 0.2919922/1.5
 
 dz = {}
 dz['Ablation_R1'] = 1
@@ -68,6 +70,7 @@ dz['Ablation_R13'] = .7
 dz['Ablation_R14'] = .7
 dz['Ablation_R16'] = 1
 dz['Ablation_R18'] = .7
+dz['Ablation_R20'] = .7
 
 mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R2':'WT_F1'
@@ -80,10 +83,11 @@ mouse = {'Ablation_R1':'WT_F1'
          ,'Ablation_R13':'WT_M5'
          ,'Ablation_R14':'WT_M5'
          ,'Ablation_R16':'WT_M5'
-         ,'Ablation_R18':'WT_Mnonclip'}
+         ,'Ablation_R18':'WT_Mnonclip'
+         ,'Ablation_R20':'WT_Mclip'}
 
 
-pairs = {'WT_F1':np.nan,'WT_M5':np.nan,'WT_Mnonclip':np.nan}
+pairs = {'WT_F1':np.nan,'WT_M5':np.nan,'WT_Mnonclip':np.nan,'WT_Mclip':np.nan}
 
 RECALCULATE = True
 
@@ -108,7 +112,8 @@ beginning = {'Ablation_R1':1,
              'Ablation_R13':0,
              'Ablation_R14':0,
              'Ablation_R16':0,
-             'Ablation_R18':0
+             'Ablation_R18':0,
+             'Ablation_R20':0
              }
 
 #%% Load and collate manual track+segmentations
@@ -160,8 +165,7 @@ for name,dirname in dirnames.items():
         # Save to the manual tracking folder    
         with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'wb') as file:
             pkl.dump(tracks,file)
-        
-        
+                
 #%%
 
 for t in tracks:

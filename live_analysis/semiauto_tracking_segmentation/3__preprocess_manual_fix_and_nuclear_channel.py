@@ -19,8 +19,7 @@ from scipy import ndimage
 
 from basicUtils import draw_gate,gate_on_selector
 
-dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
-
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 OVERWRITE = True
 
@@ -31,7 +30,7 @@ im = io.imread(path.join(dirname,'master_stack/R.tif'))
 _tmp = []
 for t in tqdm(range(7)):
 
-    basal_seg = io.imread(path.join(dirname,f'cellpose_clahe_pruned/t{t}_manual.tif'))
+    basal_seg = io.imread(path.join(dirname,f'cellpose_clean/t{t}_manual.tif'))
     R = im[t,...]
     
     this_frame = pd.DataFrame(measure.regionprops_table(basal_seg,intensity_image=R,properties=['area','label',

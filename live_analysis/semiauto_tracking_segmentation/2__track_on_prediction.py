@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 import pickle as pkl
 
-dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
+dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1/'
 
 # dx = 0.2920097
 dx = 1
@@ -29,7 +29,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT/Ablation','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT/Nonablation','dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
