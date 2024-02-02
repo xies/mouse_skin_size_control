@@ -83,6 +83,8 @@ sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Mode',row='Pair',hue='Genotyp
 
 sb.lmplot(df_all,x='Birth size',y='G1 length',row='Pair',
           robust=False,hue='Genotype')
+plt.xlim([160,550])
+plt.ylim([0,100])
 
 #%%
 

@@ -26,7 +26,7 @@ dx = 1
 
 #%% Load parsed tracks, previous manual segtrack, additional segonly
 
-MANUAL = False
+MANUAL = True
 
 # Load preliminary tracks
 with open(path.join(dirname,'MaMuT/Nonablation','dense_tracks.pkl'),'rb') as file:
@@ -51,7 +51,7 @@ for t in range(7):
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/curated_clahe.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R20_Nonablation.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 

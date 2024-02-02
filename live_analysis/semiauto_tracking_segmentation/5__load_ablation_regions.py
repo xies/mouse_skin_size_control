@@ -70,13 +70,14 @@ ablation = ts_all[ts_all['Mode'] == 'Ablation']
 nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
 #%%
+
 df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
 # sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='box')
-plt.ylim([0.5,2])
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
+plt.ylim([0,2])
 
 #%%
 
@@ -157,6 +158,10 @@ sb.catplot(df_all,hue='Mode',y='Exponential growth rate',x='Region',kind='box')
 plt.figure()
 sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1},hue='Mode')
 
+D = pd.DataFrame(ts_all.groupby(['CellID','Region','Mode'])['Distance to ablated cell'].mean())
+D = D.reset_index()
+sb.histplot(D,x='Distance to ablated cell',hue='Mode',bins=50)
+df_all = pd.merge(df_all,D,on=['Region','Mode','CellID'])
 
 #%%
 
@@ -175,13 +180,13 @@ for mousename,mouse in df_all.groupby('Mouse'):
     print(f'Exponential growth rate, P = {P}')
 
 
-for mousename,mouse in ts_all.groupby('Mouse'):
-    print(f'--- {mousename} ---')
-    T,P = ttest_from_groupby(mouse,'Mode','Specific GR')
-    print(f'Specific GR, P = {P}')
+# for mousename,mouse in ts_all.groupby('Mouse'):
+#     print(f'--- {mousename} ---')
+#     T,P = ttest_from_groupby(mouse,'Mode','Specific GR')
+#     print(f'Specific GR, P = {P}')
     
-    T,P = ttest_from_groupby(mouse,'Mode','Specific GR normal')
-    print(f'Specific GR nromal, P = {P}')
+#     T,P = ttest_from_groupby(mouse,'Mode','Specific GR normal')
+#     print(f'Specific GR nromal, P = {P}')
 
 
 

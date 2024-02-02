@@ -124,7 +124,7 @@ for name,dirname in dirnames.items():
     timestamps = list(parse_XML_timestamps(dirname, subdir_str='*.*', beginning=beginning[name]).values())
     timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
     
-    for mode in ['Ablation','Nonablation']:
+    for mode in ['Nonablation']:
 
         print(f'---- Working on {name} {mode} ----')
         

@@ -119,6 +119,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
                     what
                 
             else:
+                what
                 track['Age'] = (track['Frame'] - track.iloc[0]['Frame'])*12
             track['Region'] = name
             track['Genotype'] = genotype

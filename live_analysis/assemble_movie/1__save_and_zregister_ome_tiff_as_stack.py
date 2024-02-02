@@ -15,7 +15,7 @@ from re import findall
 from tqdm import tqdm
 
 # dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/'
-dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/*'
+dirname = '/Volumes/T7/01-24-2024 12month old mice/*/'
 
 OVERWRITE = False
 
