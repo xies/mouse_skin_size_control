@@ -45,14 +45,14 @@ for t in tqdm(range(15)):
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
     
-    dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     # heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     # heightmap = np.round(heightmap).astype(int)
     
     #% Label transfer from nuc3D -> cyto2D
     
     # For now detect the max overlap label with the nuc projection
-    df_nuc = pd.DataFrame( measure.regionprops_table(dense_seg.max(axis=0), intensity_image = cyto_seg
+    df_nuc = pd.DataFrame( measure.regionprops_table(dense_nuc_seg.max(axis=0), intensity_image = cyto_seg
                                                    ,properties=['label','centroid','max_intensity',
                                                                 'euler_number','area']
                                                    ,extra_properties = [most_likely_label]))
@@ -85,9 +85,9 @@ for t in tqdm(range(15)):
         elif len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
     
-    
     #% Reconstruct adj network from cytolabels that touch
     A = np.zeros((len(df_nuc),len(df_nuc)))
+    adj_dict = {}
     for i,cyto in df_cyto.iterrows():
         
         if np.isnan(cyto['CellposeID']):
@@ -113,6 +113,9 @@ for t in tqdm(range(15)):
         touching_idx = np.where(np.in1d(df_nuc['CellposeID'], touching_cellposeIDs))[0]
         
         A[this_idx,touching_idx] = 1
+        
+        adj_dict[cyto['CellposeID']] = touching_cellposeIDs
+        
     
     #% Save as matrix and image
     im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX]).astype(np.uint16)
@@ -121,6 +124,7 @@ for t in tqdm(range(15)):
     # save matrix
     np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
     
+    np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
     
 
 #%% Visualize adjacencies on the image itself (either in flat or in 3D)

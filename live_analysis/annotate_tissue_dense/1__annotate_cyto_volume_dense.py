@@ -8,21 +8,14 @@ Created on Wed Jan 10 18:46:23 2024
 
 import numpy as np
 from skimage import io, measure, draw, util, morphology
-# from scipy.spatial import distance, Voronoi, Delaunay
 import pandas as pd
 
-# from trimesh import Trimesh
-# from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean_curvature_measure, sphere_ball_intersection
 from basicUtils import euclidean_distance
 
 import matplotlib.pylab as plt
-# from matplotlib.path import Path
-# from roipoly import roipoly
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
-# from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, argsort_counter_clockwise
 
 from tqdm import tqdm
-# from glob import glob
 from os import path
 
 dx = 0.25
@@ -42,12 +35,12 @@ alpha_threshold = 1
 
 #%%
 
-for t in tqdm(range(14)):
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_cleaned/t{t}.tif'))
+for t in tqdm(range(15)):
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
     # clean up
     cleaned_seg = np.zeros_like(cyto_seg)
-    
     all_labels = np.unique(cyto_seg)[1:]
+    
     for l in all_labels:
         mask = cyto_seg == l
         sublabels = morphology.label(mask)
@@ -56,17 +49,19 @@ for t in tqdm(range(14)):
             sublabels2keep = df_.sort_values('area')['label'].values[-1]
             cleaned_seg[ sublabels == sublabels2keep ] = l
     
-    io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
+    # io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'), cleaned_seg)
 
 #%%
 
+DEBUG = False
+
 df = []
 
-for t in range(14):
-# t = 8
+for t in range(15):
+    # t = 6
     
-    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned/t{t}.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_cleaned/t{t}.tif'))
+    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     #% Label transfer from nuc3D -> cyto3D
@@ -77,18 +72,13 @@ for t in range(14):
                                                                 'euler_number','area']
                                                    ,extra_properties = [most_likely_label]))
     
-    df_nuc = df_nuc.rename(columns={'centroid-0':'Y','centroid-1':'X','area':'Nuclear volume'
-                                      ,'most_likely_label':'CytoID','label':'CellposeID'})
-    
+    df_nuc = df_nuc.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X','area':'Nuclear volume'
+                                    ,'most_likely_label':'CytoID','label':'CellposeID'})
     
     df_cyto = pd.DataFrame( measure.regionprops_table(cyto_seg
                                                       , properties=['centroid','label','area']))
-    df_cyto = df_cyto.rename(columns={'area':'Cell volume (auto)'})
-    df_cyto.index = df_cyto['label']
-    
-    nuc_coords = np.array([df_nuc['Y'],df_nuc['X']]).T
-    cyto_coords = np.array([df_cyto['centroid-0'],df_cyto['centroid-1']]).T
-    
+    df_cyto = df_cyto.rename(columns={'area':'Cell volume','label':'CytoID'})
+    df_cyto.index = df_cyto['CytoID']
     
     
     # Print non-injective mapping
@@ -98,38 +88,40 @@ for t in range(14):
         print(f'CytoID being duplicated: {uniques[i]}')
     #% Relabel cyto seg with nuclear CellposeID
     
-    
     df_cyto['CellposeID'] = np.nan
     for i,cyto in df_cyto.iterrows():
-        cytoID = cyto['label']
+        cytoID = cyto['CytoID']
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
-        # if len(I) > 1:
-        #     print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
-        #     error()
+        if len(I) > 1:
+            print(f't = {t}: ERROR at CytoID {cytoID} = {df_nuc.loc[I]}')
+            error()
         if len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
     
-    
+    if DEBUG:
     #----- map from cellpose to manual -----
-    #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
-    df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = nuc_seg,
-                                                       properties = ['label','area'],
-                                                       extra_properties = [most_likely_label]))
-    df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID','area':'Cell volume (manual)'})
-    assert(np.isnan(df_manual['CellposeID']).sum() == 0)
+        #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
+        df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = nuc_seg,
+                                                           properties = ['label','area'],
+                                                           extra_properties = [most_likely_label]))
+        df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID','area':'Cell volume (manual)'})
+        assert(np.isnan(df_manual['CellposeID']).sum() == 0)
     
-    for _,this_cell in df_manual.iterrows():
-         df_nuc.loc[ df_nuc['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
-         df_nuc.loc[df_nuc['CellposeID'] == this_cell['CellposeID'],'Cell volume (manual)'] = this_cell['Cell volume (manual)']
+        for _,this_cell in df_manual.iterrows():
+             df_nuc.loc[ df_nuc['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
+             df_nuc.loc[df_nuc['CellposeID'] == this_cell['CellposeID'],'Cell volume (manual)'] = this_cell['Cell volume (manual)']
          
     
-    df_merge = df_nuc.merge(df_cyto,on='CellposeID')
-    df_merge['NC ratio'] = df_merge['Nuclear volume'] / df_merge['Cell volume (auto)']
+    df_merge = df_nuc.merge(df_cyto.drop(columns=['centroid-0','centroid-1','centroid-2','CytoID']),on='CellposeID',how='left')
+    # df_merge = df_merge.rename(columns={'CytoID_x':'CytoID'})
+    df_merge['NC ratio'] = df_merge['Nuclear volume'] / df_merge['Cell volume']
     
     df_merge['Frame'] = t
     df.append(df_merge)
     
 df = pd.concat(df,ignore_index=True)
 
-
+if SAVE:
+    df.to_csv(path.join(dirname,'cyto_dataframe.csv'))
+    print(f'Saved to: {dirname}')
 
