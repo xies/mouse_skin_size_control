@@ -38,7 +38,7 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
-for t in tqdm(range(15)):
+for t in tqdm([9]):
     
     # t = 7
     

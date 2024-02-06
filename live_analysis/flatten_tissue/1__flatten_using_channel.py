@@ -33,7 +33,7 @@ SIGN = -1
 XY_sigma = 25
 Z_sigma = 20
 
-TOP_Z_BOUND = 35
+TOP_Z_BOUND = 0
 BOTTOM_Z_BOUND = 75
 
 z_shift = 0
@@ -63,7 +63,6 @@ for t in tqdm(range(imstack.shape[0])):
     heightmap = _tmp_diff.argmax(axis=0)
     heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
     heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
-    
     
     # Reconstruct flattened movie
     Iz = np.round(heightmap + z_shift).astype(int)
