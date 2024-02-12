@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 model = models.Cellpose(model_type='cyto')
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/07-26-2023 R25CreER Rb-fl no tam ablation 12h/Black female/R2/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
 diameter = 26 #OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
@@ -28,32 +28,33 @@ cellprob_threshold = -0.1
 
 OVERWRITE = False
 
-B = io.imread(path.join(dirname,'master_stack/B_blur_sobel.tif'))
+B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
+G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
 
-for t,im in tqdm(enumerate(B)):
+for t,im in tqdm(enumerate(G)):
 
-    f = path.join(dirname,f'cellpose_B_blur_sobel/t{t}.tif')
-    d = path.dirname(f)
-    
-    basename = path.splitext(path.basename(f))[0] # i.e. 't9'
-    output_dir = path.join(d,basename + '_3d_cyto')
+    im_nuc = B[t,...]
+    d = dirname
+    output_dir = path.join(d,f'3d_cyto_seg/3d_cyto_raw/t{t}_seg')
     if path.exists( output_dir ) and not OVERWRITE:
-        print(f'Skipping {f}')
+        print(f'Skipping {t}')
         continue
     else:
         mkdir(output_dir)
 
     tic = time()
-    print(f'Predicting on {f}')
-    
-    masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True,
-                                          cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
-    io.masks_flows_to_seg(im, masks,flows,diams,f)
-	# annoyingly, need to manually move
-    move(path.join(d, basename + '_seg.npy'), path.join(output_dir,basename + '_seg.npy'))
+    print(f'\n--- Predicting on {t} ---')
+    npy_savepath = path.join(output_dir,f't{t}') + '_seg.npy'
+    mask_savepath = path.join(output_dir,f't{t}_masks.tif')
+    print(f'Saving model to: {npy_savepath}')
+
+    masks,flows,styles,diams = model.eval([im,im_nuc],diameter=None, do_3D=True,
+                                          cellprob_threshold=cellprob_threshold,
+                                          anisotropy=anisotropy)
+    io.masks_flows_to_seg(im, masks,flows,diams,npy_savepath)
 	
 	# Also resave the mask as standalone .tif for convenience
-    io.imsave(path.join(output_dir, basename + '_masks.tif'),masks)
+    io.imsave(mask_savepath,masks)
 
     toc = time()
     print(f'Saved to {output_dir}')
