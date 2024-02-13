@@ -188,7 +188,12 @@ def cell_cycle_annotate(tracks,pathdict,metadata):
     mode = metadata['Mode']
     
     print('Cell cycle annotating...')
-    anno = pd.read_excel(pathdict['Cell cycle annotations'],usecols=range(5),index_col=0,sheet_name=mode)
+    anno = pd.read_excel(pathdict['Cell cycle annotations'],usecols=range(6),index_col=0,sheet_name=mode)
+    if 'Generation' in anno.columns:
+        GENERATION = True
+        print('GENERATION')
+    else:
+        GENERATION = False
     for track in tracks:
         
         track['Phase'] = 'NA'
@@ -218,7 +223,10 @@ def cell_cycle_annotate(tracks,pathdict,metadata):
             track['Mitosis'] = this_anno['Mitosis?'] == 'Yes'
             if track.iloc[0]['Mitosis']:
                 track.loc[track['Frame'] == this_anno.Division,'Volume'] = np.nan
-
+            
+            if GENERATION:
+                track['Generation'] = this_anno['Generation']
+            
     for t in tracks:
         t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
     
@@ -371,6 +379,12 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
         V0 = params[0]
         gamma = params[1]
 
+        # If annotated, add generation #
+        if 'Generation' in track.columns:
+            generation = track.iloc[0]['Generation']
+        else:
+            generation = np.nan
+
         df.append({'CellID':track.iloc[0].CellID
                     ,'um_per_px':dx
                     ,'um_per_slice':dz
@@ -400,6 +414,7 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
                     ,'Total length':total_length
                     ,'Exponential growth rate':gamma
                     ,'Exponential initial':V0
+                    ,'Generation':generation
                     # ,'G1 growth':s_size - birth_size
                     # ,'Total growth':div_size - birth_size
                     # ,'G1 growth normal':s_size_normal - birth_size_normal

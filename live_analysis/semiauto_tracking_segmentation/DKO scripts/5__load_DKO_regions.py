@@ -100,22 +100,12 @@ sb.catplot(df_all,x='Pair',y='Birth size normal',hue='Genotype',kind='violin')
 
 #%%
 
-color = {'WT':'r','RBKO':'b'}
-# for tracks in all_tracks[1]:
-tracks = all_tracks['RBKO_R1_curated']
-for t in tracks:
-    plt.subplot(2,1,1)
-    plt.plot(t.Frame,t['Volume'],color=color[t.iloc[0]['Genotype']],alpha=0.1)
-    plt.xlabel('Frame')
-    plt.ylabel('Volume normal')
-    plt.subplot(2,1,2)
-    plt.plot(t.Age,t['Volume'],color=color[t.iloc[0]['Genotype']],alpha=0.1)
-    plt.xlabel('Age')
-    plt.ylabel('Volume normal')
+sb.relplot(all_ts,x='Age',y='Volume',col='Pair',row='Mode',hue='Genotype',kind='line')
 
 #%%
 
-sb.relplot(all_ts,x='Age',y='Volume',col='Pair',row='Mode',hue='Genotype',kind='line')
+dko_first_gen = dko[dko['Birth frame'] < 6]
+dko_second_gen = dko[dko['Birth frame'] >= 6]
 
 #%%
 
@@ -147,32 +137,6 @@ def plot_reg_with_bin(x,y,data=None,alpha=0.5,bin_numbers=8):
     sb.regplot(x=x,y=y,scatter_kws={'alpha':alpha},robust=True)
     plot_bin_means(x,y,minimum_n=4,bin_edges=bin_numbers,bin_style='equal')
 
-
-
-#%%
-
-X,Y = nonan_pairs(df['Birth size'].astype(float),df['G1 length'].astype(float))
-plt.title('Wild type')
-plot_reg_with_bin(X,Y); plt.ylabel('G1 length (h)')
-
-
-
-#%%
-
-plt.figure()
-plt.subplot(2,1,1)
-X,Y = nonan_pairs(wt_curated['Birth size normal'].astype(float),wt_curated['G1 growth normal'].astype(float))
-plot_reg_with_bin(X,Y,bin_numbers=6)
-print(f'WT = {np.polyfit(X,Y,1)}')
-plt.title('WT')
-
-plt.subplot(2,1,2)
-X,Y = nonan_pairs(rbko_curated['Birth size normal'].astype(float),rbko_curated['G1 growth normal'].astype(float))
-plot_reg_with_bin(X,Y,bin_numbers=12)
-print(f'RBKO = {np.polyfit(X,Y,1)}')
-plt.title('RBKO')
-
-# plt.legend(list(dirnames.keys()))
 
 
 #%%
