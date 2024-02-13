@@ -27,6 +27,8 @@ def z_standardize(x):
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)
 
+df_g1s = df_g1s.drop(columns='cellID')
+
 X = df_g1s.drop(columns='sgr')
 y = df_g1s['sgr']
 
@@ -92,7 +94,7 @@ imp = pd.DataFrame(importance)
 imp.columns = df_g1s.columns.drop('G1S_logistic')
 
 plt.figure()
-sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');
+sb.barplot(data=imp.melt(value_vars=imp.columns).sort_values('value'),x='variable',y='value');
 plt.xticks(rotation=45);plt.ylabel('Importance')
 
 #%% Depricated-- using SM; Robust LM for smoothed specific growth rate

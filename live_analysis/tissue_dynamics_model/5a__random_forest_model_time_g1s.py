@@ -63,7 +63,7 @@ MSE_theo = mean_squared_error(np.zeros(len(y)),errors)
 
 R2_theo = r2_score(y,y+errors)
 
-print(f'Minimum R2 = {R2_theo}')
+print(f'Max R2 = {R2_theo}')
 print(f'Minimum MSE = {MSE_theo}')
 
 #%% Random forest regression

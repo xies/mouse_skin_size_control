@@ -338,16 +338,6 @@ if SAVE:
     df.to_csv(path.join(dirname,'nuc_dataframe.csv'))
     print(f'Saved to: {dirname}')
 
-#%% Merge with dense cortical segmentation
-
-df = pd.read_csv(path.join(dirname,'nuc_dataframe.csv'),index_col=0)
-
-df_cyto = pd.read_csv(path.join(dirname,'cyto_dataframe.csv'),index_col=0)
-df = pd.merge(df,df_cyto,on=['Frame','CellposeID'],how='left')
-
-df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
-print(f'Saved to: {dirname}')
- 
 #%% Colorize + visualze some other features on cell-by-cell basis
  
     # Colorize nuclei based on mean curvature (for inspection)

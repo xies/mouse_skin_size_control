@@ -53,7 +53,8 @@ for t in tqdm(range(15)):
 
 #%%
 
-DEBUG = False
+DEBUG = True
+SAVE= False
 
 df = []
 
@@ -106,11 +107,18 @@ for t in range(15):
                                                            extra_properties = [most_likely_label]))
         df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID','area':'Cell volume (manual)'})
         assert(np.isnan(df_manual['CellposeID']).sum() == 0)
-    
+        
+        # Find the corresponding manually segmented ID/volume
         for _,this_cell in df_manual.iterrows():
              df_nuc.loc[ df_nuc['CellposeID'] == this_cell['CellposeID'],'basalID'] = this_cell['basalID']
              df_nuc.loc[df_nuc['CellposeID'] == this_cell['CellposeID'],'Cell volume (manual)'] = this_cell['Cell volume (manual)']
-         
+             # Find if all the adjacent cells are cyto annotated
+             # Loading dict of CellposeID: neighbor cellposeIDs
+             adj_dict = np.load(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),allow_pickle=True).item()
+             for neighbor in adj_dict[this_cell['CellposeID']]:
+                 neighbor_cytoID = df_nuc[df_nuc['CellposeID'] == neighbor]['CytoID'].values
+                 if np.any(neighbor_cytoID == 0) or np.any(np.isnan(neighbor_cytoID)):
+                     print(f'Missing cytoID at: t = {t} Nuc CellposeID = {neighbor}')
     
     df_merge = df_nuc.merge(df_cyto.drop(columns=['centroid-0','centroid-1','centroid-2','CytoID']),on='CellposeID',how='left')
     # df_merge = df_merge.rename(columns={'CytoID_x':'CytoID'})
@@ -124,4 +132,13 @@ df = pd.concat(df,ignore_index=True)
 if SAVE:
     df.to_csv(path.join(dirname,'cyto_dataframe.csv'))
     print(f'Saved to: {dirname}')
+
+#%% Find missing neighboring cyto segs
+
+# with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
+#     collated = pkl.load(f)
+
+# for basalID,cell in collated.items():
+#     for i,row in cell.iterrows():
+        
 

@@ -92,7 +92,7 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
 
 #%% Load the basal cell tracking and measure from the basal cortical tracking only
 
-basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks.tif'))
+basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks_cyto.tif'))
 allIDs = np.unique(basal_tracking)[1:]
 
 #% Do pixel level measurements e.g. Surface Area
@@ -148,7 +148,7 @@ for t in tqdm(range(T)):
     [Gx,Gy] = np.load(f)
     Jxx = Gx*Gx
     Jxy = Gx*Gy
-    Jyy = Gy*Gy   
+    Jyy = Gy*Gy
     
     properties = measure.regionprops(im, extra_properties = [surface_area])
     for p in properties:
