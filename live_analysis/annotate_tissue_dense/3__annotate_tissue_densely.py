@@ -13,7 +13,7 @@ import pandas as pd
 
 from trimesh import Trimesh
 from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean_curvature_measure, sphere_ball_intersection
-from basicUtils import euclidean_distance
+from basicUtils import euclidean_distance, nonans
 
 import matplotlib.pylab as plt
 # from matplotlib.path import Path
@@ -32,12 +32,11 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-SAVE = True
-VISUALIZE = True
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
+dx = 0.25
 #NB: idx - the order in array in dense segmentation
 
 
@@ -82,6 +81,9 @@ def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
         
 #%%
 
+SAVE = False
+VISUALIZE = False
+
 df = []
 
 # for expansion
@@ -90,28 +92,63 @@ footprint = morphology.cube(3)
 for t in tqdm(range(15)):
     
     #----- cell-centric msmts -----
-    dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    nuc_dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
-    #NB: only use 0-index for the df_dense dataframe
-    df_dense = pd.DataFrame( measure.regionprops_table(dense_seg,
-                                                       properties=['label','area','centroid','solidity','bbox']))
+    # Initialize measurements from nuclear segmentation
+    df_dense = pd.DataFrame( measure.regionprops_table(nuc_dense_seg, intensity_image=cyto_dense_seg
+                                                       ,properties=['label','area','centroid','solidity','bbox']
+                                                       ,extra_properties = [most_likely_label]))
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
                                         ,'label':'CellposeID','area':'Nuclear volume raw','bbox-0':'Nuclear bbox top'
                                         ,'bbox-3':'Nuclear bbox bottom'
-                                        ,'solidity':'Nuclear solidity'})
+                                        ,'solidity':'Nuclear solidity'
+                                        ,'most_likely_label':'CytoID'})
+    df_dense.loc[df_dense['CytoID'] == 0,'CytoID'] = np.nan
     
+    # Check the manifest of cytoID against those found in the same Frame from the initial collation dataframe (2__collate_nuclear_and_cyto.py)
+    # df_cyto = pd.read_csv(path.join(dirname,'cyto_dataframe.csv'),index_col=0)
+    # df_cyto = df_cyto[df_cyto['Frame'] == t]
+    # assert( len(nonans(df_nuc['CytoID'].unique())) == len(nonans(df_cyto['CytoID'].unique())))
+    
+    # Measurements from cortical segmentation
+    df_cyto = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=nuc_dense_seg
+                                                      , properties=['label','area','centroid']
+                                                      ,extra_properties=[most_likely_label,surface_area]))
+    df_cyto = df_cyto.rename(columns={'area':'Cell volume','label':'CytoID','most_likely_label':'CellposeID'
+                                      ,'surface_area':'Surface area'
+                                      ,'centroid-0':'Z-cell','centroid-1':'Y-cell','centroid-2':'X-cell'})
+    df_cyto.index = df_cyto['CytoID']
+    df_cyto['Cell volume'] = df_cyto['Cell volume']*dx**2
+    df_cyto['Surface area'] = df_cyto['Surface area']*dx**2
+    df_cyto['Y-cell'] = df_cyto['Y-cell']*dx
+    df_cyto['X-cell'] = df_cyto['X-cell']*dx
+    for p in measure.regionprops(cyto_dense_seg):
+        i = p['label']
+        I = p['inertia_tensor']
+        Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
+        df_cyto.at[i,'Axial component'] = Iaxial * dx**2
+        df_cyto.at[i,'Planar component 1'] = Ia * dx**2
+        df_cyto.at[i,'Planar component 2'] = Ib * dx**2
+        df_cyto.at[i,'Axial angle'] = phi
+        df_cyto.at[i,'Planar angle'] = theta
+        
+    #@todo: 'flatten image' -> apical & basal area + height
+    #@todo: collagen alignment -> average alignment over all neighbor cells
+
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
     df_dense['Nuclear volume raw'] = df_dense['Nuclear volume raw'] * dx**2
     df_dense['X'] = df_dense['X-pixels'] * dx
     df_dense['Y'] = df_dense['Y-pixels'] * dx
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
+    df_dense = df_dense.merge(df_cyto,on='CellposeID',how='left')
    
-    # Load FUCCI channel + auto annotate cell cycle
+    #----- Load FUCCI channel + auto annotate cell cycle ---
     im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
     R = im[...,0]
-    for i,p in enumerate(measure.regionprops(dense_seg,intensity_image=R)):
+    for i,p in enumerate(measure.regionprops(nuc_dense_seg,intensity_image=R)):
         df_dense.at[i,'FUCCI intensity'] = p['intensity_mean']
         bbox = p['bbox']
         local_fucci = R[bbox[0]:bbox[3],bbox[1]:bbox[4],bbox[2]:bbox[5]]
@@ -129,10 +166,11 @@ for t in tqdm(range(15)):
     I = df_dense['FUCCI intensity'] > df_dense['FUCCI background mean'] + alpha_threshold * df_dense['FUCCI background std']
     df_dense.loc[I,'FUCCI thresholded'] = 'High'
    
+    #----- Various nuclear volume annotations -----
     # Use thresholded mask to calculate nuclear volume
     # Load raw images or pre-made masks
     mask = io.imread(path.join(dirname,f'Misc/H2b masks/t{t}.tif')).astype(bool)
-    this_seg_dilated = morphology.dilation(dense_seg,footprint=footprint)
+    this_seg_dilated = morphology.dilation(nuc_dense_seg,footprint=footprint)
     this_seg_dilated[~mask] = 0
     threshed_volumes = pd.DataFrame(measure.regionprops_table(
         this_seg_dilated, properties=['label','area']) )
@@ -144,9 +182,10 @@ for t in tqdm(range(15)):
     norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume'].mean()
     df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume']/norm_factor
 
+
     #----- map from cellpose to manual -----
     #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
-    df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = dense_seg,
+    df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = nuc_dense_seg,
                                                        properties = ['label'],
                                                        extra_properties = [most_likely_label]))
     df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
@@ -240,7 +279,7 @@ for t in tqdm(range(15)):
     df_dense['Mean diff neighbor height'] = np.nan
     
     # Use this to make specific neighborhood measurements
-    props = measure.regionprops(dense_seg,extra_properties = [surface_area])
+    props = measure.regionprops(nuc_dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
         
         bbox = props[i]['bbox']
@@ -284,10 +323,11 @@ for t in tqdm(range(15)):
             neighbor_heights = df_dense.loc[planar_neighbor_idx]['Height to BM']
             df_dense.at[i,'Mean planar neighbor height'] = neighbor_heights.mean()
             
+            # Distance to neighbors
             neighbor_dists = D[i, planar_neighbor_idx]
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
-                    
-            neighbor_dists = D[i, planar_neighbor_idx]
+            
+            # Neighbor size/shape info -- nuclear
             df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
             df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].std()
             df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].max()
@@ -296,6 +336,11 @@ for t in tqdm(range(15)):
             df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].std()
             df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].max()
             df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].min()
+            # Neighbor size/shape info -- cortical
+            df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].mean()
+            df_dense.at[i,'Std neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].std()
+            df_dense.at[i,'Max neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].max()
+            df_dense.at[i,'Min neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].min()
             
             # get 2d coronal area
             X = dense_coords[planar_neighbor_idx,1]
@@ -327,7 +372,7 @@ for t in tqdm(range(15)):
     
     df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
     if SAVE:
-        colorized = colorize_segmentation(dense_seg,
+        colorized = colorize_segmentation(nuc_dense_seg,
                                           {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
         io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized.astype(np.int8),check_contrast=False)
     
@@ -342,7 +387,7 @@ if SAVE:
  
     # Colorize nuclei based on mean curvature (for inspection)
     # mean_colors = (mean-mean.min())/mean.max()
-    # colorized = colorize_segmentation(dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
+    # colorized = colorize_segmentation(nuc_dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
  
 
     #% Compute local curvature
