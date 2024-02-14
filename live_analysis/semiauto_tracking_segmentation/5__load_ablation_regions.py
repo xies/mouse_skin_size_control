@@ -31,9 +31,9 @@ dirnames['Ablation_R12'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/
 dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M5 white R26 RBfl DOB 04-25-2023/08-23-2023 R26CreER Rb-fl no tam ablation 16h/M5 White DOB 4-25-2023/R2/'
 dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M5 white R26 RBfl DOB 04-25-2023/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M5 white R26 RBfl DOB 04-25-2023/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
-dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
-dirnames['Ablation_R20'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
+dirnames['Ablation_R18'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
+dirnames['Ablation_R20'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 all_tracks = {}
 ts_regions = {}
@@ -75,8 +75,9 @@ df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
 # sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
+# sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
+# sb.catplot(df_all,x='Region',hue='Mode',y='S phase entry size',kind='box')
 plt.ylim([0,2])
 
 #%%

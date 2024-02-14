@@ -29,7 +29,7 @@ dx = 1
 MANUAL = False
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT','complete_cycles.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
@@ -96,12 +96,15 @@ for track in tqdm(tracks):
             
             dfield = dfields[t]
             warped_coords = np.array([z,y,x]).astype(int)
+            # bound the warped coords so they are inside the dim of dfield
+            ZZ = dfield.shape[0]
+            warped_coords[0] = min([warped_coords[0],ZZ-1])
             unwarped_coords = np.round(warped_coords + dfield[tuple(warped_coords)][::-1])
             
             z = int(unwarped_coords[0])
             y = int(unwarped_coords[1])
             x = int(unwarped_coords[2])
-        
+            
         # If already loading manual, check that manual has tracks already at this frame
         # if so, skip this timepoint
         this_segtrack = segtrack[t,...]

@@ -21,27 +21,25 @@ def sort_by_timestamp(filename):
     t = match('t(\d+).tif',filename).groups[0]
     return int(t)
 
-filenames = sorted(glob(path.join(dirname,'im_seq/t*.tif')),key=sort_by_timestamp)
-
 #%% Load a heightmap and flatten the given z-stack
 
 BOTTOM_OFFSET = 5
 TOP_OFFSET = -20
 
-imstack = io.imread(path.join(dirname,'3d_nuc_seg/manual_seg_no_track.tif'))
+imstack = io.imread(path.join(dirname,'Cropped_images/G.tif'))
 T,Z,XX,_ = imstack.shape
 
-# im2flatten = imstack[...,1] # flatten green channel
-# im2flatten = imstack
+# imstack = imstack[...,1] # flatten green channel
 
 for t in range(15):
     
-    im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
-    im = imstack[t,...]
+    im = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
+    Z,XX,_ = im.shape
+    # im = imstack[t,...]
     
-    # heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
+    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     
-    output_dir = path.join(dirname,f'Image flattening/flat_3d_nuc_seg')
+    output_dir = path.join(dirname,f'Image flattening/flat_3d_cyto_seg')
     
     flat = np.zeros((BOTTOM_OFFSET-TOP_OFFSET,XX,XX))
     Iz_top = heightmap + TOP_OFFSET
@@ -53,4 +51,4 @@ for t in range(15):
                 
     io.imsave( path.join(output_dir,f't{t}.tif'), flat.astype(np.uint16))
     
-        
+    

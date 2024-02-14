@@ -23,6 +23,7 @@ dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/'
 dx = 0.2920097
 
 #%% Load segmentations
+#NB: In variable name it's called DMSO but it's actually ethanol control
 
 seg_tam_before_r1 = io.imread(path.join(dirname,'Left ear/Post tam/R1/cellpose_basal_layer_cleaned_byhand','t0.tif'))
 seg_tam_after_r1 = io.imread(path.join(dirname,'Left ear/Post tam/R1/cellpose_basal_layer_cleaned_byhand','t10.tif'))
@@ -44,6 +45,13 @@ h2b_tam_before_r5 = io.imread(path.join(dirname,'Left ear/Post tam/R5/10. Day 5'
 h2b_tam_after_r5 = io.imread(path.join(dirname,'Left ear/Post tam/R5/23. Day 11.5','G_reg.tif'))
 fucci_tam_before_r5 = io.imread(path.join(dirname,'Left ear/Post tam/R5/10. Day 5','R_reg_reg.tif'))
 fucci_tam_after_r5 = io.imread(path.join(dirname,'Left ear/Post tam/R5/23. Day 11.5','R_reg_reg.tif'))
+
+seg_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t1.tif'))
+seg_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/cellpose_basal_layer_cleaned_byhand','t13.tif'))
+h2b_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/11. Day 5.5','G_reg.tif'))
+h2b_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/23. Day 11.5','G_reg.tif'))
+fucci_tam_before_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/11. Day 5.5','R_reg_reg.tif'))
+fucci_tam_after_r6 = io.imread(path.join(dirname,'Left ear/Post tam/R6/23. Day 11.5','R_reg_reg.tif'))
 
 seg_dmso_before_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t0.tif'))
 seg_dmso_after_r1 = io.imread(path.join(dirname,'Right ear/Post Ethanol/R1/cellpose_G_clahe_basal_byhand','t10.tif'))
@@ -104,6 +112,16 @@ tam_before['Time'] = 0
 tam_after = measure_intensity_two_channels(seg_tam_after_r5,h2b_tam_after_r5,fucci_tam_after_r5)
 tam_after['Genotype'] = '4OHT'
 tam_after['Region'] = '4OHT R5'
+tam_after['Time'] = 1
+tam = pd.concat((tam,tam_before,tam_after),ignore_index=True)
+
+tam_before = measure_intensity_two_channels(seg_tam_before_r6,h2b_tam_before_r6,fucci_tam_before_r6)
+tam_before['Genotype'] = '4OHT'
+tam_before['Region'] = '4OHT R6'
+tam_before['Time'] = 0
+tam_after = measure_intensity_two_channels(seg_tam_after_r6,h2b_tam_after_r6,fucci_tam_after_r6)
+tam_after['Genotype'] = '4OHT'
+tam_after['Region'] = '4OHT R6'
 tam_after['Time'] = 1
 tam = pd.concat((tam,tam_before,tam_after),ignore_index=True)
 
@@ -177,3 +195,12 @@ CV = CV.reset_index()
 
 sb.pointplot(CV,x='Time',y='CV',hue='Region',dodge=True)
 
+#%% T-test for the fold change in CV
+
+CV = df_real.groupby(['Genotype','Time','Region'])['area'].std()/df_real.groupby(['Genotype','Region','Time'])['area'].mean()
+
+tam_ratio = CV[('4OHT',1)] - CV[('4OHT',0)]
+dmso_ratio = CV[('DMSO',1)] - CV[('DMSO',0)]
+
+from scipy.stats import ttest_ind
+ttest_ind(tam_ratio.values, dmso_ratio.values)
