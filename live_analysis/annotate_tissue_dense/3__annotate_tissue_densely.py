@@ -115,13 +115,11 @@ for t in tqdm(range(15)):
     # Measurements from cortical segmentation
     df_cyto = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=nuc_dense_seg
                                                       , properties=['label','area','centroid']
-                                                      ,extra_properties=[most_likely_label,surface_area]))
+                                                      ,extra_properties=[most_likely_label]))
     df_cyto = df_cyto.rename(columns={'area':'Cell volume','label':'CytoID','most_likely_label':'CellposeID'
-                                      ,'surface_area':'Surface area'
                                       ,'centroid-0':'Z-cell','centroid-1':'Y-cell','centroid-2':'X-cell'})
-    df_cyto.index = df_cyto['CytoID']
+    df_cyto.index = df_cyto['CytoID'] # index w CytoID so we can key from regionprops
     df_cyto['Cell volume'] = df_cyto['Cell volume']*dx**2
-    df_cyto['Surface area'] = df_cyto['Surface area']*dx**2
     df_cyto['Y-cell'] = df_cyto['Y-cell']*dx
     df_cyto['X-cell'] = df_cyto['X-cell']*dx
     for p in measure.regionprops(cyto_dense_seg):
@@ -135,14 +133,76 @@ for t in tqdm(range(15)):
         df_cyto.at[i,'Planar angle'] = theta
         
     #@todo: 'flatten image' -> apical & basal area + height
-    #@todo: collagen alignment -> average alignment over all neighbor cells
-
+    # ----- Load flattened 3d cortical segmentation and measure geometry from cell-centric coordinates ----
+    f = path.join(dirname,f'Image flattening/flat_3d_cyto_seg/t{t}.tif')
+    im = io.imread(f)
+    
+    # Load the structuring matrix elements for collagen
+    f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
+    [Gx,Gy] = np.load(f)
+    Jxx = Gx*Gx
+    Jxy = Gx*Gy
+    Jyy = Gy*Gy
+    
+    properties = measure.regionprops(im, extra_properties = [surface_area]) # Avoid using table bc of bbox
+    for p in properties:
+        
+        cytoID = p['label']
+        bbox = p['bbox']
+        Z_top = bbox[0]
+        Z_bottom = bbox[3]
+        
+        mask = im == cytoID
+        apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
+        apical_area = apical_area.sum()
+        
+        # mid-level area
+        mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
+        
+        basal_mask = mask[Z_bottom-3:Z_bottom,...]
+        basal_area = basal_mask.max(axis=0).sum()
+    
+        basal_mask = basal_mask.max(axis=0)
+        #NB: skimage uses the 'vertical' as the orientation axis
+        basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
+        # Need to 'convert to horizontal--> subtract 90-deg from image
+        basal_orientation = np.rad2deg(basal_orientation + np.pi/2)
+        df_cyto.at[cytoID,'Apical area'] = apical_area * dx**2
+        df_cyto.at[cytoID,'Basal area'] = basal_area * dx**2
+        
+        df_cyto.at[cytoID,'Basal orientation'] = basal_orientation
+        
+        # Subtract the mid-area of central cell from the coronal area
+        df_cyto.at[cytoID,'Middle area'] = mid_area * dx**2
+        
+        # Characteristic matrix of collagen signal
+        J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],[Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
+        l,D = np.linalg.eig(J) # NB: not sorted
+        order = np.argsort(l)[::-1] # Ascending order
+        l = l[order]
+        D = D[:,order]
+        
+        # Orientation
+        theta = np.rad2deg(np.arctan(D[1,0]/D[0,0]))
+        fibrousness = (l[0] - l[1]) / l.sum()
+        
+        # theta = np.rad2deg( -np.arctan( 2*Jxy[basal_mask].sum() / (Jyy[basal_mask].sum()-Jxx[basal_mask].sum()) )/2 )
+        # # Fibrousness
+        # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
+        #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
+        df_cyto.at[cytoID,'Collagen orientation'] = theta
+        df_cyto.at[cytoID,'Collagen fibrousness'] = fibrousness
+    
+    
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
     df_dense['Nuclear volume raw'] = df_dense['Nuclear volume raw'] * dx**2
     df_dense['X'] = df_dense['X-pixels'] * dx
     df_dense['Y'] = df_dense['Y-pixels'] * dx
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
+    
+    # Merge NUC and CYTO annotations into the same dataframe, keyed on NUCLEAR cellposeID, and keep nuclear in merge
+    # because df_cyto is generally a subset of df_nuc
     df_dense = df_dense.merge(df_cyto,on='CellposeID',how='left')
    
     #----- Load FUCCI channel + auto annotate cell cycle ---
