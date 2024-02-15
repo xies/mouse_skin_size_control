@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 import pickle as pkl
 
-dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 # dx = 0.2920097
 dx = 1
@@ -29,7 +29,7 @@ dx = 1
 MANUAL = True
 
 # Load preliminary tracks
-with open(path.join(dirname,'MaMuT/Nonablation','dense_tracks.pkl'),'rb') as file:
+with open(path.join(dirname,'MaMuT/Ablation','dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
 # Convert prediction by cellpose (.npz) into *_masks.tif
@@ -51,7 +51,7 @@ for t in range(7):
 segonly = np.stack(segonly)
 
 if MANUAL:
-    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R20_Nonablation.tif'))
+    segtrack = io.imread(path.join(dirname,'manual_tracking/Ablation_R20_Ablation.tif'))
 else:
     segtrack = np.zeros_like(segonly,dtype=np.int16)
 

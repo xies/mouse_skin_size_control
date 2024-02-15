@@ -12,7 +12,7 @@ import numpy as np
 from os import path
 from imageUtils import most_likely_label
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 # def most_likely_label(labeled,im):
 #     label = 0
@@ -23,11 +23,11 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 #%%
 
-for t in tqdm([11]):
+for t in tqdm(range(5,6)):
     
-    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    nuc_seg = io.imread(path.join(dirname,f'manual_basal_tracking/neighborhood_cellposeIDs/t{t}.tif'))
     # cyto_seg = io.imread(path.join(dirname,f'im_seq/t{t}_3d_cyto/t{t}_masks.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_raw/t{t}_masks.tif'))
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/cellpose_pruned/t{t}.tif'))
     
     #% Find correspondnence
     
@@ -50,6 +50,6 @@ for t in tqdm([11]):
         else:
             cyto_seg[cyto_seg == cytoID] = cyto_dict[cytoID]
             
-    io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_cleaned/t{t}.tif'), cyto_seg.astype(np.int16))
+    io.imsave(path.join(dirname,f'3d_cyto_seg/cellpose_pruned/t{t}.tif'), cyto_seg.astype(np.int16))
     
      

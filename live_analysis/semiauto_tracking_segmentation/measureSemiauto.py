@@ -74,6 +74,7 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         
         mask = manual_segs == trackID
         # mask_uncorrected = filtered_segs == trackID
+        print(trackID)
         frames_with_this_track = np.where(np.any(np.any(np.any(mask,axis=1),axis=1), axis=1))[0]
         
         for frame in frames_with_this_track:

@@ -49,7 +49,7 @@ for t in tqdm(range(15)):
             sublabels2keep = df_.sort_values('area')['label'].values[-1]
             cleaned_seg[ sublabels == sublabels2keep ] = l
     
-    io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
+    # io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
 
 #%%
 
@@ -98,9 +98,6 @@ for t in range(15):
             error()
         if len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
-    
-    # Measure geometric features
-    
     
     if DEBUG:
     #----- map from cellpose to manual -----

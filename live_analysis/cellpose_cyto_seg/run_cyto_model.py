@@ -48,10 +48,10 @@ for t,im in tqdm(enumerate(G)):
     mask_savepath = path.join(output_dir,f't{t}_masks.tif')
     print(f'Saving model to: {npy_savepath}')
 
-    masks,flows,styles,diams = model.eval([im,im_nuc],diameter=None, do_3D=True,
+    masks,flows,styles,diams = model.eval([im,im_nuc],diameter=diameter, do_3D=True,
                                           cellprob_threshold=cellprob_threshold,
                                           anisotropy=anisotropy)
-    io.masks_flows_to_seg(im, masks,flows,diams,npy_savepath)
+    #    io.masks_flows_to_seg(im, masks,flows,diams,npy_savepath)
 	
 	# Also resave the mask as standalone .tif for convenience
     io.imsave(mask_savepath,masks)

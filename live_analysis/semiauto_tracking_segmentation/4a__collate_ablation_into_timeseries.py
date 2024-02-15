@@ -40,7 +40,7 @@ dirnames = {}
 # dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 # dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 # dirnames['Ablation_R18'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
-dirnames['Ablation_R20'] = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
+dirnames['Ablation_R20'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 dx = {}
 dx['Ablation_R1'] = 0.14599609375/1.5
@@ -124,7 +124,7 @@ for name,dirname in dirnames.items():
     timestamps = list(parse_XML_timestamps(dirname, subdir_str='*.*', beginning=beginning[name]).values())
     timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
     
-    for mode in ['Nonablation']:
+    for mode in ['Ablation']:
 
         print(f'---- Working on {name} {mode} ----')
         
@@ -168,8 +168,10 @@ for name,dirname in dirnames.items():
                 
 #%%
 
-for t in tracks:
+for t in tracks[80:90]:
     
+    print(t.CellID)
+    print(t.Volume)
     plt.plot(t.Age,t['Volume normal'])
 
 

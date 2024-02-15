@@ -141,6 +141,8 @@ mse_random = np.zeros(Niter)
 mse_no_vol_sm = np.zeros(Niter)
 mse_no_other = np.zeros((5,Niter))
 
+other_top_features_to_try = 5
+
 for i in tqdm(range(Niter)):
     
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
@@ -165,7 +167,7 @@ for i in tqdm(range(Niter)):
     rsq_random[i] = r2_score(y_test,y_pred_random)
     mse_random[i] = mean_squared_error(y_test,y_pred_random)
     
-    for j,f in enumerate(forest_importances.sort_values()[::-1][1:6].index):
+    for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
         X_train,X_test,y_train,y_test = train_test_split(X.drop(columns=f),y,test_size=0.2)
         model_other = RandomForestRegressor(n_estimators=100, random_state=i)
         model_other.fit(X_train,y_train)
@@ -174,10 +176,10 @@ for i in tqdm(range(Niter)):
         mse_no_other[j,i] = mean_squared_error(y_test,y_pred_no_other)
 
 plt.figure()
-plt.hist(rsq_full,density=True,histtype='step')
-plt.hist(rsq_random,density=True,histtype='step')
-plt.hist(rsq_no_vol_sm,density=True,histtype='step')
-plt.hist(rsq_no_other.flatten(),density=True,histtype='step')
+plt.hist(rsq_full,histtype='step',weights=np.ones(Niter)*1/Niter)
+plt.hist(rsq_random,histtype='step',weights=np.ones(Niter)*1/Niter)
+plt.hist(rsq_no_vol_sm,histtype='step',weights=np.ones(Niter)*1/Niter)
+plt.hist(rsq_no_other.flatten(),histtype='step',weights=np.ones(Niter*other_top_features_to_try)*1/Niter/other_top_features_to_try)
 plt.legend(['Full','Random','No cell volume','No other feature'])
 
 plt.xlabel('Rsq')
@@ -192,4 +194,42 @@ plt.legend(['Full','Random','No cell volume','No other feature'])
 
 plt.xlabel('MSE')
 
+#%% Singleton features
+
+Xtrain
+
+
 #%% Use Region1 -> Pred Region2
+#@todo: un-standardize data for display
+
+# df_g1s = df_g1s.drop(columns=['cellID'])
+# dt = 0.111727
+
+# X = df_g1s.drop(columns=['time_g1s'])
+# X['Intercept'] = 1
+# y = df_g1s['time_g1s']
+
+# #Add interaction effects ?
+# X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
+# df_g1s = df_g1s.drop(columns=['fucci_int_24h','fucci_int_12h'])
+
+
+X_train = X[X.region == 1]
+y_train = y[X.region == 1]
+X_test = X[X.region == 2]
+y_test = y[X.region == 2]
+forest = RandomForestRegressor(n_estimators=1000, random_state=i)
+
+forest.fit(X_train,y_train)
+
+y_pred = forest.predict(X_test)
+plt.scatter(y_test,y_pred,alpha=0.1)
+
+plt.xlabel('Measured: hours until G1/S')
+plt.ylabel('Predicted: hours until G1/S')
+
+# residuals = y_pred - y_test
+# sum_res[i] = residuals.sum()
+# Rsq[i] = np.corrcoef(y_pred,y_test)[0,1]**2
+# importance[i,:] = forest.feature_importances_
+# r2_score(y_pred,y_test)

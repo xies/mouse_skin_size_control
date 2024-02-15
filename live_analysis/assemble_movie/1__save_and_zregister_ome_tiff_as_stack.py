@@ -15,7 +15,7 @@ from re import findall
 from tqdm import tqdm
 
 # dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/'
-dirname = '/Volumes/T7/01-24-2024 12month old mice/*/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/'
 
 OVERWRITE = False
 
@@ -26,7 +26,7 @@ def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
 
-subfolders = glob(path.join(dirname,'R*/*/ZSeries*/'))
+subfolders = glob(path.join(dirname,'R2/*/ZSeries*/'))
 
 header_ome_h2b = []
 header_ome_fucci = []

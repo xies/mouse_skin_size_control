@@ -87,7 +87,7 @@ for i,t in enumerate(T):
     else:
         idx = t
     center_mask[idx,cyto_seg == central_cytoID[t]] = basalID
-    neighbor_mask[idx,...] = center_mask[idx,...]
+    # neighbor_mask[idx,...] = center_mask[idx,...]
     for neighborID in neighbor_cytoIDs[t]:
         neighbor_mask[idx,cyto_seg == neighborID] = ticker
         ticker += 1

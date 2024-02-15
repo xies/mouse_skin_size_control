@@ -23,8 +23,8 @@ from basicUtils import *
 
 dirnames = {}
 
-# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R1'
+dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R2'
 # dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
 # dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
 
@@ -33,7 +33,7 @@ dirnames = {}
 # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%%
 
@@ -81,12 +81,12 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(df_all,x='Birth size normal',y='G1 growth normal',col='Mode',row='Pair',hue='Genotype')
-plt.ylim([-0.25,1.5])
+sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Mode',row='Pair',hue='Genotype')
+# plt.ylim([-0.25,1.5])
 
 #%%
 
-sb.lmplot(df_all,x='Birth size normal',y='Total length',row='Pair',
+sb.lmplot(df_all,x='Birth size',y='G1 length',row='Pair',
           robust=False,hue='Genotype')
 
 #%%
