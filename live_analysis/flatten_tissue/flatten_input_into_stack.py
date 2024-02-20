@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 from re import match
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 def sort_by_timestamp(filename):
     t = match('t(\d+).tif',filename).groups[0]

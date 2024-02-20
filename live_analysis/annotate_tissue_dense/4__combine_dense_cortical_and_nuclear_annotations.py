@@ -34,7 +34,7 @@ centroid_height_cutoff = 3.5 #microns above BM
 
 SAVE = True
 VISUALIZE = True
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
@@ -47,9 +47,6 @@ df = pd.read_csv(path.join(dirname,'nuc_dataframe.csv'),index_col=0)
 df_cyto = pd.read_csv(path.join(dirname,'cyto_dataframe.csv'),index_col=0)
 df = pd.merge(df,df_cyto,on=['Frame','CellposeID'],how='left')
 
-
-#%%
-
+    
 df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
 print(f'Saved to: {dirname}')
- 

@@ -81,13 +81,19 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Mode',row='Pair',hue='Genotype')
-# plt.ylim([-0.25,1.5])
+sb.lmplot(df_all,x='Birth size normal',y='G1 growth normal',col='Mode',row='Pair',hue='Genotype')
+plt.xlim([70,150])
+plt.ylim([0,140])
 
 #%%
 
 sb.lmplot(df_all,x='Birth size',y='G1 length',row='Pair',
-          robust=False,hue='Genotype')
+          robust=False,hue='Genotype',y_jitter=True)
+plot_bin_means(df_all['Birth size'],df_all['G1 length'],bin_edges=5,minimum_n=5,bin_style='percentile',
+               color='r')
+plt.xlim([70,150])
+plt.ylim([0,140])
+plt.yticks(np.arange(0,140,12))
 
 #%%
 

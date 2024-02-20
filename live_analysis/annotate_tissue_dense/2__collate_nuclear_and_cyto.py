@@ -35,34 +35,34 @@ alpha_threshold = 1
 
 #%%
 
-for t in tqdm(range(15)):
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
-    # clean up
-    cleaned_seg = np.zeros_like(cyto_seg)
-    all_labels = np.unique(cyto_seg)[1:]
+# for t in tqdm(range(15)):
+#     cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+#     # clean up
+#     cleaned_seg = np.zeros_like(cyto_seg)
+#     all_labels = np.unique(cyto_seg)[1:]
     
-    for l in all_labels:
-        mask = cyto_seg == l
-        sublabels = morphology.label(mask)
-        df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
-        if df_.sort_values('area').iloc[-1]['area'] > 100:
-            sublabels2keep = df_.sort_values('area')['label'].values[-1]
-            cleaned_seg[ sublabels == sublabels2keep ] = l
+#     for l in all_labels:
+#         mask = cyto_seg == l
+#         sublabels = morphology.label(mask)
+#         df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
+#         if df_.sort_values('area').iloc[-1]['area'] > 100:
+#             sublabels2keep = df_.sort_values('area')['label'].values[-1]
+#             cleaned_seg[ sublabels == sublabels2keep ] = l
     
     # io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
 
 #%%
 
 DEBUG = True
-SAVE= False
+SAVE= True
 
 df = []
 
 for t in range(15):
-    # t = 6
+    # t = 11
     
     nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     #% Label transfer from nuc3D -> cyto3D
@@ -86,7 +86,7 @@ for t in range(15):
     uniques,counts = np.unique(df_nuc['CytoID'],return_counts=True)
     bad_idx = np.where(counts > 1)[0]
     for i in bad_idx:
-        print(f'CytoID being duplicated: {uniques[i]}')
+        print(f't = {t}; CytoID being duplicated: {uniques[i]}')
     #% Relabel cyto seg with nuclear CellposeID
     
     df_cyto['CellposeID'] = np.nan
@@ -98,7 +98,7 @@ for t in range(15):
             error()
         if len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
-    
+
     if DEBUG:
     #----- map from cellpose to manual -----
         #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
@@ -133,8 +133,9 @@ if SAVE:
     df.to_csv(path.join(dirname,'cyto_dataframe.csv'))
     print(f'Saved to: {dirname}')
 
-#%% Find missing neighboring cyto segs
 
+
+#%% Find missing neighboring cyto segs
 # with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
 #     collated = pkl.load(f)
 

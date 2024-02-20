@@ -32,7 +32,7 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
@@ -159,10 +159,8 @@ for t in tqdm(range(15)):
         # mid-level area
         mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
         
-        basal_mask = mask[Z_bottom-3:Z_bottom,...]
-        basal_area = basal_mask.max(axis=0).sum()
-    
-        basal_mask = basal_mask.max(axis=0)
+        basal_mask = mask[max(Z_bottom-3,0):Z_bottom,...].max(axis=0)
+        basal_area = basal_mask.sum()
         #NB: skimage uses the 'vertical' as the orientation axis
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
         # Need to 'convert to horizontal--> subtract 90-deg from image
@@ -174,6 +172,7 @@ for t in tqdm(range(15)):
         
         # Subtract the mid-area of central cell from the coronal area
         df_cyto.at[cytoID,'Middle area'] = mid_area * dx**2
+        df_cyto.at[cytoID,'Height'] = Z_bottom-Z_top
         
         # Characteristic matrix of collagen signal
         J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],[Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )

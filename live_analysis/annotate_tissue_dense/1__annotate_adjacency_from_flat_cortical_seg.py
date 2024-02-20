@@ -41,7 +41,6 @@ def most_likely_label(labeled,im):
 
 for t in tqdm(range(15)):
     
-    t = 4
     
     cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     # allcytoIDs = np.unique(cyto_seg)[1:]
