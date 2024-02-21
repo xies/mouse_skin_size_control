@@ -39,7 +39,6 @@ alpha_threshold = 1
 dx = 0.25
 #NB: idx - the order in array in dense segmentation
 
-
 #%% Load the segmentation and coordinates
 
 def find_differentiating_cells(df,height_cutoff,heightmap):
@@ -81,7 +80,7 @@ def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
         
 #%%
 
-SAVE = False
+SAVE = True
 VISUALIZE = False
 
 df = []
@@ -93,7 +92,7 @@ for t in tqdm(range(15)):
     
     #----- cell-centric msmts -----
     nuc_dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
+    cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
     manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     # Initialize measurements from nuclear segmentation
@@ -101,7 +100,7 @@ for t in tqdm(range(15)):
                                                        ,properties=['label','area','centroid','solidity','bbox']
                                                        ,extra_properties = [most_likely_label]))
     df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
-                                        ,'label':'CellposeID','area':'Nuclear volume raw','bbox-0':'Nuclear bbox top'
+                                        ,'label':'CellposeID','area':'Nuclear volume','bbox-0':'Nuclear bbox top'
                                         ,'bbox-3':'Nuclear bbox bottom'
                                         ,'solidity':'Nuclear solidity'
                                         ,'most_likely_label':'CytoID'})
@@ -145,6 +144,7 @@ for t in tqdm(range(15)):
     Jyy = Gy*Gy
     
     properties = measure.regionprops(im, extra_properties = [surface_area]) # Avoid using table bc of bbox
+    basal_masks_2save = np.zeros((XX,XX))
     for p in properties:
         
         cytoID = p['label']
@@ -159,16 +159,22 @@ for t in tqdm(range(15)):
         # mid-level area
         mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
         
-        basal_mask = mask[max(Z_bottom-3,0):Z_bottom,...].max(axis=0)
+        basal_mask = mask[Z_bottom-4:Z_bottom,...]
+        basal_mask = basal_mask.max(axis=0)
         basal_area = basal_mask.sum()
+    
+        basal_masks_2save[basal_mask] = df_cyto.at[cytoID,'CellposeID']
+
         #NB: skimage uses the 'vertical' as the orientation axis
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
+        basal_eccentricity = measure.regionprops(basal_mask.astype(int))[0]['eccentricity']
         # Need to 'convert to horizontal--> subtract 90-deg from image
         basal_orientation = np.rad2deg(basal_orientation + np.pi/2)
         df_cyto.at[cytoID,'Apical area'] = apical_area * dx**2
         df_cyto.at[cytoID,'Basal area'] = basal_area * dx**2
         
         df_cyto.at[cytoID,'Basal orientation'] = basal_orientation
+        df_cyto.at[cytoID,'Basal eccentricity'] = basal_eccentricity
         
         # Subtract the mid-area of central cell from the coronal area
         df_cyto.at[cytoID,'Middle area'] = mid_area * dx**2
@@ -192,9 +198,10 @@ for t in tqdm(range(15)):
         df_cyto.at[cytoID,'Collagen orientation'] = theta
         df_cyto.at[cytoID,'Collagen fibrousness'] = fibrousness
     
+    io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
     
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
-    df_dense['Nuclear volume raw'] = df_dense['Nuclear volume raw'] * dx**2
+    df_dense['Nuclear volume'] = df_dense['Nuclear volume'] * dx**2
     df_dense['X'] = df_dense['X-pixels'] * dx
     df_dense['Y'] = df_dense['Y-pixels'] * dx
     df_dense['Frame'] = t
@@ -203,6 +210,11 @@ for t in tqdm(range(15)):
     # Merge NUC and CYTO annotations into the same dataframe, keyed on NUCLEAR cellposeID, and keep nuclear in merge
     # because df_cyto is generally a subset of df_nuc
     df_dense = df_dense.merge(df_cyto,on='CellposeID',how='left')
+    assert(np.all(np.isnan(df_dense[df_dense['CytoID_x'] != df_dense['CytoID_y']]['CytoID_x'])))
+    df_dense = df_dense.drop(columns='CytoID_y')
+    df_dense = df_dense.rename(columns={'CytoID_x':'CytoID'})
+    # Derive NC ratio
+    df_dense['NC ratio'] = df_dense['Nuclear volume'] / df_dense['Cell volume']
    
     #----- Load FUCCI channel + auto annotate cell cycle ---
     im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
@@ -234,12 +246,12 @@ for t in tqdm(range(15)):
     threshed_volumes = pd.DataFrame(measure.regionprops_table(
         this_seg_dilated, properties=['label','area']) )
     threshed_volumes['area'] = threshed_volumes['area'] * dx**2
-    threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume'})
+    threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume th'})
     df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
 
     # Calculate a 'normalized nuc volume'
-    norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume'].mean()
-    df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume']/norm_factor
+    norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume th'].mean()
+    df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume th']/norm_factor
 
 
     #----- map from cellpose to manual -----
@@ -257,11 +269,18 @@ for t in tqdm(range(15)):
     dense_coords = np.array([df_dense['Y-pixels'],df_dense['X-pixels']]).T
     dense_coords_3d_um = np.array([df_dense['Z'],df_dense['Y'],df_dense['X']]).T
     
-    #----- Cell-to-BM heights -----
+    #----- Nuc-to-BM heights -----
     # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     heightmap_shifted = heightmap + Z_SHIFT
     df_dense['Height to BM'] = heightmap_shifted[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
+    
+    #----- Nuc-to-BM heights -----
+    # Load heightmap and calculate adjusted height
+    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
+    heightmap_shifted = heightmap + Z_SHIFT
+    df_dense['Height to BM'] = heightmap_shifted[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
+    
     
     # Based on adjusted height, determine a 'cutoff'
     # df_dense['Differentiating'] = df_dense['Height to BM'] > HEIGHT_CUTOFF
@@ -439,7 +458,7 @@ df = pd.concat(df,ignore_index=True)
 
 if SAVE:
     
-    df.to_csv(path.join(dirname,'nuc_dataframe.csv'))
+    df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
     print(f'Saved to: {dirname}')
 
 #%% Colorize + visualze some other features on cell-by-cell basis

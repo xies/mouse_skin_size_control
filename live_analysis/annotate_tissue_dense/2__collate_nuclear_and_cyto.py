@@ -35,21 +35,21 @@ alpha_threshold = 1
 
 #%%
 
-# for t in tqdm(range(15)):
-#     cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
-#     # clean up
-#     cleaned_seg = np.zeros_like(cyto_seg)
-#     all_labels = np.unique(cyto_seg)[1:]
+for t in tqdm(range(15)):
+    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
+    # clean up
+    cleaned_seg = np.zeros_like(cyto_seg)
+    all_labels = np.unique(cyto_seg)[1:]
     
-#     for l in all_labels:
-#         mask = cyto_seg == l
-#         sublabels = morphology.label(mask)
-#         df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
-#         if df_.sort_values('area').iloc[-1]['area'] > 100:
-#             sublabels2keep = df_.sort_values('area')['label'].values[-1]
-#             cleaned_seg[ sublabels == sublabels2keep ] = l
+    for l in all_labels:
+        mask = cyto_seg == l
+        sublabels = morphology.label(mask)
+        df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
+        if df_.sort_values('area').iloc[-1]['area'] > 100:
+            sublabels2keep = df_.sort_values('area')['label'].values[-1]
+            cleaned_seg[ sublabels == sublabels2keep ] = l
     
-    # io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'), cleaned_seg)
+    io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'), cleaned_seg)
 
 #%%
 

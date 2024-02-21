@@ -18,7 +18,7 @@ from os import path
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -257,7 +257,7 @@ for basalID, df in collated.items():
 #%% Load the daughter cells + save
 
 # Load into a dict of individual cells (some daughter cell pairs have >1 time points)
-daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_daughters/manual_basal_tracking_daughters.tif'))
+daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_lineage/basal_tracking_daughters_cyto.tif'))
 daughterIDs = np.unique(daughter_tracking)[1:]
 daughters = {k:pd.DataFrame() for k in daughterIDs}
 
