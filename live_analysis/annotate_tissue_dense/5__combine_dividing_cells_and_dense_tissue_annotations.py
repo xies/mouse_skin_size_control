@@ -21,7 +21,7 @@ ZZ = 72
 XX = 460
 T = 15
 
-#%% Load
+#%% Cross-reference the same central dividing cell and look at 1 or 2 frames before
 
 with open(path.join(dirname,'basal_with_daughters.pkl'),'rb') as f:
     collated = pkl.load(f)
@@ -54,6 +54,8 @@ df['Delta curvature'] = np.nan
 df['Delta height'] = np.nan
 df['Volume frame-1'] = np.nan
 df['Volume frame-2'] = np.nan
+df['Collagen alignmnet-1'] = np.nan
+df['Collagen alignmnet-2'] = np.nan
 # Call fate based on cell height
 # For each cell, load all frames, then grab the prev frame height data
 # Some dynamics
@@ -72,6 +74,7 @@ for basalID in collated.keys():
         curvature = this_cell['Mean curvature'].values
         bm_height = this_cell['Height to BM'].values
         vol = this_cell['Volume (sm)'].values
+        col_align = this_cell['Collagen alignment'].values
         
         # Compute d/dt
         # df.at[idx[1:],'Delta curvature'] = np.diff(this_cell['Mean curvature'])
@@ -88,6 +91,7 @@ for basalID in collated.keys():
             df.at[idx[t],'Delta height'] = bm_height[t] - bm_height[t-1]
             df.at[idx[t],'Neighbor planar number frame-1'] = neighbor_numb[t-1]
             df.at[idx[t],'Volume frame-1'] = vol[t-1]
+            df.at[idx[t],'Collagen alignment-1'] = col_align[t-1]
             
             if t > 1:
                 # 24h before
@@ -96,6 +100,7 @@ for basalID in collated.keys():
                 df.at[idx[t],'Neighbor mean nuclear volume frame-2'] = neighbor_vol[t-2]
                 df.at[idx[t],'Coronal density frame-2'] = cor_density[t-2]
                 df.at[idx[t],'Volume frame-2'] = vol[t-2]
+                df.at[idx[t],'Collagen alignment-2'] = col_align[t-2]
         
             
 df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
