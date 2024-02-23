@@ -27,8 +27,8 @@ from sklearn.ensemble import RandomForestClassifier
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
-df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv',index_col=0)
-df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)
+df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
 df_g1s = df_g1s.drop(columns='time_g1s')
 df_g1s = df_g1s.drop(columns=['fucci_int_24h','fucci_int_12h'])
@@ -138,14 +138,14 @@ scores.index = (['Full',*features2drop[:-1],'Random'])
 scores['Dropped features'] = scores.index
 
 scores.plot.bar(x='Dropped features',y=['AUC','AP'])
-plt.ylim([0.3,1])
-# plt.tight_layout()
+plt.ylim([0,1])
+plt.tight_layout()
 
 # model_scores = pd.DataFrame(-np.diff(AUCs),index=features2drop[:-1],columns=['Importance'])
 # model_scores['Name'] = model_scores.index
 # sb.barplot(data=model_scores,x='Name',y='Importance');
 
-#%% AUC for volume feature drop
+#%% AUC for volume feature drop v. every other feature
 
 Niter = 100
 
@@ -161,7 +161,7 @@ AUC_no_other = np.zeros((9,Niter))
 
 for i in tqdm(range(Niter)):
     
-    X_train,X_test,y_train,y_test = train_test_split(X_sorted,y,test_size=0.7,random_state = i)
+    X_train,X_test,y_train,y_test = train_test_split(X_sorted,y,test_size=0.2,random_state = i)
     
     # Full model
     model_full = RandomForestClassifier(n_estimators=100, random_state=i)
@@ -196,12 +196,75 @@ for i in tqdm(range(Niter)):
     fpr, tpr, _ = roc_curve(y_test, y_pred_random)
     AUC_random[i] = auc(fpr,tpr)
 
-
-plt.hist(AUC_full,histtype='step',density=True)
-plt.hist(AUC_no_vol_sm,histtype='step',density=True)
-plt.hist(AUC_no_other.flatten(),histtype='step',density=True)
-plt.hist(AUC_random,histtype='step',density=True)
+hist_weights = np.ones(Niter)/Niter
+plt.hist(AUC_full,histtype='step',weights=hist_weights)
+plt.hist(AUC_no_vol_sm,histtype='step',weights=hist_weights)
+plt.hist(AUC_no_other.flatten(),histtype='step',weights=np.ones(len(AUC_no_other)*Niter)/len(AUC_no_other)/Niter)
+plt.hist(AUC_random,histtype='step',weights=hist_weights)
 
 plt.legend(['Full','No cell size','No other single 9 top feature','Random'])
+plt.xlabel('AUC')
+
+#%% Single features -> predict
+
+Niter = 100
+
+X = df_g1s.drop(columns='G1S_logistic')
+X['Intercept'] = 1
+X_sorted = X[param_names_in_order]
+other_features2test = param_names_in_order[2:9]
+y = df_g1s['G1S_logistic']
+
+AUC_full = np.zeros(Niter)
+AUC_random = np.zeros(Niter)
+AUC_vol = np.zeros(Niter)
+AUC_single = np.zeros((9,Niter))
+
+for i in tqdm(range(Niter)):
+    
+    X_train,X_test,y_train,y_test = train_test_split(X_sorted,y,test_size=0.2,random_state = i)
+    
+    # Full model
+    model_full = RandomForestClassifier(n_estimators=100, random_state=i)
+    model_full.fit(X_train,y_train)
+    y_pred_full = model_full.predict(X_test)
+    fpr, tpr, _ = roc_curve(y_test, y_pred_full)
+    AUC_full[i] = auc(fpr,tpr)
+    
+    # Volume model
+    model_vol = RandomForestClassifier(n_estimators=100, random_state=i)
+    model_vol.fit(X_train[['vol_sm','Intercept']],y_train)
+    y_pred_vol = model_vol.predict(X_test[['vol_sm','Intercept']])
+    fpr,tpr,_ = roc_curve(y_test,y_pred_vol)
+    AUC_vol[i] = auc(fpr,tpr)
+    
+    # Other single features
+    for j in range(9):
+        model_single = RandomForestClassifier(n_estimators=100, random_state=i)
+        model_single.fit(X_train[[other_features2test[j],'Intercept']],y_train)
+        y_pred_single = model_single.predict(X_test[[other_features2test[j],'Intercept']])
+        
+        fpr,tpr,_ = roc_curve(y_test,y_pred_single)
+        AUC_single[j,i] = auc(fpr,tpr)
+        
+    # Random model
+    X_random = pd.DataFrame(random.randn(*X_sorted.shape),index=X_sorted.index)
+    X_train,X_test,y_train,y_test = train_test_split(X_random,y,test_size=0.7,random_state = 42)
+    model_random = RandomForestClassifier(n_estimators=100, random_state=i)
+    model_random.fit(X_train,y_train)
+    y_pred_random = model_random.predict(X_test)
+    fpr, tpr, _ = roc_curve(y_test, y_pred_random)
+    AUC_random[i] = auc(fpr,tpr)
+
+#%%
+
+plt.figure()
+hist_weights = np.ones(Niter)/Niter
+plt.hist(AUC_full,histtype='step',weights=hist_weights)
+plt.hist(AUC_vol,histtype='step',weights=hist_weights)
+for i in range(6):
+    plt.hist(AUC_single[i,:],histtype='step',weights=hist_weights)
+plt.hist(AUC_random,histtype='step',weights=hist_weights)
+plt.legend(np.hstack([ ['Full','Only volume'],other_features2test[:6],['Random'] ]))
 plt.xlabel('AUC')
 

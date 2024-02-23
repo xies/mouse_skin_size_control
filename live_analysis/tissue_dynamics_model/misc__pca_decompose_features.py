@@ -10,164 +10,226 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-
+# import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy.special import expit
+from basicUtils import *
 from os import path
-from glob import glob
 from tqdm import tqdm
 
+from numpy import random
+from sklearn.metrics import roc_curve, auc, confusion_matrix, average_precision_score
+from sklearn.preprocessing import scale 
 from sklearn.decomposition import PCA
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+def keep_only_first_sg2(df):
+    collated_first_s = []
+    # Groupby CellID and then drop non-first S phase
+    for (cellID,frame),cell in df.groupby(['cellID','region']):
+        if cell.G1S_logistic.sum() > 1:
+            first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+            collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+        else:
+            collated_first_s.append(cell)
+    return pd.concat(collated_first_s,ignore_index=True)
 
-
-def z_standardize(x):
-    return (x - np.nanmean(x))/np.std(x)
-
-def plot_principle_component(df,pca,comp):
+def run_pca(df,ncomp):
     
-    I = np.argsort( np.abs(pca.components_[comp,:]) )
-    plt.figure();plt.bar(range(P),np.abs(pca.components_[comp,I]));
-    plt.ylabel('Original dimensions');plt.xlabel('PC 1')
-    plt.xticks(range(P),rotation=45, ha='right')
-    plt.gca().set_xticklabels(df.columns[I])
-    order = np.argsort(pca.components_[1,:])[::-1]
-    print(f'Top 5 PC1 dimensions: {df_pca.columns[order[0:10]]}')
+    pca = PCA(n_components = Ncomp)
+    X_ = pca.fit_transform(df)
+    df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
+    components = pd.DataFrame(pca.components_,columns=df.columns)
+    
+    return df_pca, components, pca
+
+def plot_principle_component(loadings,which_comp):
+    loadings = loadings.iloc[which_comp]
+    loadings = loadings[np.abs(loadings).argsort()]
+    plt.figure()
+    np.abs(loadings).plot.bar()
+    plt.ylabel('Magnitude of loading')
+    plt.xlabel('Original dimensions');plt.title(f'PC {which_comp}')
+    plt.tight_layout()
+    
+def rebalance_g1(df,Ng1):
+    #% Rebalance class
+    g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+    # df_g1s[df_g1s['Phase' == 'G1']].sample
+    sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
+
+    df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+    return df_g1s_balanced
+
+def run_cross_validation(X,y,split_ratio,model,random_state=42):
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=random_state)
+    model.fit(X_train,y_train)
+    y_pred = model.predict(X_test)
+    
+    C = confusion_matrix(y_test,y_pred,normalize='all')
+    fpr, tpr, _ = roc_curve(y_test, y_pred)
+    AUC = auc(fpr,tpr)
+    AP = average_precision_score(y_test,y_pred)
+    return C, AUC, AP
 
 
-#%% NaN check
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+df_g1s = keep_only_first_sg2(df_g1s)
 
-df_pca = df.drop(columns = ['basalID','CellposeID','G1S frame','Phase','Border','Differentiating'
-                            # 'Mean diff neighbor height','Neighbor mean height frame-2',
-                            ,'Volume','Growth rate f','Growth rate b'
-                            ,'FUCCI thresholded'
-                            ,'Collagen orientation','Basal orientation','Coronal angle','Nuclear planar orientation'
-                            ,'Z_y','X-pixels_x','Y-pixels_x','X-pixels_y','Y-pixels_y','X_y','Y_y','Z_x','X_x','Y_x'
-                            ])
+df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','region'])
+y = df_g1s['G1S_logistic']
 
-for col in df_pca.columns[df_pca.columns != 'G1S_logistic']:
-    df_pca[col] = z_standardize(df_pca[col])
+#%% PCA on unbalanced data
 
-print(df_pca.columns.values[ np.any(np.isnan(df_pca.values),axis=0)])
-print(np.isnan(df_pca.values).sum(axis=0))
+Ncomp = 20
 
-X = df_pca.values
-I = np.all(~np.isnan(X),axis=0)
-df_pca = df_pca.loc[I]
+df_pca,loadings, pca = run_pca(df_g1s.drop(columns='G1S_logistic'),Ncomp)
 
-N,P = X.shape
-
-#%%
-
-X = df_pca.values
-pca = PCA(n_components = 5)
-
-pca.fit(X)
-
-#%%
 plt.figure()
-plt.bar(range(5),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
-# plt.figure(); plt.plot(pca.singular_values_); plt.ylabel('Singular value');plt.xlabel('Components')
+plt.bar(np.arange(1,N_comp+1),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
+plt.figure()
+plt.bar(np.arange(1,N_comp+1),np.cumsum(pca.explained_variance_ratio_)); plt.ylabel('Cumulative % variance explained');plt.xlabel('Components')
 
-# plot_principle_component(df_pca,pca,0)
-plot_principle_component(df_pca,pca,1)
-# plot_principle_component(df_pca,pca,2)
-# plot_principle_component(df_pca,pca,19)
-
-
-#%% Sanitize field names for smf
-
-features_list = { # Cell geometry
-                'Age':'age'
-                # ,'Z_x':'z','Y_x':'y','X_x':'x'
-                ,'Volume (sm)':'vol_sm'
-                ,'Axial component':'axial_moment'
-                ,'Nuclear volume':'nuc_vol'
-                ,'Nuclear surface area':'nuc_sa'
-                ,'Nuclear axial component':'nuc_axial_moment'
-                ,'Nuclear solidity':'nuc_solid'
-                ,'Nuclear axial angle':'nuc_angle'
-                ,'Planar eccentricity':'planar_ecc'
-                ,'Axial eccentricity':'axial_ecc'
-                ,'Axial angle':'axial_angle'
-                ,'Planar component 1':'planar_component_1'
-                ,'Planar component 2':'planar_component_2'
-                ,'Relative nuclear height':'rel_nuc_height'
-                ,'Surface area':'sa'
-                ,'SA to vol':'ratio_sa_vol'
-                ,'Time to G1S':'time_g1s'
-                ,'Basal area':'basal'
-                ,'Apical area':'apical'
-                ,'Basal orientation':'basal_orien'
-                
-                # Growth rates
-                ,'Specific GR b (sm)':'sgr'
-                ,'Height to BM':'height_to_bm'
-                ,'Mean curvature':'mean_curve'
-                ,'Gaussian curvature':'gaussian_curve'
-                
-                # Neighbor topolgy and
-                ,'Coronal angle':'cor_angle'
-                ,'Coronal density':'cor_density'
-                ,'Cell alignment':'cell_align'
-                ,'Mean neighbor dist':'mean_neighb_dist'
-                ,'Neighbor mean height frame-1':'neighb_height_12h'
-                ,'Neighbor mean height frame-2':'neighb_height_24h'
-                ,'Num diff neighbors':'neighb_diff'
-                ,'Num planar neighbors':'neighb_plan'
-                ,'Collagen fibrousness':'col_fib'
-                ,'Collagen alignment':'col_align'}
-
-df_g1s = df_.loc[:,list(features_list.keys())]
-df_g1s = df_g1s.rename(columns=features_list)
-# df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
-
-df_g1s_test = df_test_.loc[:,list(features_list.keys())]
-df_g1s_test = df_g1s_test.rename(columns=features_list)
-df_g1s_test['G1S_logistic'] = (df_test_['Phase'] == 'SG2').astype(int)
-
-# Standardize
-for col in df_g1s.columns:
-    df_g1s[col] = z_standardize(df_g1s[col])
-
-for col in df_g1s_test.columns:
-    df_g1s_test[col] = z_standardize(df_g1s_test[col])
-
-# Count NANs
-print(np.isnan(df_g1s).sum(axis=0))
+plot_principle_component(loadings,0)
+plot_principle_component(loadings,1)
+plot_principle_component(loadings,11)
 
 #%% PCA regression
 
-from sklearn.decomposition import PCA
+Ng1 = 199
+Ncomp = 20
+Niter = 100
+frac_withheld = 0.1
 
-N = 20
-df_g1s_nonan = df_g1s.dropna()
+C_mlr = np.zeros((Niter,2,2))
+AUC_mlr = np.zeros(Niter)
+AP_mlr = np.zeros(Niter)
 
-pca = PCA(n_components = N)
-X_ = pca.fit_transform(df_g1s_nonan.drop(columns='sgr'))
+C_random = np.zeros((Niter,2,2))
+AUC_random = np.zeros(Niter)
+AP_random = np.zeros(Niter)
 
-names = [f'PC{x}' for x in range(N)]
-X_ = pd.DataFrame(X_,columns=names)
-X_['sgr'] = df_g1s_nonan['sgr']
+from sklearn.linear_model import LogisticRegression
 
-model_pca = smf.rlm('sgr ~ ' + str.join(' + ', X_.columns.drop('sgr')),
-                    data=X_).fit()
-print(model_pca.summary())
+for i in range(100):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
 
-C = model_pca.cov_params()
-sb.heatmap(C,xticklabels=True,yticklabels=True)
-L,D = eig(C)
+    df_pca,_,_ = run_pca(df_g1s_balanced.drop(columns='G1S_logistic'),Ncomp)
+    
+    mlr = LogisticRegression(random_state = i)
+    C_mlr[i,:,:],AUC_mlr[i], AP_mlr[i] = run_cross_validation(df_pca,y_balanced,frac_withheld,mlr)
+    
+    df_random = pd.DataFrame(random.randn(len(df_pca),Ncomp))
+    random_model = LogisticRegression(random_state = i)
+    C_random[i,:,:],AUC_random[i], AP_random[i] = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    
+hist_weights = np.ones(Niter)/Niter
+plt.figure();plt.hist(AUC_mlr,weights=hist_weights)
+plt.xlabel('AUC');plt.title('MLR classification cross-validation, 20% withheld')
+plt.figure();plt.hist(AP_mlr,weights=hist_weights)
+plt.xlabel('Average precision');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
+    
+plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
+plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
 
-print(f'Covariance eigenvalue ratio: {L.max()/L.min()}')
+#%% MLR: Permutation importance
 
-def plot_principle_component(df,pca,comp):
-    P = df_g1s_nonan.shape[1]-1
-    I = np.argsort( np.abs(pca.components_[comp,:]) )
-    plt.figure();plt.bar(range(P),np.abs(pca.components_[comp,I]));
-    plt.ylabel('Original dimensions');plt.xlabel('fPC {comp}')
-    plt.xticks(range(P),rotation=45, ha='right')
-    plt.gca().set_xticklabels(df.columns[I])
-    order = np.argsort(pca.components_[1,:])[::-1]
-    print(f'Top 5 PC1 dimensions: {df.columns[order[0:10]]}')
+from sklearn.inspection import permutation_importance, partial_dependence
 
-plot_principle_component(df_g1s_nonan.drop(columns='sgr'),pca,8)
+g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+# df_g1s[df_g1s['Phase' == 'G1']].sample
+sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
+df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
+
+pca = PCA(n_components = Ncomp)
+X_ = pca.fit_transform(df_g1s_balanced)
+df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
+df_pca['G1S_logistic'] = y_balanced
+X = df_pca.drop(columns='G1S_logistic'); y = df_pca['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
+
+forest = RandomForestClassifier(n_estimators=100, random_state=i)
+forest.fit(X_train,y_train)
+result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
+plt.show()
+
+#%% Random forest classifier
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import plot_tree
+from sklearn import metrics
+
+Ncomp = 20
+Niter = 100
+
+frac_withhold = 0.2
+sum_res = np.zeros(Niter)
+Rsq = np.zeros(Niter)
+AUC_rf = np.zeros(Niter); AP_rf = np.zeros(Niter)
+AUC_random = np.zeros(Niter); AP_random = np.zeros(Niter)
+C_rf = np.zeros((Niter,2,2))
+C_random = np.zeros((Niter,2,2))
+
+for i in tqdm(range(Niter)):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
+    df_pca,_,_ = run_pca(df_g1s_balanced.drop(columns='G1S_logistic'),Ncomp)
+
+    forest = RandomForestClassifier(n_estimators=100, random_state=i)
+    
+    C_rf[i,:,:],AUC_rf[i], AP_rf[i] = run_cross_validation(df_pca,y_balanced,frac_withheld,forest)
+
+    # Generate a 'random' model
+    df_random = pd.DataFrame(random.randn(len(df_pca),Ncomp))
+    random_model = RandomForestClassifier(n_estimators=100, random_state=i)
+    C_random[i,:,:],AUC_random[i], AP_random[i] = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    
+hist_weights = np.ones(Niter)/Niter
+plt.figure();plt.hist(AUC_rf,weights=hist_weights)
+plt.xlabel('AUC');plt.title('MLR classification cross-validation, 20% withheld')
+plt.figure();plt.hist(AP_rf,weights=hist_weights)
+plt.xlabel('Average precision');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
+    
+plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
+plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
+
+#%% RF: Permutation importance
+
+from sklearn.inspection import permutation_importance, partial_dependence
+
+g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+# df_g1s[df_g1s['Phase' == 'G1']].sample
+sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
+df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
+
+pca = PCA(n_components = Ncomp)
+X_ = pca.fit_transform(df_g1s_balanced)
+df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
+df_pca['G1S_logistic'] = y_balanced
+X = df_pca.drop(columns='G1S_logistic'); y = df_pca['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
+
+forest = RandomForestClassifier(n_estimators=100, random_state=i)
+forest.fit(X_train,y_train)
+result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
+plt.show()
+

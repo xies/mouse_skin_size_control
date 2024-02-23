@@ -24,10 +24,10 @@ from sklearn.preprocessing import scale
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
-df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv',index_col=0)
-df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv',index_col=0)
+df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
-df_g1s = df_g1s.drop(columns='cellID')
+df_g1s = df_g1s.drop(columns=['cellID','time_g1s'])
 
 X = df_g1s.drop(columns='sgr')
 y = df_g1s['sgr']
@@ -58,11 +58,11 @@ for i in range(Nsplit):
     lin_model.fit(X_train,y_train)
     ypred = lin_model.predict(X_test)
     R2_mlr[i] = r2_score(y_test,ypred)
+    plt.scatter(y_test,ypred,color='b',alpha=0.01)
 
 print(f'Mean Rsq for MLR = {R2_mlr.mean()}')
 
 #%% Random forest regression
-
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree

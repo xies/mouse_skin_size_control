@@ -117,6 +117,22 @@ for t in tqdm(range(15)):
                                                       ,extra_properties=[most_likely_label]))
     df_cyto = df_cyto.rename(columns={'area':'Cell volume','label':'CytoID','most_likely_label':'CellposeID'
                                       ,'centroid-0':'Z-cell','centroid-1':'Y-cell','centroid-2':'X-cell'})
+    # Initiate fields
+    df_cyto['Axial component'] = np.nan
+    df_cyto['Planar component '] = np.nan
+    df_cyto['Planar component 2'] = np.nan
+    df_cyto['Axial angle'] = np.nan
+    df_cyto['Planar angle'] = np.nan
+    df_cyto['Apical area'] = np.nan
+    df_cyto['Middle area'] = np.nan
+    df_cyto['Basal area'] = np.nan
+    df_cyto['Basal orientation'] = np.nan
+    df_cyto['Basal eccentricity'] = np.nan
+    df_cyto['Height'] = np.nan
+    df_cyto['Collagen orientation'] = np.nan
+    df_cyto['Collagen fibrousness'] = np.nan
+    df_cyto['Collagen alignment'] = np.nan
+    
     df_cyto.index = df_cyto['CytoID'] # index w CytoID so we can key from regionprops
     df_cyto['Cell volume'] = df_cyto['Cell volume']*dx**2
     df_cyto['Y-cell'] = df_cyto['Y-cell']*dx
@@ -130,8 +146,7 @@ for t in tqdm(range(15)):
         df_cyto.at[i,'Planar component 2'] = Ib * dx**2
         df_cyto.at[i,'Axial angle'] = phi
         df_cyto.at[i,'Planar angle'] = theta
-        
-    #@todo: 'flatten image' -> apical & basal area + height
+    
     # ----- Load flattened 3d cortical segmentation and measure geometry from cell-centric coordinates ----
     f = path.join(dirname,f'Image flattening/flat_3d_cyto_seg/t{t}.tif')
     im = io.imread(f)
@@ -163,7 +178,7 @@ for t in tqdm(range(15)):
         basal_mask = basal_mask.max(axis=0)
         basal_area = basal_mask.sum()
     
-        basal_masks_2save[basal_mask] = df_cyto.at[cytoID,'CellposeID']
+        basal_masks_2save[basal_mask] = df_cyto.at[cytoID,'CytoID']
 
         #NB: skimage uses the 'vertical' as the orientation axis
         basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
@@ -197,6 +212,7 @@ for t in tqdm(range(15)):
         #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
         df_cyto.at[cytoID,'Collagen orientation'] = theta
         df_cyto.at[cytoID,'Collagen fibrousness'] = fibrousness
+        df_cyto.at[cytoID,'Collagen alignment'] = np.abs(np.cos(theta - basal_orientation))
     
     io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
     
@@ -337,6 +353,7 @@ for t in tqdm(range(15)):
         im = draw_adjmat_on_image(A_diff,dense_coords,[XX,XX])
         io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_diff.tif'),im.astype(np.uint16),check_contrast=False)
     
+    # Initialize neighborhood stats
     df_dense['Nuclear surface area'] = np.nan
     df_dense['Nuclear axial component'] = np.nan
     df_dense['Nuclear axial angle'] = np.nan
@@ -346,17 +363,41 @@ for t in tqdm(range(15)):
     df_dense['Nuclear planar eccentricity'] = np.nan
     df_dense['Nuclear bbox top'] = np.nan
     df_dense['Nuclear bbox bottom'] = np.nan
-
+    
     df_dense['Mean neighbor dist'] = np.nan
+    
     df_dense['Mean neighbor nuclear volume'] = np.nan
     df_dense['Std neighbor nuclear volume'] = np.nan
+    
+    df_dense['Mean neighbor cell volume'] = np.nan
+    df_dense['Std neighbor cell volume'] = np.nan
+    df_dense['Max neighbor cell volume'] = np.nan
+    df_dense['Min neighbor cell volume'] = np.nan
+    
+    df_dense['Mean neighbor apical area'] = np.nan
+    df_dense['Std neighbor apical area'] = np.nan
+    df_dense['Mean neighbor basal area'] = np.nan
+    df_dense['Std neighbor basal area'] = np.nan
+    
+    df_dense['Mean neighbor cell height'] = np.nan
+    df_dense['Std neighbor cell height'] = np.nan
+    
     df_dense['Coronal area'] = np.nan
     df_dense['Coronal angle'] = np.nan
     df_dense['Coronal eccentricity'] = np.nan
-    df_dense['Mean planar neighbor height'] = np.nan
-    df_dense['Mean diff neighbor height'] = np.nan
     
-    # Use this to make specific neighborhood measurements
+    df_dense['Mean neighbor height from BM'] = np.nan
+    df_dense['Max neighbor height from BM'] = np.nan
+    df_dense['Min neighbor height from BM'] = np.nan
+    
+    df_dense['Mean neighbor collagen alignment'] = np.nan
+    
+    # df_dense['Mean planar neighbor height from BM'] = np.nan
+    # df_dense['Mean diff neighbor height from BM'] = np.nan
+    
+    # Load basal masks for current frame
+    frame_basal_mask = io.imread(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'))
+    # Make local neighborhood measurement stats
     props = measure.regionprops(nuc_dense_seg,extra_properties = [surface_area])
     for i,this_cell in df_dense.iterrows(): #NB: i needs to be 0-index
         
@@ -382,63 +423,88 @@ for t in tqdm(range(15)):
         df_dense.at[i,'Num planar neighbors'] = len(planar_neighbor_idx)
         df_dense.at[i,'Num diff neighbors'] = len(diff_neighbor_idx)
         
-        if len(np.hstack([diff_neighbor_idx,planar_neighbor_idx])) > 0:
-            neighbor_heights = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['Height to BM']
-            df_dense.at[i,'Mean neighbor height'] = neighbor_heights.mean()
+        # All neighbors
+        all_neighbor_idx = np.hstack([diff_neighbor_idx,planar_neighbor_idx])
+        if len(all_neighbor_idx) > 0:
+            # neighbor_heights = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['Height to BM']
+            # df_dense.at[i,'Mean neighbor height from BM'] = neighbor_heights.mean()
             fucci_intensities = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI bg sub']
             df_dense.at[i,'Mean neighbor FUCCI intensity'] = fucci_intensities.mean()
             fucci_category = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI thresholded'] == 'High'
             df_dense.at[i,'Frac neighbor FUCCI high'] = fucci_category.sum()/len(fucci_category)
             
-        # Differentiating neighbor heights
-        if len(diff_neighbor_idx) > 0:
-            neighbor_heights = df_dense.loc[diff_neighbor_idx]['Height to BM']
-            df_dense.at[i,'Mean diff neighbor height'] = neighbor_heights.mean()
-            
-        # +1 Planar neighbors (i.e. those that are still basal)
-        if len(planar_neighbor_idx) > 0:
-            
-            neighbor_heights = df_dense.loc[planar_neighbor_idx]['Height to BM']
-            df_dense.at[i,'Mean planar neighbor height'] = neighbor_heights.mean()
+            # If this is a 'dividing cell of interest', then estimate 'corona' using full neighbor cyto seg
+            if not np.isnan(this_cell['basalID']):
+                
+                # Get the cytoIDs
+                all_neighbor_cytoIDs = df_dense.iloc[all_neighbor_idx]['CytoID']
+                all_neighbor_cytoIDs = nonans(all_neighbor_cytoIDs)
+                if len(all_neighbor_cytoIDs) > 0:
+                    basal_mask = np.zeros_like(frame_basal_mask,dtype=bool)
+                    for ID in all_neighbor_cytoIDs:
+                        basal_mask = basal_mask | (frame_basal_mask == ID)
+                    p = measure.regionprops(basal_mask.astype(int))[0]
+                    df_dense.at[i,'Coronal area'] = p['area'] * dx**2
+                    df_dense.at[i,'Coronal eccentricity'] = p['eccentricity']
+                    theta = np.rad2deg(p['orientation'])
+                    if theta < 0: # Constrain angle to be in quad I and IV
+                        theta = theta + 180
+                    df_dense.at[i,'Coronal angle'] = theta
+                    
+            else:
+                #-- Below block is estimating from nuclear posiition, which is probably worse
+                X = dense_coords[planar_neighbor_idx,1]
+                Y = dense_coords[planar_neighbor_idx,0]
+                if len(X) > 2:
+                    order = argsort_counter_clockwise(X,Y)
+                    X = X[order]
+                    Y = Y[order]
+                    im = np.zeros([XX,XX])
+                    rr,cc = draw.polygon(Y,X)
+                    im[rr,cc] = 1
+                    p = measure.regionprops(im.astype(int))[0]
+                    df_dense.at[i,'Coronal area'] = p['area']  * dx**2
+                    df_dense.at[i,'Coronal eccentricity'] = p['eccentricity']
+                    theta = np.rad2deg(p['orientation'])
+                    if theta < 0:
+                        theta = theta + 180
+                    df_dense.at[i,'Coronal angle'] = theta
+                
+            neighbor_heights = df_dense.loc[all_neighbor_idx]['Height to BM']
+            df_dense.at[i,'Mean neighbor height from BM'] = neighbor_heights.mean()
+            df_dense.at[i,'Std neighbor height from BM'] = neighbor_heights.std()
+            df_dense.at[i,'Max neighbor height from BM'] = neighbor_heights.max()
+            df_dense.at[i,'Min neighbor height from BM'] = neighbor_heights.min()
             
             # Distance to neighbors
-            neighbor_dists = D[i, planar_neighbor_idx]
+            neighbor_dists = D[i, all_neighbor_idx]
             df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
             
             # Neighbor size/shape info -- nuclear
-            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].mean()
-            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].std()
-            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].max()
-            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume'].min()
-            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].mean()
-            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].std()
-            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].max()
-            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[planar_neighbor_idx]['Nuclear volume normalized'].min()
-            # Neighbor size/shape info -- cortical
-            df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].mean()
-            df_dense.at[i,'Std neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].std()
-            df_dense.at[i,'Max neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].max()
-            df_dense.at[i,'Min neighbor cell volume'] = df_dense.iloc[planar_neighbor_idx]['Cell volume'].min()
+            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].std()
+            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].max()
+            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].min()
+            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].std()
+            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].max()
+            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].min()
             
-            # get 2d coronal area
-            X = dense_coords[planar_neighbor_idx,1]
-            Y = dense_coords[planar_neighbor_idx,0]
-            if len(X) > 2:
-                order = argsort_counter_clockwise(X,Y)
-                X = X[order]
-                Y = Y[order]
-                im = np.zeros([XX,XX])
-                rr,cc = draw.polygon(Y,X)
-                im[rr,cc] = 1
-                p = measure.regionprops(im.astype(int))[0]
-                df_dense.at[i,'Coronal area'] = p['area']  * dx**2
-                df_dense.at[i,'Coronal eccentricity'] = p['eccentricity']
-                theta = np.rad2deg(p['orientation'])
-                if theta < 0:
-                    theta = theta + 180
-                df_dense.at[i,'Coronal angle'] = theta
-                # df_dense.at[i,'Coronal '
-                
+            # Neighbor size/shape info -- cortical
+            df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].mean()
+            df_dense.at[i,'Std neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].std()
+            df_dense.at[i,'Max neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].max()
+            df_dense.at[i,'Min neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].min()
+            df_dense['Mean neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].mean()
+            df_dense['Std neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].std()
+            df_dense['Mean neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].mean()
+            df_dense['Std neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].std()
+            
+            df_dense.at[i,'Mean neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].max()
+            df_dense.at[i,'Std neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].min()
+            
+            df_dense.at[i,'Mean neighbor collagen alignment'] = df_dense.iloc[all_neighbor_idx]['Collagen alignment'].mean()
+    
     
     # Save the DF
     df.append(df_dense)

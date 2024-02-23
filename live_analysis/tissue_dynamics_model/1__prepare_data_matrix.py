@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-from sklearn.covariance import EmpiricalCovariance
+from sklearn.covariance import EmpiricalCovariance, MinCovDet
 from os import path
 
 from numpy.linalg import eig
@@ -36,13 +36,17 @@ N,P = df_.shape
 
 # Sanitize field names for smf
 
-features_list = { # Cell geometry
+features_list = { # Cell identity, position
                 'Age':'age'
                 ,'Region':'region'
-                # ,'Differentiating':'diff'
-                ,'Y_x':'y','X_x':'x'
-                # ,'Z_x':'z'
+                ,'Differentiating':'diff'
+                ,'Y':'y','X':'x'
+                # ,'Z':'z'
+                # ,'Height to BM':'height_to_bm'
+                
+                # Cell geometry
                 ,'Volume':'vol_sm'
+                ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
                 ,'NC ratio':'nc_ratio'
@@ -52,61 +56,75 @@ features_list = { # Cell geometry
                 ,'Nuclear axial angle':'nuc_angle'
                 # ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
-                # ,'Nuclear axial eccentricity':'nuc_axial_ecc'
+                ,'Nuclear axial eccentricity':'nuc_axial_ecc'
                 # ,'Nuclear planar eccentricity':'nuc_planar_ecc'
                 ,'Axial angle':'axial_angle'
                 # ,'Planar component 1':'planar_component_1'
                 # ,'Planar component 2':'planar_component_2'
                 ,'Relative nuclear height':'rel_nuc_height'
-                # ,'Surface area':'sa'
                 ,'Time to G1S':'time_g1s'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'
                 
-                # Growth rates and other central cell dynamics
-                ,'Specific GR spl':'sgr'
-                ,'Height to BM':'height_to_bm'
-                
-                ,'FUCCI bg sub frame-1':'fucci_int_12h'
-                ,'FUCCI bg sub frame-2':'fucci_int_24h'
-                
-                # Neighbor topolgy and geometry
-                ,'Coronal angle':'cor_angle'
+                # Central cell relation to neighborhood
+                ,'Coronal eccentricity':'cor_eccentricity'
                 # ,'Coronal density':'cor_density'
-                ,'Cell alignment':'cell_align'
+                ,'Cell alignment to corona':'cell_align_to_coro'
                 ,'Mean curvature':'mean_curve'
-                ,'Num diff neighbors':'neighb_diff'
-                ,'Num planar neighbors':'neighb_plan'
                 ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'
                 ,'Distance to closest macrophage':'macrophage'
                 # ,'Gaussian curvature':'gaussian_curve'
-                
-                # Cell dynamics
                 ,'Delta curvature':'delta_curvature'
                 ,'Delta height':'delta_height'
-                ,'Neighbor planar number frame-1':'num_planar_neighb_12h'
-                # ,'Volume frame-1':'vol_12h'
-                # ,'Volume frame-2':'vol_24h'
                 
-                # Neighborhood dynamics (averages of previous frame)
-                ,'Mean neighbor nuclear volume normalized':'mean_neighb_nuc_vol'
-                ,'Neighbor mean nuclear volume frame-1':'mean_neighb_nuc_vol_12h'
-                # ,'Neighbor mean nuclear volume frame-2':'mean_neighb_nuc_vol_24h'
-                ,'Std neighbor nuclear volume normalized':'std_neighb_nuc_vol'
-                # ,'Max neighbor nuclear volume normalized':'max_neighb_nuc_vol'
-                # ,'Min neighbor nuclear volume normalized':'min_neighb_nuc_vol'
+                # Current-frame neighborhood stats
+                ,'Num diff neighbors':'num_neighb_diff'
+                ,'Num planar neighbors':'num_neighb_plan'
                 ,'Mean neighbor dist':'mean_neighb_dist'
+                ,'Mean neighbor cell volume':'mean_neighb_vol'
+                ,'Std neighbor cell volume':'std_neighb_vol'
+                ,'Mean neighbor apical area':'mean_neighb_apical'
+                # ,'Std neighbor apical area':'std_neighb_apical'
+                ,'Mean neighbor basal area':'mean_neighb_basal'
+                ,'Std neighbor basal area':'std_neighb_basal'
+                ,'Mean neighbor cell height':'mean_neighb_height'
+                ,'Max neighbor height from BM':'max_neigb_height_to_bm'
+                
+                ,'Mean neighbor collagen alignment':'mean_neighb_collagen_alignment'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
                 ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
-                ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
-                ,'Neighbor mean height frame-1':'neighb_height_12h'
-                # ,'Neighbor mean height frame-2':'neighb_height_24h'
                 
+                # Growth rates and other central cell dynamics
+                ,'Specific GR spl':'sgr'
+                ,'FUCCI bg sub frame-1':'fucci_int_12h'
+                # ,'FUCCI bg sub frame-2':'fucci_int_24h'
+                # ,'Volume frame-1':'vol_12h'
+                # ,'Volume frame-2':'vol_24h'
+                ,'Collagen alignment-1':'collagen_alignment_12h'
+                # ,'Collagen alignment-2':'collagen_alignment_24h'
+                
+                # Neighborhood stats from previous frame(s)
+                ,'Neighbor mean dist frame-1':'mean_neighb_dist_12h'
+                # ,'Neighbor mean dist frame-2':'mean_neighb_dist_24h'
+                ,'Neighbor mean cell volume frame-1':'mean_neighb_vol_12h'
+                # ,'Neighbor mean cell volume frame-2':'mean_neighb_vol_24h'
+                ,'Neighbor std cell volume frame-1':'std_neighb_vol_12h'
+                # ,'Neighbor std cell volume frame-2':'std_neighb_vol_24h'
+                ,'Neighbor mean height from BM frame-1':'mean_neighb_height_to_bm_12h'
+                # ,'Neighbor mean height from BM frame-2':'mean_neighb_height_to_bm_24h'
+                # ,'Neighbor max height from BM frame-1':'max_neighb_height_to_bm_12h'
+                # ,'Neighbor max height from BM frame-2':'max_neighb_height_to_bm_24h'
+                ,'Neighbor mean collagen alignment frame-1':'mean_neighb_collagen_align_12h'
+                # ,'Neighbor mean collagen alignment frame-2':'mean_neighb_collagen_align_24h'
+                ,'Neighbor planar number frame-1':'num_planar_neighb_12h'
+                # ,'Neighbor planar number frame-2':'num_planar_neighb_24h'
+                ,'Neighbor diff number frame-1':'num_diff_neighb_12h'
+                # ,'Neighbor diff number frame-2':'num_diff_neighb_24h'
+
                 # Bookkeeping for LMM groups or drop for OLS
                 ,'basalID':'cellID'
                 ,'Region':'region'
-
                 }
 
 df_g1s = df_.loc[:,list(features_list.keys())]
@@ -137,15 +155,27 @@ Inan = df_g1s.isnull().any(axis=1).values
 df_ = df_[~Inan]
 df_g1s = df_g1s[~Inan]
 
-C = EmpiricalCovariance().fit(df_g1s.drop(columns=['region','cellID','G1S_logistic']))
-sb.heatmap(C.covariance_,xticklabels=df_g1s.columns,yticklabels=df_g1s.columns)
+df2plot = df_g1s.drop(columns=['region','cellID','G1S_logistic','diff','time_g1s'])
+C = EmpiricalCovariance().fit(df2plot)
+sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
+plt.title('EmpCov')
 L,D = eig(C.covariance_)
 
 print('----')
-print(f'Condition number: {L.max() / L.min()}')
+print(f'Condition number (EmpCov): {L.max() / L.min()}')
 
 
-df_.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_.csv')
-df_g1s.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/MLR model/df_g1s.csv')
+C = MinCovDet().fit(df2plot)
+plt.figure()
+plt.title('MinCovDet')
+sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
+L,D = eig(C.covariance_)
+
+print('----')
+print(f'Condition number (MinCovDet): {L.max() / L.min()}')
+
+
+df_.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv')
+df_g1s.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv')
 
 

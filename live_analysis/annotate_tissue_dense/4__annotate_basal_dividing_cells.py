@@ -254,6 +254,10 @@ for basalID, df in collated.items():
             
     collated[basalID] = df
 
+with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
+    pkl.dump(collated,f)
+df = pd.concat(collated,ignore_index=True)
+
 #%% Load the daughter cells + save
 
 # Load into a dict of individual cells (some daughter cell pairs have >1 time points)

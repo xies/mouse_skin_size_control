@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep  7 15:27:52 2022
+Created on Fri Feb 23 11:14:21 2024
 
 @author: xies
 """
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-import statsmodels.api as sm
+# import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.special import expit
 from basicUtils import *
@@ -27,12 +27,23 @@ def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+
+collated_first_s = []
+# Groupby CellID and then drop non-first S phase
+for (cellID,frame),cell in df_g1s.groupby(['cellID','region']):
+    if cell.G1S_logistic.sum() > 1:
+        first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+        collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+    else:
+        collated_first_s.append(cell)
+
+df_g1s = pd.concat(collated_first_s)
 df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','region'])
 
 #%% Logistic for G1/S transition
 
 Ng1 = 199
-Niter = 5
+Niter = 1000
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -104,7 +115,9 @@ plt.xticks(range(5),params['var'],rotation=30)
 from numpy import random
 from sklearn import metrics
 
-Niter = 1000
+Ng1 = 250
+
+Niter = 100
 
 frac_withhold = 0.1
 N = len(df_g1s_balanced)
@@ -279,9 +292,7 @@ forest = RandomForestClassifier(n_estimators=100, random_state=i)
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
 forest.fit(X_train,y_train)
-result = permutation_importance(
-    forest, X_test, y_test, n_repeats=1000, random_state=42, n_jobs=2
-)
+result = permutation_importance(forest,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
 
 top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
@@ -291,7 +302,7 @@ plt.ylabel("Mean accuracy decrease")
 plt.tight_layout()
 plt.show()
 
-#%% 
+#%% Logistic: permutation importances
 
 from sklearn.linear_model import LogisticRegression
 
@@ -305,10 +316,7 @@ X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,ran
 
 logist_model = LogisticRegression(random_state=42).fit(X_train,y_train)
 
-result = permutation_importance(
-    logist_model, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
-)
-
+result = permutation_importance(logist_model,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 logit_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
 
 plt.figure()
@@ -320,7 +328,7 @@ plt.show()
 # Partial dependence of the first 5 important features
 part_dep = partial_dependence(logist_model, features=np.argsort(result.importances_mean)[::-1][0:2], X=X, percentiles=(0, 1),
                     grid_resolution=10) 
-
+plt.figure()
 plt.pcolor(part_dep['average'][0,...])
 
 #%%

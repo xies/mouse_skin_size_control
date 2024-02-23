@@ -23,9 +23,11 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
+basal_track = io.imread(path.join(dirname))
+
 for t in tqdm(range(15)):
     
-    nuc_seg = io.imread(path.join(dirname,f'manual_basal_tracking/neighborhood_cellposeIDs/t{t}.tif'))
+    # nuc_seg = io.imread(path.join(dirname,f'manual_basal_tracking/neighborhood_cellposeIDs/t{t}.tif'))
     # cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_raw/t{t}_3d_cyto/t{t}_cp_masks.tif'))
     cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/cellpose_manual/t{t}.tif'))
     
