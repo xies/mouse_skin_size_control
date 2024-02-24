@@ -18,21 +18,40 @@ from os import path
 from tqdm import tqdm
 
 from numpy import random
-from sklearn.metrics import roc_curve, auc, confusion_matrix
-from sklearn.preprocessing import scale 
-from sklearn.cross_decomposition import PLSCanonical
+from sklearn.metrics import roc_curve, auc, confusion_matrix, average_precision_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import scale
+
+def rebalance_g1(df,Ng1):
+    #% Rebalance class
+    g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
+    # df_g1s[df_g1s['Phase' == 'G1']].sample
+    sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
+
+    df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+    return df_g1s_balanced
 
 
-def z_standardize(x):
-    return (x - np.nanmean(x))/np.std(x)
+def run_cross_validation(X,y,split_ratio,model,random_state=42):
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio,random_state=random_state)
+    model.fit(X_train,y_train)
+    y_pred = model.predict(X_test)
+    
+    C = confusion_matrix(y_test,y_pred,normalize='all')
+    fpr, tpr, _ = roc_curve(y_test, y_pred)
+    AUC = auc(fpr,tpr)
+    AP = average_precision_score(y_test,y_pred)
+    return C, AUC, AP
 
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','region'])
 
-#%% Logistic for G1/S transition
+#%% Logistic for G1/S transition: keeping all SG2 datapoints
+# Random rebalance with 2.5:1 ratio
+# No cross-validation, in-model estimates only
 
 Ng1 = 199
-Niter = 5
+Niter = 100
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -42,11 +61,7 @@ pvalues = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 for i in range(Niter):
     
     #% Rebalance class
-    g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-    # df_g1s[df_g1s['Phase' == 'G1']].sample
-    sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
-    
-    df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
     
     ############### G1S logistic as function of age ###############
     try:
@@ -99,217 +114,60 @@ plt.figure()
 plt.bar(range(len(params)),params['coef'],yerr=params['err'])
 plt.xticks(range(5),params['var'],rotation=30)
 
-#%% Cross-validation
-
-from numpy import random
-from sklearn import metrics
-
-Niter = 1000
-
-frac_withhold = 0.1
-N = len(df_g1s_balanced)
-
-models = []
-random_models = []
-AUC = np.zeros(Niter)
-AP = np.zeros(Niter)
-C_mlr = np.zeros((Niter,2,2))
-AUC_random= np.zeros(Niter)
-AP_random = np.zeros(Niter)
-C_random = np.zeros((Niter,2,2))
-
-for i in tqdm(range(Niter)):
-    
-    #% Rebalance class
-    g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-    # df_g1s[df_g1s['Phase' == 'G1']].sample
-    sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
-    df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-    
-    num_withold = np.round(frac_withhold * N).astype(int)
-    
-    idx_subset = random.choice(N, size = num_withold, replace=False)
-    Iwithheld = np.zeros(N).astype(bool)
-    Iwithheld[idx_subset] = True
-    Isubsetted = ~Iwithheld
-    
-    df_subsetted = df_g1s_balanced.loc[Isubsetted]
-    df_withheld = df_g1s_balanced.loc[Iwithheld]
-    
-    this_model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_subsetted.columns[df_subsetted.columns != 'G1S_logistic']),
-                  data=df_subsetted).fit()
-    models.append(this_model)
-    
-    # Generate a 'random' model
-    df_rand = df_subsetted.copy()
-    for col in df_rand.columns.drop('G1S_logistic'):
-        df_rand[col] = random.randn(N-num_withold)
-        
-    random_model = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_rand.columns[df_rand.columns != 'G1S_logistic']),
-                  data=df_rand).fit()
-    random_models.append(random_model)
-    
-    # predict on the withheld data
-    ypred = this_model.predict(df_withheld).values
-    IdropNA = ~np.isnan(ypred)
-    ypred = ypred[IdropNA]
-    labels = df_withheld['G1S_logistic'].values[IdropNA]
-    
-    fpr, tpr, _ = metrics.roc_curve(labels, ypred)
-    AUC[i] = metrics.auc(fpr,tpr)
-    
-    precision,recall,th = metrics.precision_recall_curve(labels,ypred)
-    AP[i] = metrics.average_precision_score(labels,ypred)
-    
-    C_mlr[i,:,:] = confusion_matrix(labels,ypred>0.5,normalize='all')
-    
-    # predict on the withheld data
-    ypred = random_model.predict(df_withheld).values
-    IdropNA = ~np.isnan(ypred)
-    ypred = ypred[IdropNA]
-    labels = df_withheld['G1S_logistic'].values[IdropNA]
-    
-    # Compute some scoring metrics
-    # AUC
-    fpr, tpr, _ = metrics.roc_curve(labels, ypred)
-    AUC_random[i] = metrics.auc(fpr,tpr)
-    
-    # average precision
-    precision,recall,th = metrics.precision_recall_curve(labels,ypred)
-    AP_random[i] = metrics.average_precision_score(labels,ypred)
-    
-    C_random[i,:,:] = confusion_matrix(labels,ypred>0.5,normalize='all')
-
-hist_weights = np.ones(Niter)/Niter
-plt.figure();plt.hist(AUC,weights=hist_weights);plt.hist(AUC_random,weights=hist_weights);plt.xlabel('AUC')
-plt.title(f'MLR classification cross-validation, {frac_withhold*100}% withheld')
-plt.figure();plt.hist(AP,weights=hist_weights);plt.hist(AP_random,weights=hist_weights);plt.xlabel('Average precision');
-plt.title(f'MLR classification cross-validation, {frac_withhold*100}% withheld')
-
-plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
-plt.title(f'Confusion matrix, {frac_withhold*100}% withheld, average over 1000 iterations')
-
-#%% Random forest classifier
-
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import plot_tree
-from sklearn import metrics
-
-Niter = 1000
-frac_withhold = 0.2
-sum_res = np.zeros(Niter)
-Rsq = np.zeros(Niter)
-importance = np.zeros((Niter,df_g1s.shape[1]))
-AUC = np.zeros(Niter); AP = np.zeros(Niter)
-AUC_random = np.zeros(Niter); AP_random = np.zeros(Niter)
-C_rf = np.zeros((Niter,2,2))
-C_random = np.zeros((Niter,2,2))
-
-for i in tqdm(range(Niter)):
-    
-    g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-    # df_g1s[df_g1s['Phase' == 'G1']].sample
-    sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
-    df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-    df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
-    
-    forest = RandomForestClassifier(n_estimators=100, random_state=i)
-    
-    X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-    forest.fit(X_train,y_train)
-    
-    y_pred = forest.predict(X_test)
-    importance[i,:] = forest.feature_importances_
-    
-    C_rf[i,:,:] = confusion_matrix(y_test,y_pred,normalize='all')
-    fpr, tpr, _ = metrics.roc_curve(y_test, y_pred)
-    AUC[i] = metrics.auc(fpr,tpr)
-    AP[i] = metrics.average_precision_score(y_test,y_pred)
-    
-    # Generate a 'random' model
-    df_rand = df_g1s_balanced.copy()
-    N = len(df_g1s_balanced)
-    for col in df_rand.columns.drop('G1S_logistic'):
-        df_rand[col] = random.randn(N)
-        
-    forest_random = RandomForestClassifier(n_estimators=100,random_state = i)
-    X = df_rand.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-    forest_random.fit(X_train,y_train)
-    
-    y_pred = forest_random.predict(X_test)
-    
-    C_random[i,:,:] = confusion_matrix(y_test,y_pred,normalize='all')
-    fpr, tpr, _ = metrics.roc_curve(y_test, y_pred)
-    AUC_random[i] = metrics.auc(fpr,tpr)
-    AP_random[i] = metrics.average_precision_score(y_test,y_pred)
-    
-hist_weights = np.ones(Niter)/Niter
-plt.figure();plt.hist(AUC,weights=hist_weights);plt.hist(AUC_random,weights=hist_weights);
-plt.xlabel('AUC');plt.title('RF classification cross-validation, 20% withheld')
-plt.figure();plt.hist(AP,weights=hist_weights);plt.hist(AP_random,weights=hist_weights);
-plt.xlabel('Average precision');plt.title('RF classification cross-validation, 20% withheld')
-
-plt.figure()
-imp = pd.DataFrame(importance)
-imp.columns = df_g1s_balanced.columns.drop('G1S_logistic')
-
-imp.mean().plot.bar(yerr=imp.std())
-plt.ylabel('Feature importance (impurity decrease)')
-plt.tight_layout()
-plt.title('RF classify; 20% withheld')
-
-plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
-plt.title(f'Confusion matrix, {frac_withhold*100}% withheld, average over 1000 iterations')
-
-#%% RF: Permutation importance
-
-from sklearn.inspection import permutation_importance, partial_dependence
-
-g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-# df_g1s[df_g1s['Phase' == 'G1']].sample
-sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
-df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
-
-forest = RandomForestClassifier(n_estimators=100, random_state=i)
-
-X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-forest.fit(X_train,y_train)
-result = permutation_importance(
-    forest, X_test, y_test, n_repeats=1000, random_state=42, n_jobs=2
-)
-forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
-
-top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
-top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
-top_forest_imp.plot.bar(yerr=top_forest_imp_std)
-plt.ylabel("Mean accuracy decrease")
-plt.tight_layout()
-plt.show()
-
-#%% 
+#%% Cross-validation for MLR
 
 from sklearn.linear_model import LogisticRegression
 
-g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]
-df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
+Niter = 1000
+
+frac_withheld = 0.1
+N = len(df_g1s_balanced)
+
+AUC = pd.DataFrame(np.zeros((Niter,2)),columns=['MLR','Random data'])
+AP = pd.DataFrame(np.zeros((Niter,2)),columns=['MLR','Random data'])
+C_mlr = np.zeros((Niter,2,2))
+C_random = np.zeros((Niter,2,2))
+
+for i in tqdm(range(Niter)):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
+    df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
+
+    #Logistic regression
+    mlr = LogisticRegression(random_state = i)
+    C_mlr[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
+    AUC.at[i,'MLR'] = _AUC
+    AP.at[i,'MLR'] = _AP
+    
+    #Random data model
+    df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
+    random_model = LogisticRegression(random_state = i)
+    C_random[i,:,:],_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    AUC.at[i,'Random data'] = _AUC
+    AP.at[i,'Random data'] = _AP
+    
+hist_weights = np.ones(Niter)/Niter
+AUC.plot.hist(weights=hist_weights); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
+plt.vlines(AUC['MLR'].mean(),0,0.8,'r')
+AP.plot.hist(weights=hist_weights); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
+plt.vlines(AP['MLR'].mean(),0,0.8,'r')
+
+plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
+plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
+
+#%%  Permutation importance for MLR
+
+from sklearn.linear_model import LogisticRegression
+
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
 
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
 logist_model = LogisticRegression(random_state=42).fit(X_train,y_train)
-
-result = permutation_importance(
-    logist_model, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2
-)
-
-logit_importances = pd.Series(result.importances_mean, index=df_g1s.columns)
+result = permutation_importance(logist_model,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values()
 
 plt.figure()
 logit_importances.plot.bar(yerr=result.importances_std)
@@ -322,6 +180,68 @@ part_dep = partial_dependence(logist_model, features=np.argsort(result.importanc
                     grid_resolution=10) 
 
 plt.pcolor(part_dep['average'][0,...])
+
+#%% Random forest classifier
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import plot_tree
+
+Niter = 1000
+frac_withheld = 0.2
+
+AUC = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
+AP = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
+C_rf = np.zeros((Niter,2,2))
+C_random = np.zeros((Niter,2,2))
+
+for i in tqdm(range(Niter)):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
+    
+    # Random forest
+    forest = RandomForestClassifier(n_estimators=100, random_state=i)
+    C_rf[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,forest)
+    AUC.at[i,'RF'] = _AUC
+    AP.at[i,'RF'] = _AP
+    
+    # Random data model
+    df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
+    random_model = RandomForestClassifier(random_state = i)
+    C_random[i,:,:],_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    AUC.at[i,'Random data'] = _AUC
+    AP.at[i,'Random data'] = _AP
+    
+    
+hist_weights = np.ones(Niter)/Niter
+AUC.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
+plt.vlines(AUC['RF'].mean(),0,0.8,'r')
+AP.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
+plt.vlines(AP['RF'].mean(),0,0.8,'r')
+
+plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
+plt.title(f'RF Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
+
+#%% RF: Permutation importance
+
+from sklearn.inspection import permutation_importance, partial_dependence
+
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
+
+forest = RandomForestClassifier(n_estimators=100, random_state=i)
+X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
+forest.fit(X_train,y_train)
+result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
+plt.show()
 
 #%%
 
@@ -356,7 +276,6 @@ tree.plot_tree(forest.estimators_[0],
 
 # # Fit the random search object to the data
 # rand_search.fit(X_train, y_train)
-
 
 #%% Compare MLR v RF
 

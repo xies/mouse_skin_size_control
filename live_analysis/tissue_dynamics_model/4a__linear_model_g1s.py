@@ -14,6 +14,7 @@ from basicUtils import *
 
 from numpy import random
 from sklearn import metrics
+from tqdm import tqdm
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
@@ -23,27 +24,11 @@ df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
 df_g1s = df_g1s[df_g1s['time_g1s'] >= 0]
 
 
-X = df_g1s.drop(columns=['time_g1s','cellID'])
+X = df_g1s.drop(columns=['time_g1s'])
 y = df_g1s['time_g1s']
 
 #Add interaction effects ?
 X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
-
-#%% Establish the theoretical maximum R2 based on time resolution alone
-
-from numpy import random, corrcoef
-
-Nsample = 10000
-
-x = random.lognormal(mean=np.log(48),sigma=sqrt(0.03),size=(Nsample))
-
-bins = np.arange(0,10*24,12)
-
-x_hat = bins[np.digitize(x,bins)]
-
-plt.scatter(x,x_hat)
-max_exp_Rsq = corrcoef(x,x_hat)[0,1]**2
-plt.title(f'Maximum expected Rsq = {max_exp_Rsq}')
 
 #%%
 
@@ -55,7 +40,6 @@ X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
 reg = linear_model.RidgeCV()
 reg = reg.fit(X_train,y_train)
 
-
 results = pd.Series(reg.coef_, reg.feature_names_in_)
 results.sort_values().plot.bar()
 plt.tight_layout()
@@ -63,6 +47,7 @@ plt.ylabel('Effect size')
 plt.title('Linear regression for G1S timing')
 
 #%% Cross-validation using MLR
+from sklearn.inspection import permutation_importance
 
 Niter = 100
 

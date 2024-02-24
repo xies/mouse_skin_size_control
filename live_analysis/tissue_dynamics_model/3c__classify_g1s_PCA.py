@@ -21,6 +21,7 @@ from numpy import random
 from sklearn.metrics import roc_curve, auc, confusion_matrix, average_precision_score
 from sklearn.preprocessing import scale 
 from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
 
 def keep_only_first_sg2(df):
     collated_first_s = []
@@ -61,7 +62,7 @@ def rebalance_g1(df,Ng1):
     return df_g1s_balanced
 
 def run_cross_validation(X,y,split_ratio,model,random_state=42):
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=random_state)
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio,random_state=random_state)
     model.fit(X_train,y_train)
     y_pred = model.predict(X_test)
     
@@ -91,6 +92,7 @@ plt.bar(np.arange(1,N_comp+1),np.cumsum(pca.explained_variance_ratio_)); plt.yla
 
 plot_principle_component(loadings,0)
 plot_principle_component(loadings,1)
+plot_principle_component(loadings,4)
 plot_principle_component(loadings,11)
 
 #%% PCA regression
@@ -135,30 +137,23 @@ plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter
 
 #%% MLR: Permutation importance
 
-from sklearn.inspection import permutation_importance, partial_dependence
+from sklearn.inspection import permutation_importance
 
-g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-# df_g1s[df_g1s['Phase' == 'G1']].sample
-sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
-df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
+df_pca,_,_ = run_pca(df_g1s_balanced.drop(columns='G1S_logistic'),Ncomp)
+X_train,X_test,y_train,y_test = train_test_split(df_pca,y_balanced,test_size=frac_withheld,random_state=42)
 
-pca = PCA(n_components = Ncomp)
-X_ = pca.fit_transform(df_g1s_balanced)
-df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
-df_pca['G1S_logistic'] = y_balanced
-X = df_pca.drop(columns='G1S_logistic'); y = df_pca['G1S_logistic']
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-
-forest = RandomForestClassifier(n_estimators=100, random_state=i)
-forest.fit(X_train,y_train)
-result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+mlr = LogisticRegression(random_state=42)
+mlr.fit(X_train,y_train)
+result = permutation_importance(mlr,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
 
 top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
 top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
 top_forest_imp.plot.bar(yerr=top_forest_imp_std)
 plt.ylabel("Mean accuracy decrease")
+plt.xlabel('Permuted feature')
 plt.tight_layout()
 plt.show()
 
@@ -172,7 +167,7 @@ from sklearn import metrics
 Ncomp = 20
 Niter = 100
 
-frac_withhold = 0.2
+frac_withheld = 0.2
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
 AUC_rf = np.zeros(Niter); AP_rf = np.zeros(Niter)
@@ -206,30 +201,21 @@ plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter
 
 #%% RF: Permutation importance
 
-from sklearn.inspection import permutation_importance, partial_dependence
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
+df_pca,_,_ = run_pca(df_g1s_balanced.drop(columns='G1S_logistic'),Ncomp)
+X_train,X_test,y_train,y_test = train_test_split(df_pca,y_balanced,test_size=frac_withheld,random_state=42)
 
-g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
-# df_g1s[df_g1s['Phase' == 'G1']].sample
-sg2 = df_g1s[df_g1s['G1S_logistic'] == 1]    
-df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
-df_g1s_balanced['Random feature'] = random.randn(len(df_g1s_balanced))
-
-pca = PCA(n_components = Ncomp)
-X_ = pca.fit_transform(df_g1s_balanced)
-df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
-df_pca['G1S_logistic'] = y_balanced
-X = df_pca.drop(columns='G1S_logistic'); y = df_pca['G1S_logistic']
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold,random_state=42)
-
-forest = RandomForestClassifier(n_estimators=100, random_state=i)
+forest = RandomForestClassifier(n_estimators=100, random_state=42)
 forest.fit(X_train,y_train)
-result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+result = permutation_importance(forest,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
 
 top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
 top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
 top_forest_imp.plot.bar(yerr=top_forest_imp_std)
 plt.ylabel("Mean accuracy decrease")
+plt.xlabel('Permuted feature')
 plt.tight_layout()
 plt.show()
 
