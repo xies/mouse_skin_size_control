@@ -38,6 +38,17 @@ def rebalance_g1(df,Ng1):
     return df_g1s_balanced
 
 
+def keep_only_first_sg2(df):
+    collated_first_s = []
+    # Groupby CellID and then drop non-first S phase
+    for (cellID,frame),cell in df.groupby(['cellID','region']):
+        if cell.G1S_logistic.sum() > 1:
+            first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+            collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+        else:
+            collated_first_s.append(cell)
+    return pd.concat(collated_first_s,ignore_index=True)
+
 def run_cross_validation(X,y,split_ratio,model,random_state=42):
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio,random_state=random_state)
     model.fit(X_train,y_train)
@@ -51,6 +62,8 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+
+df_g1s = keep_only_first_sg2(df_g1s)
 
 df_g1s = df_g1s.drop(columns='time_g1s')
 df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
@@ -165,8 +178,15 @@ for i in tqdm(range(Niter)):
         _, _AUC,_AP = run_cross_validation(df_g1s_balanced.drop(columns=features2drop[j]),y_balanced,frac_withheld,forest)
         AUC.at[i,features2drop[j]] = _AUC; AP.at[i,features2drop[j]] = _AP
 
-AUC.plot.hist();plt.xlabel('AUC')
-AP.plot.hist();plt.xlabel('Average precision')
+I = AUC.mean().sort_values().index
+sb.barplot(AUC[I])
+plt.ylim([0.4,1]);plt.ylabel('Mean AUC');
+plt.xticks(rotation=90);plt.tight_layout(); 
+
+I = AP.mean().sort_values().index
+sb.barplot(AP[I])
+plt.ylim([0.3,.9]);plt.ylabel('Mean AP');
+plt.xticks(rotation=90);plt.tight_layout(); 
 
 #%% Single features -> predict
 

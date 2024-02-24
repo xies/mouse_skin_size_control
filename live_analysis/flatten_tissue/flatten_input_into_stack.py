@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 from re import match
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 def sort_by_timestamp(filename):
     t = match('t(\d+).tif',filename).groups[0]
@@ -33,7 +33,7 @@ T,Z,XX,_ = imstack.shape
 
 for t in range(15):
     
-    im = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}.tif'))
+    im = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
     Z,XX,_ = im.shape
     # im = imstack[t,...]
     
