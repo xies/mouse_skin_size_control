@@ -53,10 +53,10 @@ features_list = { # Cell identity, position
                 # ,'Nuclear surface area':'nuc_sa'
                 # ,'Nuclear axial component':'nuc_axial_moment'
                 ,'Nuclear solidity':'nuc_solid'
-                ,'Nuclear axial angle':'nuc_angle'
+                # ,'Nuclear axial angle':'nuc_angle'
                 # ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
-                ,'Nuclear axial eccentricity':'nuc_axial_ecc'
+                # ,'Nuclear axial eccentricity':'nuc_axial_ecc'
                 # ,'Nuclear planar eccentricity':'nuc_planar_ecc'
                 ,'Axial angle':'axial_angle'
                 # ,'Planar component 1':'planar_component_1'
@@ -81,15 +81,15 @@ features_list = { # Cell identity, position
                 # Current-frame neighborhood stats
                 ,'Num diff neighbors':'num_neighb_diff'
                 ,'Num planar neighbors':'num_neighb_plan'
-                ,'Mean neighbor dist':'mean_neighb_dist'
+                # ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor cell volume':'mean_neighb_vol'
                 ,'Std neighbor cell volume':'std_neighb_vol'
                 ,'Mean neighbor apical area':'mean_neighb_apical'
                 # ,'Std neighbor apical area':'std_neighb_apical'
                 ,'Mean neighbor basal area':'mean_neighb_basal'
                 ,'Std neighbor basal area':'std_neighb_basal'
-                ,'Mean neighbor cell height':'mean_neighb_height'
-                ,'Max neighbor height from BM':'max_neigb_height_to_bm'
+                # ,'Mean neighbor cell height':'mean_neighb_height'
+                # ,'Max neighbor height from BM':'max_neigb_height_to_bm'
                 
                 ,'Mean neighbor collagen alignment':'mean_neighb_collagen_alignment'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
@@ -105,7 +105,7 @@ features_list = { # Cell identity, position
                 # ,'Collagen alignment-2':'collagen_alignment_24h'
                 
                 # Neighborhood stats from previous frame(s)
-                ,'Neighbor mean dist frame-1':'mean_neighb_dist_12h'
+                # ,'Neighbor mean dist frame-1':'mean_neighb_dist_12h'
                 # ,'Neighbor mean dist frame-2':'mean_neighb_dist_24h'
                 ,'Neighbor mean cell volume frame-1':'mean_neighb_vol_12h'
                 # ,'Neighbor mean cell volume frame-2':'mean_neighb_vol_24h'
@@ -178,4 +178,9 @@ print(f'Condition number (MinCovDet): {L.max() / L.min()}')
 df_.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv')
 df_g1s.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv')
 
+#%%
+
+stats = pd.Series({df2plot.columns[i]:variance_inflation_factor(df2plot,i) for i in range(len(df2plot.columns))},name='VIF')
+stats.sort_values().plot.bar()
+plt.tight_layout()
 

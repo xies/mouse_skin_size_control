@@ -22,6 +22,17 @@ from sklearn.metrics import roc_curve, auc, confusion_matrix, average_precision_
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 
+def keep_only_first_sg2(df):
+    collated_first_s = []
+    # Groupby CellID and then drop non-first S phase
+    for (cellID,frame),cell in df.groupby(['cellID','region']):
+        if cell.G1S_logistic.sum() > 1:
+            first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+            collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+        else:
+            collated_first_s.append(cell)
+    return pd.concat(collated_first_s,ignore_index=True)
+
 def rebalance_g1(df,Ng1):
     #% Rebalance class
     g1_sampled = df_g1s[df_g1s['G1S_logistic'] == 0].sample(Ng1,replace=False)
@@ -44,14 +55,16 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
     return C, AUC, AP
 
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','region'])
+df_g1s = df_g1s.drop(columns=['time_g1s','diff'])
+
+df_g1s = keep_only_first_sg2(df_g1s)
 
 #%% Logistic for G1/S transition: keeping all SG2 datapoints
 # Random rebalance with 2.5:1 ratio
 # No cross-validation, in-model estimates only
 
-Ng1 = 199
-Niter = 100
+Ng1 = 130
+Niter = 1000
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -135,7 +148,7 @@ for i in tqdm(range(Niter)):
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
 
     #Logistic regression
-    mlr = LogisticRegression(random_state = i)
+    mlr = LogisticRegression(random_state = i,max_iter=1000)
     C_mlr[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
     AUC.at[i,'MLR'] = _AUC
     AP.at[i,'MLR'] = _AP
@@ -159,13 +172,14 @@ plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {N
 #%%  Permutation importance for MLR
 
 from sklearn.linear_model import LogisticRegression
+from sklearn.inspection import permutation_importance
 
 df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
 y_balanced = df_g1s_balanced['G1S_logistic']
 
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
-logist_model = LogisticRegression(random_state=42).fit(X_train,y_train)
+logist_model = LogisticRegression(random_state=42,max_iter=1000).fit(X_train,y_train)
 result = permutation_importance(logist_model,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
 logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values()
 
@@ -175,19 +189,13 @@ plt.ylabel("Mean accuracy decrease")
 plt.tight_layout()
 plt.show()
 
-# Partial dependence of the first 5 important features
-part_dep = partial_dependence(logist_model, features=np.argsort(result.importances_mean)[::-1][0:2], X=X, percentiles=(0, 1),
-                    grid_resolution=10) 
-
-plt.pcolor(part_dep['average'][0,...])
-
 #%% Random forest classifier
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import plot_tree
 
 Niter = 1000
-frac_withheld = 0.2
+frac_withheld = 0.1
 
 AUC = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
 AP = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
@@ -198,6 +206,7 @@ for i in tqdm(range(Niter)):
     
     df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
     y_balanced = df_g1s_balanced['G1S_logistic']
+    df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
     
     # Random forest
     forest = RandomForestClassifier(n_estimators=100, random_state=i)
@@ -212,7 +221,6 @@ for i in tqdm(range(Niter)):
     AUC.at[i,'Random data'] = _AUC
     AP.at[i,'Random data'] = _AP
     
-    
 hist_weights = np.ones(Niter)/Niter
 AUC.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
 plt.vlines(AUC['RF'].mean(),0,0.8,'r')
@@ -223,8 +231,6 @@ plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabe
 plt.title(f'RF Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
 
 #%% RF: Permutation importance
-
-from sklearn.inspection import permutation_importance, partial_dependence
 
 df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
 y_balanced = df_g1s_balanced['G1S_logistic']

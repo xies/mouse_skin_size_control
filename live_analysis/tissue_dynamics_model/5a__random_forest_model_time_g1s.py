@@ -15,6 +15,55 @@ from basicUtils import *
 from numpy import random
 from sklearn.metrics import r2_score, mean_squared_error
 from tqdm import tqdm
+from sklearn.inspection import permutation_importance
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+def keep_only_first_sg2(df):
+    collated_first_s = []
+    # Groupby CellID and then drop non-first S phase
+    for (cellID,frame),cell in df.groupby(['cellID','region']):
+        if cell.G1S_logistic.sum() > 1:
+            first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+            collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+        else:
+            collated_first_s.append(cell)
+    return pd.concat(collated_first_s,ignore_index=True)
+
+def run_pca(df,ncomp):
+    
+    pca = PCA(n_components = Ncomp)
+    X_ = pca.fit_transform(df)
+    df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
+    components = pd.DataFrame(pca.components_,columns=df.columns)
+    
+    return df_pca, components, pca
+
+def plot_principle_component(loadings,which_comp):
+    loadings = loadings.iloc[which_comp]
+    loadings = loadings[np.abs(loadings).argsort()]
+    plt.figure()
+    np.abs(loadings).plot.bar()
+    plt.ylabel('Magnitude of loading')
+    plt.xlabel('Original dimensions');plt.title(f'PC {which_comp}')
+    plt.tight_layout()
+
+def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_permute=False):
+    if run_permute:
+        # X = X.sample(len(X),replace=False)
+        X = random.randn(*X.shape)
+    
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio)
+    model.fit(X_train,y_train)
+    y_pred = model.predict(X_test)
+    
+    Rsq = r2_score(y_test,y_pred)
+    Rsq_insample = r2_score(y_train,model.predict(X_train))
+    MSE = mean_squared_error(y_test,y_pred)
+    if plot:
+        plt.scatter(y_test,y_pred,color='b',alpha=0.05)
+    
+    return Rsq,MSE,Rsq_insample
+
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
@@ -34,88 +83,75 @@ y = df_g1s['time_g1s']
 X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
 df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
 
-#%% Establish the theoretical maximum R2 based on time resolution alone
-
-Nsample = 100
-
-true_g1s_times = random.lognormal(mean=np.log(1),sigma=np.sqrt(0.03),size=(Nsample))
-# observed_g1s_times = (true_g1s_times // dt)*dt
-
-# x = []
-# x_hat = []
-# for i in range(Nsample):
-#     true_cumulative_wait_times = np.arange(0,true_g1s_times[i],dt) - true_g1s_times[i]
-#     observed_cumulative_wait_times = np.arange(0,observed_g1s_times[i],dt) - observed_g1s_times[i]
-    
-#     if len(observed_cumulative_wait_times) < len(true_cumulative_wait_times):
-#         observed_cumulative_wait_times = np.hstack((observed_cumulative_wait_times,0))
-    
-#     x.extend(true_cumulative_wait_times)
-#     x_hat.extend(observed_cumulative_wait_times)
-#     assert(len(x) == len(x_hat))
-# x = -np.array(x).flatten()
-# x_hat = -np.array(x_hat).flatten()
-
-errors = random.uniform(high = dt,size=len(y))
-
-# plt.hist(y,8,density=True,histtype='step');plt.hist(x,density=True,histtype='step')
-MSE_theo = mean_squared_error(np.zeros(len(y)),errors)
-
-R2_theo = r2_score(y,y+errors)
-
-print(f'Max R2 = {R2_theo}')
-print(f'Minimum MSE = {MSE_theo}')
-
 #%% Random forest regression
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree
 
-Niter = 2
+Niter = 100
 sum_res = np.zeros(Niter)
-Rsq = np.zeros(Niter)
-importance = np.zeros((Niter,len(X.columns)))
+Rsq_rf = np.zeros(Niter)
+Rsq_rf_insample = np.zeros(Niter)
+MSE_rf = np.zeros(Niter)
+Rsq_random = np.zeros(Niter)
+Rsq_random_insample = np.zeros(Niter)
+MSE_random = np.zeros(Niter)
 
 for i in tqdm(range(Niter)):
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
-    
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
-    
-    forest.fit(X_train,y_train)
-    
-    y_pred = forest.predict(X_test)
-    residuals = y_pred - y_test
-    sum_res[i] = residuals.sum()
-    Rsq[i] = np.corrcoef(y_pred,y_test)[0,1]**2
-    importance[i,:] = forest.feature_importances_
-    # r2_score(y_pred,y_test)
-    
-hist_weights = np.ones(Niter)/Niter
-plt.hist(Rsq,15,weights=hist_weights); plt.xlabel('R-squared'); plt.ylabel('Counts'); plt.title('RF regression model of G1/S timing')
-plt.vlines(Rsq.mean(),0,.5,color='k',linestyle='dashed')
-plt.xlim([0,1])
-plt.legend([f'Mean RF R2: {Rsq.mean()}','RF R2'])
+    Rsq_rf[i],MSE_rf[i],Rsq_rf_insample[i] = run_cross_validation(X,y,0.1,forest,random_state=i,plot=True)
+    forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
+    Rsq_random[i],MSE_random[i],_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
 
-imp = pd.DataFrame(importance)
-imp.columns = X.columns
+print('---')
+print(f'Insample Rsq for RF = {Rsq_rf_insample.mean()}')
+print(f'Mean Rsq for RF = {Rsq_rf.mean()}')
+print(f'Insample Rsq for random = {Rsq_random_insample.mean()}')
+print(f'Mean Rsq for random = {Rsq_random.mean()}')
 
-plt.figure()
-sb.barplot(data=imp.melt(value_vars=imp.columns),x='variable',y='value');
-plt.xticks(rotation=90);plt.ylabel('Impurity importance')
-plt.title('RF regression model of G1/S timing')
-plt.tight_layout()
+#%% Random forest regression on PCA
 
-#%%
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import plot_tree
+
+Niter = 100
+Ncomp = 20
+
+sum_res = np.zeros(Niter)
+Rsq_rf = np.zeros(Niter)
+Rsq_rf_insample = np.zeros(Niter)
+MSE_rf = np.zeros(Niter)
+Rsq_random = np.zeros(Niter)
+Rsq_random_insample = np.zeros(Niter)
+MSE_random = np.zeros(Niter)
+
+for i in tqdm(range(Niter)):
+    
+    pca,_,_ = run_pca(X,Ncomp)
+    
+    forest = RandomForestRegressor(n_estimators=100, random_state=i)
+    Rsq_rf[i],MSE_rf[i],Rsq_rf_insample[i] = run_cross_validation(pca,y,0.1,forest,random_state=i,plot=True)
+    forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
+    Rsq_random[i],MSE_random[i],_ = run_cross_validation(pca,y,0.1,forest_random,random_state=i,run_permute=True)
+
+print('---')
+print(f'Insample Rsq for RF = {Rsq_rf_insample.mean()}')
+print(f'Mean Rsq for RF = {Rsq_rf.mean()}')
+print(f'Insample Rsq for random = {Rsq_random_insample.mean()}')
+print(f'Mean Rsq for random = {Rsq_random.mean()}')
+
+#%% Permutation importances
 
 from sklearn.inspection import permutation_importance
 
-# Plot permutation importance
-result = permutation_importance(
-    forest, X_test, y_test, n_repeats=10, random_state=42, n_jobs=2
-)
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
 
+# Plot permutation importance
+forest = RandomForestRegressor(n_estimators=100, random_state=i).fit(X_train,y_train)
+result = permutation_importance(forest,X_test,y_test,n_repeats=10,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X.columns)
 
 plt.figure()
@@ -128,151 +164,87 @@ plt.show()
 
 #%% Drop single features -> Rsq
 
-Niter = 5
-rsq_max = np.zeros(Niter)
-rsq_full = np.zeros(Niter)
-rsq_random = np.zeros(Niter)
-rsq_no_vol_sm = np.zeros(Niter)
-rsq_no_other = np.zeros((5,Niter))
-
-mse_max = np.zeros(Niter)
-mse_full = np.zeros(Niter)
-mse_random = np.zeros(Niter)
-mse_no_vol_sm = np.zeros(Niter)
-mse_no_other = np.zeros((5,Niter))
-
+Niter = 100
 other_top_features_to_try = 5
+
+Rsq = pd.DataFrame()
+MSE = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2)
+    forest = RandomForestRegressor(n_estimators=100, random_state=i)
+    rsq,mse,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
+    Rsq.at[i,'Full'] = rsq
+    MSE.at[i,'Full'] = mse
     
-    # Full model
-    model_full = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_full.fit(X_train,y_train)
-    y_pred_full = model_full.predict(X_test)
-    rsq_full[i] = r2_score(y_test,y_pred_full)
-    mse_full[i] = mean_squared_error(y_test,y_pred_full)
+    # No volume
+    forest_no_vol = RandomForestRegressor(n_estimators=100, random_state=i)
+    rsq,mse,_ = run_cross_validation(X.drop(columns='vol_sm'),y,0.1,forest_no_vol,random_state=i)
+    Rsq.at[i,'No volume'] = rsq
+    MSE.at[i,'No volume'] = mse
     
-    # No volume model
-    X_train,X_test,y_train,y_test = train_test_split(X.drop(columns='vol_sm'),y,test_size=0.2)
-    model_no_vol_sm = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_no_vol_sm.fit(X_train,y_train)
-    y_pred_no_vol_sm = model_no_vol_sm.predict(X_test)
-    rsq_no_vol_sm[i] = r2_score(y_test,y_pred_no_vol_sm)
-    mse_no_vol_sm[i] = mean_squared_error(y_test,y_pred_no_vol_sm)
-    
-    # Random model
-    X_train,X_test,y_train,y_test = train_test_split(random.randn(*X.shape),y,test_size=0.2)
-    model_random = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_random.fit(X_train,y_train)
-    y_pred_random = model_random.predict(X_test)
-    rsq_random[i] = r2_score(y_test,y_pred_random)
-    mse_random[i] = mean_squared_error(y_test,y_pred_random)
+    forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
+    rsq,mse,_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
+    Rsq.at[i,'Random'] = rsq
+    MSE.at[i,'Random'] = mse
     
     for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
-        X_train,X_test,y_train,y_test = train_test_split(X.drop(columns=f),y,test_size=0.2)
-        model_other = RandomForestRegressor(n_estimators=100, random_state=i)
-        model_other.fit(X_train,y_train)
-        y_pred_no_other = model_other.predict(X_test)
-        rsq_no_other[j,i] = r2_score(y_test,y_pred_no_other)
-        mse_no_other[j,i] = mean_squared_error(y_test,y_pred_no_other)
+        # X_train,X_test,y_train,y_test = train_test_split(X.drop(columns=f),y,test_size=0.2)
+        forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
+        rsq,mse,_ = run_cross_validation(X.drop(columns=f),y,0.1,forest_no_other,random_state=i)
+        Rsq.at[i,f'No {f}'] = rsq
+        MSE.at[i,f'No {f}'] = mse
 
-plt.figure()
+print('---')
 
-plt.hist(rsq_full,histtype='step',weights=np.ones(Niter)*1/Niter)
-plt.hist(rsq_random,histtype='step',weights=np.ones(Niter)*1/Niter)
-plt.hist(rsq_no_vol_sm,histtype='step',weights=np.ones(Niter)*1/Niter)
-plt.hist(rsq_no_other.flatten(),histtype='step',weights=np.ones(Niter*other_top_features_to_try)*1/Niter/other_top_features_to_try)
-plt.legend(['Full','Random','No cell volume','No other feature'])
+Rsq_ = pd.melt(Rsq)
+Rsq_['Category'] = Rsq_['variable']
+Rsq_.loc[(Rsq_['variable'] != 'Full') & (Rsq_['variable'] != 'Random') & (Rsq_['variable'] != 'No volume'),'Category'] = 'No other'
+Rsq_.groupby('Category').mean()
 
-plt.xlabel('Rsq')
-
-plt.figure()
-# plt.vline()
-plt.hist(mse_full,density=True,histtype='step')
-plt.hist(mse_random,density=True,histtype='step')
-plt.hist(mse_no_vol_sm,density=True,histtype='step')
-plt.hist(mse_no_other.flatten(),density=True,histtype='step')
-plt.legend(['Full','Random','No cell volume','No other feature'])
-
-plt.xlabel('MSE')
+sb.histplot(Rsq_,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
+plt.vlines(Rsq_.groupby('Category').mean(),0,0.25)
 
 #%% Singleton features
 
-Niter = 1000
+Niter = 100
+other_top_features_to_try = 5
 
-param_names_in_order = forest_importances.sort_values()[::-1].index
-
-rsq_max = np.zeros(Niter)
-rsq_full = np.zeros(Niter)
-rsq_random = np.zeros(Niter)
-rsq_only_vol_sm = np.zeros(Niter)
-rsq_only_other = np.zeros((9,Niter))
-
-mse_max = np.zeros(Niter)
-mse_full = np.zeros(Niter)
-mse_random = np.zeros(Niter)
-mse_only_vol_sm = np.zeros(Niter)
-mse_only_other = np.zeros((9,Niter))
-
-other_features2test = param_names_in_order[1:10]
+Rsq = pd.DataFrame()
+MSE = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1,random_state = i)
+    forest = RandomForestRegressor(n_estimators=100, random_state=i)
+    rsq,mse,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
+    Rsq.at[i,'Full'] = rsq
+    MSE.at[i,'Full'] = mse
     
-    # Full model
-    model_full = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_full.fit(X_train,y_train)
-    y_pred_full = model_full.predict(X_test)
-    rsq_full[i] = r2_score(y_test,y_pred_full)
-    mse_full[i] = mean_squared_error(y_test,y_pred_full)
+    # No volume
+    forest_no_vol = RandomForestRegressor(n_estimators=100, random_state=i)
+    rsq,mse,_ = run_cross_validation(X[['vol_sm','Intercept']],y,0.1,forest_no_vol,random_state=i)
+    Rsq.at[i,'Only volume'] = rsq
+    MSE.at[i,'Only volume'] = mse
     
-    # Volume only model
-    model_vol = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_vol.fit(X_train[['vol_sm','Intercept']],y_train)
-    y_pred_vol = model_vol.predict(X_test[['vol_sm','Intercept']])
-    rsq_only_vol_sm[i] = r2_score(y_test,y_pred_vol)
-    mse_only_vol_sm[i] = mean_squared_error(y_test,y_pred_vol)
+    forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
+    X_ = X; X_['Dummy'] = random.randn(len(X))
+    rsq,mse,_ = run_cross_validation(X[['Dummy','Intercept']],y,0.1,forest_random,random_state=i,run_permute=True)
+    Rsq.at[i,'Random'] = rsq
+    MSE.at[i,'Random'] = mse
     
-    # Other single features
-    for j in range(9):
-        model_single = RandomForestRegressor(n_estimators=100, random_state=i)
-        model_single.fit(X_train[[other_features2test[j],'Intercept']],y_train)
-        y_pred_single = model_single.predict(X_test[[other_features2test[j],'Intercept']])
-        
-        rsq_only_other[j,i] = r2_score(y_test,y_pred_single)
-        mse_only_other[j,i] = mean_squared_error(y_test,y_pred_single)
-        
-    # Random model
-    X_train,X_test,y_train,y_test = train_test_split(random.randn(394,2),y,test_size=0.2)
-    model_random = RandomForestRegressor(n_estimators=100, random_state=i)
-    model_random.fit(X_train,y_train)
-    y_pred_random = model_random.predict(X_test)
-    rsq_random[i] = r2_score(y_test,y_pred_random)
-    mse_random[i] = mean_squared_error(y_test,y_pred_random)
+    for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
+        forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
+        rsq,mse,_ = run_cross_validation(X[[f,'Intercept']],y,0.1,forest_no_other,random_state=i)
+        Rsq.at[i,f'Only {f}'] = rsq
+        MSE.at[i,f'Only {f}'] = mse
 
-plt.figure()
-hist_weights = np.ones(Niter)*1/Niter
-plt.hist(rsq_full,histtype='step',weights=hist_weights)
-plt.hist(rsq_random,histtype='step',weights=hist_weights)
-plt.hist(rsq_only_vol_sm,histtype='step',weights=hist_weights)
-plt.hist(rsq_only_other.flatten(),histtype='step',weights=np.ones(Niter*9)/9/Niter)
-plt.legend(np.hstack(['Full','Random','No cell volume','No other']))
+Rsq_ = pd.melt(Rsq)
+Rsq_['Category'] = Rsq_['variable']
+Rsq_.loc[(Rsq_['variable'] != 'Full') & (Rsq_['variable'] != 'Random') & (Rsq_['variable'] != 'Only volume'),'Category'] = 'Only other'
+Rsq_.groupby('Category').mean()
 
-plt.xlabel('Rsq')
-
-plt.figure()
-hist_weights = np.ones(Niter)*1/Niter
-plt.hist(mse_full,histtype='step',weights=hist_weights)
-plt.hist(mse_random,histtype='step',weights=hist_weights)
-plt.hist(mse_only_vol_sm,histtype='step',weights=hist_weights)
-# for j in range(9):
-plt.hist(mse_only_other.flatten(),histtype='step',weights=np.ones(Niter*9)/9/Niter)
-plt.legend(np.hstack(['Full','Random','Only cell volume','Only other']))
-
-plt.xlabel('MSE')
+sb.histplot(Rsq_,x='value',hue='Category',bins=30,stat='probability',element='poly',common_norm=False,fill=False)
+plt.vlines(Rsq_.groupby('Category').mean(),0,0.25)
 
 #%% Use Region1 -> Pred Region2
 #@todo: un-standardize data for display

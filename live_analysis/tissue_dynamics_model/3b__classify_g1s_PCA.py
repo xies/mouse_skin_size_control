@@ -86,20 +86,23 @@ Ncomp = 20
 df_pca,loadings, pca = run_pca(df_g1s.drop(columns='G1S_logistic'),Ncomp)
 
 plt.figure()
-plt.bar(np.arange(1,N_comp+1),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
+plt.bar(np.arange(1,Ncomp+1),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
 plt.figure()
-plt.bar(np.arange(1,N_comp+1),np.cumsum(pca.explained_variance_ratio_)); plt.ylabel('Cumulative % variance explained');plt.xlabel('Components')
+plt.bar(np.arange(1,Ncomp+1),np.cumsum(pca.explained_variance_ratio_)); plt.ylabel('Cumulative % variance explained');plt.xlabel('Components')
 
 plot_principle_component(loadings,0)
 plot_principle_component(loadings,1)
-plot_principle_component(loadings,4)
-plot_principle_component(loadings,11)
+plot_principle_component(loadings,2)
+plot_principle_component(loadings,3)
+
+plot_principle_component(loadings,6)
+plot_principle_component(loadings,17)
 
 #%% PCA regression
 
 Ng1 = 199
 Ncomp = 20
-Niter = 100
+Niter = 1000
 frac_withheld = 0.1
 
 C_mlr = np.zeros((Niter,2,2))
@@ -112,7 +115,7 @@ AP_random = np.zeros(Niter)
 
 from sklearn.linear_model import LogisticRegression
 
-for i in range(100):
+for i in range(Niter):
     
     df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
     y_balanced = df_g1s_balanced['G1S_logistic']
@@ -128,7 +131,7 @@ for i in range(100):
     
 hist_weights = np.ones(Niter)/Niter
 plt.figure();plt.hist(AUC_mlr,weights=hist_weights)
-plt.xlabel('AUC');plt.title('MLR classification cross-validation, 20% withheld')
+plt.xlabel('AUC');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
 plt.figure();plt.hist(AP_mlr,weights=hist_weights)
 plt.xlabel('Average precision');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
     
@@ -165,9 +168,9 @@ from sklearn.tree import plot_tree
 from sklearn import metrics
 
 Ncomp = 20
-Niter = 100
+Niter = 1000
 
-frac_withheld = 0.2
+frac_withheld = 0.1
 sum_res = np.zeros(Niter)
 Rsq = np.zeros(Niter)
 AUC_rf = np.zeros(Niter); AP_rf = np.zeros(Niter)
@@ -192,9 +195,9 @@ for i in tqdm(range(Niter)):
     
 hist_weights = np.ones(Niter)/Niter
 plt.figure();plt.hist(AUC_rf,weights=hist_weights)
-plt.xlabel('AUC');plt.title('MLR classification cross-validation, 20% withheld')
+plt.xlabel('AUC');plt.title(f'RF classification cross-validation, {frac_withheld*100}%withheld')
 plt.figure();plt.hist(AP_rf,weights=hist_weights)
-plt.xlabel('Average precision');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
+plt.xlabel('Average precision');plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld')
     
 plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
