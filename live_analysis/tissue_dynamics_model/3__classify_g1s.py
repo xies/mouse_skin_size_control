@@ -59,11 +59,12 @@ df_g1s = df_g1s.drop(columns=['time_g1s','diff'])
 
 df_g1s = keep_only_first_sg2(df_g1s)
 
+Ng1 = 130
+
 #%% Logistic for G1/S transition: keeping all SG2 datapoints
 # Random rebalance with 2.5:1 ratio
 # No cross-validation, in-model estimates only
 
-Ng1 = 130
 Niter = 1000
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan

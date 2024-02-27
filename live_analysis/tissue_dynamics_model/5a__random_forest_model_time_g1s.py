@@ -62,26 +62,36 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_pe
     if plot:
         plt.scatter(y_test,y_pred,color='b',alpha=0.05)
     
-    return Rsq,MSE,Rsq_insample
+    return Rsq,MSE,Rsq_insample,[y_test,y_pred]
 
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
+df_g1s = df_g1s.drop(columns=['age'])
+
+# De-standardize and note down stats
+std = 34.54557205301856
+mean = -75.85760517799353
+df_g1s['time_g1s'] = df_g1s['time_g1s'] * std
+df_g1s['time_g1s'] = df_g1s['time_g1s'] + mean
 
 #Trim out G2 cells
-df_g1s = df_g1s[df_g1s['time_g1s'] >= 0]
+df_g1s = df_g1s[df_g1s['G1S_logistic'] == 0]
+
+# Re-standardize
+# std = df_g1s['time_g1s'].std()
+# mean = df_g1s['time_g1s'].mean()
+# df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
 
 df_g1s = df_g1s.drop(columns=['cellID'])
-dt = 0.111727
+
+#Add interaction effects ?
+df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
 
 X = df_g1s.drop(columns=['time_g1s'])
 X['Intercept'] = 1
 y = df_g1s['time_g1s']
-
-#Add interaction effects ?
 X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
-df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
 
 #%% Random forest regression
 
@@ -89,33 +99,46 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree
 
-Niter = 100
-sum_res = np.zeros(Niter)
-Rsq_rf = np.zeros(Niter)
-Rsq_rf_insample = np.zeros(Niter)
-MSE_rf = np.zeros(Niter)
-Rsq_random = np.zeros(Niter)
-Rsq_random_insample = np.zeros(Niter)
-MSE_random = np.zeros(Niter)
+Niter = 10
+Rsq_rf = pd.DataFrame()
+MSE_rf = pd.DataFrame()
+
+ytests = []; ypreds = []
 
 for i in tqdm(range(Niter)):
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
-    Rsq_rf[i],MSE_rf[i],Rsq_rf_insample[i] = run_cross_validation(X,y,0.1,forest,random_state=i,plot=True)
+    rsq,mse,rsq_in,prediction = run_cross_validation(X,y,0.1,forest,random_state=i,plot=True)
+    Rsq_rf.at[i,'Out sample'] = rsq
+    Rsq_rf.at[i,'In sample'] = rsq_in
+    MSE_rf.at[i,'Out sample'] = mse
     forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
-    Rsq_random[i],MSE_random[i],_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
+    rsq,mse,_,_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
+    Rsq_rf.at[i,'Random'] = rsq
+    MSE_rf.at[i,'Random'] = mse
+    
+    ytests.append(prediction[0]); ypreds.append(prediction[1])
+        
+sb.histplot(Rsq_rf[['Out sample','Random']].melt(),bins=25,x='value',hue='variable',element='poly',fill=False,stat='probability',)
+plt.vlines(Rsq_rf[['Out sample','Random']].mean(),0,0.15)
 
-print('---')
-print(f'Insample Rsq for RF = {Rsq_rf_insample.mean()}')
-print(f'Mean Rsq for RF = {Rsq_rf.mean()}')
-print(f'Insample Rsq for random = {Rsq_random_insample.mean()}')
-print(f'Mean Rsq for random = {Rsq_random.mean()}')
+#%%
+
+predictions = pd.DataFrame()
+predictions['y test'] = np.hstack(ytests)*std
+predictions['y pred'] = np.hstack(ypreds)*std
+predictions = predictions + mean
+
+sb.histplot(-predictions,x='y test',y='y pred',bins=9,cbar=True,stat='probability')
+plt.tight_layout()
+
+#%%
 
 #%% Random forest regression on PCA
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.tree import plot_tree
+from sklearn.decomposition import PCA
 
 Niter = 100
 Ncomp = 20
@@ -173,25 +196,25 @@ MSE = pd.DataFrame()
 for i in tqdm(range(Niter)):
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
-    rsq,mse,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
+    rsq,mse,_,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
     Rsq.at[i,'Full'] = rsq
     MSE.at[i,'Full'] = mse
     
     # No volume
     forest_no_vol = RandomForestRegressor(n_estimators=100, random_state=i)
-    rsq,mse,_ = run_cross_validation(X.drop(columns='vol_sm'),y,0.1,forest_no_vol,random_state=i)
+    rsq,mse,_,_ = run_cross_validation(X.drop(columns='vol_sm'),y,0.1,forest_no_vol,random_state=i)
     Rsq.at[i,'No volume'] = rsq
     MSE.at[i,'No volume'] = mse
     
     forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
-    rsq,mse,_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
+    rsq,mse,_,_ = run_cross_validation(X,y,0.1,forest_random,random_state=i,run_permute=True)
     Rsq.at[i,'Random'] = rsq
     MSE.at[i,'Random'] = mse
     
     for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
         # X_train,X_test,y_train,y_test = train_test_split(X.drop(columns=f),y,test_size=0.2)
         forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
-        rsq,mse,_ = run_cross_validation(X.drop(columns=f),y,0.1,forest_no_other,random_state=i)
+        rsq,mse,_,_ = run_cross_validation(X.drop(columns=f),y,0.1,forest_no_other,random_state=i)
         Rsq.at[i,f'No {f}'] = rsq
         MSE.at[i,f'No {f}'] = mse
 
@@ -216,25 +239,25 @@ MSE = pd.DataFrame()
 for i in tqdm(range(Niter)):
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
-    rsq,mse,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
+    rsq,mse,_,_ = run_cross_validation(X,y,0.1,forest,random_state=i)
     Rsq.at[i,'Full'] = rsq
     MSE.at[i,'Full'] = mse
     
     # No volume
     forest_no_vol = RandomForestRegressor(n_estimators=100, random_state=i)
-    rsq,mse,_ = run_cross_validation(X[['vol_sm','Intercept']],y,0.1,forest_no_vol,random_state=i)
+    rsq,mse,_,_ = run_cross_validation(X[['vol_sm','Intercept']],y,0.1,forest_no_vol,random_state=i)
     Rsq.at[i,'Only volume'] = rsq
     MSE.at[i,'Only volume'] = mse
     
     forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
     X_ = X; X_['Dummy'] = random.randn(len(X))
-    rsq,mse,_ = run_cross_validation(X[['Dummy','Intercept']],y,0.1,forest_random,random_state=i,run_permute=True)
+    rsq,mse,_,_ = run_cross_validation(X[['Dummy','Intercept']],y,0.1,forest_random,random_state=i,run_permute=True)
     Rsq.at[i,'Random'] = rsq
     MSE.at[i,'Random'] = mse
     
     for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
         forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
-        rsq,mse,_ = run_cross_validation(X[[f,'Intercept']],y,0.1,forest_no_other,random_state=i)
+        rsq,mse,_,_ = run_cross_validation(X[[f,'Intercept']],y,0.1,forest_no_other,random_state=i)
         Rsq.at[i,f'Only {f}'] = rsq
         MSE.at[i,f'Only {f}'] = mse
 

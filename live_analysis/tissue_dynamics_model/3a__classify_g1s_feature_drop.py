@@ -67,22 +67,15 @@ df_g1s = keep_only_first_sg2(df_g1s)
 df_g1s = df_g1s.drop(columns='time_g1s')
 df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
 
-Ng1 = 199
-
-#%% Logistic for smoothed specific growth rate
-
-model_rlm = smf.logit('G1S_logistic ~ ' + str.join(' + ',
-                                      df_g1s.columns.drop(['G1S_logistic'])),data=df_g1s).fit()
-
-params = pd.DataFrame()
-
-params['var'] = model_rlm.params.index
-params['coef'] = model_rlm.params.values
-
-order = np.argsort(params['coef'].abs())[::-1]
-param_names_in_order = params.iloc[order]['var'].values
+Ng1 = 130
 
 #%% Recursive feature drop
+
+'''
+
+MULTI-LOGISTIC REGRESSION
+
+'''
 
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
@@ -100,10 +93,10 @@ print(features_ranked_by_RFE[:10])
 
 #%% MLR: AUC for volume feature drop v. every other feature
 
-Niter = 100
+Niter = 1000
 frac_withheld = 0.1
 
-features2drop = features_ranked_by_RFE[1:10]
+features2drop = features_ranked_by_RFE[1:]
 AUC = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
 AP = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
 
@@ -133,18 +126,77 @@ for i in tqdm(range(Niter)):
 
 I = AUC.mean().sort_values().index
 sb.barplot(AUC[I])
-plt.ylim([0.4,.9]);plt.ylabel('Mean AUC');
+plt.ylim([0.4,1]);plt.ylabel('Mean AUC');
 plt.hlines(AUC.mean()['Full'],0,13)
-plt.xticks(rotation=90);plt.tight_layout(); 
-
-plt.figure()
-I = AP.mean().sort_values().index
-sb.barplot(AP[I])
-plt.ylim([0.3,.8]);plt.ylabel('Mean AP');
-plt.hlines(AP.mean()['Full'],0,13)
 plt.xticks(rotation=90);plt.tight_layout();
 
+AUC_ = AUC.melt()
+AUC_['Category'] = AUC_['variable']
+AUC_.loc[(AUC_['variable'] != 'Full') & (AUC_['variable'] != 'Random') & (AUC_['variable'] != 'No vol'),'Category'] = 'No other'
+AUC_.groupby('Category').mean()
+# AUC_ = AUC_[AUC_['Category'] != 'Random']
+
+plt.figure()
+sb.histplot(AUC_,x='value',hue='Category',bins = 10,stat='probability',element='poly',common_norm=False,fill=False)
+plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
+
+#%% Single features; MLR
+
+Niter = 1000
+
+features2drop = features_ranked_by_RFE[1:]
+df_g1s['Intercept'] = 1
+
+AUC = pd.DataFrame()
+AP = pd.DataFrame()
+
+for i in tqdm(range(Niter)):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
+    df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
+    
+    forest = LogisticRegression(max_iter=1000, random_state=42)
+    _, _AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,forest)
+    AUC.at[i,'Full'] = _AUC; AP.at[i,'Full'] = _AP
+    
+    forest_no_vol = LogisticRegression(max_iter=1000, random_state=42)
+    _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['vol_sm','Intercept']],y_balanced,frac_withheld,forest_no_vol)
+    AUC.at[i,'Only vol'] = _AUC; AP.at[i,'Only vol'] = _AP
+    
+    df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
+    random_model = LogisticRegression(max_iter=1000, random_state=42)
+    _,_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    AUC.at[i,'Random'] = _AUC; AP.at[i,'Random'] = _AP
+    
+    for j in range(len(features2drop)):
+        forest = LogisticRegression(max_iter=1000, random_state=42)
+        _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['Intercept',features2drop[j]]],y_balanced,frac_withheld,forest)
+        AUC.at[i,f'Only {features2drop[j]}'] = _AUC; AP.at[i,f'No {features2drop[j]}'] = _AP
+        
+I = AUC.mean().sort_values().index
+sb.barplot(AUC[I])
+plt.ylim([0.4,1]);plt.ylabel('Mean AUC');
+plt.hlines(AUC.mean()['Full'],0,13)
+plt.xticks(rotation=90);plt.tight_layout();
+
+AUC_ = pd.melt(AUC)
+AUC_['Category'] = AUC_['variable']
+AUC_.loc[(AUC_['variable']!= 'Full')&(AUC_['variable']!= 'Only vol')&(AUC_['variable']!= 'Random'),'Category'] = 'Other'
+
+plt.figure()
+sb.histplot(AUC_,bins=15,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
+plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
+
+
 #%% Recursive feature drop, Random Forest
+
+'''
+
+RANDOM FOREST
+
+'''
+
 
 from sklearn.feature_selection import RFE
 
@@ -204,50 +256,9 @@ AUC_ = AUC.melt()
 AUC_['Category'] = AUC_['variable']
 AUC_.loc[(AUC_['variable'] != 'Full') & (AUC_['variable'] != 'Random') & (AUC_['variable'] != 'No vol'),'Category'] = 'No other'
 AUC_.groupby('Category').mean()
-AUC_ = AUC_[AUC_['Category'] != 'Random']
+# AUC_ = AUC_[AUC_['Category'] != 'Random']
 
 sb.histplot(AUC_,x='value',hue='Category',bins = 15,stat='probability',element='poly',common_norm=False,fill=False)
-plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
-
-#%% Single features; MLR
-
-Niter = 1000
-
-features2drop = features_ranked_by_RFE[1:5]
-df_g1s['Intercept'] = 1
-
-AUC = pd.DataFrame()
-AP = pd.DataFrame()
-
-for i in tqdm(range(Niter)):
-    
-    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
-    y_balanced = df_g1s_balanced['G1S_logistic']
-    df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
-    
-    forest = LogisticRegression(max_iter=1000, random_state=42)
-    _, _AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,forest)
-    AUC.at[i,'Full'] = _AUC; AP.at[i,'Full'] = _AP
-    
-    forest_no_vol = LogisticRegression(max_iter=1000, random_state=42)
-    _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['vol_sm','Intercept']],y_balanced,frac_withheld,forest_no_vol)
-    AUC.at[i,'Only vol'] = _AUC; AP.at[i,'Only vol'] = _AP
-    
-    df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
-    random_model = LogisticRegression(max_iter=1000, random_state=42)
-    _,_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
-    AUC.at[i,'Random'] = _AUC; AP.at[i,'Random'] = _AP
-    
-    for j in range(len(features2drop)):
-        forest = LogisticRegression(max_iter=1000, random_state=42)
-        _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['Intercept',features2drop[j]]],y_balanced,frac_withheld,forest)
-        AUC.at[i,f'No {features2drop[j]}'] = _AUC; AP.at[i,f'No {features2drop[j]}'] = _AP
-
-AUC_ = pd.melt(AUC)
-AUC_['Category'] = AUC_['variable']
-AUC_.loc[(AUC_['variable']!= 'Full')&(AUC_['variable']!= 'Only vol')&(AUC_['variable']!= 'Random'),'Category'] = 'Other'
-
-sb.histplot(AUC_,bins=15,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
 plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
 
 #%% Single features; Random forest

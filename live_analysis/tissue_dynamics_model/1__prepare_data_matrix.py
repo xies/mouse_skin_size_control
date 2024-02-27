@@ -13,6 +13,8 @@ import seaborn as sb
 from sklearn.covariance import EmpiricalCovariance, MinCovDet
 from os import path
 
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
 from numpy.linalg import eig
 
 def z_standardize(x):
@@ -87,7 +89,7 @@ features_list = { # Cell identity, position
                 ,'Mean neighbor apical area':'mean_neighb_apical'
                 # ,'Std neighbor apical area':'std_neighb_apical'
                 ,'Mean neighbor basal area':'mean_neighb_basal'
-                ,'Std neighbor basal area':'std_neighb_basal'
+                # ,'Std neighbor basal area':'std_neighb_basal'
                 # ,'Mean neighbor cell height':'mean_neighb_height'
                 # ,'Max neighbor height from BM':'max_neigb_height_to_bm'
                 
@@ -130,6 +132,8 @@ features_list = { # Cell identity, position
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
 
+#%%
+
 # Standardize
 for col in df_g1s.columns.drop(['region','cellID']):
     df_g1s[col] = z_standardize(df_g1s[col])
@@ -167,9 +171,11 @@ print(f'Condition number (EmpCov): {L.max() / L.min()}')
 
 C = MinCovDet().fit(df2plot)
 plt.figure()
-plt.title('MinCovDet')
-sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
+plt.title(f'MinCovDet, C = {L.max() / L.min()}')
+sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns,cmap='vlag',center=0)
 L,D = eig(C.covariance_)
+plt.gca().set_aspect('equal', 'box')
+plt.tight_layout()
 
 print('----')
 print(f'Condition number (MinCovDet): {L.max() / L.min()}')
