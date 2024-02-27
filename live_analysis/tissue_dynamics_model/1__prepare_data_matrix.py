@@ -87,10 +87,10 @@ features_list = { # Cell identity, position
                 ,'Mean neighbor cell volume':'mean_neighb_vol'
                 ,'Std neighbor cell volume':'std_neighb_vol'
                 ,'Mean neighbor apical area':'mean_neighb_apical'
-                # ,'Std neighbor apical area':'std_neighb_apical'
+                ,'Std neighbor apical area':'std_neighb_apical'
                 # ,'Mean neighbor basal area':'mean_neighb_basal'
-                # ,'Std neighbor basal area':'std_neighb_basal'
-                # ,'Mean neighbor cell height':'mean_neighb_height'
+                ,'Std neighbor basal area':'std_neighb_basal'
+                ,'Mean neighbor cell height':'mean_neighb_height'
                 # ,'Max neighbor height from BM':'max_neigb_height_to_bm'
                 
                 ,'Mean neighbor collagen alignment':'mean_neighb_collagen_alignment'
@@ -132,15 +132,12 @@ features_list = { # Cell identity, position
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
 
-#%%
-
 # Standardize
 for col in df_g1s.columns.drop(['region','cellID']):
     df_g1s[col] = z_standardize(df_g1s[col])
 
 # Put back categoricals that were broken
 df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
-
 
 # Count NANs
 print(np.isnan(df_g1s).sum(axis=0))
@@ -160,20 +157,20 @@ df_ = df_[~Inan]
 df_g1s = df_g1s[~Inan]
 
 df2plot = df_g1s.drop(columns=['region','cellID','G1S_logistic','diff','time_g1s'])
-C = EmpiricalCovariance().fit(df2plot)
-sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
-plt.title('EmpCov')
-L,D = eig(C.covariance_)
+# C = EmpiricalCovariance().fit(df2plot)
+# sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
+# plt.title('EmpCov')
+# L,D = eig(C.covariance_)
 
-print('----')
-print(f'Condition number (EmpCov): {L.max() / L.min()}')
+# print('----')
+# print(f'Condition number (EmpCov): {L.max() / L.min()}')
 
 
 C = MinCovDet().fit(df2plot)
 plt.figure()
+L,D = eig(C.covariance_)
 plt.title(f'MinCovDet, C = {L.max() / L.min()}')
 sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns,cmap='vlag',center=0)
-L,D = eig(C.covariance_)
 plt.gca().set_aspect('equal', 'box')
 plt.tight_layout()
 
@@ -190,3 +187,4 @@ stats = pd.Series({df2plot.columns[i]:variance_inflation_factor(df2plot,i) for i
 stats.sort_values().plot.bar()
 plt.tight_layout()
 
+sb.pairplot(df_g1s[['vol_sm','mean_neighb_basal','std_neighb_apical']])

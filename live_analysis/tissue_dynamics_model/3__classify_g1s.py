@@ -65,7 +65,7 @@ Ng1 = 130
 # Random rebalance with 2.5:1 ratio
 # No cross-validation, in-model estimates only
 
-Niter = 1000
+Niter = 100
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -132,7 +132,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 from sklearn.linear_model import LogisticRegression
 
-Niter = 1000
+Niter = 10
 
 frac_withheld = 0.1
 N = len(df_g1s_balanced)
@@ -181,7 +181,7 @@ y_balanced = df_g1s_balanced['G1S_logistic']
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
 logist_model = LogisticRegression(random_state=42,max_iter=1000).fit(X_train,y_train)
-result = permutation_importance(logist_model,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+result = permutation_importance(logist_model,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values()
 
 plt.figure()

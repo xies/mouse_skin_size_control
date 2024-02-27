@@ -64,8 +64,6 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_pe
     
     return Rsq,MSE,Rsq_insample,[y_test,y_pred]
 
-
-df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 df_g1s = df_g1s.drop(columns=['age','cellID','region'])
 
@@ -134,35 +132,31 @@ plt.tight_layout()
 
 #%% Random forest regression on PCA
 
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.decomposition import PCA
 
-Niter = 100
+Niter = 10
 Ncomp = 20
 
-sum_res = np.zeros(Niter)
-Rsq_rf = np.zeros(Niter)
-Rsq_rf_insample = np.zeros(Niter)
-MSE_rf = np.zeros(Niter)
-Rsq_random = np.zeros(Niter)
-Rsq_random_insample = np.zeros(Niter)
-MSE_random = np.zeros(Niter)
+Rsq_pca = pd.DataFrame()
+MSE_pca = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
     pca,_,_ = run_pca(X,Ncomp)
     
     forest = RandomForestRegressor(n_estimators=100, random_state=i)
-    Rsq_rf[i],MSE_rf[i],Rsq_rf_insample[i] = run_cross_validation(pca,y,0.1,forest,random_state=i,plot=True)
+    rsq,mse,rsq_in,_ = run_cross_validation(pca,y,0.1,forest,random_state=i,plot=True)
+    Rsq_pca.at[i,'Out'] = rsq
+    Rsq_pca.at[i,'In'] = rsq_in
+    MSE_pca.at[i,'Full'] = mse
     forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
-    Rsq_random[i],MSE_random[i],_ = run_cross_validation(pca,y,0.1,forest_random,random_state=i,run_permute=True)
+    rsq,mse,_,_ = run_cross_validation(pca,y,0.1,forest_random,random_state=i,run_permute=True)
+    Rsq_pca.at[i,'Random'] = rsq
+    MSE_pca.at[i,'Random'] = mse
 
-print('---')
-print(f'Insample Rsq for RF = {Rsq_rf_insample.mean()}')
-print(f'Mean Rsq for RF = {Rsq_rf.mean()}')
-print(f'Insample Rsq for random = {Rsq_random_insample.mean()}')
-print(f'Mean Rsq for random = {Rsq_random.mean()}')
+plt.figure()
+sb.histplot(Rsq_pca.melt(),x='value',hue='variable',common_norm=False,bins=20)
 
 #%% Permutation importances
 

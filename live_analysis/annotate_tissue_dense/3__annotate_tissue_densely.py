@@ -90,6 +90,7 @@ footprint = morphology.cube(3)
 
 for t in tqdm(range(15)):
     
+    
     #----- cell-centric msmts -----
     nuc_dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
@@ -424,15 +425,50 @@ for t in tqdm(range(15)):
         df_dense.at[i,'Num diff neighbors'] = len(diff_neighbor_idx)
         
         # All neighbors
-        all_neighbor_idx = np.hstack([diff_neighbor_idx,planar_neighbor_idx])
+        all_neighbor_idx = np.where(A[i,:])[0]
         if len(all_neighbor_idx) > 0:
-            # neighbor_heights = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['Height to BM']
-            # df_dense.at[i,'Mean neighbor height from BM'] = neighbor_heights.mean()
+            
+            # Estimate from neighbor identity alone
             fucci_intensities = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI bg sub']
             df_dense.at[i,'Mean neighbor FUCCI intensity'] = fucci_intensities.mean()
             fucci_category = df_dense.loc[np.hstack([diff_neighbor_idx,planar_neighbor_idx])]['FUCCI thresholded'] == 'High'
             df_dense.at[i,'Frac neighbor FUCCI high'] = fucci_category.sum()/len(fucci_category)
             
+            neighbor_heights = df_dense.loc[all_neighbor_idx]['Height to BM']
+            df_dense.at[i,'Mean neighbor height from BM'] = neighbor_heights.mean()
+            df_dense.at[i,'Std neighbor height from BM'] = neighbor_heights.std()
+            df_dense.at[i,'Max neighbor height from BM'] = neighbor_heights.max()
+            df_dense.at[i,'Min neighbor height from BM'] = neighbor_heights.min()
+            
+            # Distance to neighbors
+            neighbor_dists = D[i, all_neighbor_idx]
+            df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
+            
+            # Neighbor size/shape info -- nuclear
+            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].std()
+            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].max()
+            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].min()
+            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].mean()
+            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].std()
+            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].max()
+            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].min()
+            
+            # Neighbor size/shape info -- cortical
+            df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].mean()
+            df_dense.at[i,'Std neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].std()
+            df_dense.at[i,'Max neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].max()
+            df_dense.at[i,'Min neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].min()
+            df_dense.at[i,'Mean neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].mean()
+            df_dense.at[i,'Std neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].std()
+            df_dense.at[i,'Mean neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].mean()
+            df_dense.at[i,'Std neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].std()
+            
+            df_dense.at[i,'Mean neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].max()
+            df_dense.at[i,'Std neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].min()
+            
+            df_dense.at[i,'Mean neighbor collagen alignment'] = df_dense.iloc[all_neighbor_idx]['Collagen alignment'].mean()
+    
             # If this is a 'dividing cell of interest', then estimate 'corona' using full neighbor cyto seg
             if not np.isnan(this_cell['basalID']):
                 
@@ -470,42 +506,6 @@ for t in tqdm(range(15)):
                         theta = theta + 180
                     df_dense.at[i,'Coronal angle'] = theta
                 
-            neighbor_heights = df_dense.loc[all_neighbor_idx]['Height to BM']
-            df_dense.at[i,'Mean neighbor height from BM'] = neighbor_heights.mean()
-            df_dense.at[i,'Std neighbor height from BM'] = neighbor_heights.std()
-            df_dense.at[i,'Max neighbor height from BM'] = neighbor_heights.max()
-            df_dense.at[i,'Min neighbor height from BM'] = neighbor_heights.min()
-            
-            # Distance to neighbors
-            neighbor_dists = D[i, all_neighbor_idx]
-            df_dense.at[i,'Mean neighbor dist'] = neighbor_dists.mean()
-            
-            # Neighbor size/shape info -- nuclear
-            df_dense.at[i,'Mean neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].mean()
-            df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].std()
-            df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].max()
-            df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].min()
-            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].mean()
-            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].std()
-            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].max()
-            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].min()
-            
-            # Neighbor size/shape info -- cortical
-            df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].mean()
-            df_dense.at[i,'Std neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].std()
-            df_dense.at[i,'Max neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].max()
-            df_dense.at[i,'Min neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].min()
-            df_dense['Mean neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].mean()
-            df_dense['Std neighbor apical area'] = df_dense.iloc[all_neighbor_idx]['Apical area'].std()
-            df_dense['Mean neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].mean()
-            df_dense['Std neighbor basal area'] = df_dense.iloc[all_neighbor_idx]['Basal area'].std()
-            
-            df_dense.at[i,'Mean neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].max()
-            df_dense.at[i,'Std neighbor cell height'] = df_dense.iloc[all_neighbor_idx]['Height'].min()
-            
-            df_dense.at[i,'Mean neighbor collagen alignment'] = df_dense.iloc[all_neighbor_idx]['Collagen alignment'].mean()
-    
-    
     # Save the DF
     df.append(df_dense)
     

@@ -81,7 +81,6 @@ from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 
 X = df_g1s.drop(columns='G1S_logistic')
-X['Intercept'] = 1
 y = df_g1s['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y, test_size=0.2,random_state=42)
 
@@ -93,7 +92,7 @@ print(features_ranked_by_RFE[:10])
 
 #%% MLR: AUC for volume feature drop v. every other feature
 
-Niter = 1000
+Niter = 20
 frac_withheld = 0.1
 
 features2drop = features_ranked_by_RFE[1:]
@@ -105,6 +104,7 @@ for i in tqdm(range(Niter)):
     df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
     y_balanced = df_g1s_balanced['G1S_logistic']
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
+    X = df_g1s_balanced
     
     mlr = LogisticRegression(max_iter=1000, random_state=42)
     _, _AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
@@ -142,7 +142,7 @@ plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
 
 #%% Single features; MLR
 
-Niter = 1000
+Niter = 20
 
 features2drop = features_ranked_by_RFE[1:]
 df_g1s['Intercept'] = 1
