@@ -67,7 +67,7 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_pe
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['age'])
+df_g1s = df_g1s.drop(columns=['age','cellID','region'])
 
 # De-standardize and note down stats
 std = 34.54557205301856
@@ -82,8 +82,6 @@ df_g1s = df_g1s[df_g1s['G1S_logistic'] == 0]
 # std = df_g1s['time_g1s'].std()
 # mean = df_g1s['time_g1s'].mean()
 # df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
-
-df_g1s = df_g1s.drop(columns=['cellID'])
 
 #Add interaction effects ?
 df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
@@ -168,22 +166,28 @@ print(f'Mean Rsq for random = {Rsq_random.mean()}')
 
 #%% Permutation importances
 
-from sklearn.inspection import permutation_importance
+Niter = 10
+mean_importances = []
+std_importances = []
 
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
+for i in tqdm(range(Niter)):
 
-# Plot permutation importance
-forest = RandomForestRegressor(n_estimators=100, random_state=i).fit(X_train,y_train)
-result = permutation_importance(forest,X_test,y_test,n_repeats=10,random_state=42,n_jobs=2)
-forest_importances = pd.Series(result.importances_mean, index=X.columns)
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
+    
+    # Plot permutation importance
+    forest = RandomForestRegressor(n_estimators=50, random_state=i).fit(X_train,y_train)
+    result = permutation_importance(forest,X_test,y_test,n_repeats=10,random_state=42,n_jobs=2)
+    mean = pd.DataFrame(result.importances_mean, index=X.columns).T
+    std = pd.DataFrame(result.importances_std, index=X.columns).T
+    mean_importances.append(mean)
+    std_importances.append(std)
 
 plt.figure()
-top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
-top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
-top_forest_imp.plot.bar(yerr=top_forest_imp_std)
-plt.ylabel("Mean accuracy decrease")
-plt.tight_layout()
-plt.show()
+mean_importances = pd.concat(mean_importances)
+std_importances = pd.concat(std_importances)
+
+mean_importances.mean()[X.columns[mean_importances.mean().argsort()]]
+# plt.bar(mean_importances)
 
 #%% Drop single features -> Rsq
 

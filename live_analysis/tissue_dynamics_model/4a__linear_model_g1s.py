@@ -13,21 +13,81 @@ import seaborn as sb
 from basicUtils import *
 
 from numpy import random
-from sklearn import metrics
+from sklearn.metrics import r2_score, mean_squared_error
 from tqdm import tqdm
+from sklearn.inspection import permutation_importance
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+def keep_only_first_sg2(df):
+    collated_first_s = []
+    # Groupby CellID and then drop non-first S phase
+    for (cellID,frame),cell in df.groupby(['cellID','region']):
+        if cell.G1S_logistic.sum() > 1:
+            first_sphase_frame = np.where(cell.G1S_logistic)[0][0]
+            collated_first_s.append(cell.iloc[0:first_sphase_frame+1])
+        else:
+            collated_first_s.append(cell)
+    return pd.concat(collated_first_s,ignore_index=True)
+
+def run_pca(df,ncomp):
+    
+    pca = PCA(n_components = Ncomp)
+    X_ = pca.fit_transform(df)
+    df_pca = pd.DataFrame(X_,columns = [f'PC{str(i)}' for i in range(Ncomp)])
+    components = pd.DataFrame(pca.components_,columns=df.columns)
+    
+    return df_pca, components, pca
+
+def plot_principle_component(loadings,which_comp):
+    loadings = loadings.iloc[which_comp]
+    loadings = loadings[np.abs(loadings).argsort()]
+    plt.figure()
+    np.abs(loadings).plot.bar()
+    plt.ylabel('Magnitude of loading')
+    plt.xlabel('Original dimensions');plt.title(f'PC {which_comp}')
+    plt.tight_layout()
+
+def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_permute=False):
+    if run_permute:
+        # X = X.sample(len(X),replace=False)
+        X = random.randn(*X.shape)
+    
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio)
+    model.fit(X_train,y_train)
+    y_pred = model.predict(X_test)
+    
+    Rsq = r2_score(y_test,y_pred)
+    Rsq_insample = r2_score(y_train,model.predict(X_train))
+    MSE = mean_squared_error(y_test,y_pred)
+    if plot:
+        plt.scatter(y_test,y_pred,color='b',alpha=0.05)
+    
+    return Rsq,MSE,Rsq_insample,[y_test,y_pred]
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['age','G1S_logistic'])
+df_g1s = df_g1s.drop(columns=['age','region','cellID'])
+
+# De-standardize and note down stats
+std = 34.54557205301856
+mean = -75.85760517799353
+df_g1s['time_g1s'] = df_g1s['time_g1s'] * std
+df_g1s['time_g1s'] = df_g1s['time_g1s'] + mean
 
 #Trim out G2 cells
-df_g1s = df_g1s[df_g1s['time_g1s'] >= 0]
+df_g1s = df_g1s[df_g1s['G1S_logistic'] == 0]
 
-
-X = df_g1s.drop(columns=['time_g1s'])
-y = df_g1s['time_g1s']
+# Re-standardize
+# std = df_g1s['time_g1s'].std()
+# mean = df_g1s['time_g1s'].mean()
+# df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
 
 #Add interaction effects ?
+df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
+
+X = df_g1s.drop(columns=['time_g1s'])
+X['Intercept'] = 1
+y = df_g1s['time_g1s']
 X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
 
 #%%
@@ -47,37 +107,31 @@ plt.ylabel('Effect size')
 plt.title('Linear regression for G1S timing')
 
 #%% Cross-validation using MLR
-from sklearn.inspection import permutation_importance
 
-Niter = 100
+Niter = 1000
 
-frac_withhold = 0.2
-N = len(df_g1s)
+frac_withheld = 0.1
 
-models = []
-random_models = []
-Rsq = np.zeros(Niter)
+Rsq_lr = pd.DataFrame()
+MSE_lr = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
+        
+    model = linear_model.LinearRegression()
+    rsq,mse,rsq_in,_ = run_cross_validation(X,y,frac_withheld,model)
+    Rsq_lr.at[i,'Out'] = rsq
+    Rsq_lr.at[i,'In'] = rsq_in
+    model_random = linear_model.LinearRegression()
+    rsq,mse,rse_in,_ = run_cross_validation(X,y,frac_withheld,model,run_permute=True)
+    Rsq_lr.at[i,'Random'] = rsq
     
-    num_withold = np.round(frac_withhold * N).astype(int)
-    
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withhold)
-    
-    reg = linear_model.RidgeCV()
-    this_model = reg.fit(X_train,y_train)
-    models.append(this_model)
-    
-    # predict on the withheld data
-    ypred = this_model.predict(X_test)
-    Rsq[i] = metrics.r2_score(y_test,ypred)
-    
-plt.figure()
-plt.hist(Rsq)
-plt.xlabel('R^2')
-plt.title('Linear regression G1/S timing')
+sb.histplot(Rsq_lr,'')
 
-mlr = this_model
+#%%
+
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
+mlr = linear_model.LinearRegression().fit(X_train,y_train)
+
 result = permutation_importance(mlr, X_test, y_test, n_repeats=100, random_state=42, n_jobs=2)
 mlr_importances = pd.Series(result.importances_mean, index=X.columns)
 
@@ -128,6 +182,8 @@ plt.title('RF regression model of G1/S timing')
 plt.tight_layout()
 
 #%%
+
+from sklearn.inspection import permutation_importance
 
 # Plot permutation importance
 result = permutation_importance(
