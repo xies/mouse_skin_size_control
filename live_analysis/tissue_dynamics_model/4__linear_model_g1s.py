@@ -125,7 +125,7 @@ for i in tqdm(range(Niter)):
     rsq,mse,rse_in,_ = run_cross_validation(X,y,frac_withheld,model,run_permute=True)
     Rsq_lr.at[i,'Random'] = rsq
     
-sb.histplot(Rsq_lr,'')
+sb.histplot(Rsq_lr.melt(),x='value',hue='variable')
 
 #%%
 

@@ -65,7 +65,7 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_pe
     return Rsq,MSE,Rsq_insample,[y_test,y_pred]
 
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['age','cellID','region'])
+df_g1s = df_g1s.drop(columns=['age','cellID','region','G1S_logistic'])
 
 # De-standardize and note down stats
 std = 34.54557205301856
@@ -74,12 +74,12 @@ df_g1s['time_g1s'] = df_g1s['time_g1s'] * std
 df_g1s['time_g1s'] = df_g1s['time_g1s'] + mean
 
 #Trim out G2 cells
-df_g1s = df_g1s[df_g1s['G1S_logistic'] == 0]
+df_g1s = df_g1s[df_g1s['time_g1s'] <= 0]
 
 # Re-standardize
-# std = df_g1s['time_g1s'].std()
-# mean = df_g1s['time_g1s'].mean()
-# df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
+std = df_g1s['time_g1s'].std()
+mean = df_g1s['time_g1s'].mean()
+df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
 
 #Add interaction effects ?
 df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
@@ -95,7 +95,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import plot_tree
 
-Niter = 10
+Niter = 100
 Rsq_rf = pd.DataFrame()
 MSE_rf = pd.DataFrame()
 
@@ -169,14 +169,13 @@ for i in tqdm(range(Niter)):
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.1)
     
     # Plot permutation importance
-    forest = RandomForestRegressor(n_estimators=50, random_state=i).fit(X_train,y_train)
+    forest = RandomForestRegressor(n_estimators=100, random_state=i).fit(X_train,y_train)
     result = permutation_importance(forest,X_test,y_test,n_repeats=10,random_state=42,n_jobs=2)
     mean = pd.DataFrame(result.importances_mean, index=X.columns).T
     std = pd.DataFrame(result.importances_std, index=X.columns).T
     mean_importances.append(mean)
     std_importances.append(std)
 
-plt.figure()
 mean_importances = pd.concat(mean_importances)
 std_importances = pd.concat(std_importances)
 

@@ -86,7 +86,7 @@ features_list = { # Cell identity, position
                 # ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor cell volume':'mean_neighb_vol'
                 ,'Std neighbor cell volume':'std_neighb_vol'
-                ,'Mean neighbor apical area':'mean_neighb_apical'
+                # ,'Mean neighbor apical area':'mean_neighb_apical'
                 ,'Std neighbor apical area':'std_neighb_apical'
                 # ,'Mean neighbor basal area':'mean_neighb_basal'
                 ,'Std neighbor basal area':'std_neighb_basal'
