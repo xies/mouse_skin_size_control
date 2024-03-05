@@ -17,6 +17,7 @@ from tqdm import tqdm
 import pickle as pkl
 
 from measureSemiauto import measure_track_timeseries_from_segmentations,cell_cycle_annotate,collate_timeseries_into_cell_centric_table
+from twophotonUtils import parse_XML_timestamps
 
 import warnings
 with warnings.catch_warnings():
@@ -24,29 +25,39 @@ with warnings.catch_warnings():
 
 
 dirnames = {}
-# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R1'
-# dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/WT/R2'
-# dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R1'
-# dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R1'
+# dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R2'
+dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R1'
+dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R2'
-# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
+# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
+# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
+dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 dx = {}
-dx['WT_R1'] = 0.206814922817744/1.5
-dx['WT_R2'] = 0.206814922817744/1.5
+dx['WT_R1'] = 0.206814922817744
+dx['WT_R2'] = 0.206814922817744
 dx['WT_R3'] = 0.165243202683616
 dx['WT_R4'] = 0.165243202683616
-dx['RBKO_R1'] = 0.206814922817744/1.5
-dx['RBKO_R2'] = 0.206814922817744/1.5
+dx['RBKO_R1'] = 0.206814922817744
+dx['RBKO_R2'] = 0.206814922817744
 dx['RBKO_R3'] = 0.165243202683616
 dx['RBKO_R4'] = 0.165243202683616
-dx['RBKOp107het_R2'] = 0.165243202683616
+dx['RBKOp107het_R2'] = 0.146240234375
 
+dz = {}
+dz['WT_R1'] = 1
+dz['WT_R2'] = 1
+dz['WT_R3'] = 0.8
+dz['WT_R4'] = 0.8
+dz['RBKO_R1'] = 1
+dz['RBKO_R2'] = 1
+dz['RBKO_R3'] = 0.8
+dz['RBKO_R4'] = 0.8
+dz['RBKOp107het_R2'] = 1
 
 mouse = {'WT_R1':'WT_M1','WT_R2':'WT_M1','RBKO_R1':'RBKO_M2','RBKO_R2':'RBKO_M2'
          ,'WT_R3':'WT_M3','WT_R4':'WT_M3','RBKO_R3':'RBKO_M4','RBKO_R4':'RBKO_M4'
@@ -63,6 +74,8 @@ RECALCULATE = True
 for name,dirname in dirnames.items():
     
     for mode in ['curated']:
+        timestamps = list(parse_XML_timestamps(dirname, subdir_str='*.*', beginning=0).values())
+        timestamps = np.array([(x-timestamps[0]).total_seconds()/3600 for x in timestamps])
 
         print(f'---- Working on {name} {mode} ----')
         if name == 'WT_R4' and mode == 'manual':
@@ -81,13 +94,14 @@ for name,dirname in dirnames.items():
         # Construct metadata
         metadata = {}
         metadata['um_per_px'] = dx[name]
+        metadata['um_per_slice'] = dz[name]
         metadata['Region'] = name
         metadata['Mouse'] = mouse[name]
         metadata['Pair'] = pairs[mouse[name]]
         metadata['Genotype'] = genotype
         metadata['Mode'] = mode
         metadata['Dirname'] = dirname
-        
+        metadata['Time stamps'] = timestamps
         
         #% Re-construct tracks with manually fixed tracking/segmentation
         # if RECALCULATE:

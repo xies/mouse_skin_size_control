@@ -43,10 +43,12 @@ for name,dirname in dirnames.items():
         
         with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'rb') as file:
             tracks = pkl.load(file)
-            
+                    
         all_tracks[name+'_'+mode] = tracks
         
-        ts_regions[name+'_'+mode] = pd.concat(tracks)
+        ts = pd.concat(tracks)
+        ts['Distance to ablated cell'] = ts['Distance to ablated cell']*ts.iloc[0].um_per_px
+        ts_regions[name+'_'+mode] = ts
         
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_{mode}_dataframe.csv'),index_col=0)
         
@@ -105,10 +107,10 @@ R = np.squeeze(np.array(R))
 
 #%%
 
-name = 'Ablation_R3'
-field2plot = 'Volume normal'
+name = 'Ablation_R20'
+field2plot = 'Volume'
 YMIN = 0
-YMAX = 3
+YMAX = 300
 tracks = [v for k,v in ts_all[(ts_all['Mode'] == 'Nonablation') & (ts_all['Region'] == name)].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,1)
@@ -161,7 +163,7 @@ sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kw
 
 D = pd.DataFrame(ts_all.groupby(['CellID','Region','Mode'])['Distance to ablated cell'].mean())
 D = D.reset_index()
-sb.histplot(D,x='Distance to ablated cell',hue='Mode',bins=50)
+sb.histplot(D,x='Distance to ablated cell',hue='Mode',bins=50,element='poly')
 df_all = pd.merge(df_all,D,on=['Region','Mode','CellID'])
 
 #%%

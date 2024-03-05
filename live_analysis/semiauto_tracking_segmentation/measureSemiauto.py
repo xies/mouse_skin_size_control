@@ -74,7 +74,6 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
         
         mask = manual_segs == trackID
         # mask_uncorrected = filtered_segs == trackID
-        print(trackID)
         frames_with_this_track = np.where(np.any(np.any(np.any(mask,axis=1),axis=1), axis=1))[0]
         
         for frame in frames_with_this_track:
@@ -95,6 +94,8 @@ def measure_track_timeseries_from_segmentations(name,pathdict,metadata):
             
             # Measurement from intensity image(s)
             h2b_this_frame = G[frame,...]
+            print(this_frame.shape)
+            print(h2b_this_frame.shape)
             h2b_mean = h2b_this_frame[this_frame].mean()
             
             fucci_this_frame = R[frame,...]
@@ -443,10 +444,18 @@ def collate_timeseries_into_cell_centric_table(tracks,metadata):
     
     return df, tracks
 
-def recalibrate_pixel_size(tracks,cell_table,new_dx):
+def recalibrate_pixel_size(tracks,cell_table,new_dx=None,new_dz=None):
     
     old_dx = tracks[0].iloc[0]['um_per_px']
+    old_dz = tracks[0].iloc[0]['um_per_slice']
+    
+    if new_dx == None:
+        new_dx = old_dx
+    if new_dz == None:
+        new_dz = old_dz
+    
     rescaling_factor = new_dx**2 / old_dx**2
+    rescaling_factor = new_dz/old_dz
     
     for i,t in enumerate(tracks):
         
@@ -469,6 +478,7 @@ def recalibrate_pixel_size(tracks,cell_table,new_dx):
     cell_table['Total growth interp'] = cell_table['Division size interp'] - cell_table['Birth size interp']
     
     cell_table['um_per_px'] = new_dx
+    cell_table['um_per_slice'] = new_dz
     
     return tracks,cell_table
     
