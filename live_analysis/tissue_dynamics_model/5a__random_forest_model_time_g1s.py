@@ -65,13 +65,13 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42,plot=False,run_pe
     return Rsq,MSE,Rsq_insample,[y_test,y_pred]
 
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['age','cellID','region','G1S_logistic'])
+df_g1s = df_g1s.drop(columns=['age','cellID','region','G1S_logistic','fucci_int_12h'])
 
 # De-standardize and note down stats
-std = 34.54557205301856
-mean = -75.85760517799353
-df_g1s['time_g1s'] = df_g1s['time_g1s'] * std
-df_g1s['time_g1s'] = df_g1s['time_g1s'] + mean
+corr_std = 34.54557205301856
+corr_mean = -75.85760517799353
+df_g1s['time_g1s'] = df_g1s['time_g1s'] * corr_std
+df_g1s['time_g1s'] = df_g1s['time_g1s'] + corr_mean
 
 #Trim out G2 cells
 df_g1s = df_g1s[df_g1s['time_g1s'] <= 0]
@@ -80,9 +80,6 @@ df_g1s = df_g1s[df_g1s['time_g1s'] <= 0]
 std = df_g1s['time_g1s'].std()
 mean = df_g1s['time_g1s'].mean()
 df_g1s['time_g1s'] = (df_g1s['time_g1s'] - mean)/std
-
-#Add interaction effects ?
-df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
 
 X = df_g1s.drop(columns=['time_g1s'])
 X['Intercept'] = 1
@@ -121,12 +118,21 @@ plt.vlines(Rsq_rf[['Out sample','Random']].mean(),0,0.15)
 #%%
 
 predictions = pd.DataFrame()
-predictions['y test'] = np.hstack(ytests)*std
-predictions['y pred'] = np.hstack(ypreds)*std
-predictions = predictions + mean
+predictions['y test'] = np.hstack(ytests)*corr_std
+predictions['y pred'] = np.hstack(ypreds)*corr_std
+predictions = predictions + corr_mean
 
-sb.histplot(-predictions,x='y test',y='y pred',bins=9,cbar=True,stat='probability')
+plt.figure()
+sb.histplot(-predictions,x='y test',y='y pred',bins=len(predictions['y test'].unique()),cbar=True,stat='probability')
 plt.tight_layout()
+plt.xlabel('Observed wait time until G1/S (h)')
+plt.ylabel('Predicted wait time until G1/S (h)')
+plt.gca().set_aspect('equal','box')
+
+plt.figure()
+plt.scatter(-predictions['y test'],-predictions['y pred'],alpha=0.01)
+plt.xlabel('Observed wait time until G1/S (h)')
+plt.ylabel('Predicted wait time until G1/S (h)')
 
 #%%
 
@@ -160,6 +166,8 @@ sb.histplot(Rsq_pca.melt(),x='value',hue='variable',common_norm=False,bins=20)
 
 #%% Permutation importances
 
+from mathUtils import total_std
+
 Niter = 10
 mean_importances = []
 std_importances = []
@@ -179,13 +187,18 @@ for i in tqdm(range(Niter)):
 mean_importances = pd.concat(mean_importances)
 std_importances = pd.concat(std_importances)
 
-mean_importances.mean()[X.columns[mean_importances.mean().argsort()]]
-# plt.bar(mean_importances)
+perm_importances = pd.DataFrame()
+perm_importances['Mean'] = mean_importances.mean()
+# perm_importances['Std'] = [ total_std(std_importances[f],mean_importances[f],np.ones(Niter)*100) for f in X.columns ] # not sure if this is right...
+perm_importances['Std'] = mean_importances.std()
+
+perm_importances.sort_values('Mean',ascending=False).plot(kind='bar',yerr='Std')
+plt.tight_layout()
 
 #%% Drop single features -> Rsq
 
 Niter = 100
-other_top_features_to_try = 5
+other_features2try = perm_importances.sort_values('Mean',ascending=False).index[1:10]
 
 Rsq = pd.DataFrame()
 MSE = pd.DataFrame()
@@ -208,7 +221,7 @@ for i in tqdm(range(Niter)):
     Rsq.at[i,'Random'] = rsq
     MSE.at[i,'Random'] = mse
     
-    for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
+    for j,f in enumerate(other_features2try):
         # X_train,X_test,y_train,y_test = train_test_split(X.drop(columns=f),y,test_size=0.2)
         forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
         rsq,mse,_,_ = run_cross_validation(X.drop(columns=f),y,0.1,forest_no_other,random_state=i)
@@ -216,6 +229,7 @@ for i in tqdm(range(Niter)):
         MSE.at[i,f'No {f}'] = mse
 
 print('---')
+
 
 Rsq_ = pd.melt(Rsq)
 Rsq_['Category'] = Rsq_['variable']
@@ -225,10 +239,14 @@ Rsq_.groupby('Category').mean()
 sb.histplot(Rsq_,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
 plt.vlines(Rsq_.groupby('Category').mean(),0,0.25)
 
+plt.figure()
+sb.barplot(Rsq_,y='value',x='variable')
+plt.xticks(rotation=90);plt.tight_layout();
+
 #%% Singleton features
 
 Niter = 100
-other_top_features_to_try = 5
+other_features2try = perm_importances.sort_values('Mean',ascending=False).index[1:10]
 
 Rsq = pd.DataFrame()
 MSE = pd.DataFrame()
@@ -240,11 +258,12 @@ for i in tqdm(range(Niter)):
     Rsq.at[i,'Full'] = rsq
     MSE.at[i,'Full'] = mse
     
-    # No volume
+    # Only volume
     forest_no_vol = RandomForestRegressor(n_estimators=100, random_state=i)
     rsq,mse,_,_ = run_cross_validation(X[['vol_sm','Intercept']],y,0.1,forest_no_vol,random_state=i)
     Rsq.at[i,'Only volume'] = rsq
     MSE.at[i,'Only volume'] = mse
+    
     
     forest_random = RandomForestRegressor(n_estimators=100, random_state=i)
     X_ = X; X_['Dummy'] = random.randn(len(X))
@@ -252,19 +271,23 @@ for i in tqdm(range(Niter)):
     Rsq.at[i,'Random'] = rsq
     MSE.at[i,'Random'] = mse
     
-    for j,f in enumerate(forest_importances.sort_values()[::-1][1:1+other_top_features_to_try].index):
+    for j,f in enumerate(other_features2try):
         forest_no_other = RandomForestRegressor(n_estimators=100, random_state=i)
         rsq,mse,_,_ = run_cross_validation(X[[f,'Intercept']],y,0.1,forest_no_other,random_state=i)
         Rsq.at[i,f'Only {f}'] = rsq
         MSE.at[i,f'Only {f}'] = mse
-
+    
 Rsq_ = pd.melt(Rsq)
 Rsq_['Category'] = Rsq_['variable']
 Rsq_.loc[(Rsq_['variable'] != 'Full') & (Rsq_['variable'] != 'Random') & (Rsq_['variable'] != 'Only volume'),'Category'] = 'Only other'
 Rsq_.groupby('Category').mean()
 
-sb.histplot(Rsq_,x='value',hue='Category',bins=30,stat='probability',element='poly',common_norm=False,fill=False)
-plt.vlines(Rsq_.groupby('Category').mean(),0,0.25)
+# sb.histplot(Rsq_,x='value',hue='Category',bins=30,stat='probability',element='poly',common_norm=False,fill=False)
+# plt.vlines(Rsq_.groupby('Category').mean(),0,0.25)
+
+plt.figure()
+sb.barplot(Rsq_,y='value',x='variable')
+plt.xticks(rotation=90);plt.tight_layout();
 
 #%% Use Region1 -> Pred Region2
 #@todo: un-standardize data for display

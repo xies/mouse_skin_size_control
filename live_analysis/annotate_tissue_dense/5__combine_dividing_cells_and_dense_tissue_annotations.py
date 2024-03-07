@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 ZZ = 72
 XX = 460
 T = 15
@@ -63,6 +63,8 @@ df['Neighbor mean cell volume frame-1'] = np.nan
 df['Neighbor mean cell volume frame-2'] = np.nan
 df['Neighbor std cell volume frame-1'] = np.nan
 df['Neighbor std cell volume frame-2'] = np.nan
+df['Neighbor mean FUCCI int frame-1'] = np.nan
+df['Neighbor mean FUCCI int frame-2'] = np.nan
 df['Neighbor mean height from BM frame-1'] = np.nan
 df['Neighbor mean height from BM frame-2'] = np.nan
 df['Neighbor max height from BM frame-1'] = np.nan
@@ -100,6 +102,8 @@ for basalID in collated.keys():
         mean_neighbor_vol = this_cell['Mean neighbor cell volume'].values
         std_neighbor_vol = this_cell['Std neighbor cell volume'].values
         
+        mean_neighbor_fucci = this_cell['Mean neighbor FUCCI intensity'].values
+        
         mean_neighbor_heights = this_cell['Mean neighbor height from BM'].values
         max_neighbor_heights = this_cell['Max neighbor height from BM'].values
         
@@ -129,6 +133,9 @@ for basalID in collated.keys():
             df.at[idx[t],'Neighbor mean cell volume frame-1'] = mean_neighbor_vol[t-1]
             df.at[idx[t],'Neighbor std cell volume frame-1'] = std_neighbor_vol[t-1]
             
+            # Neighbor FUCCI int
+            df.at[idx[t],'Neighbor mean FUCCI int frame-1'] = mean_neighbor_fucci[-1]
+            
             #Neighbor max+mean neight from BM
             df.at[idx[t],'Neighbor mean height from BM frame-1'] = mean_neighbor_heights[t-1]
             df.at[idx[t],'Neighbor max height from BM frame-1'] = max_neighbor_heights[t-1]
@@ -153,6 +160,9 @@ for basalID in collated.keys():
                 # Neighbor cell volume
                 df.at[idx[t],'Neighbor mean cell volume frame-2'] = mean_neighbor_vol[t-2]
                 df.at[idx[t],'Neighbor std cell volume frame-2'] = std_neighbor_vol[t-2]
+                
+                # Neighbor FUCCI int
+                df.at[idx[t],'Neighbor mean FUCCI int frame-2'] = mean_neighbor_fucci[-2]
                 
                 #Neighbor max+mean neight from BM
                 df.at[idx[t],'Neighbor mean height from BM frame-2'] = mean_neighbor_heights[t-2]

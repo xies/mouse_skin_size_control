@@ -31,31 +31,18 @@ collated = decollate_df(df)
 
 #%%
 
-ID = 341
+ID = 374
 
-x = 'Frame'
-y = 'Coronal density'
-plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
-plt.xlabel(x); plt.ylabel(y)
+x = 'Age'
+y2plot = ['Volume','Apical area','Basal area'
+          ,'Mean neighbor cell volume','Num neighbors','Mean curvature','Height to BM'
+          ,'Max neighbor height from BM']
+Nsubplots = int(np.ceil(len(y2plot) / 2))
 
-x = 'Frame'
-y = 'Planar angle'
-plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
-plt.xlabel(x); plt.ylabel(y)
-
-x = 'Frame'
-y = 'Collagen orientation'
-plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
-plt.xlabel(x); plt.ylabel(y)
-
-x = 'Frame'
-y = 'Num diff neighbors'
-plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
-plt.xlabel(x); plt.ylabel(y)
-
-x = 'Frame'
-y = 'Basal area'
-plt.figure(); plt.plot(collated[ID][x], collated[ID][y])
-plt.xlabel(x); plt.ylabel(y)
-
-#%%
+for i,y in enumerate(y2plot):
+    
+    plt.subplot(2,Nsubplots,i+1)
+    
+    plt.plot(cell2plot[x],cell2plot[y])
+    plt.xlabel(x); plt.ylabel(y)
+    

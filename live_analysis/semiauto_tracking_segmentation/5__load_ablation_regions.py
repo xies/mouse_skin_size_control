@@ -64,6 +64,9 @@ for name,dirname in dirnames.items():
         df['Initial volume normal'] = init_vol_norm
         
         regions[name+'_'+mode] = df
+        
+        if df.Mouse.iloc[0] == 'WT_Mclip' or df.Mouse.iloc[0] == 'WT_Mnonclip':
+            df['S phase entry size'] = df['S phase entry size'] / 1.5
 
 df_all = pd.concat(regions,ignore_index=True)
 ts_all = pd.concat(ts_regions,ignore_index=True)
@@ -78,9 +81,9 @@ df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
 # sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
-# sb.catplot(df_all,x='Region',hue='Mode',y='S phase entry size',kind='box')
-plt.ylim([0,2])
+# sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='box')
+plt.ylim([50,200])
 
 #%%
 

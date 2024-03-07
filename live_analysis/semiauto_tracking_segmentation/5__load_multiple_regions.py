@@ -26,16 +26,17 @@ dirnames = {}
 dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R1'
 dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R2'
 dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R1'
-# dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
+dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
 
 dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
 dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
 # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
-dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
-
-dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
+ 
+# dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%%
+from measureSemiauto import recalibrate_pixel_size
 
 all_tracks = {}
 all_ts = {}
@@ -47,23 +48,16 @@ for name,dirname in dirnames.items():
         
         with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
             tracks = pkl.load(file)
+        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
         
-        
-        # if name == 'RBKOp107het_R2':
-        #     tracks,df = recalibrate_pixel_size(tracks,df,0.146240234375)
-            
-        # if name == 'WT_R3' or name == 'WT_R4':
-        #     tracks,df = recalibrate_pixel_size(tracks,df,new_dz = 0.8)
-            
         for t in tracks:
             t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
             # t['Volume interp'] = smooth_growth_curve
-            
+        
         all_tracks[name+'_'+mode] = tracks
         
         all_ts[name+'_'+mode] = pd.concat(tracks)
         
-        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
         df['Division size'] = df['Birth size'] + df['Total growth']
         df['S entry size'] = df['Birth size'] + df['G1 growth']
         df['Log birth size'] = np.log(df['Birth size']) 
@@ -94,7 +88,7 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Pair',hue='Genotype')
+sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Genotype')
 # plot_bin_means(df_all[df_all['Pair'] == 'Pair 1']['Birth size'],df_all[df_all['Pair'] == 'Pair 1']['G1 growth'],6
 #                ,minimum_n=8)
 # plot_bin_means(df_all[df_all['Pair'] == 'Pair 2']['Birth size'],df_all[df_all['Pair'] == 'Pair 2']['G1 growth'],6
@@ -105,8 +99,8 @@ sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Pair',hue='Genotype')
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='SG2 length',row='Pair',
-          robust=False,hue='Genotype',y_jitter=True)
+sb.lmplot(df_all,x='Birth size',y='G1 length',
+          robust=False,col='Genotype',y_jitter=True)
 # plot_bin_means(df_all['Birth size'],df_all['G1 length'],bin_edges=5,minimum_n=5,bin_style='percentile',
 #                color='r')
 # plt.xlim([70,150])

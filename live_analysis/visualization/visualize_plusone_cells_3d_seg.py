@@ -19,8 +19,8 @@ df = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col=0)
 #%%
 
 missing = []
-for basalID in tqdm(np.unique(df['basalID'])):
-# for basalID in [389]:
+# for basalID in tqdm(np.unique(df['basalID'])):
+for basalID in [374]:
     
     cell = df[df['basalID'] == basalID]
     cell = cell.sort_values('Frame')
@@ -65,9 +65,9 @@ for i,neighb in missing[missing['Frame'] == t].iterrows():
 
 #%% Visualize
 
-CROP = True
+CROP = False
 
-basalID = 389
+basalID = 374
 cell = df[df['basalID'] == basalID]
 T = cell['Frame'].values
 

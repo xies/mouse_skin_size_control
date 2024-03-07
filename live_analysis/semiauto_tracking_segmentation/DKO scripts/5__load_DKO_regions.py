@@ -39,6 +39,8 @@ dirnames['WT_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post 
 
 #%%
 
+from measureSemiauto import recalibrate_pixel_size
+
 all_tracks = {}
 all_ts = {}
 regions = {}
@@ -48,15 +50,15 @@ for name,dirname in dirnames.items():
         with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
             tracks = pkl.load(file)
         
+        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
+        
         for t in tracks:
             t['Time to G1/S'] = t['Frame'] - t['S phase entry frame']
             # t['Volume interp'] = smooth_growth_curve
-            
-        all_tracks[name+'_'+mode] = tracks
         
+        all_tracks[name+'_'+mode] = tracks
         all_ts[name+'_'+mode] = pd.concat(tracks)
         
-        df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
         df['Division size'] = df['Birth size'] + df['Total growth']
         df['S entry size'] = df['Birth size'] + df['G1 growth']
         df['Log birth size'] = np.log(df['Birth size']) 

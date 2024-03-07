@@ -36,6 +36,15 @@ df_ = pd.concat((df1_,df2_),ignore_index=True)
 df_['UniqueID'] = df_['basalID'].astype(str) + '_' + df_['Region'].astype(str)
 N,P = df_.shape
 
+# Make ratios some of the correlated components
+df_['Height to BM relative to cell height'] = df_['Height to BM'] / df_['Height']
+
+df_['CV neighbor cell volume'] = df_['Std neighbor cell volume'] / df_['Mean neighbor cell volume']
+df_['CV neighbor apical area'] = df_['Std neighbor apical area'] / df_['Mean neighbor apical area']
+df_['CV neighbor basal area'] = df_['Std neighbor basal area'] / df_['Mean neighbor basal area']
+
+df_['Neighbor CV cell volume frame-1'] = df_['Neighbor std cell volume frame-1'] / df_['Neighbor mean cell volume frame-1']
+
 # Sanitize field names for smf
 
 features_list = { # Cell identity, position
@@ -44,7 +53,7 @@ features_list = { # Cell identity, position
                 ,'Differentiating':'diff'
                 ,'Y':'y','X':'x'
                 # ,'Z':'z'
-                # ,'Height to BM':'height_to_bm'
+                ,'Height to BM relative to cell height':'rel_height_to_bm'
                 
                 # Cell geometry
                 ,'Volume':'vol_sm'
@@ -85,17 +94,17 @@ features_list = { # Cell identity, position
                 ,'Num planar neighbors':'num_neighb_plan'
                 # ,'Mean neighbor dist':'mean_neighb_dist'
                 ,'Mean neighbor cell volume':'mean_neighb_vol'
-                ,'Std neighbor cell volume':'std_neighb_vol'
+                ,'CV neighbor cell volume':'cv_neighb_vol'
                 # ,'Mean neighbor apical area':'mean_neighb_apical'
-                ,'Std neighbor apical area':'std_neighb_apical'
+                ,'CV neighbor apical area':'cv_neighb_apical'
                 # ,'Mean neighbor basal area':'mean_neighb_basal'
-                ,'Std neighbor basal area':'std_neighb_basal'
-                ,'Mean neighbor cell height':'mean_neighb_height'
-                # ,'Max neighbor height from BM':'max_neigb_height_to_bm'
+                ,'CV neighbor basal area':'cv_neighb_basal'
+                # ,'Mean neighbor cell height':'mean_neighb_height'
+                ,'Max neighbor height from BM':'max_neigb_height_to_bm'
                 
                 ,'Mean neighbor collagen alignment':'mean_neighb_collagen_alignment'
                 ,'Mean neighbor FUCCI intensity':'mean_neighb_fucci_int'
-                ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
+                # ,'Frac neighbor FUCCI high':'frac_neighb_fucci_high'
                 
                 # Growth rates and other central cell dynamics
                 ,'Specific GR spl':'sgr'
@@ -113,9 +122,9 @@ features_list = { # Cell identity, position
                 # ,'Neighbor mean cell volume frame-2':'mean_neighb_vol_24h'
                 ,'Neighbor std cell volume frame-1':'std_neighb_vol_12h'
                 # ,'Neighbor std cell volume frame-2':'std_neighb_vol_24h'
-                ,'Neighbor mean height from BM frame-1':'mean_neighb_height_to_bm_12h'
+                # ,'Neighbor mean height from BM frame-1':'mean_neighb_height_to_bm_12h'
                 # ,'Neighbor mean height from BM frame-2':'mean_neighb_height_to_bm_24h'
-                # ,'Neighbor max height from BM frame-1':'max_neighb_height_to_bm_12h'
+                ,'Neighbor max height from BM frame-1':'max_neighb_height_to_bm_12h'
                 # ,'Neighbor max height from BM frame-2':'max_neighb_height_to_bm_24h'
                 ,'Neighbor mean collagen alignment frame-1':'mean_neighb_collagen_align_12h'
                 # ,'Neighbor mean collagen alignment frame-2':'mean_neighb_collagen_align_24h'
@@ -123,11 +132,13 @@ features_list = { # Cell identity, position
                 # ,'Neighbor planar number frame-2':'num_planar_neighb_24h'
                 ,'Neighbor diff number frame-1':'num_diff_neighb_12h'
                 # ,'Neighbor diff number frame-2':'num_diff_neighb_24h'
-
+                # ,'Neighbor mean FUCCI int frame-1':'mean_neighb_fucci_int_12h'
+                
                 # Bookkeeping for LMM groups or drop for OLS
                 ,'basalID':'cellID'
                 ,'Region':'region'
                 }
+
 
 df_g1s = df_.loc[:,list(features_list.keys())]
 df_g1s = df_g1s.rename(columns=features_list)
@@ -157,14 +168,6 @@ df_ = df_[~Inan]
 df_g1s = df_g1s[~Inan]
 
 df2plot = df_g1s.drop(columns=['region','cellID','G1S_logistic','diff','time_g1s'])
-# C = EmpiricalCovariance().fit(df2plot)
-# sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns)
-# plt.title('EmpCov')
-# L,D = eig(C.covariance_)
-
-# print('----')
-# print(f'Condition number (EmpCov): {L.max() / L.min()}')
-
 
 C = MinCovDet().fit(df2plot)
 plt.figure()
@@ -187,4 +190,5 @@ stats = pd.Series({df2plot.columns[i]:variance_inflation_factor(df2plot,i) for i
 stats.sort_values().plot.bar()
 plt.tight_layout()
 
-sb.pairplot(df_g1s[['vol_sm','mean_neighb_basal','std_neighb_apical']])
+
+

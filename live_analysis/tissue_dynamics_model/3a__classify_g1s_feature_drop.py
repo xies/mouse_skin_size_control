@@ -64,10 +64,9 @@ df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue mod
 
 df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns='time_g1s')
-df_g1s = df_g1s.drop(columns=['fucci_int_12h'])
+df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
 
-Ng1 = 130
+Ng1 = 150
 
 #%% Recursive feature drop
 
@@ -90,14 +89,34 @@ selector = selector.fit(X_train,y_train)
 features_ranked_by_RFE = X_train.columns.values[selector.ranking_.argsort()]
 print(features_ranked_by_RFE[:10])
 
+#%%
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.inspection import permutation_importance
+
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
+
+X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
+logist_model = LogisticRegression(random_state=42,max_iter=100).fit(X_train,y_train)
+result = permutation_importance(logist_model,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
+logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values(ascending=False)
+
+plt.figure()
+logit_importances.plot.bar(yerr=result.importances_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
+plt.show()
+
 #%% MLR: AUC for volume feature drop v. every other feature
 
-Niter = 20
+Niter = 100
 frac_withheld = 0.1
 
-features2drop = features_ranked_by_RFE[1:]
-AUC = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
-AP = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
+features2drop = logit_importances.index[1:]
+AUC = pd.DataFrame()
+AP = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
@@ -142,9 +161,9 @@ plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
 
 #%% Single features; MLR
 
-Niter = 20
+Niter = 100
 
-features2drop = features_ranked_by_RFE[1:]
+features2drop = logit_importances.index[1:]
 df_g1s['Intercept'] = 1
 
 AUC = pd.DataFrame()
@@ -177,7 +196,7 @@ for i in tqdm(range(Niter)):
 I = AUC.mean().sort_values().index
 sb.barplot(AUC[I])
 plt.ylim([0.4,1]);plt.ylabel('Mean AUC');
-plt.hlines(AUC.mean()['Full'],0,13)
+plt.hlines(AUC.mean()['Full'],0,40)
 plt.xticks(rotation=90);plt.tight_layout();
 
 AUC_ = pd.melt(AUC)
@@ -185,9 +204,8 @@ AUC_['Category'] = AUC_['variable']
 AUC_.loc[(AUC_['variable']!= 'Full')&(AUC_['variable']!= 'Only vol')&(AUC_['variable']!= 'Random'),'Category'] = 'Other'
 
 plt.figure()
-sb.histplot(AUC_,bins=15,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
+sb.histplot(AUC_,bins=20,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
 plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
-
 
 #%% Recursive feature drop, Random Forest
 
@@ -211,13 +229,32 @@ selector = selector.fit(X_train,y_train)
 features_ranked_by_RFE = X_train.columns.values[selector.ranking_.argsort()]
 print(features_ranked_by_RFE[:10])
 
+#%% RF: Permutation importance
+
+df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+y_balanced = df_g1s_balanced['G1S_logistic']
+
+forest = RandomForestClassifier(n_estimators=100, random_state=i)
+X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
+forest.fit(X_train,y_train)
+result = permutation_importance(forest,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
+forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+
+top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
+top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]
+top_forest_imp.plot.bar(yerr=top_forest_imp_std)
+plt.ylabel("Mean accuracy decrease")
+plt.tight_layout()
+plt.show()
+
 #%% Random forest: AUC for volume feature drop v. every other feature
 
 Ng1 = 199
 Niter = 1000
 frac_withheld = 0.1
 
-features2drop = features_ranked_by_RFE[1:10]
+features2drop = top_forest_imp[1:10]
 
 AUC = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
 AP = pd.DataFrame(np.zeros((Niter,3+len(features2drop))),columns=np.hstack(['Full','No vol','Random',features2drop]))
@@ -263,9 +300,9 @@ plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
 
 #%% Single features; Random forest
 
-Niter = 1000
+Niter = 100
 
-features2drop = features_ranked_by_RFE[1:5]
+features2drop = top_forest_imp[1:5]
 df_g1s['Intercept'] = 1
 
 AUC = pd.DataFrame()
@@ -295,19 +332,17 @@ for i in tqdm(range(Niter)):
         _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['Intercept',features2drop[j]]],y_balanced,frac_withheld,forest)
         AUC.at[i,f'Only {features2drop[j]}'] = _AUC; AP.at[i,f'Only {features2drop[j]}'] = _AP
 
-AUC_ = pd.melt(AUC)
+AUC_ = pd.melt()
 AUC_['Category'] = AUC_['variable']
 AUC_.loc[(AUC_['variable']!= 'Full')&(AUC_['variable']!= 'Only vol')&(AUC_['variable']!= 'Random'),'Category'] = 'Other'
 
+plt.figure()
+sb.barplot(AUC_,y='value',x='variable',order=AUC.mean().sort_values(ascending=False).index)
+plt.xticks(rotation=90);plt.tight_layout()
+
+plt.figure()
 sb.histplot(AUC_,bins=15,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
 plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
-
-AP_ = pd.melt(AP)
-AP_['Category'] = AP_['variable']
-AP_.loc[(AP_['variable']!= 'Full')&(AP_['variable']!= 'Only vol')&(AP_['variable']!= 'Random'),'Category'] = 'Other'
-
-sb.histplot(AP_,bins=12,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
-plt.vlines(AP_.groupby('Category').mean(),0,0.25)
 
 #%%
 

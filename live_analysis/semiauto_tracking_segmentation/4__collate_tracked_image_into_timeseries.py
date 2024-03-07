@@ -27,15 +27,15 @@ with warnings.catch_warnings():
 dirnames = {}
 # dirnames['WT_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R1'
 # dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/WT/R2'
-dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R1'
-dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
+# dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R1'
+# dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
 
 # dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
 # dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
-dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
+# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
 dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
-dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
+# dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 dx = {}
 dx['WT_R1'] = 0.206814922817744

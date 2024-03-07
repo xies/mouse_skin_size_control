@@ -45,7 +45,7 @@ def run_pca(df,ncomp):
 
 def plot_principle_component(loadings,which_comp):
     loadings = loadings.iloc[which_comp]
-    loadings = loadings[np.abs(loadings).argsort()]
+    loadings = loadings[np.abs(loadings).argsort()[::-1]]
     plt.figure()
     np.abs(loadings).plot.bar()
     plt.ylabel('Magnitude of loading')
@@ -76,7 +76,7 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','region'])
+df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','fucci_int_12h'])
 y = df_g1s['G1S_logistic']
 
 #%% PCA on unbalanced data
@@ -100,18 +100,16 @@ plot_principle_component(loadings,17)
 
 #%% PCA regression
 
-Ng1 = 199
+Ng1 = 150
 Ncomp = 20
-Niter = 1000
+Niter = 100
 frac_withheld = 0.1
 
-C_mlr = np.zeros((Niter,2,2))
-AUC_mlr = np.zeros(Niter)
-AP_mlr = np.zeros(Niter)
+AP = pd.DataFrame()
+AUC = pd.DataFrame()
 
+C_mlr = np.zeros((Niter,2,2))
 C_random = np.zeros((Niter,2,2))
-AUC_random = np.zeros(Niter)
-AP_random = np.zeros(Niter)
 
 from sklearn.linear_model import LogisticRegression
 
@@ -123,18 +121,25 @@ for i in range(Niter):
     df_pca,_,_ = run_pca(df_g1s_balanced.drop(columns='G1S_logistic'),Ncomp)
     
     mlr = LogisticRegression(random_state = i)
-    C_mlr[i,:,:],AUC_mlr[i], AP_mlr[i] = run_cross_validation(df_pca,y_balanced,frac_withheld,mlr)
+    C_mlr[i,:,:],auc_,ap = run_cross_validation(df_pca,y_balanced,frac_withheld,mlr)
+    AUC.at[i,'Full'] = auc_
+    AP.at[i,'Full'] = ap
+    
+    # Only irst PC
+    mlr_only0 = LogisticRegression(random_state = i)
+    C_mlr[i,:,:],auc_,ap = run_cross_validation(df_pca[['PC0']],y_balanced,frac_withheld,mlr_only0)
+    AUC.at[i,'Only PC0'] = auc_
+    AP.at[i,'Only PC0'] = ap
     
     df_random = pd.DataFrame(random.randn(len(df_pca),Ncomp))
     random_model = LogisticRegression(random_state = i)
-    C_random[i,:,:],AUC_random[i], AP_random[i] = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
-    
-hist_weights = np.ones(Niter)/Niter
-plt.figure();plt.hist(AUC_mlr,weights=hist_weights)
-plt.xlabel('AUC');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
-plt.figure();plt.hist(AP_mlr,weights=hist_weights)
-plt.xlabel('Average precision');plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld')
-    
+    C_random[i,:,:],auc_,ap = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    AUC.at[i,'Random'] = auc_
+    AP.at[i,'Random'] = ap
+
+sb.histplot(AUC.melt(),x='value',hue='variable',element='poly',bins=15,stat='probability')
+plt.xlabel('AUC')
+ 
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
 

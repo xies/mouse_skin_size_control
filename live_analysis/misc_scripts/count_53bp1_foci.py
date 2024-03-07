@@ -36,6 +36,11 @@ for region in regions:
 
 df = pd.concat(df,ignore_index=True)
 
+from basicUtils import ttest_from_groupby
+
+_,P  = ttest_from_groupby(df,'Genotype','53BP1 foci')
+print(f'T-test between genotype: {P}')
+
 #%%
 
 # sb.histplot(df,hue='Genotype',x='53BP1 foci',cumulative=True,element='step', fill=False)

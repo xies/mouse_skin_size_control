@@ -22,6 +22,9 @@ from sklearn.metrics import roc_curve, auc, confusion_matrix, average_precision_
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 
+from sklearn.linear_model import LogisticRegression
+
+
 def keep_only_first_sg2(df):
     collated_first_s = []
     # Groupby CellID and then drop non-first S phase
@@ -54,17 +57,48 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
     AP = average_precision_score(y_test,y_pred)
     return C, AUC, AP
 
+df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
-df_g1s = df_g1s.drop(columns=['time_g1s','diff'])
 
 df_g1s = keep_only_first_sg2(df_g1s)
 
-Ng1 = 130
+df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region'])
 
-#%% Logistic for G1/S transition: keeping all SG2 datapoints
-# Random rebalance with 2.5:1 ratio
+#%% Find how balance changes classification
+
+Niter = 50
+Ng12try = np.arange(130,250,10)
+C_mlr = np.zeros((Niter,2,2))
+frac_withheld = 0.1
+
+AUC = pd.DataFrame(); AP = pd.DataFrame()
+
+for Ng1 in Ng12try:
+    
+    _AUC = np.zeros(Niter)
+    _AP = np.zeros(Niter)
+    for j in range(Niter):
+        
+        df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+        y_balanced = df_g1s_balanced['G1S_logistic']
+        df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
+
+        mlr = LogisticRegression()
+        C_mlr[j,:,:],_auc,ap = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
+        _AUC[j] = _auc
+        _AP[j] = ap
+    
+    AUC.at[Ng1,'MLR'] = _AUC.mean()
+    AP.at[Ng1,'MLR'] = _AP.mean()
+    
+AUC.plot()
+AP.plot()
+
+#%% Logistic for G1/S transition: skip all non-first SG2 timepoints
+# Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
+Ng1 = 150
 Niter = 100
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -80,7 +114,7 @@ for i in range(Niter):
     ############### G1S logistic as function of age ###############
     try:
         model_g1s = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.columns != 'G1S_logistic']),
-                      data=df_g1s_balanced).fit()
+                      data=df_g1s_balanced).fit(maxiter=1000)
     except:
         continue
     
@@ -130,10 +164,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 #%% Cross-validation for MLR
 
-from sklearn.linear_model import LogisticRegression
-
-Niter = 10
-
+Niter = 1000
 frac_withheld = 0.1
 N = len(df_g1s_balanced)
 
@@ -162,10 +193,12 @@ for i in tqdm(range(Niter)):
     AP.at[i,'Random data'] = _AP
     
 hist_weights = np.ones(Niter)/Niter
-AUC.plot.hist(weights=hist_weights); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
-plt.vlines(AUC['MLR'].mean(),0,0.8,'r')
-AP.plot.hist(weights=hist_weights); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
-plt.vlines(AP['MLR'].mean(),0,0.8,'r')
+plt.figure()
+sb.histplot(AUC.melt(),x='value',hue='variable',element='poly',stat='probability'); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
+plt.vlines(AUC['MLR'].mean(),0,0.2,'r')
+plt.figure()
+sb.histplot(AP.melt(),x='value',hue='variable',element='poly',stat='probability'); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
+plt.vlines(AP['MLR'].mean(),0,0.2,'r')
 
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
@@ -182,7 +215,7 @@ X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logis
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
 logist_model = LogisticRegression(random_state=42,max_iter=1000).fit(X_train,y_train)
 result = permutation_importance(logist_model,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
-logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values()
+logit_importances = pd.Series(result.importances_mean, index=X_train.columns).sort_values(ascending=False)
 
 plt.figure()
 logit_importances.plot.bar(yerr=result.importances_std)
@@ -195,11 +228,11 @@ plt.show()
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import plot_tree
 
-Niter = 1000
+Niter = 100
 frac_withheld = 0.1
 
-AUC = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
-AP = pd.DataFrame(np.zeros((Niter,2)),columns=['RF','Random data'])
+AUC = pd.DataFrame()
+AP = pd.DataFrame()
 C_rf = np.zeros((Niter,2,2))
 C_random = np.zeros((Niter,2,2))
 
@@ -223,12 +256,12 @@ for i in tqdm(range(Niter)):
     AP.at[i,'Random data'] = _AP
     
 hist_weights = np.ones(Niter)/Niter
-AUC.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
-plt.vlines(AUC['RF'].mean(),0,0.8,'r')
+sb.histplot(AUC.melt(),x='value',hue='variable',stat='probability',element='poly'); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
+plt.vlines(AUC['RF'].mean(),0,0.25,'r')
 AP.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
 plt.vlines(AP['RF'].mean(),0,0.8,'r')
 
-plt.figure();sb.heatmap(np.mean(C_rf,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
+plt.figure();sb.heatmap(np.mean(C_rf[:390,...],axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'RF Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
 
 #%% RF: Permutation importance
