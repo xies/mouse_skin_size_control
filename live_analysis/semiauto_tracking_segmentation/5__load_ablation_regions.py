@@ -65,8 +65,8 @@ for name,dirname in dirnames.items():
         
         regions[name+'_'+mode] = df
         
-        if df.Mouse.iloc[0] == 'WT_Mclip' or df.Mouse.iloc[0] == 'WT_Mnonclip':
-            df['S phase entry size'] = df['S phase entry size'] / 1.5
+        # if df.Mouse.iloc[0] == 'WT_Mclip' or df.Mouse.iloc[0] == 'WT_Mnonclip':
+        #     df['S phase entry size'] = df['S phase entry size'] / 1.5
 
 df_all = pd.concat(regions,ignore_index=True)
 ts_all = pd.concat(ts_regions,ignore_index=True)
@@ -79,10 +79,14 @@ nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 
 # sb.catplot(ts_all,x='Region',hue='Mode',y='Specific GR normal',kind='box')
-# sb.catplot(df_all,x='Region',hue='Mode',y='Exponential growth rate',kind='violin')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='violin')
+sb.stripplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',dodge=True)
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
-sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='box')
+
+sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='violin')
+sb.stripplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',dodge=True)
+
 plt.ylim([50,200])
 
 #%%

@@ -19,7 +19,7 @@ df = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col=0)
 #%%
 
 missing = []
-# for basalID in tqdm(np.unique(df['basalID'])):
+# for basalID in tqdm(np.unique|(df['basalID'])):
 for basalID in [374]:
     
     cell = df[df['basalID'] == basalID]

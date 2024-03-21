@@ -106,8 +106,8 @@ sb.relplot(all_ts,x='Age',y='Volume',col='Pair',row='Mode',hue='Genotype',kind='
 
 #%%
 
-dko_first_gen = dko[dko['Birth frame'] < 6]
-dko_second_gen = dko[dko['Birth frame'] >= 6]
+dko_first_gen = dko[dko['Generation'] == 1]
+dko_second_gen = dko[dko['Generation'] == 2]
 
 #%%
 
