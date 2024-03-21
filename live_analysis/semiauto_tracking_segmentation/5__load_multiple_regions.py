@@ -31,11 +31,12 @@ dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO t
 dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
 dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
 # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
  
 # dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%%
+
 from measureSemiauto import recalibrate_pixel_size
 
 all_tracks = {}
@@ -69,7 +70,6 @@ for name,dirname in dirnames.items():
         if name == 'WT_R1' or name == 'WT_R2':
             df['Birth size'] = df['Birth size']
             df['G1 growth'] = df['G1 growth']
-
             
 df_all = pd.concat(regions,ignore_index=True)
 all_ts = pd.concat(all_ts,ignore_index=True)
@@ -88,14 +88,16 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='G1 growth',col='Genotype')
-# plot_bin_means(df_all[df_all['Pair'] == 'Pair 1']['Birth size'],df_all[df_all['Pair'] == 'Pair 1']['G1 growth'],6
-#                ,minimum_n=8)
-# plot_bin_means(df_all[df_all['Pair'] == 'Pair 2']['Birth size'],df_all[df_all['Pair'] == 'Pair 2']['G1 growth'],6
-#                ,minimum_n=8)
+sb.lmplot(rbko,x='Birth size',y='G1 growth',col='Genotype')
+plot_bin_means(wt['Birth size'],wt['G1 growth'],6,minimum_n=8)
 
-# plt.xlim([50,200])
-# plt.ylim([0,150])
+plt.xlim([150,350])
+plt.ylim([-50,250])
+
+X,Y = nonan_pairs( wt['Birth size'], wt['G1 growth'])
+print(np.polyfit(X,Y,1))
+X,Y = nonan_pairs( rbko['Birth size'], rbko['G1 growth'])
+print(np.polyfit(X,Y,1))
 
 #%%
 
@@ -106,6 +108,11 @@ sb.lmplot(df_all,x='Birth size',y='G1 length',
 # plt.xlim([70,150])
 # plt.ylim([0,140])
 # plt.yticks(np.arange(0,140,12))
+
+X,Y = nonan_pairs( wt['Birth size'], wt['G1 length'])
+print(np.corrcoef(X,Y))
+X,Y = nonan_pairs( rbko['Birth size'], rbko['G1 length'])
+print(np.corrcoef(X,Y))
 
 #%%
 plt.figure()

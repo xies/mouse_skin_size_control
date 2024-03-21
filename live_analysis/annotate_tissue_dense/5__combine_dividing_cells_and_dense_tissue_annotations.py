@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 ZZ = 72
 XX = 460
 T = 15

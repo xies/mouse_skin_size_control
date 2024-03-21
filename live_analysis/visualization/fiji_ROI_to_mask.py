@@ -15,12 +15,12 @@ import pickle as pkl
 from glob import glob
 from tqdm import tqdm
 
-from twophoton_util import parse_unaligned_channels, parse_timecourse_directory
+from twophotonUtils import parse_unaligned_channels, parse_aligned_timecourse_directory
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M1 WT/R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/06-25-2022/M6 RBKO/R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2'
-dirname = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1/manual_track'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5/tracked_cells'
+# dirname = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RBKO/R1/manual_track'
 
 #@todo: Also export all daughter cells as a separate .tif so we can do daughter.division interpolation
 
@@ -28,16 +28,16 @@ dirname = '/Users/xies//OneDrive - Stanford/Skin/Two photon/NMS/06-25-2022/M6 RB
 
 ALIGN = False
 
-XX = 460
-ZZ = 70
-T = 15
+XX = 461
+ZZ = 36
+T = 9
 
 # reg_reg_list = parse_unaligned_channels(dirname)
 # align_list = parse_timecourse_directory(dirname)
 
-xfiles = sorted(glob(path.join(dirname,'*/*.xpts.txt')))
-yfiles = sorted(glob(path.join(dirname,'*/*.ypts.txt')))
-zfiles = sorted(glob(path.join(dirname,'*/*.zpts.txt')))
+xfiles = sorted(glob(path.join(dirname,'*/t*[!ab].xpts.txt')))
+yfiles = sorted(glob(path.join(dirname,'*/t*[!ab].ypts.txt')))
+zfiles = sorted(glob(path.join(dirname,'*/t*[!ab].zpts.txt')))
 coordinate_file_tuple = zip(xfiles,yfiles,zfiles)
 
 if ALIGN:

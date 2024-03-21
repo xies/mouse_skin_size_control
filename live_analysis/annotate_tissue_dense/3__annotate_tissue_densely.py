@@ -32,7 +32,7 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1

@@ -33,6 +33,9 @@ collated = decollate_df(df)
 
 ID = 374
 
+cell2plot = collated[ID]
+cell2plot['Num neighbors'] = cell2plot['Num diff neighbors'] + cell2plot['Num planar neighbors']
+
 x = 'Age'
 y2plot = ['Volume','Apical area','Basal area'
           ,'Mean neighbor cell volume','Num neighbors','Mean curvature','Height to BM'
