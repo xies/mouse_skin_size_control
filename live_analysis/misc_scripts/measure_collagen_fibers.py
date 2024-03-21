@@ -38,7 +38,7 @@ for t in range(T):
     im = util.img_as_float(im)
     
     
-    im_blur = filters.gaussian(im,sigma = 5)
+    im_blur = filters.gaussian(im,sigma = 3)
     Gx = filters.sobel_h(im_blur)
     Gy = filters.sobel_v(im_blur)
     

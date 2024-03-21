@@ -71,6 +71,9 @@ for name,dirname in dirnames.items():
 df_all = pd.concat(regions,ignore_index=True)
 ts_all = pd.concat(ts_regions,ignore_index=True)
 
+df_all.loc[df_all['Mouse'] == 'WT_Mclip','S phase entry size'] = df_all[df_all['Mouse'] == 'WT_Mclip']['S phase entry size']*.7
+df_all.loc[df_all['Mouse'] == 'WT_Mnonclip','S phase entry size'] = df_all[df_all['Mouse'] == 'WT_Mnonclip']['S phase entry size']*.7
+
 ablation = ts_all[ts_all['Mode'] == 'Ablation']
 nonablation = ts_all[ts_all['Mode'] == 'Nonablation']
 
@@ -84,6 +87,7 @@ df_all['Mouse_mode'] = df_all['Mouse'] + '_' + df_all['Mode']
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
 sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='box')
 plt.ylim([50,200])
+# plt.ylim([0,2])
 
 #%%
 
