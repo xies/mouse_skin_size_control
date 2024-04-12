@@ -22,7 +22,7 @@ from twophotonUtils import parse_unaligned_channels
 
 # dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 # dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R3'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Old mice/01-24-2024 12month old mice/F1 DOB 12-18-2022/R1'
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
@@ -37,9 +37,9 @@ XY_reg = True
 APPLY_XY = True
 APPLY_PAD = True
 
-ref_T = 1
+ref_T = 0
 
-manual_Ztarget = {}
+manual_Ztarget = {2:31}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -68,7 +68,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 OVERWRITE = True
-for t in tqdm( filelist.index ): # 0-indexed
+for t in tqdm( [2] ): # 0-indexed
 
     if t == ref_T:
         continue
@@ -125,7 +125,7 @@ for t in tqdm( filelist.index ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            # T = T + transform.SimilarityTransform(translation=[0,30],rotation=np.deg2rad(0))
+            T = T + transform.SimilarityTransform(translation=[20,-20],rotation=np.deg2rad(4))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -139,39 +139,14 @@ for t in tqdm( filelist.index ): # 0-indexed
         Z_target = R_shg_target.shape[0]
     
         print('Padding')
-        top_padding = Imax_ref - Imax_target
-        if top_padding > 0: # the needs padding
-            R_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_transformed), axis= 0)
-            G_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),G_transformed), axis= 0)
-            B_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),B_transformed), axis= 0)
-            R_shg_padded = np.concatenate( (np.zeros((top_padding,XX,XX)),R_shg_transformed), axis= 0)
-            
-        elif top_padding < 0: # then needs trimming
-            R_padded = R_transformed[-top_padding:,...]
-            G_padded = G_transformed[-top_padding:,...]
-            B_padded = B_transformed[-top_padding:,...]
-            R_shg_padded = R_shg_transformed[-top_padding:,...]
-            
-        elif top_padding == 0:
-            R_padded = R_transformed
-            G_padded = G_transformed
-            B_padded = B_transformed
-            R_shg_padded = R_shg_transformed
-            
-        delta_ref = Z_ref - Imax_ref
-        delta_target = Z_target - Imax_target
-        bottom_padding = delta_ref - delta_target
-        if bottom_padding > 0: # the needs padding
-            R_padded = np.concatenate( (R_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            G_padded = np.concatenate( (G_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            B_padded = np.concatenate( (B_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            R_shg_padded = np.concatenate( (R_shg_padded.astype(float), np.zeros((bottom_padding,XX,XX))), axis= 0)
-            
-        elif bottom_padding < 0: # then needs trimming
-            R_padded = R_padded[0:bottom_padding,...]
-            G_padded = G_padded[0:bottom_padding,...]
-            B_padded = B_padded[0:bottom_padding,...]
-            R_shg_padded = R_shg_padded[0:bottom_padding,...]
+        dz = Imax_ref - Imax_target
+        # @todo: use translate in 3D to shift in z
+        Tz = transform.EuclideanTransform(translation=[0,-dz])
+        R_padded = transform.warp(R_transformed,Tz)
+        B_padded = transform.warp(B_transformed,Tz)
+        G_padded = transform.warp(G_transformed,Tz)
+        R_shg_padded = transform.warp(R_shg_transformed,Tz)
+        
     
         print('Saving')
         output_dir = path.dirname(filelist.loc[t,'G'])

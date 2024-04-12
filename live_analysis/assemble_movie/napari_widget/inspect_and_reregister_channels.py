@@ -10,7 +10,7 @@ from napari.utils.notifications import show_warning
 
 import numpy as np
 from skimage import io
-from skimage.transform import SimilarityTransform, warp
+from skimage.transform import EuclideanTransform, warp
 from scipy import ndimage
 
 from twophotonUtils import parse_unregistered_channels, parse_unaligned_channels
@@ -22,7 +22,6 @@ def _update_timepoints_on_file_change(widget):
     dirname = widget.dirname.value
     choices = None
     filelist = parse_unregistered_channels(dirname)
-    # filelist = parse_unaligned_channels(dirname)
     if len(filelist) > 0:
         choices = filelist.index
     else:
@@ -40,7 +39,7 @@ def load_images():
         if pre_registered:
             filelist = parse_unaligned_channels(dirname)
         else:
-            filelist = parse_unreigstered_channels(dirname)
+            filelist = parse_unregistered_channels(dirname)
         # Load the files
         ind_to_load = dropdown
         file_tuple = filelist.iloc[ind_to_load]
@@ -48,7 +47,6 @@ def load_images():
         colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
         for name,filename in file_tuple.items():
             viewer.add_image(io.imread(filename),name=name, blending='additive', colormap=next(colormaps))
-
 
     @widget.dirname.changed.connect
     def update_timepoints_on_file_change(event=None):
@@ -60,8 +58,8 @@ def load_images():
 def transform_image(
     image2transform: Image,
     second_channel: Image,
-    translate_x: int=0,
-    translate_y: int=0,
+    translate_x: int=-100,
+    translate_y: int=-100,
     translate_z: int=-10,
     rotate_theta:float=0.0,
     Transform_second_channel:bool=False
