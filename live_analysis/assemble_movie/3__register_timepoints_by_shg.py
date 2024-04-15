@@ -39,7 +39,7 @@ APPLY_PAD = True
 
 ref_T = 0
 
-manual_Ztarget = {2:31}
+manual_Ztarget = {2:31,3:21,5:29,6:22,14:35}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -68,7 +68,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 OVERWRITE = True
-for t in tqdm( [2] ): # 0-indexed
+for t in tqdm( [14] ): # 0-indexed
 
     if t == ref_T:
         continue
@@ -125,7 +125,7 @@ for t in tqdm( [2] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[20,-20],rotation=np.deg2rad(4))
+            T = T + transform.SimilarityTransform(translation=[30,30],rotation=np.deg2rad(-6))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -140,7 +140,6 @@ for t in tqdm( [2] ): # 0-indexed
     
         print('Padding')
         dz = Imax_ref - Imax_target
-        # @todo: use translate in 3D to shift in z
         Tz = transform.EuclideanTransform(translation=[0,-dz])
         R_padded = transform.warp(R_transformed,Tz)
         B_padded = transform.warp(B_transformed,Tz)
