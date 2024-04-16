@@ -13,6 +13,8 @@ from os import path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from skimage import filters
+from mathUtils import normxcorr2
 
 import xml.etree.ElementTree as ET
 from dateutil import parser
@@ -186,3 +188,39 @@ def parse_voxel_resolution_from_XML(region_dir):
             dz = child.attrib['value']
 
     return float(dx),float(dz)
+
+def find_most_likely_z_slice_using_CC(R_ref,B):
+    XX = B.shape[1]
+    CC = np.zeros((B.shape[0],XX * 2 - 1,XX * 2 -1))
+
+    print('Cross correlation started')
+    for i,B_slice in enumerate(B):
+        B_slice = filters.gaussian(B_slice,sigma=0.5)
+        CC[i,...] = normxcorr2(R_ref,B_slice,mode='full')
+    [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
+    return Iz
+
+def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
+    '''
+    Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
+    being the same index in the translated image. Will also truncate/pad im_moving
+    to be the same size as im_ref
+    '''
+    XX = im_moving.shape[1]
+    print('Padding')
+    # Z-pad the red + red_shg channel using Imax and Iz
+    bottom_padding = z_moving - z_ref
+    if bottom_padding > 0: # the needs padding
+        im_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),im_moving), axis= 0)
+    elif bottom_padding < 0: # then needs trimming
+        im_padded = im_moving[-bottom_padding:,...]
+    elif bottom_padding == 0:
+        im_padded = im_moving
+
+    top_padding = im_ref.shape[0] - im_moving.shape[0]
+    if top_padding > 0: # the needs padding
+        im_padded = np.concatenate( (im_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
+    elif top_padding < 0: # then needs trimming
+        im_padded = im_padded[0:top_padding,...]
+        
+    return im_padded

@@ -125,7 +125,7 @@ for t in tqdm( [14] ): # 0-indexed
             # Apply transformation matrix to each stacks
             
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[30,30],rotation=np.deg2rad(-6))
+            T = T + transform.SimilarityTransform(translation=[30,75],rotation=np.deg2rad(-7))
             
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -159,7 +159,7 @@ for t in tqdm( [14] ): # 0-indexed
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
-
+i
 #%%
 print('DONE')
  
