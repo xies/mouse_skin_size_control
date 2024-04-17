@@ -223,66 +223,123 @@ def auto_register_b_and_rshg():
         _update_timepoints_on_file_change(widget)
     return widget
 
-def _update_inspection_timepoint_on_file_change(widget):
-    """Called whenever the file picker is changed. Will look into that directory,
-    and return the available timepoints as defined by parse_unregistered_channels
-    """
-    dirname = widget.dirname.value
-    choices = None
-    filelist = parse_unregistered_channels(dirname)
-    if len(filelist) > 0:
-        choices = filelist.index.values
-    else:
-        show_warning(f'Directory {dirname} is not a region directory.')
-    if choices is not None:
-        widget.timepoint2load.choices = choices
+'''
+Step three: Load, inspect, and manually fix registration
+'''
+
+from magicgui.widgets import ComboBox, Container, FileEdit, PushButton
+
+class LoadDirectoryForInspection(Container):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dropdown_choices = ()
+        self.append(
+            FileEdit(name="dirname",label="Image region to load:",mode="d")
+        )
+        self.append(
+            ComboBox(name="timepoint2load", choices=self.get_dropdown_choices, label="Select timepoint")
+        )
+        self.append(PushButton(name="load_button", text="Load timepoint"))
+        self.append()
+
+        self.dirname.changed.connect(self.update_dropdown_choices)
+        self.load_button.changed.connect(self.load_images)
+
+    def get_dropdown_choices(self, dropdown_widget): #default
+        return self._dropdown_choices
     
-def load_images_for_inspection():
-    '''
-    Image loader widget that auto-populates a list of files
-    @todo: Currentlly buggy with the following behavior: when an image is added,
-    all parameters will reset to default.
-    https://forum.image.sc/t/dynamic-select-options-reset/81159/5
-    
-    '''
-    
-    @magicgui(dirname={'label': 'Image region to load:','mode': 'd'}, # Restrict file picker to directories
-        timepoint2load={'widget_type':'Select',
-                  'choices':DEFAULT_CHOICES,
-                  'allow_multiple':False,
-                  'label':'Region to load:'}, # Begins with a default NaN choice
-        pre_registered={'label':'Load pre-registered images?'}, # option to load pre-registered or unregistered images
-        call_button='Load timepoint')
-    def widget(dirname=Path.home(),timepoint2load=(0),pre_registered=False) -> List[napari.layers.Layer]:
+    def update_dropdown_choices(self):
+        dirname = self.dirname.value
+        choices = None
+        filelist = parse_unregistered_channels(dirname)
+        if len(filelist) > 0:
+            choices = filelist.index.values
+        else:
+            show_warning(f'Directory {dirname} is not a region directory.')
+        if choices is not None:
+            print(choices)
+            self._dropdown_choices = choices
+            self.timepoint2load.reset_choices()
+            
+    def load_images(self) -> List[napari.layers.Layer]:
         
         if pre_registered:
-            filelist = parse_unaligned_channels(dirname) #@todo: auto-detect when these are not yet available
+            filelist = parse_unaligned_channels(self.dirname.value) #@todo: auto-detect when these are not yet available
             suffix = '_reg_reg'
         else:
-            filelist = parse_unregistered_channels(dirname)
+            filelist = parse_unregistered_channels(self.dirname.value)
             suffix = '_reg'
         # Load the files using a cycling colormap series
-        file_tuple = filelist.loc[timepoint2load[0]]
+        file_tuple = filelist.loc[self.timepoint2load.value[0]]
         colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
         layers_list = []
         for name,filename in file_tuple.items():
             layers_list.append(Image(io.imread(filename),name=name+suffix, blending='additive', colormap=next(colormaps)))
             
         return layers_list
+
+# def get_available_timepoints(widget):
+#     if not hasattr(widget,'_timepoint_choices'):
+#         widget._timepoint_choices = ()
+#     return widget._timepoint_choices
+    
+# def _update_inspection_timepoint_on_file_change(widget):
+#     """
+#     Called whenever the file picker is changed. Will look into that directory,
+#     and return the available timepoints as defined by parse_unregistered_channels
+#     """
+    
+#     dirname = widget.dirname.value
+#     choices = None
+#     filelist = parse_unregistered_channels(dirname)
+#     if len(filelist) > 0:
+#         choices = filelist.index.values
+#     else:
+#         choices = ()
+#         show_warning(f'Directory {dirname} is not a region directory.')
+#     widget._timepoint_choices = choices
+#     # widget.timepoint2load.choices = choices
+#     return choices
+    
+# def load_images_for_inspection():
+#     '''
+#     Image loader widget that auto-populates a list of files
+#     @todo: Currentlly buggy with the following behavior: when an image is added,
+#     all parameters will reset to default.
+#     https://forum.image.sc/t/dynamic-select-options-reset/81159/5
+    
+#     '''
+    
+#     @magicgui(dirname={'label': 'Image region to load:','mode': 'd'}, # Restrict file picker to directories
+#         timepoint2load={'widget_type':'Select',
+#                   'choices':get_available_timepoints,
+#                   'allow_multiple':False,
+#                   'label':'Region to load:'}, # Begins with a default NaN choice
+#         pre_registered={'label':'Load pre-registered images?'}, # option to load pre-registered or unregistered images
+#         call_button='Load timepoint')
+#     def widget(dirname=Path.home(),timepoint2load=None,pre_registered=False) -> List[napari.layers.Layer]:
         
-    @widget.dirname.changed.connect
-    def update_timepoints_on_file_change(event=None):
-        _update_inspection_timepoint_on_file_change(widget)
-    return widget
-
-from magicgui.widgets import ComboBox
-import random
-
-def _get_choices(widget=None):
-    # prepare choices randomly.
-    return random.choices([1, 2, 3, 4], k=2)
-
-wdt = ComboBox(choices=_get_choices)
+#         if pre_registered:
+#             filelist = parse_unaligned_channels(dirname) #@todo: auto-detect when these are not yet available
+#             suffix = '_reg_reg'
+#         else:
+#             filelist = parse_unregistered_channels(dirname)
+#             suffix = '_reg'
+#         # Load the files using a cycling colormap series
+#         file_tuple = filelist.loc[timepoint2load[0]]
+#         colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
+#         layers_list = []
+#         for name,filename in file_tuple.items():
+#             layers_list.append(Image(io.imread(filename),name=name+suffix, blending='additive', colormap=next(colormaps)))
+            
+#         return layers_list
+        
+#     @widget.dirname.changed.connect
+#     def update_timepoints_on_file_change(event=None):
+#         _update_inspection_timepoint_on_file_change(widget)
+#         widget.reset_choices()
+        
+#     return widget
 
 @magicgui(call_button='Transform image')
 def transform_image(
@@ -355,7 +412,7 @@ viewer = napari.Viewer()
 # viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
 # viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
 
-viewer.window.add_dock_widget(load_images_for_inspection(),area='right')
+viewer.window.add_dock_widget(LoadDirectoryForInspection(),area='right')
 viewer.window.add_dock_widget(transform_image, area='right')
 viewer.window.add_dock_widget(filter_gaussian3d, area='right')
 
