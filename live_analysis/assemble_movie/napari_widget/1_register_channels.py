@@ -31,7 +31,8 @@ from glob import glob
 from re import findall
 
 # Default choices for the timepoints to insepct
-DEFAULT_CHOICES = [0,1]
+global DEFAULT_CHOICES
+DEFAULT_CHOICES = [0,1,2]
 
 #%% Reading the first ome-tiff file using imread reads entire stack
 
@@ -141,16 +142,18 @@ def _update_timepoints_on_file_change(widget):
     """Called whenever the file picker is changed. Will look into that directory,
     and return the available timepoints as defined by parse_unregistered_channels
     """
+    
     dirname = widget.dirname.value
     choices = None
     filelist = parse_unregistered_channels(dirname)
+    
     if len(filelist) > 0:
         choices = filelist.index
     else:
         show_warning(f'Directory {dirname} is not a region directory.')
     if choices is not None:
         widget.timepoints_to_register.choices = choices
-
+    
 def auto_register_b_and_rshg():
     '''
     Gets dirname from picker and populates the available timepoints to register.
@@ -228,49 +231,72 @@ def _update_inspection_timepoint_on_file_change(widget):
     choices = None
     filelist = parse_unregistered_channels(dirname)
     if len(filelist) > 0:
-        choices = filelist.index
+        choices = filelist.index.values
     else:
         show_warning(f'Directory {dirname} is not a region directory.')
     if choices is not None:
-        widget.dropdown.choices = choices
-
+        widget.timepoint2load.choices = choices
+    
 def load_images_for_inspection():
     '''
-    Defines a image loader widget that auto-populates a list of files
+    Image loader widget that auto-populates a list of files
+    @todo: Currentlly buggy with the following behavior: when an image is added,
+    all parameters will reset to default.
+    https://forum.image.sc/t/dynamic-select-options-reset/81159/5
     
     '''
+    
     @magicgui(dirname={'label': 'Image region to load:','mode': 'd'}, # Restrict file picker to directories
-        dropdown={'choices':DEFAULT_CHOICES, 'label':'Region to load:'}, # Begins with a default NaN choice
+        timepoint2load={'widget_type':'Select',
+                  'choices':DEFAULT_CHOICES,
+                  'allow_multiple':False,
+                  'label':'Region to load:'}, # Begins with a default NaN choice
         pre_registered={'label':'Load pre-registered images?'}, # option to load pre-registered or unregistered images
         call_button='Load timepoint')
-    def widget(viewer: napari.Viewer, dropdown, dirname=Path.home(),pre_registered=False):
+    def widget(dirname=Path.home(),timepoint2load=(0),pre_registered=False) -> List[napari.layers.Layer]:
+        
         if pre_registered:
             filelist = parse_unaligned_channels(dirname) #@todo: auto-detect when these are not yet available
+            suffix = '_reg_reg'
         else:
             filelist = parse_unregistered_channels(dirname)
+            suffix = '_reg'
         # Load the files using a cycling colormap series
-        ind_to_load = dropdown
-        file_tuple = filelist.iloc[ind_to_load]
+        file_tuple = filelist.loc[timepoint2load[0]]
         colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
+        layers_list = []
         for name,filename in file_tuple.items():
-            viewer.add_image(io.imread(filename),name=name, blending='additive', colormap=next(colormaps))
-
+            layers_list.append(Image(io.imread(filename),name=name+suffix, blending='additive', colormap=next(colormaps)))
+            
+        return layers_list
+        
     @widget.dirname.changed.connect
     def update_timepoints_on_file_change(event=None):
         _update_inspection_timepoint_on_file_change(widget)
     return widget
 
+from magicgui.widgets import ComboBox
+import random
+
+def _get_choices(widget=None):
+    # prepare choices randomly.
+    return random.choices([1, 2, 3, 4], k=2)
+
+wdt = ComboBox(choices=_get_choices)
+
 @magicgui(call_button='Transform image')
 def transform_image(
     reference_image: Image,
     image2transform: Image,
-    second_channel: Image, 
-    translate_x: int=-500, #@todo: unclear why magicgui doesn't let you go more negative than the default number
-    translate_y: int=-500,
-    translate_z: int=-100,
+    second_channel: Image,
+    reference_z: int=0,
+    reference_y: int=0,
+    reference_x: int=0,
+    moving_z: int=0,
+    moving_y: int=0,
+    moving_x: int=0,
     rotate_theta:float=0.0,
     Transform_second_channel:bool=False,
-    Truncate_in_z:bool=True
     ) -> List[napari.layers.Layer]:
     
     '''
@@ -288,23 +314,22 @@ def transform_image(
     second_image_data = second_channel.data.astype(float)
     rotate_theta = np.deg2rad(rotate_theta)
 
-    # z-transformations (up an down stack)... use the form EuclideanTransform[\0,-dz] can't figure out why @todo
-    # Tz = EuclideanTransform(translation=[0,-translate_z],dimensionality=2)
     # xy transformations (do slice by slice)
-    Txy = EuclideanTransform(translation=[-translate_x,-translate_y], rotation=rotate_theta)
+    Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
     # # Apply to first image
     array = np.zeros_like(image_data)
-    for z,im in enumerate(array):
+    for z,im in enumerate(image_data):
         array[z,...] = warp(im, Txy)
-    array = z_translate_and_pad(reference_image.data,array,0,0-translate_z)
+    array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+    
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]
     
     if Transform_second_channel:
         array = np.zeros_like(second_image_data)
-        for z,im in enumerate(array):
+        for z,im in enumerate(second_image_data):
             array[z,...] = warp(im, Txy)
-        array = z_translate_and_pad(reference_image.data,array,0,0-translate_z)
+        array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
         output_list.append(transformed_second_channel)
         
@@ -327,8 +352,8 @@ def filter_gaussian3d( image2filter:Image,
 
 viewer = napari.Viewer()
 
-viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
-viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
+# viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
+# viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
 
 viewer.window.add_dock_widget(load_images_for_inspection(),area='right')
 viewer.window.add_dock_widget(transform_image, area='right')

@@ -207,9 +207,9 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     to be the same size as im_ref
     '''
     XX = im_moving.shape[1]
-    print('Padding')
     # Z-pad the red + red_shg channel using Imax and Iz
-    bottom_padding = z_moving - z_ref
+    bottom_padding = z_ref - z_moving
+    
     if bottom_padding > 0: # the needs padding
         im_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),im_moving), axis= 0)
     elif bottom_padding < 0: # then needs trimming
