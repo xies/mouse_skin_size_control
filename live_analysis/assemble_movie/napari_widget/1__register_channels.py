@@ -7,13 +7,12 @@ Created on Tue Apr 16 13:42:36 2024
 """
 
 from pathlib import Path
-from itertools import cycle
 from typing import List
 
 from magicgui import magicgui
 import napari
 from napari.layers import Image
-from napari.utils.notifications import show_warning
+from napari.utils.notifications import show_warning, show_info
 from napari.utils import progress
 
 # from os import path
@@ -23,8 +22,8 @@ from skimage.transform import EuclideanTransform, warp
 from scipy import ndimage
 
 from pystackreg import StackReg
-from twophotonUtils import parse_unregistered_channels, parse_unaligned_channels, find_most_likely_z_slice_using_CC, \
-    z_translate_and_pad, parse_aligned_timecourse_directory
+from twophotonUtils import parse_unregistered_channels, find_most_likely_z_slice_using_CC, z_translate_and_pad
+from imageLoadingWidgets import LoadDTimepointForInspection
 
 from os import path
 from glob import glob
@@ -40,6 +39,11 @@ DEFAULT_CHOICES = [0,1,2]
 def sort_by_slice(filename):
     z = findall('_(\d+).ome.tif',filename)[0]
     return int(z)
+
+
+@magicgui(call_button='Print size')
+def print_image_size(image : Image):
+    show_info(f'Size of {image.name} = {image.data.shape}')
 
     
 '''
@@ -221,94 +225,6 @@ def auto_register_b_and_rshg():
         _update_timepoints_on_file_change(widget)
     return widget
 
-'''
-Step three: Load, inspect, and manually fix registration
-'''
-
-from magicgui.widgets import ComboBox, Container, FileEdit, PushButton, CheckBox, RadioButtons
-
-class LoadDirectoryForInspection(Container):
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__()
-        self._timepoint_choices = ()
-        self._set_choices = ['Un-registered']
-        self._viewer = viewer
-        self.append(
-            FileEdit(name="dirname",label="Image region to load:",mode="d")
-        )
-        self.append(
-            ComboBox(name="timepoint2load", choices=self.get_timepoint_choices, label="Select timepoint")
-        )
-        self.append(RadioButtons(name='set2load',
-                                  choices=self.get_set_choices,
-                                  value='Un-registered'
-                                  )
-                    )
-        self.append(PushButton(name='load_button', text='Load timepoint'))
-        
-        self.dirname.changed.connect(self.update_timepoint_choices)
-        self.timepoint2load.changed.connect(self.update_set_choices)
-        self.load_button.changed.connect(self.load_images)
-
-    def get_timepoint_choices(self, dropdown_widget):
-        return self._timepoint_choices
-    
-    def update_timepoint_choices(self):
-        dirname = self.dirname.value
-        choices = None
-        filelist = parse_unregistered_channels(dirname)
-        if len(filelist) > 0:
-            choices = filelist.index.values
-        else:
-            show_warning(f'Directory {dirname} is not a region directory.')
-        if choices is not None:
-            self._timepoint_choices = choices
-            self.timepoint2load.reset_choices()
-            
-    def get_set_choices(self, radio_widget):
-        return self._set_choices
-    
-    def update_set_choices(self):
-        dirname = self.dirname.value
-        t = self.timepoint2load.value
-        subdir_name = glob(path.join(dirname,f'{t}. Day*/'))[0]
-        
-        choices = []
-        if len( glob(path.join(subdir_name,'R_reg.tif'))) > 0:
-            choices.append('Un-registered')
-        if len( glob(path.join(subdir_name,'R_reg_reg.tif'))) > 0:
-            choices.append('Registered')
-        if len( glob(path.join(subdir_name,'R_align.tif'))) > 0:
-            choices.append('Aligned')
-        self._set_choices = choices
-        self.set2load.reset_choices()
-        
-            
-    def load_images(self) -> List[napari.layers.Layer]:
-        # clear the current slate
-        names2remove = [l.name for l in viewer.layers]
-        for l in names2remove:
-            viewer.layers.remove(l)
-                
-        prefix = f'{self.timepoint2load.value}_'
-        
-        if self.set2load.value == 'Un-registered':
-            filelist = parse_unregistered_channels(self.dirname.value) #@todo: auto-detect when these are not yet available
-            suffix = '_reg_reg'
-        elif self.set2load.value == 'Registered':
-            filelist = parse_unaligned_channels(self.dirname.value)
-            suffix = '_reg'
-        elif self.set2load.value == 'Aligned':
-            filelist = parse_aligned_timecourse_directory(self.dirname.value)
-            suffix = '_align'
-            
-        # Load the files using a cycling colormap series
-        file_tuple = filelist.loc[self.timepoint2load.value]
-        colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
-
-        for name,filename in file_tuple.items():
-            self._viewer.add_image(io.imread(filename),name=prefix+name+suffix, blending='additive', colormap=next(colormaps))
-
 
 @magicgui(call_button='Transform image')
 def transform_image(
@@ -378,12 +294,14 @@ def filter_gaussian3d( image2filter:Image,
 
 viewer = napari.Viewer()
 
-# viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
-# viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
+viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
+viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
 
-viewer.window.add_dock_widget(LoadDirectoryForInspection(viewer),area='right')
+viewer.window.add_dock_widget(LoadDTimepointForInspection(viewer),area='right')
 viewer.window.add_dock_widget(transform_image, area='right')
 viewer.window.add_dock_widget(filter_gaussian3d, area='right')
+
+viewer.window.add_dock_widget(print_image_size, area='left')
 
 if __name__ == '__main__':
     napari.run()
