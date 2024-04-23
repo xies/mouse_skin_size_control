@@ -48,3 +48,4 @@ This will generate an overall CSV file called ts_features.csv, which contains a 
 
 This matrix is directly used by scripts in tissue_dynamics_model to perform statistical modeling of the predictor of the G1/S transition. All scripts begin with 1__prepare_data_matrix, which prepares a sanitized and standardized data matrix, which is subsequently used to construct different models.
 
+Expected run time: <1 min for test dataset.
