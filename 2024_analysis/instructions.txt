@@ -8,8 +8,8 @@ INSTALL:
 3) Install the required packages using conda: conda install -f requirements.txt
 
 4) Pip required packages:
-pip install pystackreg
-pip install trimesh 
+pip install pystackreg (tested version = 0.2.7)
+pip install trimesh (tested version = 3.18.0)
 
 5) Download the repository from github: github.com/xies/xiesUtil
 
