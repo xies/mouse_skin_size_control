@@ -95,7 +95,6 @@ for t in range(TT):
     cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
     nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     
-    
     adj_image = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
     
     cropped[0,t,:,:,:] = R[t,:,Ymin:Ymax,Xmin:Xmax]

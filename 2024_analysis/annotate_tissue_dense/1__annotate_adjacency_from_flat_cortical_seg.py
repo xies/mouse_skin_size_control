@@ -39,15 +39,16 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
+DEMO = True
+
 for t in tqdm(range(15)):
     
-    
-    cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
-    # allcytoIDs = np.unique(cyto_seg)[1:]
-    
-    dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    # heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
-    # heightmap = np.round(heightmap).astype(int)
+    if DEMO:
+        cyto_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_data/example_contact_map.tif')[t,...]
+        dense_nuc_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_data/example_mouse_skin_image.tif')[3,t,...]
+    else:
+        cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
+        dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
     
     #% Label transfer from nuc3D -> cyto2D
     
@@ -71,7 +72,8 @@ for t in tqdm(range(15)):
     uniques,counts = np.unique(df_nuc['CytoID'],return_counts=True)
     bad_idx = np.where(counts > 1)[0]
     for i in bad_idx:
-        print(f'CytoID being duplicated: {uniques[i]}')
+        if not DEMO:
+            print(f'CytoID being duplicated: {uniques[i]}')
     #% Relabel cyto seg with nuclear CellposeID
     
     df_cyto['CellposeID'] = np.nan
@@ -80,8 +82,9 @@ for t in tqdm(range(15)):
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
         if len(I) > 1:
             
-            print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
-            error()
+            if not DEMO:
+                print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
+            # error()
         elif len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
     
@@ -119,12 +122,12 @@ for t in tqdm(range(15)):
     
     #% Save as matrix and image
     im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX]).astype(np.uint16)
-    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
+    # io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
     
     # save matrix
-    np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
+    # np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
     
-    np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
+    # np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
     
 
 #%% Visualize adjacencies on the image itself (either in flat or in 3D)
