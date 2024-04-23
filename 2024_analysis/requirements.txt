@@ -1,0 +1,9 @@
+numpy
+scipy
+scikit-image
+scikit-learn
+networkx
+matlotlib
+pandas
+seaborn
+statsmodels
