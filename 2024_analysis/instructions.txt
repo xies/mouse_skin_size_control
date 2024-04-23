@@ -37,12 +37,12 @@ Secondly, a basal layer contact map is needed to encode the cell-cell contacts w
 
 The script interface can be followed in sequence.
 
-1__annotate_adjacency_from_flat_cortical_seg: generates cell-cell adjacency matrices from the contact map (also called flat cortical segmentations). The convention is that nuclear segmentation IDs will be used to uniquely identity each cell.
-2__collate_nuclear_and_cyto: map cytoplasmic segmentations onto nuclear segmentations
-3__annotate_tissue_densely: generates cell and neighborhood features
+1__annotate_adjacency_from_flat_cortical_seg: generates cell-cell adjacency matrices from the contact map (also called flat cortical segmentations). The convention is that nuclear segmentation IDs will be used to uniquely identity each cell. Run-time <10s on demo.
+2__collate_nuclear_and_cyto: map cytoplasmic segmentations onto nuclear segmentations. Run time <10s on demo
+3__annotate_tissue_densely: generates cell and neighborhood features. Run time <30s on demo
 3a__plot_diagnostics: optional plotting tools
-4__annotate_basal_dividing_cells: generate image statistics for dividing cells
-5__combine_dividing_cells_and_dense_tissue_annotations: combine dividing cell features and microenvironment features
+4__annotate_basal_dividing_cells: generate image statistics for dividing cells. Run time <10s on demo.
+5__combine_dividing_cells_and_dense_tissue_annotations: combine dividing cell features and microenvironment features. Run time <1s on demo
 
 This will generate an overall CSV file called ts_features.csv, which contains a large table for all dividing cells over time, and their respective microenvironment features.
 
