@@ -79,7 +79,7 @@ for i,t in enumerate(T):
     
     
 # Trim movie down to size using dimensions of the neighbors mask
-border_xy = 10 #px on edge
+border_xy = 3 #px on edge
 
 It,Iz,Iy,Ix = np.where(neighbor_mask)
 
@@ -108,7 +108,7 @@ for t in range(TT):
     cropped_adj_image[t,...] = adj_image[Ymin:Ymax,Xmin:Xmax]
 
 io.imsave(path.join('/Users/xies/Desktop/example_mouse_skin_image.tif'),cropped.astype(np.uint16))
-io.imsave(path.join('/Users/xies/Desktop/example_mouse_skin_cell_contact_map.tif'),cropped_adj_image.astype(np.uint16))
+io.imsave(path.join('/Users/xies/Desktop/example_contact_map.tif'),cropped_adj_image.astype(np.uint16))
 
 
 #     io.imsave(path.join(dirname,f'Examples for figures/Microenvironment movies/{basalID}/center-crop.tif'),util.img_as_uint(center_mask))
