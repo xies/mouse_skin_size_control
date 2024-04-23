@@ -1,4 +1,4 @@
-mouse_skin_size_control
+**mouse_skin_size_control**
 
 Scripts used reconstruct 3D cell shape of mouse epidermal stem cells from intravital imaging datasets.
 
@@ -10,19 +10,22 @@ DOI: https://doi.org/10.1016/j.cub.2019.12.062
 Shicong Xie, Shuyuan Zhang, Gustavo de Medeiros, Prisca Liberali, Jan M. Skotheim. bioRxiv 2024.04.09.588781; doi: https://doi.org/10.1101/2024.04.09.588781 
 
 
+----
+**./2024_analysis**
 
-./cb_2020_analysis
+Tested on Python 3.9 on MacOS. More detailed instructions are in ./2024_analysis/instructions.txt. Requirements are listed in ./2024_analysis/requirements.txt
+
 
 CONTENTS:
 
-1) single cell tracking
+1) single cell tracking: Scripts for semi-automated movie assembly and collation of semi-automated single cell tracking in 3D
 
 Expected input data: raw images, segmentation masks of nuclear shapes in 3D, and single cell tracking from MaMuT tracking tables
 
 assemble_movie: semi-automated registration and assembly of movies from longitudinal snapshots
 semiauto_tracking_segmentation: collate segmentation and sparse single cell tracking
 
-2) cell and microenvironment quantifications
+2) cell and microenvironment quantifications: Scripts for quantifying and collating cell and cell-neighborhood geometries using densely annotated 3D cell and nuclear segmentations
 
 Expected input data: raw images, segmentation masks of cell and nuclear shapes in 3D
 
