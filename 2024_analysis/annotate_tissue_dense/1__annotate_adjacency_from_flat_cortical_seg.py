@@ -10,9 +10,9 @@ Created on Wed Aug 31 17:10:00 2022
 import numpy as np
 from skimage import io, measure, util, morphology
 from glob import glob
-from os import path
+from os import path, makedirs
 from scipy import ndimage as ndi
-from scipy.spatial import distance
+
 import pandas as pd
 import matplotlib.pylab as plt
 from tqdm import tqdm
@@ -21,8 +21,10 @@ import networkx as nx
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, draw_adjmat_on_image_3d, most_likely_label
 
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis
-XX = 460
+dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
+contact_map_demo = io.imread(path.join(dirname,'example_mouse_skin_cell_contact_map.tif'))
+
 T = 15
 touching_threshold = 2 #px
 corona = 2
@@ -40,20 +42,22 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
+DEMO = True
+
 for t in tqdm(range(15)):
-    
-    
-    cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
-    # allcytoIDs = np.unique(cyto_seg)[1:]
-    
-    dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    # heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
-    # heightmap = np.round(heightmap).astype(int)
+    t = 2
+    if DEMO:
+        cyto_2d_seg = contact_map_demo[t,...]
+        dense_nuc_seg = im_demo[t,:,3,...]
+    else:
+        cyto_2d_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
+        dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    YY,XX = cyto_2d_seg.shape
     
     #% Label transfer from nuc3D -> cyto2D
     
     # For now detect the max overlap label with the nuc projection
-    df_nuc = pd.DataFrame( measure.regionprops_table(dense_nuc_seg.max(axis=0), intensity_image = cyto_seg
+    df_nuc = pd.DataFrame( measure.regionprops_table(dense_nuc_seg.max(axis=0), intensity_image = cyto_2d_seg
                                                    ,properties=['label','centroid','max_intensity',
                                                                 'euler_number','area']
                                                    ,extra_properties = [most_likely_label]))
@@ -61,7 +65,7 @@ for t in tqdm(range(15)):
                                       ,'most_likely_label':'CytoID','label':'CellposeID'})
     
     
-    df_cyto = pd.DataFrame( measure.regionprops_table(cyto_seg, properties=['centroid','label']))
+    df_cyto = pd.DataFrame( measure.regionprops_table(cyto_2d_seg, properties=['centroid','label']))
     df_cyto.index = df_cyto['label']
     
     nuc_coords = np.array([df_nuc['Y'],df_nuc['X']]).T
@@ -80,9 +84,7 @@ for t in tqdm(range(15)):
         cytoID = cyto['label']
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
         if len(I) > 1:
-            
             print(f't = {t}: ERROR at CytoID {cytoID} = {I}')
-            error()
         elif len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
     
@@ -96,10 +98,10 @@ for t in tqdm(range(15)):
         
         this_idx = np.where(df_nuc['CellposeID'] == cyto['CellposeID'])[0]
         
-        this_mask = cyto_seg == cyto['label']
+        this_mask = cyto_2d_seg == cyto['label']
         this_mask_dil = morphology.binary_dilation(this_mask,selem)
         
-        touchingIDs,counts = np.unique(cyto_seg[this_mask_dil],return_counts=True)
+        touchingIDs,counts = np.unique(cyto_2d_seg[this_mask_dil],return_counts=True)
         touchingIDs[counts > touching_threshold] # should get rid of 'conrner touching'
         # if i == 87:
         #     error
@@ -119,15 +121,29 @@ for t in tqdm(range(15)):
         
     
     #% Save as matrix and image
-    im_adj = draw_adjmat_on_image(A,nuc_coords,[XX,XX]).astype(np.uint16)
-    io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
+    im_adj = draw_adjmat_on_image(A,nuc_coords,[YY,XX]).astype(np.uint16)
     
-    # save matrix
-    np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
+    if DEMO:
+        if t == 0:
+            plt.subplot(2,1,1)
+            io.imshow(cyto_2d_seg,cmap='hot')
+            plt.subplot(2,1,2)
+            io.imshow(im_adj,cmap='hot')
+        if not path.exists(path.join(dirname,'Image flattening/flat_adj/')):
+            makedirs(path.join(dirname,'Image flattening/flat_adj/'))
+        if not path.exists(path.join(dirname,'Image flattening/flat_adj_dict/')):
+            makedirs(path.join(dirname,'Image flattening/flat_adj_dict/'))
+        np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
+        np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
+        
+    else:
+        io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}.tif'),im_adj,check_contrast=False)
+        
+        # save matrix
+        np.save(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'),A)
+        
+        np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
     
-    np.save(path.join(dirname,f'Image flattening/flat_adj_dict/adjdict_t{t}.npy'),adj_dict)
-    
-
 #%% Visualize adjacencies on the image itself (either in flat or in 3D)
 
 A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))

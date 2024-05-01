@@ -13,7 +13,7 @@ import pandas as pd
 
 from trimesh import Trimesh
 from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean_curvature_measure, sphere_ball_intersection
-from basicUtils import euclidean_distance, nonans
+from basicUtils import nonans
 
 import matplotlib.pylab as plt
 # from matplotlib.path import Path
@@ -22,17 +22,23 @@ from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_l
 from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, argsort_counter_clockwise
 
 from tqdm import tqdm
-from glob import glob
-from os import path
+from os import path,makedirs
 
 dx = 0.25
-XX = 460
 Z_SHIFT = 10
 
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+
+
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
+flattened_3d_seg_demo = io.imread(path.join(dirname,'flattened_segmentation.tif'))
+collagen_gradients_demo = io.imread(path.join(dirname,'collagen_gradients.tif'))
+heightmaps_demo = io.imread(path.join(dirname,'heightmaps.tif'))
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
@@ -83,6 +89,8 @@ def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
 SAVE = True
 VISUALIZE = False
 
+DEMO = True
+
 df = []
 
 # for expansion
@@ -90,12 +98,17 @@ footprint = morphology.cube(3)
 
 for t in tqdm(range(15)):
     
-    
     #----- cell-centric msmts -----
-    nuc_dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
-    manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
+    if DEMO:
+        nuc_dense_seg = im_demo[t,:,3,:,:]
+        cyto_dense_seg = im_demo[t,:,4,:,:]
+        manual_tracks = im_demo[t,:,5,:,:]
+    else:
+        nuc_dense_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+        cyto_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+        manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
+    _,YY,XX = nuc_dense_seg.shape
     # Initialize measurements from nuclear segmentation
     df_dense = pd.DataFrame( measure.regionprops_table(nuc_dense_seg, intensity_image=cyto_dense_seg
                                                        ,properties=['label','area','centroid','solidity','bbox']
@@ -106,11 +119,6 @@ for t in tqdm(range(15)):
                                         ,'solidity':'Nuclear solidity'
                                         ,'most_likely_label':'CytoID'})
     df_dense.loc[df_dense['CytoID'] == 0,'CytoID'] = np.nan
-    
-    # Check the manifest of cytoID against those found in the same Frame from the initial collation dataframe (2__collate_nuclear_and_cyto.py)
-    # df_cyto = pd.read_csv(path.join(dirname,'cyto_dataframe.csv'),index_col=0)
-    # df_cyto = df_cyto[df_cyto['Frame'] == t]
-    # assert( len(nonans(df_nuc['CytoID'].unique())) == len(nonans(df_cyto['CytoID'].unique())))
     
     # Measurements from cortical segmentation
     df_cyto = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=nuc_dense_seg
@@ -149,18 +157,24 @@ for t in tqdm(range(15)):
         df_cyto.at[i,'Planar angle'] = theta
     
     # ----- Load flattened 3d cortical segmentation and measure geometry from cell-centric coordinates ----
-    f = path.join(dirname,f'Image flattening/flat_3d_cyto_seg/t{t}.tif')
-    im = io.imread(f)
+    if DEMO:
+        im = flattened_3d_seg_demo[t,...]
+    else:
+        f = path.join(dirname,f'Image flattening/flat_3d_cyto_seg/t{t}.tif')
+        im = io.imread(f)
     
     # Load the structuring matrix elements for collagen
-    f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
-    [Gx,Gy] = np.load(f)
+    if DEMO:
+        [Gx,Gy] = collagen_gradients_demo[t,:,:,:]
+    else:
+        f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
+        [Gx,Gy] = np.load(f)
     Jxx = Gx*Gx
     Jxy = Gx*Gy
     Jyy = Gy*Gy
     
     properties = measure.regionprops(im, extra_properties = [surface_area]) # Avoid using table bc of bbox
-    basal_masks_2save = np.zeros((XX,XX))
+    basal_masks_2save = np.zeros((YY,XX))
     for p in properties:
         
         cytoID = p['label']
@@ -215,6 +229,8 @@ for t in tqdm(range(15)):
         df_cyto.at[cytoID,'Collagen fibrousness'] = fibrousness
         df_cyto.at[cytoID,'Collagen alignment'] = np.abs(np.cos(theta - basal_orientation))
     
+    if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
+        makedirs(path.join(dirname,'Image flattening/basal_masks'))
     io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
     
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
@@ -227,15 +243,18 @@ for t in tqdm(range(15)):
     # Merge NUC and CYTO annotations into the same dataframe, keyed on NUCLEAR cellposeID, and keep nuclear in merge
     # because df_cyto is generally a subset of df_nuc
     df_dense = df_dense.merge(df_cyto,on='CellposeID',how='left')
-    assert(np.all(np.isnan(df_dense[df_dense['CytoID_x'] != df_dense['CytoID_y']]['CytoID_x'])))
+    # assert(np.all(np.isnan(df_dense[df_dense['CytoID_x'] != df_dense['CytoID_y']]['CytoID_x'])))
     df_dense = df_dense.drop(columns='CytoID_y')
     df_dense = df_dense.rename(columns={'CytoID_x':'CytoID'})
     # Derive NC ratio
     df_dense['NC ratio'] = df_dense['Nuclear volume'] / df_dense['Cell volume']
    
     #----- Load FUCCI channel + auto annotate cell cycle ---
-    im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
-    R = im[...,0]
+    if DEMO:
+        R = im_demo[t,:,0,:,:]
+    else:
+        im = io.imread(path.join(dirname,f'im_seq/t{t}.tif'))
+        R = im[...,0]
     for i,p in enumerate(measure.regionprops(nuc_dense_seg,intensity_image=R)):
         df_dense.at[i,'FUCCI intensity'] = p['intensity_mean']
         bbox = p['bbox']
@@ -257,18 +276,19 @@ for t in tqdm(range(15)):
     #----- Various nuclear volume annotations -----
     # Use thresholded mask to calculate nuclear volume
     # Load raw images or pre-made masks
-    mask = io.imread(path.join(dirname,f'Misc/H2b masks/t{t}.tif')).astype(bool)
-    this_seg_dilated = morphology.dilation(nuc_dense_seg,footprint=footprint)
-    this_seg_dilated[~mask] = 0
-    threshed_volumes = pd.DataFrame(measure.regionprops_table(
-        this_seg_dilated, properties=['label','area']) )
-    threshed_volumes['area'] = threshed_volumes['area'] * dx**2
-    threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume th'})
-    df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
-
-    # Calculate a 'normalized nuc volume'
-    norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume th'].mean()
-    df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume th']/norm_factor
+    if not DEMO:
+        mask = io.imread(path.join(dirname,f'Misc/H2b masks/t{t}.tif')).astype(bool)
+        this_seg_dilated = morphology.dilation(nuc_dense_seg,footprint=footprint)
+        this_seg_dilated[~mask] = 0
+        threshed_volumes = pd.DataFrame(measure.regionprops_table(
+            this_seg_dilated, properties=['label','area']) )
+        threshed_volumes['area'] = threshed_volumes['area'] * dx**2
+        threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume th'})
+        df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
+    
+        # Calculate a 'normalized nuc volume'
+        norm_factor = df_dense[df_dense['FUCCI thresholded'] == 'High']['Nuclear volume th'].mean()
+        df_dense['Nuclear volume normalized'] = df_dense['Nuclear volume th']/norm_factor
 
 
     #----- map from cellpose to manual -----
@@ -277,7 +297,7 @@ for t in tqdm(range(15)):
                                                        properties = ['label'],
                                                        extra_properties = [most_likely_label]))
     df_manual = df_manual.rename(columns={'label':'basalID','most_likely_label':'CellposeID'})
-    assert(np.isnan(df_manual['CellposeID']).sum() == 0)
+    # assert(np.isnan(df_manual['CellposeID']).sum() == 0)
     
     # Reverse the mapping from CellposeID to basalID
     for _,this_cell in df_manual.iterrows():
@@ -288,13 +308,10 @@ for t in tqdm(range(15)):
     
     #----- Nuc-to-BM heights -----
     # Load heightmap and calculate adjusted height
-    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
-    heightmap_shifted = heightmap + Z_SHIFT
-    df_dense['Height to BM'] = heightmap_shifted[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
-    
-    #----- Nuc-to-BM heights -----
-    # Load heightmap and calculate adjusted height
-    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
+    if DEMO:
+        heightmap = heightmaps_demo[t,...]
+    else:
+        heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     heightmap_shifted = heightmap + Z_SHIFT
     df_dense['Height to BM'] = heightmap_shifted[np.round(df_dense['Y']).astype(int),np.round(df_dense['X']).astype(int)] - df_dense['Z']
     
@@ -334,12 +351,13 @@ for t in tqdm(range(15)):
     D = distance.squareform(distance.pdist(dense_coords_3d_um))
     
     #----- Use macrophase annotations to find distance to them -----
-    macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
-    macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
-    macrophage_xyz['X'] = macrophage_xyz['X'] * dx
-    macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
-    df_dense['Distance to closest macrophage'] = \
-        find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
+    if not DEMO:
+        macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
+        macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
+        macrophage_xyz['X'] = macrophage_xyz['X'] * dx
+        macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
+        df_dense['Distance to closest macrophage'] = \
+            find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
     
     A_diff = A.copy()
     A_diff[:,~df_dense['Differentiating']] = 0
@@ -348,7 +366,7 @@ for t in tqdm(range(15)):
     A_planar = A - A_diff
     
     # Resave adjmat as planar v. diff
-    if SAVE:
+    if SAVE and not DEMO:
         im = draw_adjmat_on_image(A_planar,dense_coords,[XX,XX])
         io.imsave(path.join(dirname,f'Image flattening/flat_adj/t{t}_planar.tif'),im.astype(np.uint16),check_contrast=False)
         im = draw_adjmat_on_image(A_diff,dense_coords,[XX,XX])
@@ -449,10 +467,10 @@ for t in tqdm(range(15)):
             df_dense.at[i,'Std neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].std()
             df_dense.at[i,'Max neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].max()
             df_dense.at[i,'Min neighbor nuclear volume'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume'].min()
-            df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].mean()
-            df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].std()
-            df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].max()
-            df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].min()
+            # df_dense.at[i,'Mean neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].mean()
+            # df_dense.at[i,'Std neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].std()
+            # df_dense.at[i,'Max neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].max()
+            # df_dense.at[i,'Min neighbor nuclear volume normalized'] = df_dense.iloc[all_neighbor_idx]['Nuclear volume normalized'].min()
             
             # Neighbor size/shape info -- cortical
             df_dense.at[i,'Mean neighbor cell volume'] = df_dense.iloc[all_neighbor_idx]['Cell volume'].mean()
@@ -515,7 +533,7 @@ for t in tqdm(range(15)):
     # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
     
     df_dense_ = df_dense.loc[ ~np.isnan(df_dense['basalID']) ]
-    if SAVE:
+    if SAVE and not DEMO:
         colorized = colorize_segmentation(nuc_dense_seg,
                                           {k:v for k,v in zip(df_dense['CellposeID'].values,df_dense['Differentiating'].values)})
         io.imsave(path.join(dirname,f'3d_nuc_seg/Differentiating/t{t}.tif'),colorized.astype(np.int8),check_contrast=False)
