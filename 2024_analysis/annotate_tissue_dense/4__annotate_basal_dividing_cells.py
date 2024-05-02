@@ -14,11 +14,13 @@ import matplotlib.pylab as plt
 
 from mathUtils import surface_area, parse_3D_inertial_tensor
 
-from os import path
+from os import path,makedirs
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+
 ZZ = 72
 XX = 460
 T = 15
@@ -92,7 +94,13 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
 
 #%% Load the basal cell tracking and measure from the basal cortical tracking only
 
-basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks_cyto.tif'))
+DEMO = True
+
+if DEMO:
+    basal_tracking = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))[:,:,5,:,:]
+else:
+    basal_tracking = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks_cyto.tif'))
+
 allIDs = np.unique(basal_tracking)[1:]
 
 #% Do pixel level measurements e.g. Surface Area
@@ -140,12 +148,18 @@ collated = {basalID: pd.DataFrame(cell) for basalID,cell in collated.items()}
 
 for t in tqdm(range(T)):
 
-    f = path.join(dirname,f'Image flattening/flat_basal_tracking/t{t}.tif')
-    im = io.imread(f)
+    if DEMO:
+        im = io.imread(path.join(dirname,'flat_tracked_cells.tif'))[t,...]
+    else:
+        f = path.join(dirname,f'Image flattening/flat_basal_tracking/t{t}.tif')
+        im = io.imread(f)
     
-    # Load the structuring matrix elements
-    f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
-    [Gx,Gy] = np.load(f)
+    if DEMO:
+        Gx,Gy = io.imread(path.join(dirname,'collagen_gradients.tif'))[t,...]
+    else:
+        # Load the structuring matrix elements
+        f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
+        [Gx,Gy] = np.load(f)
     Jxx = Gx*Gx
     Jxy = Gx*Gy
     Jyy = Gy*Gy
@@ -206,7 +220,10 @@ df = pd.concat(collated,ignore_index=True)
 
 #%% Calculate spline + growth rates
 
-g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
+if DEMO:
+    g1_anno = pd.read_csv(path.join(dirname,'g1_frame.txt'),index_col=0)
+else:
+    g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
 for basalID, df in collated.items():
     # put in the birth volume

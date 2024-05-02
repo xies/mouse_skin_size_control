@@ -11,6 +11,7 @@ from skimage import io, measure, draw, util, morphology
 import pandas as pd
 
 from basicUtils import euclidean_distance
+from mathUtils import surface_area
 
 import matplotlib.pylab as plt
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
@@ -24,32 +25,21 @@ Z_SHIFT = 10
 
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
-""
-SAVE = True
+
 VISUALIZE = True
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+DEMO = True
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+
+
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
+contact_map_demo = io.imread(path.join(dirname,'example_mouse_skin_cell_contact_map.tif'))
+
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
 #NB: idx - the order in array in dense segmentation
-
-#%%
-
-# for t in tqdm(range(15)):
-#     cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
-#     # clean up
-#     cleaned_seg = np.zeros_like(cyto_seg)
-#     all_labels = np.unique(cyto_seg)[1:]
-    
-#     for l in all_labels:
-#         mask = cyto_seg == l
-#         sublabels = morphology.label(mask)
-#         df_ = pd.DataFrame(measure.regionprops_table(sublabels,properties=['area','label']))
-#         if df_.sort_values('area').iloc[-1]['area'] > 100:
-#             sublabels2keep = df_.sort_values('area')['label'].values[-1]
-#             cleaned_seg[ sublabels == sublabels2keep ] = l
-    
-#     io.imsave(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'), cleaned_seg)
 
 #%%
 
@@ -59,11 +49,16 @@ SAVE= True
 df = []
 
 for t in range(15):
-    # t = 11
     
-    nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
-    cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
-    manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
+    if DEMO:
+        nuc_seg = im_demo[t,:,3,:,:]
+        cyto_seg = im_demo[t,:,4,:,:]
+        manual_tracks = im_demo[t,:,5,:,:]
+        
+    else:
+        nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+        cyto_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+        manual_tracks = io.imread(path.join(dirname,f'manual_basal_tracking/sequence/t{t}.tif'))
     
     #% Label transfer from nuc3D -> cyto3D
     
@@ -93,13 +88,13 @@ for t in range(15):
     for i,cyto in df_cyto.iterrows():
         cytoID = cyto['CytoID']
         I = np.where(df_nuc['CytoID'] == cytoID)[0]
-        if len(I) > 1:
+        if not DEMO and len(I) > 1:
             print(f't = {t}: ERROR at CytoID {cytoID} = {df_nuc.loc[I]}')
             error()
         if len(I) == 1:
             df_cyto.at[i,'CellposeID'] = df_nuc.loc[I,'CellposeID']
 
-    if DEBUG:
+    if not DEMO and DEBUG:
     #----- map from cellpose to manual -----
         #NB: best to use the manual mapping since it guarantees one-to-one mapping from cellpose to manual cellIDs
         df_manual = pd.DataFrame(measure.regionprops_table(manual_tracks,intensity_image = nuc_seg,
