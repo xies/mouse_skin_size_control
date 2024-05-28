@@ -33,12 +33,12 @@ centroid_height_cutoff = 3.5 #microns above BM
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
-im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
-flattened_3d_seg_demo = io.imread(path.join(dirname,'flattened_segmentation.tif'))
-collagen_gradients_demo = io.imread(path.join(dirname,'collagen_gradients.tif'))
-heightmaps_demo = io.imread(path.join(dirname,'heightmaps.tif'))
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+# im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
+# flattened_3d_seg_demo = io.imread(path.join(dirname,'flattened_segmentation.tif'))
+# collagen_gradients_demo = io.imread(path.join(dirname,'collagen_gradients.tif'))
+# heightmaps_demo = io.imread(path.join(dirname,'heightmaps.tif'))
 
 # FUCCI threshold (in stds)
 alpha_threshold = 1
@@ -89,7 +89,7 @@ def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
 SAVE = True
 VISUALIZE = False
 
-DEMO = True
+DEMO = False
 
 df = []
 

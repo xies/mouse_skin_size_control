@@ -8,8 +8,8 @@ Created on Tue Apr 16 13:22:11 2024
 
 from magicgui import magicgui
 import napari
+from typing import List
 
-import napari
 from napari.layers import Image
 from napari.utils.notifications import show_warning, show_info
 from napari.utils import progress
@@ -40,18 +40,18 @@ def _update_timepoints_on_file_change(widget):
     """Called whenever the file picker is changed. Will look into that directory,
     and return the available timepoints as defined by parse_unregistered_channels
     """
-    
+
     dirname = widget.dirname.value
     choices = None
     filelist = parse_unaligned_channels(dirname)
-    
+
     if len(filelist) > 0:
         choices = filelist.index
     else:
         show_warning(f'Directory {dirname} is not a region directory.')
     if choices is not None:
         widget.timepoints_to_align.choices = choices
-    
+
 def auto_align_timecourse():
     '''
     Gets dirname from picker and populates the available timepoints to align.
@@ -61,33 +61,33 @@ def auto_align_timecourse():
     @magicgui(call_button='Align time course',
               timepoints_to_register={'widget_type':'Select',
                                       'choices':DEFAULT_CHOICES,
-                                      'label':'Time points to align'
+                                      'label':'Time points to align',
                                       'allow_multiple':True},
               reference_timepoint={'widget_type':'Select',
                                       'choices':DEFAULT_CHOICES,
-                                      'label':'Time points to align'
+                                      'label':'Time points to align',
                                       'allow_multiple':True},
               dirname={'label':'Image region to load:','mode':'d'})
     def widget(
         dirname=Path.home(),
         timepoints_to_register=(0),
-        reference_timepoint = 
+        reference_timepoint = (0),
         OVERWRITE: bool=False,
         ):
-    
+
         filelist = parse_unaligned_channels(dirname)
-        
+
         for t in progress(timepoints_to_register):
-        
+
             # Check for overwriting
             if path.exists(path.join(path.dirname(filelist.loc[t,'R_shg']),'R_shg_align.tif'))  and not OVERWRITE:
                 print(f'Skipping t = {t} because its R_shg_align.tif already exists')
                 continue
-            
+
             # Alignment code here
             # Save transformation matrix for display later
             # Save images directly
-            
+
     @widget.dirname.changed.connect
     def update_timepoints_on_file_change(event=None):
         _update_timepoints_on_file_change(widget)
@@ -108,7 +108,7 @@ def transform_image(
     rotate_theta:float=0.0,
     Transform_second_channel:bool=False,
     ) -> List[napari.layers.Layer]:
-    
+
     '''
     Perform 3D rigid-body transformations given an input image and manually set transformation parameters
     translate z/y/x: pixel-wise translations
@@ -118,7 +118,7 @@ def transform_image(
 
     Output will be the transformed image(s), with _transformed appended to name(s)
     '''
-    
+
     # Grab the image data + convert deg->radians
     image_data = image2transform.data.astype(float)
     second_image_data = second_channel.data.astype(float)
@@ -131,10 +131,10 @@ def transform_image(
     for z,im in enumerate(image_data):
         array[z,...] = warp(im, Txy)
     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-    
+
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]
-    
+
     if Transform_second_channel:
         array = np.zeros_like(second_image_data)
         for z,im in enumerate(second_image_data):
@@ -142,7 +142,7 @@ def transform_image(
         array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
         output_list.append(transformed_second_channel)
-        
+
     return output_list
 
 viewer = napari.Viewer()

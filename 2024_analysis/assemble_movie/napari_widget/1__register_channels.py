@@ -231,18 +231,12 @@ def auto_register_b_and_rshg():
         _update_timepoints_on_file_change(widget)
     return widget
 
-
+# Mouse-selected
 @magicgui(call_button='Transform image')
 def transform_image(
     reference_image: Image,
     image2transform: Image,
     second_channel: Image,
-    reference_z: int=0,
-    reference_y: int=0,
-    reference_x: int=0,
-    moving_z: int=0,
-    moving_y: int=0,
-    moving_x: int=0,
     rotate_theta:float=0.0,
     Transform_second_channel:bool=False,
     ) -> List[napari.layers.Layer]:
@@ -261,6 +255,19 @@ def transform_image(
     image_data = image2transform.data.astype(float)
     second_image_data = second_channel.data.astype(float)
     rotate_theta = np.deg2rad(rotate_theta)
+
+    # Grab the reference point layers
+    ref_point_name = reference_image.name + '_ref_point'
+    if ref_point_name in [l.name for l in viewer.layers]:
+        ref_point = viewer.layers[ref_point_name].data[0]
+        #assert(len(ref_point) == 3)
+    moving_point_name = image2transform.name + '_ref_point'
+    if moving_point_name in [l.name for l in viewer.layers]:
+        moving_point = viewer.layers[moving_point_name].data[0]
+        #assert(len(moving_point) == 3)
+
+    reference_z,reference_y,reference_x = ref_point.astype(int)
+    moving_z,moving_y,moving_x = moving_point.astype(int)
 
     # xy transformations (do slice by slice)
     Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
@@ -282,6 +289,59 @@ def transform_image(
         output_list.append(transformed_second_channel)
 
     return output_list
+
+#  Text controls only
+#
+# @magicgui(call_button='Transform image')
+# def transform_image(
+#     reference_image: Image,
+#     image2transform: Image,
+#     second_channel: Image,
+#     reference_z: int=0,
+#     reference_y: int=0,
+#     reference_x: int=0,
+#     moving_z: int=0,
+#     moving_y: int=0,
+#     moving_x: int=0,
+#     rotate_theta:float=0.0,
+#     Transform_second_channel:bool=False,
+#     ) -> List[napari.layers.Layer]:
+#
+#     '''
+#     Perform 3D rigid-body transformations given an input image and manually set transformation parameters
+#     translate z/y/x: pixel-wise translations
+#     rotate_theta: rotation angle in degrees
+#
+#     Optionally, select a second channel to also transform with the same transformation matrix
+#
+#     Output will be the transformed image(s), with _transformed appended to name(s)
+#     '''
+#
+#     # Grab the image data + convert deg->radians
+#     image_data = image2transform.data.astype(float)
+#     second_image_data = second_channel.data.astype(float)
+#     rotate_theta = np.deg2rad(rotate_theta)
+#
+#     # xy transformations (do slice by slice)
+#     Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
+#     # # Apply to first image
+#     array = np.zeros_like(image_data)
+#     for z,im in enumerate(image_data):
+#         array[z,...] = warp(im, Txy)
+#     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+#
+#     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
+#     output_list = [transformed_image]
+#
+#     if Transform_second_channel:
+#         array = np.zeros_like(second_image_data)
+#         for z,im in enumerate(second_image_data):
+#             array[z,...] = warp(im, Txy)
+#         array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+#         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
+#         output_list.append(transformed_second_channel)
+#
+#     return output_list
 
 @magicgui(call_button='Filter image')
 def filter_gaussian3d( image2filter:Image,
@@ -307,5 +367,5 @@ viewer.window.add_dock_widget(LoadDTimepointForInspection(viewer),area='right')
 viewer.window.add_dock_widget(transform_image, area='right')
 viewer.window.add_dock_widget(filter_gaussian3d, area='right')
 
-if __name__ == '__main__':
-    napari.run()
+# if __name__ == '__main__':
+napari.run()

@@ -6,7 +6,6 @@ Created on Wed Aug 31 17:10:00 2022
 @author: xies
 """
 
-
 import numpy as np
 from skimage import io, measure, util, morphology
 from glob import glob
@@ -39,13 +38,13 @@ def most_likely_label(labeled,im):
 
 #%% Load the flat cytoplasmic segmentations
 
-DEMO = True
+DEMO = False
 
 for t in tqdm(range(15)):
     
     if DEMO:
-        cyto_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_data/example_contact_map.tif')[t,...]
-        dense_nuc_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_data/example_mouse_skin_image.tif')[3,t,...]
+        cyto_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/example_contact_map.tif')[t,...]
+        dense_nuc_seg = io.imread('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/example_mouse_skin_image.tif')[3,t,...]
     else:
         cyto_seg = io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t}.tif'))
         dense_nuc_seg = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
