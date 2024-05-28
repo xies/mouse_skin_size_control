@@ -11,7 +11,7 @@ INSTALL:
 pip install pystackreg
 pip install trimesh 
 
-5) Download the repository from github: github.com/xies/xiesUtil
+5) In addition to this current directory, also download the repository from github: github.com/xies/xiesUtil
 
 6) Add xiesUtils and mouse_skin_size_control/utils to the python path: conda develop /PATH/TO/xiesUtils and conda develop /PATH/TO/mouse_skin_size_control/utils
 
