@@ -11,7 +11,6 @@ import os
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from pathlib import Path
 from natsort import natsorted
 
 from skimage import io
@@ -20,25 +19,24 @@ from glob import glob
 
 import napari
 import numpy as np
-from napari.utils.notebook_display import nbscreenshot
-from tqdm import tqdm
+
+# from tqdm import tqdm
 from rich.pretty import pprint
 
 from ultrack import MainConfig, track, to_tracks_layer, tracks_to_zarr
-from ultrack.utils.array import array_apply, create_zarr
-from ultrack.imgproc.segmentation import reconstruction_by_dilation
-from ultrack.imgproc.plantseg import PlantSeg
+# from ultrack.utils.array import array_apply, create_zarr
+# from ultrack.imgproc.segmentation import reconstruction_by_dilation
 from ultrack.utils.cuda import import_module, to_cpu, on_gpu
 
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
-nuclei = io.imread(path.join(dirname,'Cropped_images/B.tif'))
-membranes = io.imread(path.join(dirname,'Cropped_images/G.tif'))
+nuclei = io.imread(path.join(dirname,'Cropped_images/B.tif'))[:4,:,:200,:200]
+membranes = io.imread(path.join(dirname,'Cropped_images/G.tif'))[:4:,:200,:200]
 
-detection = np.stack(map(io.imread,natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t*.tif')))))
-boundaries = np.stack(map(io.imread,natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual/t*_cleaned.tif')))))
+detection = np.stack(map(io.imread,natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t[0-3].tif')))))[:,:,:200,:200]
+boundaries = np.stack(map(io.imread,natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual/t[0-3]_cleaned.tif')))))[:,:,:200,:200]
 
 viewer = napari.Viewer()
 viewer.add_image(nuclei,colormap='blue')
@@ -76,8 +74,9 @@ pprint(cfg)
 
 track(
     cfg,
-    detection=detection,
-    edges=boundaries,
+    labels = detection,
+    # detection=detection,
+    # edges=boundaries,
     overwrite=True,
     scale=scale,
 )
