@@ -16,11 +16,11 @@ from os import mkdir
 from time import time
 from tqdm import tqdm
 
-model = models.Cellpose(model_type='cyto')
+model = models.Cellpose(model_type='cyto2')
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
 
-diameter = 26 #OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 37 #OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
 cellprob_threshold = -0.1
 
@@ -35,7 +35,7 @@ for t,im in tqdm(enumerate(G)):
 
     im_nuc = B[t,...]
     d = dirname
-    output_dir = path.join(d,f'3d_cyto_seg/3d_cyto_raw/t{t}_seg')
+    output_dir = path.join(d,f'3d_cyto_seg_supra/3d_cyto_supra_raw/t{t}_seg')
     if path.exists( output_dir ) and not OVERWRITE:
         print(f'Skipping {t}')
         continue
@@ -48,7 +48,7 @@ for t,im in tqdm(enumerate(G)):
     mask_savepath = path.join(output_dir,f't{t}_masks.tif')
     print(f'Saving model to: {npy_savepath}')
 
-    masks,flows,styles,diams = model.eval([im,im_nuc],diameter=diameter, do_3D=True,
+    masks,flows,styles,diams = model.eval([im,im_nuc],diameter=diameter,channels=[1,0], do_3D=True,
                                           cellprob_threshold=cellprob_threshold,
                                           anisotropy=anisotropy)
     #    io.masks_flows_to_seg(im, masks,flows,diams,npy_savepath)

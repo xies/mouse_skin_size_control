@@ -14,6 +14,7 @@ import seaborn as sb
 
 from scipy.stats import stats
 import matplotlib.pyplot as plt
+from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
@@ -65,11 +66,40 @@ for ID in g1_cellposeIDs:
 ((_,dense_g1),(_,dense_sg2)) = dense.groupby('Phase')
 io.imsave('/Users/xies/Desktop/g1_segs.tif',g1_segs)
 
-#%%
+#%% CV: parametric CI estimates
 
-cv_g1_complete = cycling_g1['Volume'].std() / cycling_g1['Volume'].mean()
-cv_sg2_complete = cycling_sg2['Volume'].std() / cycling_sg2['Volume'].mean()
+cv_g1,g1_lb,g1_ub = cvariation_ci(cycling_g1['Volume'])
+cv_sg2,sg2_lb,sg2_ub = cvariation_ci(cycling_sg2['Volume'])
 
-cv_g1_dense = dense_g1['Cell volume'].std() / dense_g1['Cell volume'].mean()
-cv_sg2_dense = dense_sg2['Cell volume'].std() / dense_sg2['Cell volume'].mean()
+print('---- Cycling skin cells: pooling all time points ----')
+print(f"CV for G1: {cv_g1:.3}, lower bound: {g1_lb:.3}, upper bound: {g1_ub:.3}")
+print(f"CV for SG2: {cv_sg2:.3}, lower bound: {sg2_lb:.3}, upper bound: {sg2_ub:.3}")
+
+
+cv_g1,g1_lb,g1_ub = cvariation_ci(dense_g1['Cell volume'])
+cv_sg2,sg2_lb,sg2_ub = cvariation_ci(dense_sg2['Cell volume'])
+
+print('---- All cells ----')
+print(f"CV for G1: {cv_g1:.3}, lower bound: {g1_lb:.3}, upper bound: {g1_ub:.3}")
+print(f"CV for SG2: {cv_sg2:.3}, lower bound: {sg2_lb:.3}, upper bound: {sg2_ub:.3}")
+
+#%% CV: bootstrap CI estimates
+
+Nboot = 1000
+cv_g1,g1_lb,g1_ub = cvariation_ci_bootstrap(cycling_g1['Volume'],Nboot)
+cv_sg2,sg2_lb,sg2_ub = cvariation_ci_bootstrap(cycling_sg2['Volume'],Nboot)
+
+print('---- Cycling skin cells: pooling all time points ----')
+print(f"CV for G1: {cv_g1:.3}, lower bound: {g1_lb:.3}, upper bound: {g1_ub:.3}")
+print(f"CV for SG2: {cv_sg2:.3}, lower bound: {sg2_lb:.3}, upper bound: {sg2_ub:.3}")
+
+
+cv_g1,g1_lb,g1_ub = cvariation_ci_bootstrap(dense_g1['Cell volume'],Nboot)
+cv_sg2,sg2_lb,sg2_ub = cvariation_ci_bootstrap(dense_sg2['Cell volume'],Nboot)
+
+print('---- All cells ----')
+print(f"CV for G1: {cv_g1:.3}, lower bound: {g1_lb:.3}, upper bound: {g1_ub:.3}")
+print(f"CV for SG2: {cv_sg2:.3}, lower bound: {sg2_lb:.3}, upper bound: {sg2_ub:.3}")
+
+
 
