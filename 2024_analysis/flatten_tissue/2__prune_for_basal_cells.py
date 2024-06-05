@@ -16,7 +16,7 @@ import matplotlib.pylab as plt
 from matplotlib.path import Path
 from SelectFromCollection import SelectFromCollection
 
-'''|
+'''
 
 1. Load cellpose output on whole z stack
 2. Use heightmap and identify the likely 'basal z-range' and get rid of things more apical

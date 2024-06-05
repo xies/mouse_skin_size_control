@@ -86,7 +86,7 @@ for dirname in tqdm(dirnames):
         
         df['Position'] = p
         df_all.append(df)
-    
+        
 df = pd.concat(df_all,ignore_index=True)
 df['Log_Cdt'] = np.log(df['Cdt1'])
 df['Log_Gem'] = np.log(df['Geminin'])
