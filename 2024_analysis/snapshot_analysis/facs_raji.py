@@ -12,6 +12,7 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 
 from FlowCytometryTools import FCMeasurement
+from sklearn import mixture
 from glob import glob
 from os import path
 
@@ -21,7 +22,7 @@ from matplotlib.path import Path
 from scipy import stats
 from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow FUCCI/06-04-2024 Raji Hoechst CV'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/06-05-2024 Raji MeOH fixperm'
 
 #%%
 
@@ -59,8 +60,10 @@ diploids = df_[I]
 
 #%% Gate cell cycle based on DAPI only
 
-# Set Cdt threshold
-th = 0.44e6
+# Set DAPI threshold
+th = 0.4155e6
+model = mixture.GaussianMixture(n_components=2).fit(diploids['VL1-A'].values.reshape(-1,1))
+
 plt.hist(diploids['VL1-A'],100);plt.xlabel('VL1-A')
 plt.vlines(x=th,ymin=0,ymax=1000,color='r')
 diploids['High_DAPI'] = True
@@ -69,14 +72,30 @@ diploids.loc[diploids['VL1-A'] < th,'High_DAPI'] = False
 (_,twoN),(_,fourN) = diploids.groupby('High_DAPI')
 
 #%% Plot the CVs as errorbars
-Nboot = 100
+
+Nboot = 1000
 
 sb.barplot(diploids,y='FSC-A',x='High_DAPI'
-           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
+           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci(x,Nboot))
            )
 plt.ylabel('CV of FSC')
 plt.ylim([0,.25])
 plt.title('Raji, cell cycle determined by DAPI')
+
+plt.figure()
+sb.barplot(diploids,y='SSC-A',x='High_DAPI'
+           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci(x,Nboot))
+           )
+plt.ylabel('CV of SSC')
+plt.ylim([0,.25])
+plt.title('Raji, cell cycle determined by DAPI')
+
+
+#%%
+
+CV = pd.DataFrame()
+CV['FSC'] = diploids.groupby('High_DAPI')['FSC-A'].apply(stats.variation)
+CV['SSC'] = diploids.groupby('High_DAPI')['SSC-A'].apply(stats.variation)
 
 
 

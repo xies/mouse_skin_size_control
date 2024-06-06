@@ -21,7 +21,7 @@ from matplotlib.path import Path
 from scipy import stats
 from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow FUCCI/SZ-062821 Fucci2 P20 F medium test'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/SZ-062821 Fucci2 P20 F medium test'
 
 #%%
 
@@ -44,6 +44,7 @@ df_ = df[I]
 
 #%% gate on diploids
 
+plt.figure()
 pts = plt.scatter(df_['VL1-A'],df_['YL2-A'],alpha=.01)
 plt.xlabel('DAPI-area');plt.ylabel('Cdt1-area');
 selector = SelectFromCollection(plt.gca(), pts)
@@ -62,6 +63,7 @@ diploids = df_[I]
 diploids['Log-Cdt'] = np.log(diploids['YL2-A'])
 diploids['Log-Gem'] = np.log(diploids['BL1-A'])
 
+plt.figure()
 # Set Cdt threshold
 th = 8.5
 plt.hist(diploids['Log-Cdt'],100);plt.xlabel('Log-Cdt1')
@@ -78,7 +80,7 @@ diploids['High_Gem'] = True
 diploids.loc[diploids['Log-Gem'] < th,'High_Gem'] = False
 
 #%%
-
+plt.figure()
 sb.lmplot(data=diploids,x='Log-Cdt',y='Log-Gem',fit_reg=False,
           hue='High_Cdt',col='High_Gem', scatter_kws={'alpha':.01})
 
@@ -118,6 +120,7 @@ for phase,_df in diploids.groupby('Phase'):
     
 #%% Plot the CVs as errorbars
 
+plt.figure()
 plt.subplot(1,2,1)
 sb.barplot(diploids,y='FSC-A',x='Phase'
            ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
@@ -139,7 +142,8 @@ diploids.loc[diploids['VL1-A'] < th,'High_DAPI'] = False
 
 #%% Plot the CVs as errorbars
 
-plt.subplot(1,2,2)
+# plt.subplot(1,2,2)
+plt.figure()
 sb.barplot(diploids,y='FSC-A',x='High_DAPI'
            ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
            )
