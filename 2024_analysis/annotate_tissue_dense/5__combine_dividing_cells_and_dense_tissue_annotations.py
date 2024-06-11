@@ -16,14 +16,14 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 ZZ = 72
 XX = 460
 T = 15
 
-#%% Cross-reference the same central dividing cell and look at 1 or 2 frames before
+#%% Cross-reference the same central dividing cell
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
     collated = pkl.load(f)
@@ -57,8 +57,9 @@ df['Volume frame-2'] = np.nan
 df['Collagen alignment-1'] = np.nan
 df['Collagen alignment-2'] = np.nan
 
+#%% Look back 1-2 frames
+
 col_idx = len(df.columns)
-#@todo: add these
 df['Neighbor mean dist frame-1'] = np.nan
 df['Neighbor mean dist frame-2'] = np.nan
 df['Neighbor mean cell volume frame-1'] = np.nan
@@ -179,13 +180,13 @@ for basalID in collated.keys():
                 
         
             
-df['NC ratio'] = df['Nuclear volume']/df['Volume (sm)']
+df['NC ratio'] = df['Nuclear volume (sm)']/df['Volume (sm)']
 # df['NC ratio raw'] = df['Nuclear volume raw']/df['Volume (sm)']
 # df['NC ratio normalized'] = df['Nuclear volume normalized']/df['Volume (sm)']
 # df['Neighbor max
 # df['Neighbor mean height frame -1 or -2'] = np.array([df['Neighbor mean height frame-2'],df['Neighbor mean height frame-1']]).max(axis=0).shape
 
-df.to_csv(path.join(dirname,'ts_features.csv'))
+df.to_csv(path.join(dirname,'MLR model/ts_features.csv'))
 
 df_ = df[df['Phase'] != '?']
 

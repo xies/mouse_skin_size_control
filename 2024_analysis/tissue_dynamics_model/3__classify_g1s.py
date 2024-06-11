@@ -110,12 +110,14 @@ for i in range(Niter):
     
     #% Rebalance class
     df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    # df_g1s_balanced = df_g1s_balanced.drop(columns='vol_sm')
     
     ############### G1S logistic as function of age ###############
     try:
-        model_g1s = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s.columns[df_g1s.columns != 'G1S_logistic']),
+        model_g1s = smf.logit('G1S_logistic ~ ' + str.join(' + ',df_g1s_balanced.columns[df_g1s_balanced.columns != 'G1S_logistic']),
                       data=df_g1s_balanced).fit(maxiter=1000)
     except:
+        print('--')
         continue
     
     # plt.figure()
@@ -126,6 +128,7 @@ for i in range(Niter):
     li[i,:] = model_g1s.conf_int()[0].drop('Intercept')
     ui[i,:] = model_g1s.conf_int()[1].drop('Intercept')
     pvalues[i,:] = pvals.values
+
 
 coefficients = pd.DataFrame(coefficients,columns = df_g1s.columns.drop('G1S_logistic')).dropna()
 pvalues = pd.DataFrame(pvalues,columns = df_g1s.columns.drop('G1S_logistic')).dropna()

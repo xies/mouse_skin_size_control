@@ -276,6 +276,7 @@ def transform_image(
     for z,im in enumerate(image_data):
         array[z,...] = warp(im, Txy)
     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+    array = array.astype(np.int16)
 
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]

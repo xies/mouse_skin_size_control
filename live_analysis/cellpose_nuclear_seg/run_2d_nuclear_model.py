@@ -20,13 +20,12 @@ from tqdm import tqdm
 
 model = models.Cellpose(model_type='nuclei')
 
-dirname = '/Users/xies/OneDrive - Stanford/In vitro/p107 dynamics/NIH3T3/06-04-2024 NIH3T3 DAPI p107-488/CST anti-p107'
+dirname = '/Users/xies/OneDrive - Stanford/In vitro/p107 dynamics/NIH3T3/06-06-2024 NIH3T3 p107 dynamics/SCBT_4x'
 
-diameter = 30 #27 OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 10 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 cellprob_threshold = -0.1
 
-filelist = glob(path.join(dirname,'*DAPI.tif'))
-print(path.join(dirname,'*DAPI.tif'))
+filelist = glob(path.join(dirname,'nih*.tif'))
 
 OVERWRITE = False
 
@@ -35,7 +34,7 @@ for f in tqdm(filelist):
     basename = path.splitext(f)[0] # i.e. 't9'
     subdir = path.dirname(f) # i.e. 't9'
 
-    im = io.imread(f)
+    im = io.imread(f)[0,...]
 
     tic = time()
     print(f'Predicting on {f}')

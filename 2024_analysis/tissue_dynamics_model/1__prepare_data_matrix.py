@@ -45,6 +45,8 @@ df_['CV neighbor basal area'] = df_['Std neighbor basal area'] / df_['Mean neigh
 
 df_['Neighbor CV cell volume frame-1'] = df_['Neighbor std cell volume frame-1'] / df_['Neighbor mean cell volume frame-1']
 
+df_['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+
 # Sanitize field names for smf
 
 features_list = { # Cell identity, position
@@ -57,6 +59,7 @@ features_list = { # Cell identity, position
                 
                 # Cell geometry
                 ,'Volume':'vol_sm'
+                ,'Nuclear volume':'nuc_vol_sm'
                 ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
@@ -147,8 +150,7 @@ df_g1s = df_g1s.rename(columns=features_list)
 for col in df_g1s.columns.drop(['region','cellID']):
     df_g1s[col] = z_standardize(df_g1s[col])
 
-# Put back categoricals that were broken
-df_g1s['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
+df_g1s['G1S_logistic']= df_['G1S_logistic']
 
 # Count NANs
 print(np.isnan(df_g1s).sum(axis=0))

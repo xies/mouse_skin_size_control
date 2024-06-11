@@ -18,8 +18,8 @@ from os import path,makedirs
 from tqdm import tqdm
 import pickle as pkl
 
-# dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 ZZ = 72
 XX = 460
@@ -28,16 +28,16 @@ dx = 0.25
 
 from toeplitzDifference import backward_difference,forward_difference,central_difference
 
-def get_interpolated_curve(cf,smoothing_factor=1e10):
+def get_interpolated_curve(cf,field='Volume',smoothing_factor=1e10):
 
     # Get rid of daughter cells]
     if len(cf) < 4:
-        yhat = cf.Volume.values
+        yhat = cf[field].values
         dydt = np.ones(len(cf)) * np.nan
         
     else:
         t = np.array(range(0,len(cf))) * 12
-        v = cf.Volume.values
+        v = cf[field].values
         # Spline smooth
         spl = UnivariateSpline(t, v, k=3, s=smoothing_factor)
         yhat = spl(t)
@@ -94,7 +94,7 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
 
 #%% Load the basal cell tracking and measure from the basal cortical tracking only
 
-DEMO = True
+DEMO = False
 
 if DEMO:
     basal_tracking = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))[:,:,5,:,:]
@@ -109,7 +109,8 @@ collated = {k:[] for k in allIDs}
 
 for t,im in tqdm(enumerate(basal_tracking)):
 
-    properties = measure.regionprops(im, extra_properties = [surface_area])
+    nuc_mask = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif')) > 0
+    properties = measure.regionprops(im, intensity_image = nuc_mask, extra_properties = [surface_area])
     
     for p in properties:
         
@@ -121,6 +122,8 @@ for t,im in tqdm(enumerate(basal_tracking)):
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
         
+        nuc_vol = p['mean_intensity']*p['area'] * dx**2
+        
         s = {'basalID': basalID
                        ,'Daughter':False
                        ,'Volume':V
@@ -131,6 +134,7 @@ for t,im in tqdm(enumerate(basal_tracking)):
                        ,'Axial angle':phi
                        ,'Axial component':Iaxial
                        ,'Planar component 1':Ia,'Planar component 2':Ib
+                       ,'Nuclear volume':nuc_vol
                        ,'Planar angle':theta
                        ,'Apical area':np.nan
                        ,'Basal area':np.nan
@@ -139,6 +143,7 @@ for t,im in tqdm(enumerate(basal_tracking)):
                        ,'Collagen fibrousness':np.nan}
         
         collated[basalID].append(s)
+        
 
 collated = {basalID: pd.DataFrame(cell) for basalID,cell in collated.items()}
 
@@ -236,6 +241,9 @@ for basalID, df in collated.items():
         df['SA to vol'] = df['Surface area'] / df['Volume']
         collated[basalID] = df
         
+        NVsm,dVdt = get_interpolated_curve(df,field='Nuclear volume')
+        df['Nuclear volume (sm)'] = NVsm
+        
         Vsm,dVdt = get_interpolated_curve(df)
         df['Volume (sm)'] = Vsm
         gr_f,gr_b,gr_c,gr_sm_b,gr_sm_f,gr_sm_c = get_growth_rate(df,'Volume')
@@ -276,6 +284,7 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
 df = pd.concat(collated,ignore_index=True)
 
 #%% Load the daughter cells + save
+#NB: won't work with the demo dataset
 
 # Load into a dict of individual cells (some daughter cell pairs have >1 time points)
 daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_lineage/basal_tracking_daughters_cyto.tif'))
