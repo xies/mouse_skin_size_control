@@ -152,8 +152,9 @@ def _update_timepoints_on_file_change(widget):
     """
 
     dirname = widget.dirname.value
+    pattern_str = widget.pattern_str.value
     choices = None
-    filelist = parse_unregistered_channels(dirname)
+    filelist = parse_unregistered_channels(dirname,pattern_str)
 
     if len(filelist) > 0:
         choices = filelist.index
@@ -174,11 +175,12 @@ def auto_register_b_and_rshg():
               dirname={'label':'Image region to load:','mode':'d'})
     def widget(
         dirname=Path.home(),
+        pattern_str: str='*. Day*/',
         timepoints_to_register=None,
         OVERWRITE: bool=False,
         ):
 
-        filelist = parse_unregistered_channels(dirname)
+        filelist = parse_unregistered_channels(dirname, folder_str=pattern_str)
 
         for t in progress(timepoints_to_register):
 
@@ -190,7 +192,7 @@ def auto_register_b_and_rshg():
                 continue
 
             print(f'\n--- Started t = {t} ---')
-            B = io.imread(filelist.loc[t,'B'])
+            G = io.imread(filelist.loc[t,'G'])
             R_shg = io.imread(filelist.loc[t,'R_shg'])
             # G = io.imread(filelist.loc[t,'G'])
             R = io.imread(filelist.loc[t,'R'])
@@ -198,10 +200,11 @@ def auto_register_b_and_rshg():
 
             # Find the slice with maximum mean value in R_shg channel
             z_ref = R_shg.mean(axis=2).mean(axis=1).argmax()
+            z_ref = R_shg.shape[0] // 2
             print(f't = {t}: R_shg max std at {z_ref}')
             R_ref = R_shg[z_ref,...]
             R_ref = filters.gaussian(R_ref,sigma=0.5)
-            z_moving = find_most_likely_z_slice_using_CC(R_ref,B)
+            z_moving = find_most_likely_z_slice_using_CC(R_ref,G)
             print(f'Cross correlation done and target Z-slice set at: {z_ref}')
             target = filters.gaussian(B[z_ref,...],sigma=0.5)
 
@@ -217,8 +220,10 @@ def auto_register_b_and_rshg():
                 R_shg_transformed[i,...] = warp(R_shg[i,...],T)
 
             # z-pad
-            R_padded = z_translate_and_pad(B,R_transformed,z_ref,z_moving)
-            R_shg_padded = z_translate_and_pad(B,R_shg_transformed,z_ref,z_moving)
+            print(R_transformed.shape)
+            R_padded = z_translate_and_pad(G,R_transformed,z_ref,z_moving).astype(np.uint)
+            print(R_padded.shape)
+            R_shg_padded = z_translate_and_pad(G,R_shg_transformed,z_ref,z_moving).astype(np.uint)
 
             output_dir = path.dirname(filelist.loc[t,'G'])
 
@@ -226,9 +231,11 @@ def auto_register_b_and_rshg():
             io.imsave(path.join(output_dir,'R_reg_reg.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
             io.imsave(path.join(output_dir,'R_shg_reg_reg.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
 
+    @widget.pattern_str.changed.connect
     @widget.dirname.changed.connect
     def update_timepoints_on_file_change(event=None):
         _update_timepoints_on_file_change(widget)
+
     return widget
 
 # Mouse-selected

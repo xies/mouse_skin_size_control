@@ -9,7 +9,7 @@ Created on Wed Apr 17 16:33:54 2024
 # Image loader class
 import numpy as np
 import napari
-from magicgui.widgets import ComboBox, Container, FileEdit, PushButton, RadioButtons
+from magicgui.widgets import ComboBox, Container, FileEdit, PushButton, RadioButtons, LineEdit
 from itertools import cycle
 from typing import List
 
@@ -23,8 +23,6 @@ from twophotonUtils import parse_unregistered_channels, parse_unaligned_channels
 from os import path
 from glob import glob
 
-
-
 class LoadDTimepointForInspection(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
@@ -33,6 +31,9 @@ class LoadDTimepointForInspection(Container):
         self._viewer = viewer
         self.append(
             FileEdit(name="dirname",label="Image region to load:",mode="d")
+        )
+        self.append(
+            LineEdit(name='pattern_str',label='subdir filter',value='*. Day*/')
         )
         self.append(
             ComboBox(name="timepoint2load", choices=self.get_timepoint_choices, label="Select timepoint")
@@ -45,6 +46,7 @@ class LoadDTimepointForInspection(Container):
         self.append(PushButton(name='load_button', text='Load timepoint'))
 
         self.dirname.changed.connect(self.update_timepoint_choices)
+        self.pattern_str.changed.connect(self.update_timepoint_choices)
         self.timepoint2load.changed.connect(self.update_set_choices)
         self.load_button.changed.connect(self.load_images)
 
@@ -53,8 +55,9 @@ class LoadDTimepointForInspection(Container):
 
     def update_timepoint_choices(self):
         dirname = self.dirname.value
+        pattern_str = self.pattern_str.value
         choices = None
-        filelist = parse_unregistered_channels(dirname)
+        filelist = parse_unregistered_channels(dirname,folder_str=pattern_str)
         if len(filelist) > 0:
             choices = filelist.index.values
         else:
@@ -69,7 +72,7 @@ class LoadDTimepointForInspection(Container):
     def update_set_choices(self):
         dirname = self.dirname.value
         t = self.timepoint2load.value
-        subdir_name = glob(path.join(dirname,f'{t}. Day*/'))[0]
+        subdir_name = glob(path.join(dirname,f'{t}. */'))[0]
 
         choices = []
         if len( glob(path.join(subdir_name,'R_reg.tif'))) > 0:
@@ -91,13 +94,13 @@ class LoadDTimepointForInspection(Container):
         prefix = f'{self.timepoint2load.value}_'
 
         if self.set2load.value == 'Un-registered':
-            filelist = parse_unregistered_channels(self.dirname.value) #@todo: auto-detect when these are not yet available
+            filelist = parse_unregistered_channels(self.dirname.value,folder_str=self.pattern_str.value) #@todo: auto-detect when these are not yet available
             suffix = '_reg'
         elif self.set2load.value == 'Registered':
-            filelist = parse_unaligned_channels(self.dirname.value)
+            filelist = parse_unaligned_channels(self.dirname.value,folder_str=self.pattern_str.value)
             suffix = '_reg_reg'
         elif self.set2load.value == 'Aligned':
-            filelist = parse_aligned_timecourse_directory(self.dirname.value)
+            filelist = parse_aligned_timecourse_directory(self.dirname.value,folder_str=self.pattern_str.value)
             suffix = '_align'
 
         # Load the files using a cycling colormap series
@@ -118,28 +121,32 @@ class LoadAlignedChannelForInspection(Container):
             FileEdit(name="dirname",label="Image region to load:",mode="d")
         )
         self.append(
+            LineEdit(name='pattern_str',label='subdir filter',value='*.*/')
+        )
+        self.append(
             ComboBox(name="channel2load", choices=self.get_channel_choices, label="Select channel")
         )
-        self.append(PushButton(name='load_button', text='Load timepoint'))
+        self.append(PushButton(name='load_button', text='Load aligned channels'))
 
         self.dirname.changed.connect(self.update_channel_choices)
+        self.pattern_str.changed.connect(self.update_channel_choices)
         self.load_button.changed.connect(self.load_images)
 
     def get_channel_choices(self, dropdown_widget):
         return self._channel_choices
 
     def update_channel_choices(self):
+        print(self.pattern_str.value)
         dirname = self.dirname.value
         choices = None
-        filelist = parse_aligned_timecourse_directory(dirname)
+        filelist = parse_aligned_timecourse_directory(dirname,folder_str=self.pattern_str.value)
         if len(filelist) > 0:
             choices = filelist.columns.values
         else:
-            show_warning(f'Directory {dirname} is not a region directory.')
+            show_warning(f'No time points matching {dirname}/{self.pattern_str.value}')
         if choices is not None:
             self._channel_choices = choices
             self.channel2load.reset_choices()
-
 
     def load_images(self) -> List[napari.layers.Layer]:
         # clear the current slate
@@ -147,7 +154,7 @@ class LoadAlignedChannelForInspection(Container):
         for l in names2remove:
             self._viewer.layers.remove(l)
 
-        filelist = parse_aligned_timecourse_directory(self.dirname.value)
+        filelist = parse_aligned_timecourse_directory(self.dirname.value,folder_str=self.pattern_str.value)
         file_tuple = filelist[self.channel2load.value]
 
         stack = []

@@ -38,6 +38,7 @@ N,P = df_.shape
 
 # Make ratios some of the correlated components
 df_['Height to BM relative to cell height'] = df_['Height to BM'] / df_['Height']
+df_['NC ratio (sm)'] = df_['Volume (sm)'] / df_['Nuclear volume (sm)']
 
 df_['CV neighbor cell volume'] = df_['Std neighbor cell volume'] / df_['Mean neighbor cell volume']
 df_['CV neighbor apical area'] = df_['Std neighbor apical area'] / df_['Mean neighbor apical area']
@@ -63,7 +64,7 @@ features_list = { # Cell identity, position
                 ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
-                ,'NC ratio':'nc_ratio'
+                ,'NC ratio (sm)':'nc_ratio'
                 # ,'Nuclear surface area':'nuc_sa'
                 # ,'Nuclear axial component':'nuc_axial_moment'
                 ,'Nuclear solidity':'nuc_solid'

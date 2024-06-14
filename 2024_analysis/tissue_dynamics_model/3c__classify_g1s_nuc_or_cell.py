@@ -71,7 +71,7 @@ df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','re
 # No cross-validation, in-model estimates only
 
 Ng1 = 150
-Niter = 10
+Niter = 100
 
 coefficients = np.ones((Niter,df_g1s_cell.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s_cell.shape[1]-1)) * np.nan
@@ -239,10 +239,10 @@ for i in tqdm(range(Niter)):
     auc_scores.loc[i,'Nucleus'] = metrics.roc_auc_score(y_test,y_pred)
     log_loss_scores.loc[i,'Nucleus'] = metrics.log_loss(y_test,y_pred)
     
-    
-sb.catplot(auc_scores)
+
+sb.catplot(auc_scores,kind='box')
 plt.ylabel('AUC (highest is 1)')
-sb.catplot(log_loss_scores)
+sb.catplot(log_loss_scores,kind='box')
 plt.ylabel('Log-loss (lower is better)')
     
 

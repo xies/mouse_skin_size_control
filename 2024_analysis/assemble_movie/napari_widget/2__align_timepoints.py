@@ -42,15 +42,17 @@ def _update_timepoints_on_file_change(widget):
     """
 
     dirname = widget.dirname.value
+    pattern_str = widget.pattern_str.value
     choices = None
-    filelist = parse_unaligned_channels(dirname)
+    filelist = parse_unaligned_channels(dirname, folder_str=pattern_str)
 
     if len(filelist) > 0:
         choices = filelist.index
     else:
-        show_warning(f'Directory {dirname} is not a region directory.')
+        show_warning(f'No timepoints found in {dirname}/{pattern_str}')
     if choices is not None:
-        widget.timepoints_to_align.choices = choices
+        widget.timepoints_to_register.choices = choices
+        widget.reference_timepoint.choices = choices
 
 def auto_align_timecourse():
     '''
@@ -59,38 +61,114 @@ def auto_align_timecourse():
     Auto aligns time course using selected reference time point
     '''
     @magicgui(call_button='Align time course',
+              reference_timepoint={'widget_type':'ComboBox',
+                                      'choices':DEFAULT_CHOICES,
+                                      'label':'Reference image',
+                                      'allow_multiple':True},
               timepoints_to_register={'widget_type':'Select',
                                       'choices':DEFAULT_CHOICES,
-                                      'label':'Time points to align',
-                                      'allow_multiple':True},
-              reference_timepoint={'widget_type':'Select',
-                                      'choices':DEFAULT_CHOICES,
-                                      'label':'Time points to align',
+                                      'label':'Time pionts to align',
                                       'allow_multiple':True},
               dirname={'label':'Image region to load:','mode':'d'})
     def widget(
         dirname=Path.home(),
-        timepoints_to_register=(0),
-        reference_timepoint = (0),
+        pattern_str='*.*/',
+        reference_timepoint=0,
+        timepoints_to_register=[0],
         OVERWRITE: bool=False,
-        ):
+        ) -> List[napari.layers.Layer]:
 
-        filelist = parse_unaligned_channels(dirname)
+        filelist = parse_unaligned_channels(dirname,folder_str=pattern_str)
+
+        # Load reference image
+        print(timepoints_to_register)
+        R_shg_ref = io.imread(filelist.loc[reference_timepoint,'R_shg'])
+
+        # Initiate transform matrices
+        z_pos_in_original = {}
+        XY_matrices = {}
+        if path.exists(path.join(dirname,'alignment_information.pkl')):
+            with open(path.join(dirname,'alignment_information.pkl'),'rb') as f:
+                [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
+
+        # Select the reference z-slice: for mem-GFP, use a half-way point
+        z_ref = R_shg_ref.shape[0] // 2
+        z_ref = 18
+        ref_img = R_shg_ref[z_ref,...]
+        print(f'Reference z-slice: {z_ref}')
+        output_imgs = [Image(ref_img)]
 
         for t in progress(timepoints_to_register):
 
             # Check for overwriting
+            print(reference_timepoint)
+            if t == reference_timepoint:
+                print(f'Skipping t = {t} because it is the reference')
+                continue
             if path.exists(path.join(path.dirname(filelist.loc[t,'R_shg']),'R_shg_align.tif'))  and not OVERWRITE:
                 print(f'Skipping t = {t} because its R_shg_align.tif already exists')
                 continue
 
+            output_dir = path.dirname(filelist.loc[t,'R'])
             # Alignment code here
+            print(f'\n ---- Working on t = {t} ----')
+            #Load the target
+            R_shg_target = io.imread(filelist.loc[t,'R_shg']).astype(float)
+
+            # Find simlar in the next time point
+            # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
+            z_target = find_most_likely_z_slice_using_CC(ref_img,R_shg_target)
+            print(f'Target z-slice automatically determined to be {z_target}')
+            z_pos_in_original[t] = z_target
+
+            target_img = R_shg_target[z_target]
+            output_imgs.append(Image(target_img,name=f'{t}_before'))
+
+            # 2. Calculate XY transforms
+            print('StackReg + transform')
+            sr = StackReg(StackReg.RIGID_BODY)
+            T = sr.register(target_img/target_img.max(),ref_img) #Obtain the transformation matrices
+            T = EuclideanTransform(T)
+
+            # Load other channels + apply transformations
+            B = io.imread(filelist.loc[t,'B']).astype(float)
+            G = io.imread(filelist.loc[t,'G']).astype(float)
+            R = io.imread(filelist.loc[t,'R']).astype(float)
+
+            B_transformed = np.zeros_like(B).astype(float)
+            G_transformed = np.zeros_like(G).astype(float)
+            R_transformed = np.zeros_like(R).astype(float)
+            R_shg_transformed = np.zeros_like(R_shg_target).astype(float)
+            for i, B_slice in enumerate(B):
+                B_transformed[i,...] = warp(B_slice,T)
+                G_transformed[i,...] = warp(G[i,...],T)
+                R_transformed[i,...] = warp(R[i,...],T)
+                R_shg_transformed[i,...] = warp(R_shg_target[i,...],T)
+
+            # z-pad
+            B_padded = z_translate_and_pad(R_shg_ref,B_transformed,z_ref,z_target).astype(np.uint)
+            G_padded = z_translate_and_pad(R_shg_ref,G_transformed,z_ref,z_target).astype(np.uint)
+            R_padded = z_translate_and_pad(R_shg_ref,R_transformed,z_ref,z_target).astype(np.uint)
+            R_shg_padded = z_translate_and_pad(R_shg_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
+
             # Save transformation matrix for display later
             # Save images directly
 
+            print(f'Saving to {output_dir}')
+            io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
+            io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
+            io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
+            io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
+
+            output_imgs.append(Image(R_shg_target[z_target],name=f'{t}_after'))
+
+        return output_imgs
+
+    @widget.pattern_str.changed.connect
     @widget.dirname.changed.connect
     def update_timepoints_on_file_change(event=None):
         _update_timepoints_on_file_change(widget)
+
     return widget
 
 
@@ -147,14 +225,8 @@ def transform_image(
 
 viewer = napari.Viewer()
 
-viewer.window.add_dock_widget(print_image_size, area='left')
-
-# viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
-# viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
+viewer.window.add_dock_widget(auto_align_timecourse(),area='left')
 viewer.window.add_dock_widget(LoadAlignedChannelForInspection(viewer),area='right')
-viewer.window.add_dock_widget(LoadDTimepointForInspection(viewer),area='right')
-
-
 
 if __name__ == '__main__':
     napari.run()

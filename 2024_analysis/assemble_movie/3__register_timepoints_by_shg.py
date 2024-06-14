@@ -26,7 +26,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Old mice/01-24-20
 
 filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
 
-#%% 
+#%%
 
 XX = 1024
 TT = len(filelist)
@@ -72,16 +72,16 @@ for t in tqdm( [14] ): # 0-indexed
 
     if t == ref_T:
         continue
-    
+
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
     if not OVERWRITE and path.exists(path.join(path.dirname(filelist.loc[t,'G']),'G_align.tif')):
         print(f'\n Skipping t = {t}')
         continue
-    
+
     print(f'\n Working on t = {t}')
     #Load the target
     R_shg_target = io.imread(filelist.loc[t,'R_shg']).astype(float)
-    
+
     # Find simlar in the next time point
     # If specified, use the manually determined ref_z
     if t in z_pos_in_original.keys() and not OVERWRITE:
@@ -99,15 +99,15 @@ for t in tqdm( [14] ): # 0-indexed
             Imax_target = CC.argmax()
             print(f'Target z-slice automatically determined to be {Imax_target}')
         z_pos_in_original[t] = Imax_target
-    
+
     # Perform transformations
     B = util.img_as_float(io.imread(filelist.loc[t,'B']))
     G = util.img_as_float(io.imread(filelist.loc[t,'G']))
     R = util.img_as_float(io.imread(filelist.loc[t,'R']))
-    
+
     B_transformed = B.copy();
     R_transformed = R.copy(); G_transformed = G.copy(); R_shg_transformed = R_shg_target.copy();
-    
+
     if XY_reg:
         if t in XY_matrices.keys() and not OVERWRITE:
             print('\n XY registration is pre-defined')
@@ -119,25 +119,25 @@ for t in tqdm( [14] ): # 0-indexed
             sr = StackReg(StackReg.RIGID_BODY)
             T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
             XY_matrices[t] = T
-        
+
         if APPLY_XY:
             print('Applying transformation matrices')
             # Apply transformation matrix to each stacks
-            
+
             T = transform.SimilarityTransform(T)
             T = T + transform.SimilarityTransform(translation=[30,75],rotation=np.deg2rad(-7))
-            
+
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
                 G_transformed[i,...] = transform.warp(G_slice,T)
             for i, R_slice in enumerate(R):
                 R_transformed[i,...] = transform.warp(R_slice,T)
                 R_shg_transformed[i,...] = transform.warp(R_shg_target[i,...],T)
-        
+
     if APPLY_PAD:
         # Z-pad the time point in reference to t - 1
         Z_target = R_shg_target.shape[0]
-    
+
         print('Padding')
         dz = Imax_ref - Imax_target
         Tz = transform.EuclideanTransform(translation=[0,-dz])
@@ -145,24 +145,24 @@ for t in tqdm( [14] ): # 0-indexed
         B_padded = transform.warp(B_transformed,Tz)
         G_padded = transform.warp(G_transformed,Tz)
         R_shg_padded = transform.warp(R_shg_transformed,Tz)
-        
-    
+
+
         print('Saving')
         output_dir = path.dirname(filelist.loc[t,'G'])
         io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
-        
+
         output_dir = path.dirname(filelist.loc[t,'R'])
         io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
         io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
-    
+
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 i
 #%%
 print('DONE')
- 
+
 #% Manually input any alignment matrix and save
 
 # t = 5
@@ -183,4 +183,3 @@ print('DONE')
 #     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
 
 # print('DONE')
-
