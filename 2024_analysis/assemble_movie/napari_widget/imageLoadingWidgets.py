@@ -23,7 +23,7 @@ from twophotonUtils import parse_unregistered_channels, parse_unaligned_channels
 from os import path
 from glob import glob
 
-class LoadDTimepointForInspection(Container):
+class LoadTimepointForInspection(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._timepoint_choices = ()
@@ -110,43 +110,66 @@ class LoadDTimepointForInspection(Container):
         for name,filename in file_tuple.items():
             self._viewer.add_image(io.imread(filename),name=prefix+name+suffix, blending='additive', colormap=next(colormaps))
 
-
-class LoadAlignedChannelForInspection(Container):
+class LoadChannelForInspection(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._channel_choices = ()
-        self._set_choices = ['B']
+        self._set_choices = ['Un-registered']
         self._viewer = viewer
         self.append(
             FileEdit(name="dirname",label="Image region to load:",mode="d")
         )
         self.append(
-            LineEdit(name='pattern_str',label='subdir filter',value='*.*/')
+            LineEdit(name='pattern_str',label='subdir filter',value='*. Day*/')
         )
         self.append(
             ComboBox(name="channel2load", choices=self.get_channel_choices, label="Select channel")
         )
-        self.append(PushButton(name='load_button', text='Load aligned channels'))
+        self.append(RadioButtons(name='set2load',
+                                  choices=self.get_set_choices,
+                                  value='Un-registered'
+                                  )
+                    )
+        self.append(PushButton(name='load_button', text='Load timepoint'))
 
         self.dirname.changed.connect(self.update_channel_choices)
         self.pattern_str.changed.connect(self.update_channel_choices)
+        self.channel2load.changed.connect(self.update_set_choices)
         self.load_button.changed.connect(self.load_images)
 
     def get_channel_choices(self, dropdown_widget):
         return self._channel_choices
 
     def update_channel_choices(self):
-        print(self.pattern_str.value)
         dirname = self.dirname.value
+        pattern_str = self.pattern_str.value
         choices = None
-        filelist = parse_aligned_timecourse_directory(dirname,folder_str=self.pattern_str.value)
+
+        filelist = parse_unregistered_channels(dirname,folder_str=pattern_str)
         if len(filelist) > 0:
-            choices = filelist.columns.values
+            choices = filelist.columns
         else:
-            show_warning(f'No time points matching {dirname}/{self.pattern_str.value}')
+            show_warning(f'Directory {dirname} is not a region directory.')
         if choices is not None:
             self._channel_choices = choices
             self.channel2load.reset_choices()
+
+    def get_set_choices(self, radio_widget):
+        return self._set_choices
+
+    def update_set_choices(self):
+        dirname = self.dirname.value
+        t = self.channel2load.value
+
+        choices = []
+        if len( glob(path.join(dirname,f'*.*/R_reg.tif'))) > 0:
+            choices.append('Un-registered')
+        if len( glob(path.join(dirname,f'*.*/R_reg_reg.tif'))) > 0:
+            choices.append('Registered')
+        if len( glob(path.join(dirname,f'*.*/R_align.tif'))) > 0:
+            choices.append('Aligned')
+        self._set_choices = choices
+        self.set2load.reset_choices()
 
     def load_images(self) -> List[napari.layers.Layer]:
         # clear the current slate
@@ -154,13 +177,21 @@ class LoadAlignedChannelForInspection(Container):
         for l in names2remove:
             self._viewer.layers.remove(l)
 
-        filelist = parse_aligned_timecourse_directory(self.dirname.value,folder_str=self.pattern_str.value)
+        prefix = f'{self.channel2load.value}_'
+
+        if self.set2load.value == 'Un-registered':
+            filelist = parse_unregistered_channels(self.dirname.value,folder_str=self.pattern_str.value) #@todo: auto-detect when these are not yet available
+            suffix = '_reg'
+        elif self.set2load.value == 'Registered':
+            filelist = parse_unaligned_channels(self.dirname.value,folder_str=self.pattern_str.value)
+            suffix = '_reg_reg'
+        elif self.set2load.value == 'Aligned':
+            filelist = parse_aligned_timecourse_directory(self.dirname.value,folder_str=self.pattern_str.value)
+            suffix = '_align'
+
+        # Load the files using a cycling colormap series
         file_tuple = filelist[self.channel2load.value]
+        colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
 
-        stack = []
-        for name,filename in file_tuple.items():
-            stack.append(io.imread(filename))
-            print(io.imread(filename).shape)
-        stack = np.array(stack)
-
-        self._viewer.add_image(stack,name=self.channel2load.value+'_time_series', blending='additive', colormap='g')
+        for t,filename in file_tuple.items():
+            self._viewer.add_image(io.imread(filename),name=f'{t}_{self.channel2load.value}', blending='additive', colormap=next(colormaps))

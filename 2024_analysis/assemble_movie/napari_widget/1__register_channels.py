@@ -23,7 +23,7 @@ from scipy import ndimage
 
 from pystackreg import StackReg
 from twophotonUtils import parse_unregistered_channels, find_most_likely_z_slice_using_CC, z_translate_and_pad
-from imageLoadingWidgets import LoadDTimepointForInspection
+from imageLoadingWidgets import LoadTimepointForInspection
 
 from os import path
 from glob import glob
@@ -283,7 +283,7 @@ def transform_image(
     for z,im in enumerate(image_data):
         array[z,...] = warp(im, Txy)
     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-    array = array.astype(np.int16)
+    array = array.astype(np.uint16)
 
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]
@@ -293,63 +293,12 @@ def transform_image(
         for z,im in enumerate(second_image_data):
             array[z,...] = warp(im, Txy)
         array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+        array = util.img_as_uint(array/array.max())
         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
         output_list.append(transformed_second_channel)
 
     return output_list
 
-#  Text controls only
-#
-# @magicgui(call_button='Transform image')
-# def transform_image(
-#     reference_image: Image,
-#     image2transform: Image,
-#     second_channel: Image,
-#     reference_z: int=0,
-#     reference_y: int=0,
-#     reference_x: int=0,
-#     moving_z: int=0,
-#     moving_y: int=0,
-#     moving_x: int=0,
-#     rotate_theta:float=0.0,
-#     Transform_second_channel:bool=False,
-#     ) -> List[napari.layers.Layer]:
-#
-#     '''
-#     Perform 3D rigid-body transformations given an input image and manually set transformation parameters
-#     translate z/y/x: pixel-wise translations
-#     rotate_theta: rotation angle in degrees
-#
-#     Optionally, select a second channel to also transform with the same transformation matrix
-#
-#     Output will be the transformed image(s), with _transformed appended to name(s)
-#     '''
-#
-#     # Grab the image data + convert deg->radians
-#     image_data = image2transform.data.astype(float)
-#     second_image_data = second_channel.data.astype(float)
-#     rotate_theta = np.deg2rad(rotate_theta)
-#
-#     # xy transformations (do slice by slice)
-#     Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
-#     # # Apply to first image
-#     array = np.zeros_like(image_data)
-#     for z,im in enumerate(image_data):
-#         array[z,...] = warp(im, Txy)
-#     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-#
-#     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
-#     output_list = [transformed_image]
-#
-#     if Transform_second_channel:
-#         array = np.zeros_like(second_image_data)
-#         for z,im in enumerate(second_image_data):
-#             array[z,...] = warp(im, Txy)
-#         array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-#         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
-#         output_list.append(transformed_second_channel)
-#
-#     return output_list
 
 @magicgui(call_button='Filter image')
 def filter_gaussian3d( image2filter:Image,
@@ -371,7 +320,7 @@ viewer = napari.Viewer()
 viewer.window.add_dock_widget(load_ome_tiffs_and_save_as_tiff,area='left')
 viewer.window.add_dock_widget(auto_register_b_and_rshg(),area='left')
 
-viewer.window.add_dock_widget(LoadDTimepointForInspection(viewer),area='right')
+viewer.window.add_dock_widget(LoadTimepointForInspection(viewer),area='right')
 viewer.window.add_dock_widget(transform_image, area='right')
 viewer.window.add_dock_widget(filter_gaussian3d, area='right')
 

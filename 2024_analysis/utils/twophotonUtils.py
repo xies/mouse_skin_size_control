@@ -207,9 +207,9 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     to be the same size as im_ref
     '''
     XX = im_moving.shape[1]
-    # Z-pad the red + red_shg channel using Imax and Iz
-    bottom_padding = z_ref - z_moving
 
+    # Bottom padding
+    bottom_padding = z_ref - z_moving
     if bottom_padding > 0: # the needs padding
         im_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),im_moving), axis= 0)
     elif bottom_padding < 0: # then needs trimming
@@ -217,7 +217,7 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     elif bottom_padding == 0:
         im_padded = im_moving
 
-    top_padding = im_ref.shape[0] - im_moving.shape[0]
+    top_padding = im_ref.shape[0] - im_padded.shape[0]
     if top_padding > 0: # the needs padding
         im_padded = np.concatenate( (im_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
     elif top_padding < 0: # then needs trimming
@@ -226,5 +226,7 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     # Cut down the z-stack shape
     Zref = im_ref.shape[0]
     im_padded = im_padded[:Zref,...]
+
+    assert(np.all(im_ref.shape == im_padded.shape))
 
     return im_padded

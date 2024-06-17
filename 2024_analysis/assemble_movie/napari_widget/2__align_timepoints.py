@@ -10,7 +10,7 @@ from magicgui import magicgui
 import napari
 from typing import List
 
-from napari.layers import Image
+from napari.layers import Image, Layer
 from napari.utils.notifications import show_warning, show_info
 from napari.utils import progress
 
@@ -23,7 +23,7 @@ from scipy import ndimage
 from pystackreg import StackReg
 from twophotonUtils import parse_unaligned_channels, find_most_likely_z_slice_using_CC, \
     z_translate_and_pad, parse_aligned_timecourse_directory
-from imageLoadingWidgets import LoadAlignedChannelForInspection, LoadDTimepointForInspection
+from imageLoadingWidgets import LoadChannelForInspection
 
 from pathlib import Path
 from os import path
@@ -105,7 +105,7 @@ def auto_align_timecourse():
             if t == reference_timepoint:
                 print(f'Skipping t = {t} because it is the reference')
                 continue
-            if path.exists(path.join(path.dirname(filelist.loc[t,'R_shg']),'R_shg_align.tif'))  and not OVERWRITE:
+            if path.exists(path.join(path.dirname(filelist.loc[t,'R_shg']),'R_shg_align.tif')) and not OVERWRITE:
                 print(f'Skipping t = {t} because its R_shg_align.tif already exists')
                 continue
 
@@ -153,14 +153,13 @@ def auto_align_timecourse():
 
             # Save transformation matrix for display later
             # Save images directly
-
             print(f'Saving to {output_dir}')
             io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
             io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
             io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
             io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
 
-            output_imgs.append(Image(R_shg_target[z_target],name=f'{t}_after'))
+            output_imgs.append(Image(R_shg_padded[z_target],name=f'{t}_after'))
 
         return output_imgs
 
@@ -172,19 +171,14 @@ def auto_align_timecourse():
     return widget
 
 
+# Mouse-selected
 @magicgui(call_button='Transform image')
 def transform_image(
     reference_image: Image,
-    image2transform: Image,
-    second_channel: Image,
-    reference_z: int=0,
-    reference_y: int=0,
-    reference_x: int=0,
-    moving_z: int=0,
-    moving_y: int=0,
-    moving_x: int=0,
+    images2transform: List[Layer],
+    # second_channel: Image,
     rotate_theta:float=0.0,
-    Transform_second_channel:bool=False,
+    # Transform_second_channel:bool=False,
     ) -> List[napari.layers.Layer]:
 
     '''
@@ -199,34 +193,51 @@ def transform_image(
 
     # Grab the image data + convert deg->radians
     image_data = image2transform.data.astype(float)
-    second_image_data = second_channel.data.astype(float)
+    # second_image_data = second_channel.data.astype(float)
     rotate_theta = np.deg2rad(rotate_theta)
+
+    # Grab the reference point layers
+    ref_point_name = reference_image.name + '_ref_point'
+    if ref_point_name in [l.name for l in viewer.layers]:
+        ref_point = viewer.layers[ref_point_name].data[0]
+
+    moving_point_name = images2transform.name + '_ref_point'
+    if moving_point_name in [l.name for l in viewer.layers]:
+        moving_point = viewer.layers[moving_point_name].data[0]
+
+    reference_z,reference_y,reference_x = ref_point.astype(int)
+    moving_z,moving_y,moving_x = moving_point.astype(int)
 
     # xy transformations (do slice by slice)
     Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
-    # # Apply to first image
+
+    # Apply to first image
     array = np.zeros_like(image_data)
     for z,im in enumerate(image_data):
         array[z,...] = warp(im, Txy)
     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+    array = array.astype(np.uint16)
 
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]
 
-    if Transform_second_channel:
-        array = np.zeros_like(second_image_data)
-        for z,im in enumerate(second_image_data):
-            array[z,...] = warp(im, Txy)
-        array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-        transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
-        output_list.append(transformed_second_channel)
+    # @todo: transform other channels
+    #     array = np.zeros_like(second_image_data)
+    #     for z,im in enumerate(second_image_data):
+    #         array[z,...] = warp(im, Txy)
+    #     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+    #     array = util.img_as_uint(array/array.max())
+    #     transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
+    #     output_list.append(transformed_second_channel)
 
     return output_list
+
 
 viewer = napari.Viewer()
 
 viewer.window.add_dock_widget(auto_align_timecourse(),area='left')
-viewer.window.add_dock_widget(LoadAlignedChannelForInspection(viewer),area='right')
+viewer.window.add_dock_widget(LoadChannelForInspection(viewer),area='right')
+# viewer.window.add_dock_widget(transform_image(),area='right')
 
 if __name__ == '__main__':
     napari.run()
