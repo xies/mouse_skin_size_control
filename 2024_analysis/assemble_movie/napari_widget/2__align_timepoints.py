@@ -186,7 +186,7 @@ def transform_image(
     translate z/y/x: pixel-wise translations
     rotate_theta: rotation angle in degrees
 
-    Optionally, select a second channel to also transform with the same transformation matrix
+    check: https://forum.image.sc/t/layer-multi-select-widget-in-napari/85293
 
     Output will be the transformed image(s), with _transformed appended to name(s)
     '''
