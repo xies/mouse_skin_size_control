@@ -120,7 +120,7 @@ class LoadChannelForInspection(Container):
             FileEdit(name="dirname",label="Image region to load:",mode="d")
         )
         self.append(
-            LineEdit(name='pattern_str',label='subdir filter',value='*. Day*/')
+            LineEdit(name='pattern_str',label='subdir filter',value='*.*/')
         )
         self.append(
             ComboBox(name="channel2load", choices=self.get_channel_choices, label="Select channel")
@@ -193,5 +193,27 @@ class LoadChannelForInspection(Container):
         file_tuple = filelist[self.channel2load.value]
         colormaps = cycle(['bop blue','gray','bop orange','bop purple'])
 
-        for t,filename in file_tuple.items():
-            self._viewer.add_image(io.imread(filename),name=f'{t}_{self.channel2load.value}', blending='additive', colormap=next(colormaps))
+        # Load images as a stack
+        im_stack = stack_ragged_images(list(map(io.imread,file_tuple.values)))
+        self._viewer.add_image(im_stack,name=f'{self.set2load.value}_{self.channel2load.value}')
+        # for t,filename in file_tuple.items():
+        #     self._viewer.add_image(io.imread(filename),name=f'{t}_{self.channel2load.value}', blending='additive', colormap=next(colormaps))
+
+def stack_ragged_images(ragged_images):
+
+    ZZ = np.array([x.shape[0] for x in ragged_images])
+    XX = np.array([x.shape[1] for x in ragged_images])
+    YY = np.array([x.shape[2] for x in ragged_images])
+
+    ZZmax = ZZ.max()
+    XXmax = XX.max()
+    YYmax = YY.max()
+
+    for i,im in enumerate(ragged_images):
+        assert(XXmax == im.shape[1])
+        assert(YYmax == im.shape[2])
+        blank = np.zeros((ZZmax - im.shape[0],im.shape[1],im.shape[2]),dtype=im.dtype)
+        new_im = np.concatenate((im,blank),axis=0)
+        ragged_images[i] = new_im / new_im.max()
+
+    return np.array(ragged_images)
