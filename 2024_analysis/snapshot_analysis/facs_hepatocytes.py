@@ -17,6 +17,7 @@ from os import path
 
 from SelectFromCollection import SelectFromCollection
 from matplotlib.path import Path
+from matplotlib.patches import PathPatch
 
 from scipy import stats
 from mathUtils import cvariation_ci, cvariation_ci_bootstrap
@@ -42,6 +43,13 @@ I = np.array([p_.contains_point([x,y]) for x,y in zip(df['VL1-H'],df['VL1-W'])])
 
 df_ = df[I]
 
+# Display gate
+plt.figure()
+pts = plt.scatter(df['VL1-H'],df['VL1-W'],alpha=0.005)
+plt.xlabel('DAPI-height');plt.ylabel('DAPI-width');
+patch = PathPatch(p_,lw=2,facecolor='r',alpha=0.1)
+plt.gca().add_patch(patch)
+
 #%% gate on diploids
 
 plt.figure()
@@ -54,9 +62,16 @@ selector = SelectFromCollection(plt.gca(), pts)
 verts = np.array(selector.poly.verts)
 x = verts[:,0];y = verts[:,1]
 p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(df_['VL1-H'],df_['VL1-W'])])
+I = np.array([p_.contains_point([x,y]) for x,y in zip(df_['VL1-A'],df_['YL2-A'])])
 
 diploids = df_[I]
+
+# Display gate
+plt.figure()
+pts = plt.scatter(df['VL1-A'],df['YL2-A'],alpha=0.005)
+plt.xlabel('DAPI-height');plt.ylabel('DAPI-width');
+patch = PathPatch(p_,lw=2,facecolor='r',alpha=0.1)
+plt.gca().add_patch(patch)
 
 #%% Gate cell cycle based on FUCCI
 
@@ -71,29 +86,32 @@ plt.vlines(x=th,ymin=0,ymax=1000,color='r')
 diploids['High_Cdt'] = True
 diploids.loc[diploids['Log-Cdt'] < th,'High_Cdt'] = False
 
-# Set Cdt threshold
+# Set Geminin threshold
 th = 10
 plt.figure()
-plt.hist(diploids['Log-Gem'],100);plt.xlabel('Log-Gem')
+plt.hist(diploids['Log-Gem'],100);plt.xlabel('Log-Gem');plt.ylabel('Counts')
 plt.vlines(x=th,ymin=0,ymax=1000,color='r')
 diploids['High_Gem'] = True
 diploids.loc[diploids['Log-Gem'] < th,'High_Gem'] = False
 
 #%%
-plt.figure()
-sb.lmplot(data=diploids,x='Log-Cdt',y='Log-Gem',fit_reg=False,
-          hue='High_Cdt',col='High_Gem', scatter_kws={'alpha':.01})
+
+# diploids.to_csv(path.join(dirname,'diploids.csv'))
+
+diploids = pd.read_csv(path.join(dirname,'diploids.csv'),index_col=0)
+
+diploids.loc[~diploids['High_Gem'], 'Phase'] = 'G1'
+diploids.loc[diploids['High_Gem'], 'Phase'] = 'S or G2'
+
+(_,g1),(_,sg2) = diploids.groupby('Phase')
 
 #%%
 
-diploids.to_csv(path.join(dirname,'diploids.csv'))
+sb.lmplot(data=diploids,x='Log-Cdt',y='Log-Gem',fit_reg=False,
+          hue='Phase', scatter_kws={'alpha':.01})
 
-diploids.loc[~diploids['High_Cdt'] & ~diploids['High_Gem'], 'Phase'] = 'G1'
-diploids.loc[ diploids['High_Cdt'] & ~diploids['High_Gem'], 'Phase'] = 'G1'
-diploids.loc[ diploids['High_Cdt'] & diploids['High_Gem'], 'Phase'] = 'S or G2'
-diploids.loc[ ~diploids['High_Cdt'] & diploids['High_Gem'], 'Phase'] = 'S or G2'
-
-(_,g1),(_,sg2) = diploids.groupby('Phase')
+sb.lmplot(data=diploids,x='Log-Cdt',y='Log-Gem',fit_reg=False,
+          hue='High_Cdt',col='High_Gem', scatter_kws={'alpha':.01})
 
 #%% Estimate CV + conf interv
 
@@ -127,7 +145,14 @@ sb.barplot(diploids,y='FSC-A',x='Phase'
            ,order=['G1','S or G2'])
 plt.ylabel('CV of FSC')
 plt.ylim([0,.25])
-plt.title('Primary hepatocytes, cell cycle determined by FUCCI')
+plt.title('Primary hepatocytes, cell cycle determined by High/Low Geminin')
+
+plt.subplot(1,2,2)
+sb.barplot(diploids,y='SSC-A',x='Phase'
+           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
+           ,order=['G1','S or G2'])
+plt.ylabel('CV of FSC')
+plt.ylim([0,.35])
 
 #%% Gate cell cycle based on DAPI only
 
