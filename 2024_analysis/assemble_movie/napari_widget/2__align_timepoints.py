@@ -8,7 +8,7 @@ Created on Tue Apr 16 13:22:11 2024
 
 from magicgui import magicgui
 import napari
-from typing import List
+from typing import List, Tuple
 
 from napari.layers import Image, Layer
 from napari.utils.notifications import show_warning, show_info
@@ -16,6 +16,8 @@ from napari.utils import progress
 
 # from os import path
 import numpy as np
+import math
+from numpy.linalg import norm
 from skimage import io,util,filters
 from skimage.transform import EuclideanTransform, warp
 from scipy import ndimage
@@ -29,6 +31,7 @@ from pathlib import Path
 from os import path
 from glob import glob
 from re import findall
+import pickle as pkl
 
 DEFAULT_CHOICES = [0]
 
@@ -82,7 +85,7 @@ def auto_align_timecourse():
 
         # Load reference image
         print(timepoints_to_register)
-        R_shg_ref = io.imread(filelist.loc[reference_timepoint,'R_shg'])
+        B_ref = io.imread(filelist.loc[reference_timepoint,'B'])
 
         # Initiate transform matrices
         z_pos_in_original = {}
@@ -92,9 +95,10 @@ def auto_align_timecourse():
                 [z_pos_in_original,XY_matrices,Imax_ref] = pkl.load(f)
 
         # Select the reference z-slice: for mem-GFP, use a half-way point
-        z_ref = R_shg_ref.shape[0] // 2
-        z_ref = 18
-        ref_img = R_shg_ref[z_ref,...]
+        stds = np.array([X.std() for X in B_ref])
+        z_ref = stds.argmax()
+        # z_ref = 18
+        ref_img = B_ref[z_ref,...]
         print(f'Reference z-slice: {z_ref}')
         output_imgs = [Image(ref_img)]
 
@@ -113,43 +117,45 @@ def auto_align_timecourse():
             # Alignment code here
             print(f'\n ---- Working on t = {t} ----')
             #Load the target
-            R_shg_target = io.imread(filelist.loc[t,'R_shg']).astype(float)
+            B_target = io.imread(filelist.loc[t,'B']).astype(float)
 
             # Find simlar in the next time point
             # 1. Use xcorr2 to find the z-slice on the target that has max CC with the reference
-            z_target = find_most_likely_z_slice_using_CC(ref_img,R_shg_target)
+            z_target = find_most_likely_z_slice_using_CC(ref_img,B_target)
             print(f'Target z-slice automatically determined to be {z_target}')
             z_pos_in_original[t] = z_target
 
-            target_img = R_shg_target[z_target]
+            target_img = B_target[z_target]
             output_imgs.append(Image(target_img,name=f'{t}_before'))
 
             # 2. Calculate XY transforms
             print('StackReg + transform')
             sr = StackReg(StackReg.RIGID_BODY)
-            T = sr.register(target_img/target_img.max(),ref_img) #Obtain the transformation matrices
+            T = sr.register(target_img,ref_img) #Obtain the transformation matrices
             T = EuclideanTransform(T)
+
 
             # Load other channels + apply transformations
             B = io.imread(filelist.loc[t,'B']).astype(float)
             G = io.imread(filelist.loc[t,'G']).astype(float)
             R = io.imread(filelist.loc[t,'R']).astype(float)
+            R_shg = io.imread(filelist.loc[t,'R_shg']).astype(float)
 
             B_transformed = np.zeros_like(B).astype(float)
             G_transformed = np.zeros_like(G).astype(float)
             R_transformed = np.zeros_like(R).astype(float)
-            R_shg_transformed = np.zeros_like(R_shg_target).astype(float)
+            R_shg_transformed = np.zeros_like(R_shg).astype(float)
             for i, B_slice in enumerate(B):
                 B_transformed[i,...] = warp(B_slice,T)
                 G_transformed[i,...] = warp(G[i,...],T)
                 R_transformed[i,...] = warp(R[i,...],T)
-                R_shg_transformed[i,...] = warp(R_shg_target[i,...],T)
+                R_shg_transformed[i,...] = warp(R_shg[i,...],T)
 
             # z-pad
-            B_padded = z_translate_and_pad(R_shg_ref,B_transformed,z_ref,z_target).astype(np.uint)
-            G_padded = z_translate_and_pad(R_shg_ref,G_transformed,z_ref,z_target).astype(np.uint)
-            R_padded = z_translate_and_pad(R_shg_ref,R_transformed,z_ref,z_target).astype(np.uint)
-            R_shg_padded = z_translate_and_pad(R_shg_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
+            B_padded = z_translate_and_pad(B_ref,B_transformed,z_ref,z_target).astype(np.uint)
+            G_padded = z_translate_and_pad(B_ref,G_transformed,z_ref,z_target).astype(np.uint)
+            R_padded = z_translate_and_pad(B_ref,R_transformed,z_ref,z_target).astype(np.uint)
+            R_shg_padded = z_translate_and_pad(B_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
 
             # Save transformation matrix for display later
             # Save images directly
@@ -170,74 +176,135 @@ def auto_align_timecourse():
 
     return widget
 
+def estimate_translation_and_rotation_from_anchors(A,B):
+    '''
+    See: https://lucidar.me/en/mathematics/calculating-the-transformation-between-two-set-of-points/
+    @todo: extendable to 3D
+    '''
+
+    assert(len(A) == len(B)) # size must match
+    assert(A.shape[1] == 2) # 2D anchors
+    comA = A.mean(axis=0)
+    comB = B.mean(axis=0)
+
+    Ac = A - comA[None,:] # implicit repmat
+    Bc = B - comB[None,:]
+
+    M = np.stack([np.outer(Ac[i,:], Bc[i,:]) for i in range(len(A))]).sum(axis=0)
+    U,S,V = np.linalg.svd(M)
+    R = np.matmul(V,U.T)
+
+    return comA,comB,R
 
 # Mouse-selected
 @magicgui(call_button='Transform image')
 def transform_image(
-    reference_image: Image,
-    images2transform: List[Layer],
-    # second_channel: Image,
-    rotate_theta:float=0.0,
-    # Transform_second_channel:bool=False,
-    ) -> List[napari.layers.Layer]:
+    stack2transform: Image,
+    reference_index: int=0,
+    directory_to_save_transformations: Path=Path.home()
+    ) -> Image:
 
-    '''
-    Perform 3D rigid-body transformations given an input image and manually set transformation parameters
-    translate z/y/x: pixel-wise translations
-    rotate_theta: rotation angle in degrees
-
-    check: https://forum.image.sc/t/layer-multi-select-widget-in-napari/85293
-
-    Output will be the transformed image(s), with _transformed appended to name(s)
-    '''
-
-    # Grab the image data + convert deg->radians
-    image_data = image2transform.data.astype(float)
-    # second_image_data = second_channel.data.astype(float)
-    rotate_theta = np.deg2rad(rotate_theta)
+    # Grab the image data
+    image_data = stack2transform.data.astype(float)
+    reference_image = image_data[reference_index,...]
 
     # Grab the reference point layers
-    ref_point_name = reference_image.name + '_ref_point'
+    ref_point_name = stack2transform.name + '_ref_A'
     if ref_point_name in [l.name for l in viewer.layers]:
-        ref_point = viewer.layers[ref_point_name].data[0]
+        anchors_A = viewer.layers[ref_point_name].data
+    rotation_point_name = stack2transform.name + '_ref_B'
+    if rotation_point_name in [l.name for l in viewer.layers]:
+        anchors_B = viewer.layers[rotation_point_name].data
 
-    moving_point_name = images2transform.name + '_ref_point'
-    if moving_point_name in [l.name for l in viewer.layers]:
-        moving_point = viewer.layers[moving_point_name].data[0]
+    # initialize the reference anchors for the right matrix algebra shape
+    reference_cloud = np.stack([ anchors_A[reference_index,2:4], anchors_B[reference_index,2:4]])
+    reference_cloud = np.squeeze(reference_cloud)
+    # Always use AnchorA for z-anchor
+    reference_z = anchors_A[reference_index,...][1].astype(int)
+    output_stack = np.zeros_like(image_data)
 
-    reference_z,reference_y,reference_x = ref_point.astype(int)
-    moving_z,moving_y,moving_x = moving_point.astype(int)
+    # Go through each time point
+    transformations = dict()
+    for t,anchor_A in enumerate(anchors_A):
 
-    # xy transformations (do slice by slice)
-    Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
+        # Grab current image
+        this_im = image_data[t,...]
+        # IF this is is the refence point, put in original image and skip
+        if t == reference_index:
+            output_stack[t,...] = util.img_as_uint(this_im/this_im.max())
+            continue
 
-    # Apply to first image
-    array = np.zeros_like(image_data)
-    for z,im in enumerate(image_data):
-        array[z,...] = warp(im, Txy)
-    array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-    array = array.astype(np.uint16)
+        # First, z-translate (always use anchorA for now)
+        moving_z = anchors_A[t,...][1].astype(int)
+        array = z_translate_and_pad(reference_image,this_im,reference_z,moving_z)
 
-    transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
-    output_list = [transformed_image]
+        # Now, calculate translation and rotation together, disregarding z
+        moving_cloud = np.stack([ anchors_A[t,2:4], anchors_B[t,2:4]])
+        moving_cloud = np.squeeze(moving_cloud)
 
-    # @todo: transform other channels
-    #     array = np.zeros_like(second_image_data)
-    #     for z,im in enumerate(second_image_data):
-    #         array[z,...] = warp(im, Txy)
-    #     array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-    #     array = util.img_as_uint(array/array.max())
-    #     transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
-    #     output_list.append(transformed_second_channel)
+        com_ref,com_moving,Rm = estimate_translation_and_rotation_from_anchors(reference_cloud,moving_cloud)
 
-    return output_list
+        dy,dx = com_moving - com_ref
+        print(f'dy={dy} and dx={dx}')
+        theta = np.arctan2(Rm[0,1],Rm[0,0])
+
+        Txy = EuclideanTransform(rotation=theta, translation= [dx,dy])
+        for z,im in enumerate(array):
+            array[z,...] = warp(im,Txy)
+
+        # Txy = EuclideanTransform(rotation=theta)
+        output_stack[t,...] = util.img_as_uint(array/array.max())
+        transformations[t] = [dx,dy,theta]
+
+    #@todo: Save matrix?
+    with open(path.join(directory_to_save_transformations,'transformations.pkl'),'wb+') as f:
+        pkl.dump(transformations,f)
+
+    return( Image(output_stack,name='Aligned') )
+
+@magicgui(call_button='Refine alignment')
+def refine_alignment(
+        im2refine : Image,
+        reference_index : int=0,
+        z_to_use : int=10,
+        directory_to_save_transformations : Path=Path.home()
+        ) -> Image:
+    im_stack = im2refine.data
+    assert(im_stack.ndim == 4)
+
+    TT,ZZ,YY,XX = im_stack.shape
+    assert(z_to_use < ZZ)
+
+    reference_stack = im_stack[reference_index,...]
+    ref_img = reference_stack[z_to_use,...]
+    array = np.zeros_like(im_stack)
+    transformations = dict()
+    for t in range(TT):
+        this_im = im_stack[t,...]
+        if t == reference_index:
+            array[t,...] = im_stack[t,...]
+            continue
+        moving_img = this_im[z_to_use,...]
+        sr = StackReg(StackReg.RIGID_BODY)
+        T = sr.register(ref_img,moving_img) #Obtain the transformation matrices
+        T = EuclideanTransform(T)
+
+        for z,im in enumerate(this_im):
+            array[t,z,...] = warp(im,T)
+        transformations[t] = [T.translation[0],T.translation[1],T.rotation]
+
+    with open(path.join(directory_to_save_transformations,'refinements.pkl'),'wb+') as f:
+        pkl.dump(transformations,f)
+
+    return(Image(array,name='Refined'))
 
 
 viewer = napari.Viewer()
 
 viewer.window.add_dock_widget(auto_align_timecourse(),area='left')
 viewer.window.add_dock_widget(LoadChannelForInspection(viewer),area='right')
-# viewer.window.add_dock_widget(transform_image(),area='right')
+viewer.window.add_dock_widget(transform_image,area='right')
+viewer.window.add_dock_widget(refine_alignment,area='right')
 
 if __name__ == '__main__':
     napari.run()
