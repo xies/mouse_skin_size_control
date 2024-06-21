@@ -232,6 +232,7 @@ def transform_image(
         # IF this is is the refence point, put in original image and skip
         if t == reference_index:
             output_stack[t,...] = util.img_as_uint(this_im/this_im.max())
+            transformations[t] = [reference_z,0,0,0]
             continue
 
         # First, z-translate (always use anchorA for now)
@@ -254,13 +255,13 @@ def transform_image(
 
         # Txy = EuclideanTransform(rotation=theta)
         output_stack[t,...] = util.img_as_uint(array/array.max())
-        transformations[t] = [dx,dy,theta]
+        transformations[t] = [moving_z,dx,dy,theta]
 
     #@todo: Save matrix?
-    with open(path.join(directory_to_save_transformations,'transformations.pkl'),'wb+') as f:
+    with open(path.join(directory_to_save_transformations,'manual.pkl'),'wb+') as f:
         pkl.dump(transformations,f)
 
-    return( Image(output_stack,name='Aligned') )
+    return( Image(output_stack,name='Manual') )
 
 @magicgui(call_button='Refine alignment')
 def refine_alignment(
@@ -283,6 +284,7 @@ def refine_alignment(
         this_im = im_stack[t,...]
         if t == reference_index:
             array[t,...] = im_stack[t,...]
+            transformations[t] = [0,0,0]
             continue
         moving_img = this_im[z_to_use,...]
         sr = StackReg(StackReg.RIGID_BODY)
@@ -298,6 +300,48 @@ def refine_alignment(
 
     return(Image(array,name='Refined'))
 
+@magicgui(call_button='Apply transformations to stack')
+def apply_transformations_to_stack(
+        im2transform : Image,
+        directory2load: Path = Path.home(),
+        apply_refinement: bool = True
+    ) -> Image :
+
+    im_stack = im2transform.data
+    with open(path.join(directory2load,'manual.pkl'),'rb') as f:
+        manual = pkl.load(f)
+
+    if apply_refinement:
+        with open(path.join(directory2load,'refinements.pkl'),'rb') as f:
+            refinements = pkl.load(f)
+
+    for t,(dz,dx,dy,theta) in manual.items():
+        if dx == 0 and dy == 0 and theta == 0:
+            reference_t = t
+            reference_z = dz
+    reference_image = im_stack[reference_t,...]
+
+    array = np.zeros_like(im_stack)
+    for t,this_im in enumerate(im_stack):
+        moving_z,dx,dy,theta = manual[t]
+        if t == reference_t:
+            array[t,...] = this_im
+            continue
+
+        this_im = z_translate_and_pad(reference_image,this_im,reference_z,moving_z)
+        T = EuclideanTransform(translation=[dx,dy],rotation=theta)
+
+        for z,im in enumerate(this_im):
+            array[t,z,...] = warp(im,T)
+
+        if apply_refinement:
+            dx,dy,theta = refinements[t]
+            T = EuclideanTransform(translation=[dx,dy],rotation=theta)
+
+            for z,im in enumerate(this_im):
+                array[t,z,...] = warp(im,T)
+
+    return(Image(array,name=f'{im2transform.name}_aligned'))
 
 viewer = napari.Viewer()
 
@@ -305,6 +349,7 @@ viewer.window.add_dock_widget(auto_align_timecourse(),area='left')
 viewer.window.add_dock_widget(LoadChannelForInspection(viewer),area='right')
 viewer.window.add_dock_widget(transform_image,area='right')
 viewer.window.add_dock_widget(refine_alignment,area='right')
+viewer.window.add_dock_widget(apply_transformations_to_stack,area='right')
 
 if __name__ == '__main__':
     napari.run()
