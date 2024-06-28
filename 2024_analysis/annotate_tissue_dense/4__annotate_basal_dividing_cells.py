@@ -11,6 +11,7 @@ from skimage import io, measure, morphology
 from scipy.interpolate import UnivariateSpline
 import pandas as pd
 import matplotlib.pylab as plt
+from scipy.optimize import curve_fit
 
 from mathUtils import surface_area, parse_3D_inertial_tensor
 
@@ -18,7 +19,7 @@ from os import path,makedirs
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 ZZ = 72
@@ -51,7 +52,7 @@ def get_interpolated_curve(cf,field='Volume',smoothing_factor=1e10):
         # nuc_hat = spl(t)
 
     return yhat,dydt
-    
+
 def get_growth_rate(cf,field='Volume',time_field='Time'):
     
     assert(field == 'Nucleus' or field == 'Volume')
@@ -91,6 +92,20 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
     gr_sm_c[-1] = np.nan
     
     return gr_b,gr_f,gr_c,gr_sm_b,gr_sm_f,gr_sm_c
+
+exp_model = lambda x,p1,p2 : p1 * np.exp(p2 * x)
+
+def get_exponential_growth_rate(df,field='Volume (sm)', time_field='Age'):
+    
+    t = df[time_field].values
+    y = df[field].values
+    
+    p,_ = curve_fit(exp_model,t,y,p0=[y[0],1],
+                             bounds = [ [0,0],
+                               [y.max(),np.inf]])
+    V0,gamma = p
+    
+    return gamma
 
 #%% Load the basal cell tracking and measure from the basal cortical tracking only
 
@@ -146,7 +161,6 @@ for t,im in tqdm(enumerate(basal_tracking)):
         
 
 collated = {basalID: pd.DataFrame(cell) for basalID,cell in collated.items()}
-
 
 #%% Load "flattened" cortical segmenations to look at apical v. basal area
 # E.g. collagen orientation + fibrousness
@@ -263,6 +277,9 @@ for basalID, df in collated.items():
         
         df.loc[df['Daughter'],'Growth rate b'] = np.nan
         df.loc[df['Daughter'],'Growth rate f'] = np.nan
+        
+        gamma = get_exponential_growth_rate(df)
+        df['Exponential growth rate'] = gamma
         
         df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
         
