@@ -13,6 +13,7 @@ Created on Thu Oct 29 19:45:04 2020
 import numpy as np
 from numpy import random
 import pandas as pd
+import scipy as sp
 
 class Cell():
     
@@ -42,34 +43,28 @@ class Cell():
         -----------
         
         Volume = cell volume
-        Protein = Number of protein
-        Protein concentration = Protein / Volume
 
         '''
         
         self.cellID = cellID
         # ts -- time series
-        self.ts = pd.DataFrame( columns = ['Time','Volume','Protein','Protein conc','Protein frac turnover','Phase'],
+        self.ts = pd.DataFrame( columns = ['Time','Volume','Phase'],
                             index=pd.RangeIndex( sim_clock['Max frame'] ), dtype=np.float)
-        # scalar summaries of cell state (snapshots/single statistics)
+        
+        # scalar summaries of overall cell state (single statistics and not time-series)
         self.birth_vol = np.nan
         self.div_vol = np.nan
-        # self.g1s_size = np.nan
+        self.g1s_size = np.nan
         self.birth_time = np.nan
         self.div_time = np.nan
-        # self.g1s_time = np.nan
+        self.g1s_time = np.nan
         self.birth_frame = np.nan
         self.div_frame = np.nan
-        # self.g1s_frame = np.nan
-        self.birth_protein = np.nan
-        # self.g1s_protein = np.nan
-        self.div_protein = np.nan
-        self.birth_protein_conc = np.nan
-        # self.g1s_rb_conc = np.nan
-        self.div_protein_conc = np.nan
+        self.g1s_frame = np.nan
+        
         # Flag for if cell is has already divided
         self.divided = False
-        # Store the parameters!
+        # @todo Store the parameters!
         
         # Check if a mother cell was passed in during construction
         if mother == None:
@@ -77,42 +72,28 @@ class Cell():
             # Will initialize a cell at birth
             assert(params is not None)
             # Create cell de novo using empirical paramters
-            # g1s_size = random.lognormal(mean = params.loc['Size','Mean G1S'],sigma = params.loc['Size','Std G1S'])
-            # g1s_rb = random.lognormal(mean = params.loc['RB','Mean G1S'],sigma = params.loc['RB','Std G1S'])
-            # rb_conc = g1s_rb / g1s_size
-            
-            # birth_vol = random.lognormal(mean = params.loc['Volume']['Mean Birth'], sigma = params.loc['Volume']['Std Birth'])
-            # birth_protein = random.lognormal(mean = params.loc['Protein']['Mean Birth'], sigma = params.loc['Protein']['Std Birth'])
-            birth_vol = 1
-            # set birth protein to steady-state prediction
-            birth_protein = params.loc['Protein','base synthesis rate'] / params.loc['Protein','degradation']
-            protein_conc = birth_protein / birth_vol
+            birth_vol = random.lognormal(mean = params.loc['Volume']['Mean Birth'], sigma = params.loc['Volume']['Std Birth'])
+            # birth_vol = 1
             
             init_cell = pd.Series({'Time':sim_clock['Current time'],
-                                   'Volume':birth_vol,'Protein':birth_protein,'Protein conc':protein_conc})
+                                   'Volume':birth_vol,'Phase':'G1'})
             self.parentID = np.nan
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             self.birth_vol = birth_vol
-            self.birth_protein = birth_protein
-            self.birth_protein_conc = protein_conc
             
             self.generation = 0
             
         else: # Create daughter cell via symmetric dividion (ignores params)
             #NB: the "halving" is taken care of in @divide function
             init_vol = mother.div_vol * inheritance
-            init_protein = mother.div_protein * inheritance
-            protein_conc = init_protein / init_vol
             
             init_cell = pd.Series({'Time':sim_clock['Current time'],
-                                   'Volume':init_vol,'Protein':init_protein,'Protein conc':protein_conc})
+                                   'Volume':init_vol,'Phase':'G1'})
             self.parentID = mother.cellID
             self.birth_vol = init_vol
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
-            self.birth_protein = init_protein
-            self.birth_protein_conc = protein_conc
             
             self.generation = mother.generation + 1
         
@@ -165,9 +146,9 @@ class Cell():
         Parameters
         ----------
         clock : dict
-            Dictionary containing current simulation time information
+            Dictionary containing current simulation time information, keyed by frame
         params : pd.Dataframe
-            Empirical parameters extracted from DFB
+            Empirical parameters
             
         Currently only uses Euler updates
              
@@ -175,7 +156,7 @@ class Cell():
 
         '''
         
-        assert(self.divided == False)
+        assert(self.divided == False) # sanity check that there is no division yet
         
         prev_frame = clock['Current frame'] - 1
         prev_values = self.ts.iloc[prev_frame] # pd.Series
@@ -184,76 +165,29 @@ class Cell():
         current_values = prev_values.copy()
         current_values['Time'] += clock['dt']
         
-        # First calculate growths based on previous values
-        #
-        # dV/dt = growth_rate * V(t)
-        #
+        # Grow cell in volume following parameter sheet
         dV = self.volume_growth(clock,params)
-        
-        # Then protein based on current values
-        #
-        # Protein => # of protein molecules in cell
-        # dP(t)/dt = (1 + size_scaling_slope) * base_synthesis_rate * V(t) - deg_rate * P(t) / V(t)
-        #
-        prot_synthesis = self.protein_synthesis(clock,params)
-        prot_deg = self.protein_degradation(clock,params) # should already be negative
-        
-        dprotein = prot_synthesis + prot_deg
-        
-        # Add to current values
         current_values['Volume'] += dV
-        current_values['Protein frac turnover'] = (abs(prot_synthesis) + abs(prot_deg)) / current_values['Protein']
-        current_values['Protein'] += dprotein
-        current_values['Protein conc'] = current_values['Protein'] / current_values['Volume']
         
-        # Check for division, if so, reset cell
-        if self.decide2divide(clock,params):
-            current_values['Protein'] = np.nan
+        # Check for G1/S transition
+        if self.g1s_transition(clock,params):
+            current_values['Phase'] = 'S/G2/M'
+            self.g1s_time = current_values['Time']
+            self.g1s_size = current_values['Volume']
+            self.g1s_frame = clock['Current frame']
+            
+        # Check for division
+        if current_values['Phase'] == 'S/G2/M' and self.decide2divide(clock,params):
             current_values['Volume'] = np.nan
-            current_values['Protein conc'] = np.nan
-            current_values['Protein frac turnover'] = np.nan
             current_values['Phase'] = 'None'
             self.div_time = prev_values['Time']
             self.div_vol = prev_values['Volume']
             self.div_frame = prev_frame
-            self.div_protein = prev_values['Protein']
-            self.div_protein_conc = prev_values['Protein conc']
             self.divided = True
         
         # Put the current values into the timeseries
         self.ts.at[prev_frame + 1] = current_values
         
-    def protein_degradation(self, sim_clock, params):
-
-        frame = sim_clock['Current frame'] - 1
-        #First order equation
-        k_deg = params.loc['Protein','degradation']
-        dprotein = -k_deg * self.ts.iloc[frame]['Protein']
-        
-        return dprotein * sim_clock['dt']
-    
-    
-    def protein_synthesis(self, sim_clock, params):
-        frame = sim_clock['Current frame'] - 1
-        # dP/dt
-        cell = self.ts.iloc[frame]
-        
-        # synthesis using normal centered at size = 1.5
-        # synthesis = params.loc['Protein','base synthesis rate'] * np.exp(-(cell['Volume'] - 1.5)**2 / 0.3)
-        
-        slope = params.loc['Protein','scaling slope']
-        intercept = params.loc['Protein','scaling intercept']
-        
-        # slope,intercept =(1.5 - 3*slope) / 2. # keep size-average to be the same
-        # intercept = 2
-        
-        synthesis = params.loc['Protein','base synthesis rate'] * (intercept + slope * cell['Volume'])
-        
-        sigma = 0 # Noise term
-        total = synthesis + random.randn() * sigma
-        
-        return (total) * sim_clock['dt']
-    
     
     def volume_growth(self, sim_clock, params):
         frame = sim_clock['Current frame'] - 1
@@ -262,19 +196,44 @@ class Cell():
         
         # dV = params.loc['Volume','exponential growth rate']
         dV = cell['Volume'] * params.loc['Volume','exponential growth rate']
-        # noise = random.randn() * params['Size']['growth noise']
+        noise = random.randn() * params['Size']['growth noise']
         noise = 0
         total = dV + noise
         return total * sim_clock['dt']
         
+    def g1s_transition(self,sim_clock,params):
+        # Always 'work' based on prev_frame information
+        frame = sim_clock['Current frame'] -1
+        cell = self.ts.iloc[frame]
+        theta = params['G1S size threshold']
+        if cell['Volume'] > theta:
+            return True
+        else:
+            return False
+        
     
     def decide2divide(self,sim_clock,params):
+        # Always 'work' based on prev_frame information
         frame = sim_clock['Current frame'] - 1
-        # Decide if cells has doubled in size
+        # Decide to divide if S/G2/M duration has lasted a certain time duration (following empirical parameter sheet)
+        # @todo: use Metropolis sampling
         
         cell = self.ts.iloc[frame]
+        # Only S/G2/M cells divide
+        assert(cell['Phase'] == 'S/G2/M')
         
-        if cell['Volume'] > 2:
+        # Calculate Tsg2m
+        time_of_g1s = self.g1s_time
+        Tsg2m = sim_clock['Current time'] - time_of_g1s
+        
+        # Construct timing distrubtion LUT
+        Tsg2m_distribution = sp.stast.norm(loc=params['SG2M duration mean'],scale=params['SG2M duration std'])
+        
+        prob_threshold = Tsg2m_distribution.pdf(Tsg2m)
+        
+        # Metropolis method
+        p = random.uniform(size=1)[0]
+        if p > prob_threshold:
             return True
         else:
             return False 

@@ -88,24 +88,6 @@ def run_model(initial_pop, sim_clock, params):
         
     return population
 
-def synthesis_scaling_rotation(theta):
-    
-    # Rotate vector
-    b = np.array([1.,1.])
-    R = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
-    x = [0.5,0]
-    y = b + np.matmul( R , x )
-    
-    # De-param into line
-    m = y - b
-    m = m[1]/m[0]
-    b = 1. - 1. * m
-    
-    return m,b
-
-
-# def measure_turnoever()
-
 #%% Read parameter files
 
 simulation_dir = '/Users/xies/Box/Bioinformatics/scaling_model/'
