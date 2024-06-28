@@ -112,6 +112,7 @@ features_list = { # Cell identity, position
                 
                 # Growth rates and other central cell dynamics
                 ,'Specific GR spl':'sgr'
+                ,'Exponential growth rate':'exp_gr'
                 ,'FUCCI bg sub frame-1':'fucci_int_12h'
                 # ,'FUCCI bg sub frame-2':'fucci_int_24h'
                 # ,'Volume frame-1':'vol_12h'

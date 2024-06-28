@@ -89,6 +89,7 @@ X = df_g1s.drop(columns=['time_g1s'])
 X['Intercept'] = 1
 y = df_g1s['time_g1s']
 X['vol*sgr'] = z_standardize(X['sgr'] * X['vol_sm'])
+X['vol*exp_gr'] = z_standardize(X['exp_gr'] * X['vol_sm'])
 
 #%%
 
@@ -108,7 +109,7 @@ plt.title('Linear regression for G1S timing')
 
 #%% Cross-validation using MLR
 
-Niter = 1000
+Niter = 100
 
 frac_withheld = 0.1
 
