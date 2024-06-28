@@ -25,7 +25,7 @@ import simulation
 # Set random seed
 np.random.seed(42)
 
-# Growth rate is set to 0.01, i.e. 70hr doubling rate
+# Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
 max_iter = 9000
 dt = 10.0/60 # simulation step size in hours
 # Total time simulated:
@@ -90,100 +90,45 @@ def run_model(initial_pop, sim_clock, params):
 
 #%% Read parameter files
 
-simulation_dir = '/Users/xies/Box/Bioinformatics/scaling_model/'
-project_dir = 'synth_slope_1/vary_deg_rate/'
-
-parameter_settings = {}
-for pfile in glob(path.join(simulation_dir,project_dir,'*.csv')):
-    parameter_settings[pfile] = pd.read_csv(pfile, index_col = 0)
+params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/params.csv',index_col=0)
 
 #%% Run model 
 
-# synthesis_slopes = [-1,-0.5,-0.25,0,0.25,0.5,1,1.5]
-# synthesis_thetas = [-np.pi/6,0,np.pi/6,np.pi/4, np.pi/3]
-theta = np.pi/3
-deg_rates = [1,0.5,0.3,0.2,0.1,0.08,0.05,0.02,0.01,0.005]
-size_bins = np.linspace(1.2,4,40)
+#% 1. Reset clock and initialize
+# Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
+sim_clock['Current time'] = 0
+sim_clock['Current frame'] = 0
 
-steady_state_scaling = np.zeros((len(deg_rates),len(size_bins) - 1))
-bin_centers = (size_bins[0:-1] + size_bins[1:])/2
+initial_pop = initialize_model(params, sim_clock, Ncells)
 
-for pfile,params in parameter_settings.items():
-    
-    subdir = path.dirname(pfile)
-    mean_turnover = np.zeros(len(deg_rates))
-    synthesis_slopes = []
-    for i,k in enumerate(deg_rates):
-    
-        # 1. Set the flexible parameter
-        params.at['Protein','base synthesis rate'] = 0.1
-        params.at['Protein','degradation'] = k
-        # if doing linear scaling, calculate scaling relations
-        slope, intercept = synthesis_scaling_rotation(theta)
-        slope  = 0.9
-        intercept = 0.1
-        params.at['Protein','scaling slope'] = slope
-        params.at['Protein','scaling intercept'] = intercept
-        synthesis_slopes.append(slope)
-        
-        #% 2. Reset clock and initialize
-        # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
-        sim_clock['Current time'] = 0
-        sim_clock['Current frame'] = 0
-        
-        initial_pop = initialize_model(params, sim_clock, Ncells)
-        
-        # 3. Simulation steps
-        population = run_model(initial_pop, sim_clock, params)
-        
-        # 4. Collate data for analysis
-        # Filter cells that have full cell cycles
-        pop2analyze = {}
-        for key,cell in population.items():
-            if (cell.divided == True) & (cell.generation > 4):
-                pop2analyze[key] = cell
-        
-        # Retrieve each datafield into dataframe
-        time = np.vstack( [ cell.ts['Time'].astype(np.float) for cell in pop2analyze.values() ])
-        size = np.vstack( [ cell.ts['Volume'].astype(np.float) for cell in pop2analyze.values() ])
-        # prot = np.vstack( [ cell.ts['Protein'].astype(np.float) for cell in pop2analyze.values() ])
-        protein_conc = np.vstack( [ cell.ts['Protein conc'].astype(np.float) for cell in pop2analyze.values() ])
-        protein_turnover = np.vstack( [ cell.ts['Protein frac turnover'].astype(np.float) for cell in pop2analyze.values() ])
-        
-        # Get mean steady state size v concentration plots
-        means = get_bin_means(size,protein_conc,bin_edges= size_bins)
-        steady_state_scaling[i,:] = standardize(means)
-        
-        # 5. Save individual runs 
-        with open(path.join(subdir,f'model_slope_{slope}.pkl'),'wb') as f:
-              pickle.dump([initial_pop,population], f)
-    
-        # get average turnover per condition
-        mean_turnover[i] = np.nanmean(protein_turnover)
-    
-    # # Fit lines to steady state slopes
-    # ss_slopes = np.zeros(len(deg_rates))
-    # for i in range(len(deg_rates)):
-    #     # Filter out NaNs from pair
-    #     X = bin_centers; Y = steady_state_scaling[i,:]
-    #     X,Y = nonan_pairs(X,Y)
-    #     p = np.polyfit(X,Y,1)
-    #     ss_slopes[i] = p[0]
-    
-    # Save steady state size-dynamics v. synthesis slopes for this sweep
-    plt.plot(bin_centers.T,steady_state_scaling.T);
-    plt.xlabel('Cell size');plt.ylabel('Normalized protein conc');plt.legend(deg_rates)
-    alpha = params.at['Protein','base synthesis rate']
-    beta = params.at['Protein','degradation']
-    slope = params.at['Protein','scaling slope']
-    # plt.title(f'Turnoever = {mean_turnover.mean()}; alpha = {alpha}; deg_rate = {beta}')
-    plt.title(f'synthesis scaling = {slope}; alpha = {alpha};')
-    plt.savefig( path.join(subdir, 'steady_state_scaling.png') )
-    plt.close()
+# 3. Simulation steps
+population = run_model(initial_pop, sim_clock, params)
+
+# 4. Collate data for analysis
+# Filter cells that have full cell cycles
+pop2analyze = {}
+for key,cell in population.items():
+    if (cell.divided == True) & (cell.generation > 4):
+        pop2analyze[key] = cell
+
+#%% Clean up the dataframes
+
+collated = []
+for key,cell in population.items():
+    ts = cell.ts.dropna()
+    ts['Age'] = ts['Time'] - ts.iloc[0]['Time']
+    collated.append(ts)
     
     
-    print(f'Done with {pfile}')
-    
-    
+
+# Retrieve each datafield into dataframe
+time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
+size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in pop2analyze.values() ])
+
+size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in pop2analyze.values() ])
+
+# 5. Save individual runs 
+# with open(path.join(subdir,f'model_slope_{slope}.pkl'),'wb') as f:
+#       pickle.dump([initial_pop,population], f)
 
 

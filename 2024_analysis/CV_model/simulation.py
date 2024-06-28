@@ -49,9 +49,10 @@ class Cell():
         self.cellID = cellID
         # ts -- time series
         self.ts = pd.DataFrame( columns = ['Time','Volume','Phase'],
-                            index=pd.RangeIndex( sim_clock['Max frame'] ), dtype=np.float)
+                            index=pd.RangeIndex( sim_clock['Max frame'] ), dtype=float)
         
         # scalar summaries of overall cell state (single statistics and not time-series)
+        self.exp_growth_rate = np.nan
         self.birth_vol = np.nan
         self.div_vol = np.nan
         self.g1s_size = np.nan
@@ -72,8 +73,12 @@ class Cell():
             # Will initialize a cell at birth
             assert(params is not None)
             # Create cell de novo using empirical paramters
-            birth_vol = random.lognormal(mean = params.loc['Volume']['Mean Birth'], sigma = params.loc['Volume']['Std Birth'])
-            # birth_vol = 1
+            # Random log-normal birth sizes
+            mu,sigma = _estimate_log_normal_parameters(params.loc['Volume']['BirthMean'],params.loc['Volume']['BirthStd'])
+            birth_vol = random.lognormal(mean =mu, sigma=sigma)
+            print(birth_vol)
+            # Random normal exp growth rates
+            gr = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             
             init_cell = pd.Series({'Time':sim_clock['Current time'],
                                    'Volume':birth_vol,'Phase':'G1'})
@@ -81,6 +86,7 @@ class Cell():
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             self.birth_vol = birth_vol
+            self.exp_growth_rate = gr
             
             self.generation = 0
             
@@ -97,7 +103,7 @@ class Cell():
             
             self.generation = mother.generation + 1
         
-        self.ts.at[ sim_clock['Current frame'] ] = init_cell
+        self.ts.iloc[ sim_clock['Current frame'],:] = init_cell
         
     
     def divide( self, cellID_beginning, sim_clock, asymmetry = 0.0):
@@ -170,14 +176,15 @@ class Cell():
         current_values['Volume'] += dV
         
         # Check for G1/S transition
-        if self.g1s_transition(clock,params):
+        if prev_values['Phase'] == 'G1' and self.g1s_transition(clock,params):
             current_values['Phase'] = 'S/G2/M'
             self.g1s_time = current_values['Time']
             self.g1s_size = current_values['Volume']
             self.g1s_frame = clock['Current frame']
             
         # Check for division
-        if current_values['Phase'] == 'S/G2/M' and self.decide2divide(clock,params):
+        if prev_values['Phase'] == 'S/G2/M' and self.decide2divide(clock,params):
+            
             current_values['Volume'] = np.nan
             current_values['Phase'] = 'None'
             self.div_time = prev_values['Time']
@@ -186,7 +193,7 @@ class Cell():
             self.divided = True
         
         # Put the current values into the timeseries
-        self.ts.at[prev_frame + 1] = current_values
+        self.ts.iloc[prev_frame + 1,:] = current_values
         
     
     def volume_growth(self, sim_clock, params):
@@ -194,18 +201,17 @@ class Cell():
         # Simple exponential growth
         cell = self.ts.iloc[frame]
         
-        # dV = params.loc['Volume','exponential growth rate']
-        dV = cell['Volume'] * params.loc['Volume','exponential growth rate']
-        noise = random.randn() * params['Size']['growth noise']
-        noise = 0
-        total = dV + noise
+        dV = cell['Volume'] * self.exp_growth_rate # Euler update
+        # Assume no measurement noise for now
+        # noise = random.randn() * params['Size']['GrStd'
+        total = dV
         return total * sim_clock['dt']
         
     def g1s_transition(self,sim_clock,params):
         # Always 'work' based on prev_frame information
         frame = sim_clock['Current frame'] -1
         cell = self.ts.iloc[frame]
-        theta = params['G1S size threshold']
+        theta = params.loc['Volume','G1S_sizethreshold']
         if cell['Volume'] > theta:
             return True
         else:
@@ -227,16 +233,42 @@ class Cell():
         Tsg2m = sim_clock['Current time'] - time_of_g1s
         
         # Construct timing distrubtion LUT
-        Tsg2m_distribution = sp.stast.norm(loc=params['SG2M duration mean'],scale=params['SG2M duration std'])
+        Tsg2m_distribution = sp.stats.norm(loc=params['Tsg2mMean'],scale=params['Tsg2mStd'])
         
         prob_threshold = Tsg2m_distribution.pdf(Tsg2m)
         
         # Metropolis method
         p = random.uniform(size=1)[0]
-        if p > prob_threshold:
+        if p < prob_threshold:
             return True
         else:
             return False 
+       
+#--- helper functions ---
+    @staticmethod
+    def _estimate_log_normal_parameters(sample_mu,sample_sigma):
+        '''
+        Convert a sample mean and std from a log-normal distr. and convert to the underlying
+        normal distr mu and sigma
+        
+        Parameters
+        ----------
+        sample_mu : TYPE
+            DESCRIPTION.
+        sample_sigma : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        mu, sigma of 'not-log' normal distribution
+        
+        See: https://en.wikipedia.org/wiki/Log-normal_distribution
+
+        '''
+        mu = np.log(sample_mu**2 / np.sqrt(sample_mu**2+sample_sigma**2))
+        sigma = np.sqrt( np.log(1+sample_sigma**2/sample_mu**2) )        
+        return mu,sigma
+        
         
 # --- DATA METHODS ----
     # def decatenate_fields()
