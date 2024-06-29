@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pickle as pkl
 import matplotlib.pyplot as plt
+import seaborn as sb
 from os import path
 
 from sklearn.preprocessing import scale
@@ -37,22 +38,37 @@ df['Birth nuclear volume'] = np.array([c.iloc[0]['Nuclear volume (sm)'] for c in
 df['Birth volume'] = np.array([c.iloc[0]['Volume (sm)'] for c in collated])
 df['Exponential growth rate'] = np.array([c.iloc[0]['Exponential growth rate'] for c in collated])
 
-g1_duration = np.zeros(len(collated))
+g1_duration = np.ones(len(collated))*np.nan
 for i,c in enumerate(collated):
     I = np.where(c['Phase'] == 'SG2')[0]
     if len(I)>0:
         g1_duration[i] = c.iloc[I[0]].Age
 
 df['G1 duration'] = g1_duration
+df = df.dropna()
 
-#%%
+#%% Prep variables
 
 X = df.drop(columns='G1 duration')
 y = df['G1 duration']
 
 X = scale(X)
 
-#%% Linear model: test split ratios
+#%% Linear model for in sample R2 score
+
+lin_model = linear_model.LinearRegression()
+lin_model.fit(X,y)
+y_pred = lin_model.predict(X)
+R2 = r2_score(y,y_pred)
+
+plt.plot([y.min(),y.max()],[y.min(),y.max()],'r--')
+plt.scatter(y,y_pred)
+plt.gca().set_aspect('equal', adjustable='box')
+plt.xlabel('Measured G1 duration')
+plt.ylabel('Predicted G1 duration')
+plt.title(f'Linear regression using: volume, nuc vol, exp growth rate; R2={R2:.2f}')
+
+#%% Linear model: test split ratios and report out of sample R2 scores
 
 split_ratios = np.linspace(0.5,0.95,10)
 Niter = 100
@@ -69,13 +85,17 @@ for j,th in tqdm(enumerate(split_ratios)):
         
 plt.errorbar(split_ratios,r2.mean(axis=1),r2.std(axis=1))
 plt.xlabel('Training set ratio'); plt.ylabel('R2 score')
+plt.title('Out of model R2 score')
 
-#%%
+#%% Permutation importance
 
 X_train,X_test,y_train,y_test = train_test_split(X,y,train_size=th)
 lin_model = linear_model.LinearRegression().fit(X,y)
-perm_imp = permutation_importance(lin_model,X,y)
+perm_imp = permutation_importance(lin_model,X,y,n_repeats=100)
+results = pd.DataFrame(perm_imp['importances'].T,columns=df.columns.drop('G1 duration').values,index=range(100))
 
+sb.barplot(results)
+plt.ylabel('Feature importance')
 
 
 
