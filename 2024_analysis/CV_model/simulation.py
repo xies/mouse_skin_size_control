@@ -7,13 +7,11 @@ Created on Thu Oct 29 19:45:04 2020
 """
 
 
-# @todo: add synth + degradation of protein species
-
-
 import numpy as np
 from numpy import random
 import pandas as pd
 import scipy as sp
+from  mathUtils import estimate_log_normal_parameters
 
 class Cell():
     
@@ -48,14 +46,15 @@ class Cell():
         
         self.cellID = cellID
         # ts -- time series
-        self.ts = pd.DataFrame( columns = ['Time','Volume','Phase'],
-                            index=pd.RangeIndex( sim_clock['Max frame'] ), dtype=float)
+        self.ts = pd.DataFrame( columns = ['Time','Volume','Phase','Measured volume'],
+                            index=pd.RangeIndex( sim_clock['Max frame'] ))
         
         # scalar summaries of overall cell state (single statistics and not time-series)
         self.exp_growth_rate = np.nan
         self.birth_vol = np.nan
         self.div_vol = np.nan
         self.g1s_size = np.nan
+        self.g1s_size_measured = np.nan
         self.birth_time = np.nan
         self.div_time = np.nan
         self.g1s_time = np.nan
@@ -63,9 +62,10 @@ class Cell():
         self.div_frame = np.nan
         self.g1s_frame = np.nan
         
+        self.params = None
+        
         # Flag for if cell is has already divided
         self.divided = False
-        # @todo Store the parameters!
         
         # Check if a mother cell was passed in during construction
         if mother == None:
@@ -74,33 +74,43 @@ class Cell():
             assert(params is not None)
             # Create cell de novo using empirical paramters
             # Random log-normal birth sizes
-            mu,sigma = _estimate_log_normal_parameters(params.loc['Volume']['BirthMean'],params.loc['Volume']['BirthStd'])
+            mu,sigma = estimate_log_normal_parameters(params.loc['Volume']['BirthMean'],params.loc['Volume']['BirthStd'])
             birth_vol = random.lognormal(mean =mu, sigma=sigma)
-            print(birth_vol)
+            # Add measurement noise
+            V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
             # Random normal exp growth rates
             gr = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             
-            init_cell = pd.Series({'Time':sim_clock['Current time'],
-                                   'Volume':birth_vol,'Phase':'G1'})
+            init_cell = {'Time':sim_clock['Current time']
+                                ,'Volume':birth_vol
+                                ,'Measured volume':birth_vol+V_noise
+                                ,'Phase':'G1'}
             self.parentID = np.nan
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             self.birth_vol = birth_vol
             self.exp_growth_rate = gr
             
+            self.params = params
+            
             self.generation = 0
             
         else: # Create daughter cell via symmetric dividion (ignores params)
             #NB: the "halving" is taken care of in @divide function
+            self.params = mother.params
+            params = self.params
             init_vol = mother.div_vol * inheritance
             
-            init_cell = pd.Series({'Time':sim_clock['Current time'],
-                                   'Volume':init_vol,'Phase':'G1'})
+            V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
+            init_cell = {'Time':sim_clock['Current time'],'Measured volume':init_vol+V_noise,
+                                   'Volume':init_vol,'Phase':'G1'}
             self.parentID = mother.cellID
             self.birth_vol = init_vol
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             
+            #Pick new growth rate
+            self.exp_growth_rate = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             self.generation = mother.generation + 1
         
         self.ts.iloc[ sim_clock['Current frame'],:] = init_cell
@@ -130,9 +140,6 @@ class Cell():
 
         '''
         current_frame = sim_clock['Current frame']
-        
-        # Onlly allow G2 divisions
-        # assert(self.ts.iloc[current_frame]['Phase'] == 'None')
         
         # Calculate respective inheritance fractions 
         assert(asymmetry < 1.0)
@@ -174,23 +181,28 @@ class Cell():
         # Grow cell in volume following parameter sheet
         dV = self.volume_growth(clock,params)
         current_values['Volume'] += dV
+        #Add measurement noise
+        V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
+        current_values['Measured volume'] = current_values['Volume']+V_noise
+        print(current_values['Measured volume'])
         
         # Check for G1/S transition
         if prev_values['Phase'] == 'G1' and self.g1s_transition(clock,params):
             current_values['Phase'] = 'S/G2/M'
             self.g1s_time = current_values['Time']
             self.g1s_size = current_values['Volume']
+            self.g1s_size_measured = current_values['Measured volume']
             self.g1s_frame = clock['Current frame']
             
         # Check for division
         if prev_values['Phase'] == 'S/G2/M' and self.decide2divide(clock,params):
             
             current_values['Volume'] = np.nan
-            current_values['Phase'] = 'None'
             self.div_time = prev_values['Time']
             self.div_vol = prev_values['Volume']
             self.div_frame = prev_frame
             self.divided = True
+            print('-----DIVIDED-----')
         
         # Put the current values into the timeseries
         self.ts.iloc[prev_frame + 1,:] = current_values
@@ -204,7 +216,7 @@ class Cell():
         dV = cell['Volume'] * self.exp_growth_rate # Euler update
         # Assume no measurement noise for now
         # noise = random.randn() * params['Size']['GrStd'
-        total = dV
+        total = dV[0]
         return total * sim_clock['dt']
         
     def g1s_transition(self,sim_clock,params):
@@ -246,29 +258,7 @@ class Cell():
        
 #--- helper functions ---
     @staticmethod
-    def _estimate_log_normal_parameters(sample_mu,sample_sigma):
-        '''
-        Convert a sample mean and std from a log-normal distr. and convert to the underlying
-        normal distr mu and sigma
-        
-        Parameters
-        ----------
-        sample_mu : TYPE
-            DESCRIPTION.
-        sample_sigma : TYPE
-            DESCRIPTION.
 
-        Returns
-        -------
-        mu, sigma of 'not-log' normal distribution
-        
-        See: https://en.wikipedia.org/wiki/Log-normal_distribution
-
-        '''
-        mu = np.log(sample_mu**2 / np.sqrt(sample_mu**2+sample_sigma**2))
-        sigma = np.sqrt( np.log(1+sample_sigma**2/sample_mu**2) )        
-        return mu,sigma
-        
         
 # --- DATA METHODS ----
     # def decatenate_fields()

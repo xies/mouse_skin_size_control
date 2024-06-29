@@ -26,11 +26,11 @@ import simulation
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 9000
+max_iter = 10000
 dt = 10.0/60 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations or {2**(max_iter * dt / 70)} cells')
-Ncells = 1
+Ncells = 50
 
 # Time information
 sim_clock = {}
@@ -74,6 +74,7 @@ def run_model(initial_pop, sim_clock, params):
                 this_cell.advance_dt(sim_clock,params)
                 
                 if this_cell.divided:
+
                     # Newly divided cell: make daughter cells
                     print(f'CellID #{this_cell.cellID} has divided at frame {t}')
                     # Randomly draw an asymmettry
@@ -118,14 +119,29 @@ for key,cell in population.items():
     ts = cell.ts.dropna()
     ts['Age'] = ts['Time'] - ts.iloc[0]['Time']
     collated.append(ts)
-    
-    
 
-# Retrieve each datafield into dataframe
-time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
-size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in pop2analyze.values() ])
+CV = pd.Series()
+for phase,x in collated[0].groupby('Phase')['Measured volume']:
+    CV.loc[phase] = x.std()/x.mean()
 
-size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in pop2analyze.values() ])
+Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in population.values()])
+Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in population.values()])
+Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in population.values()])
+
+# # Retrieve each datafield into dataframe
+time = np.vstack( [ cell.ts['Time'].astype(float) for cell in population.values() ])
+size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in population.values() ])
+phases = np.vstack( [ cell.ts['Phase'] for cell in population.values() ])
+
+CV = np.ones((max_iter,2))*np.nan
+for t in range(max_iter):
+    p = phases[:,t]
+    s = size[p == 'G1',t]
+    if (len(s)>3):
+        CV[t,0] = s.std()/s.mean()
+    s = size[p == 'S/G2/M',t]
+    if (len(s)>3):
+        CV[t,1] = s.std()/s.mean()
 
 # 5. Save individual runs 
 # with open(path.join(subdir,f'model_slope_{slope}.pkl'),'wb') as f:
