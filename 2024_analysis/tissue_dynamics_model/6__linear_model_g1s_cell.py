@@ -66,7 +66,17 @@ plt.scatter(y,y_pred)
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlabel('Measured G1 duration')
 plt.ylabel('Predicted G1 duration')
-plt.title(f'Linear regression using: volume, nuc vol, exp growth rate; R2={R2:.2f}')
+plt.title(f'Linear regression using: volume, nuc vol, exp growth rate; R2={R2:.2f};max R2=0.89')
+
+#%% Renormalize R2 given sampling rate of empirical data
+
+T = random.normal(size=10000)*21 + 56
+T = T[T>0]
+bins = np.arange(0,1000,12)
+which_bin = np.digitize(T,bins)
+Tmeasured = bins[which_bin-1]
+plt.scatter(T,Tmeasured)
+r2_score(T,Tmeasured)
 
 #%% Linear model: test split ratios and report out of sample R2 scores
 
