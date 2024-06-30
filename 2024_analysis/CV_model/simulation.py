@@ -69,6 +69,8 @@ class Cell():
         
         # Check if a mother cell was passed in during construction
         if mother == None:
+            
+            
             # If Mother is not provided, must provide empirical parameters to initialize de novo
             # Will initialize a cell at birth
             assert(params is not None)
@@ -80,6 +82,7 @@ class Cell():
             V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
             # Random normal exp growth rates
             gr = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
+            gr = max(0,gr)
             
             init_cell = {'Time':sim_clock['Current time']
                                 ,'Volume':birth_vol
@@ -91,11 +94,20 @@ class Cell():
             self.birth_vol = birth_vol
             self.exp_growth_rate = gr
             
+            # Pre-determine SG2M duration to avoid doing the random processes math
+            Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+            # Impose minimum of 1h
+            Tsg2m = max(Tsg2m,5)
+            self.sg2m_duration = Tsg2m
+            
+            
             self.params = params
             
             self.generation = 0
             
-        else: # Create daughter cell via symmetric dividion (ignores params)
+        else:
+            
+            # Create daughter cell via symmetric division
             #NB: the "halving" is taken care of in @divide function
             self.params = mother.params
             params = self.params
@@ -112,6 +124,12 @@ class Cell():
             #Pick new growth rate
             self.exp_growth_rate = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             self.generation = mother.generation + 1
+            
+            # Pre-determine SG2M duration to avoid doing the random processes math
+            Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+            # Impose minimum of 1h
+            Tsg2m = max(Tsg2m,5)
+            self.sg2m_duration = Tsg2m
         
         self.ts.iloc[ sim_clock['Current frame'],:] = init_cell
         
@@ -180,11 +198,11 @@ class Cell():
         
         # Grow cell in volume following parameter sheet
         dV = self.volume_growth(clock,params)
+        
         current_values['Volume'] += dV
         #Add measurement noise
         V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
         current_values['Measured volume'] = current_values['Volume']+V_noise
-        print(current_values['Measured volume'])
         
         # Check for G1/S transition
         if prev_values['Phase'] == 'G1' and self.g1s_transition(clock,params):
@@ -213,11 +231,11 @@ class Cell():
         # Simple exponential growth
         cell = self.ts.iloc[frame]
         
-        dV = cell['Volume'] * self.exp_growth_rate # Euler update
-        # Assume no measurement noise for now
-        # noise = random.randn() * params['Size']['GrStd'
-        total = dV[0]
-        return total * sim_clock['dt']
+        gr = self.exp_growth_rate
+        # Add fluctuation in gr
+        gr = gr*(1 + random.randn(1)[0]*params.loc['Volume','GrFluct'])
+        dV = cell['Volume'] * gr # Euler update
+        return dV[0] * sim_clock['dt']
         
     def g1s_transition(self,sim_clock,params):
         # Always 'work' based on prev_frame information
@@ -234,30 +252,27 @@ class Cell():
         # Always 'work' based on prev_frame information
         frame = sim_clock['Current frame'] - 1
         # Decide to divide if S/G2/M duration has lasted a certain time duration (following empirical parameter sheet)
-        # @todo: use Metropolis sampling
         
         cell = self.ts.iloc[frame]
         # Only S/G2/M cells divide
         assert(cell['Phase'] == 'S/G2/M')
         
-        # Calculate Tsg2m
+        # Calculate time since g1s
         time_of_g1s = self.g1s_time
-        Tsg2m = sim_clock['Current time'] - time_of_g1s
+        time_since_g1s = sim_clock['Current time'] - time_of_g1s
         
+        return time_since_g1s > self.sg2m_duration
+        
+        #NB: this doesn't seem to work out correctly... can't figure out math, so just predetermine
         # Construct timing distrubtion LUT
-        Tsg2m_distribution = sp.stats.norm(loc=params['Tsg2mMean'],scale=params['Tsg2mStd'])
-        
-        prob_threshold = Tsg2m_distribution.pdf(Tsg2m)
-        
-        # Metropolis method
-        p = random.uniform(size=1)[0]
-        if p < prob_threshold:
-            return True
-        else:
-            return False 
-       
-#--- helper functions ---
-    @staticmethod
+        # Tsg2m_distribution = sp.stats.norm(loc=params['Tsg2mMean'],scale=params['Tsg2mStd'])
+        # prob_threshold = Tsg2m_distribution.pdf(Tsg2m)
+        # # Metropolis method
+        # p = random.uniform(size=1)[0]
+        # if p < prob_threshold:
+        #     return True
+        # else:
+        #     return False 
 
         
 # --- DATA METHODS ----
