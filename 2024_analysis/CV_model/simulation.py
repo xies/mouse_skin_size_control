@@ -62,6 +62,10 @@ class Cell():
         self.div_frame = np.nan
         self.g1s_frame = np.nan
         
+        self.g1_duration = np.nan
+        self.sg2_duration = np.nan
+        self.total_duration = np.nan
+        
         self.params = None
         
         # Flag for if cell is has already divided
@@ -81,7 +85,7 @@ class Cell():
             # Add measurement noise
             V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
             # Random normal exp growth rates
-            gr = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
+            gr = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             gr = max(0,gr)
             
             init_cell = {'Time':sim_clock['Current time']
@@ -100,9 +104,7 @@ class Cell():
             Tsg2m = max(Tsg2m,5)
             self.sg2m_duration = Tsg2m
             
-            
             self.params = params
-            
             self.generation = 0
             
         else:
@@ -122,7 +124,7 @@ class Cell():
             self.birth_time = sim_clock['Current time']
             
             #Pick new growth rate
-            self.exp_growth_rate = random.randn(1)*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
+            self.exp_growth_rate = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             self.generation = mother.generation + 1
             
             # Pre-determine SG2M duration to avoid doing the random processes math
@@ -157,7 +159,11 @@ class Cell():
             Smaller daughter
 
         '''
-        current_frame = sim_clock['Current frame']
+        # current_frame = sim_clock['Current frame']
+        self.g1s_duration = self.g1s_time - self.birth_time
+        self.sg2m_duration = self.div_time - self.g1s_time
+        self.total_duration = self.div_time - self.birth_time
+        # calculate final stats
         
         # Calculate respective inheritance fractions 
         assert(asymmetry < 1.0)
@@ -230,12 +236,12 @@ class Cell():
         frame = sim_clock['Current frame'] - 1
         # Simple exponential growth
         cell = self.ts.iloc[frame]
-        
         gr = self.exp_growth_rate
         # Add fluctuation in gr
         gr = gr*(1 + random.randn(1)[0]*params.loc['Volume','GrFluct'])
         dV = cell['Volume'] * gr # Euler update
-        return dV[0] * sim_clock['dt']
+        
+        return dV * sim_clock['dt']
         
     def g1s_transition(self,sim_clock,params):
         # Always 'work' based on prev_frame information

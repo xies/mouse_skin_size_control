@@ -26,7 +26,7 @@ import simulation
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 10000
+max_iter = 5000
 dt = 10.0/60 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
@@ -40,20 +40,10 @@ sim_clock['dt'] = dt
 
 #%% Helper functions
 
-# def initialize_model(params, sim_clock, Ncells):
-#     next_cellID = 0
-#     initial_pop = {}
-#     for i in range(Ncells):
-#         # Initialize cells de novo
-#         cell = simulation.Cell(i, sim_clock, params)
-#         initial_pop[i] = cell
-#         next_cellID += 1
-#     return initial_pop
-
 def run_model(sim_clock, params, Ncells):
     
     # Seed initial cells asynchronously within the first 100h (~1.5 cell cycle times)
-    async_birth_times = random.uniform(size=Ncells)*100
+    async_birth_times = random.uniform(size=Ncells)*70
     
     initial_birth_times = dict(zip(range(Ncells),async_birth_times))
     
@@ -122,30 +112,29 @@ population = run_model( sim_clock, params, Ncells)
 # Filter cells that have full cell cycles
 pop2analyze = {}
 for key,cell in population.items():
-    if (cell.divided == True) & (cell.generation > 4):
+    if (cell.divided == True and cell.generation > 2):
         pop2analyze[key] = cell
 
 #%% Clean up the dataframes
 
 collated = []
-for key,cell in population.items():
+for key,cell in pop2analyze.items():
     ts = cell.ts.dropna()
-    
-    ts['Age'] = ts['Time'] - ts.iloc[0]['Time']
+    ts.loc[:,'Age'] = ts.loc[:,'Time'] - ts.iloc[0]['Time']
     collated.append(ts)
 
-CV = pd.Series()
+CV = pd.DataFrame()
 for phase,x in collated[0].groupby('Phase')['Measured volume']:
-    CV.loc[phase] = x.std()/x.mean()
+    CV.loc['Time',phase] = x.std()/x.mean()
 
-Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in population.values()])
-Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in population.values()])
+Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
+Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
 Tsg2m = Tdiv - Tg1
 
-#%% # Retrieve each datafield into dataframe
+#%% # Retrieve each datafield into a time-slice
 
 time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
-size = np.vstack( [ cell.ts['Volume'].astype(float) for cell in pop2analyze.values() ])
+size = np.vstack( [ cell.ts['Measured volume'].astype(float) for cell in pop2analyze.values() ])
 phases = np.vstack( [ cell.ts['Phase'] for cell in pop2analyze.values() ])
 
 CV_time = np.ones((max_iter,2))*np.nan
@@ -158,8 +147,26 @@ for t in range(max_iter):
     if (len(s)>3):
         CV_time[t,1] = s.std()/s.mean()
 
-# 5. Save individual runs 
-# with open(path.join(subdir,f'model_slope_{slope}.pkl'),'wb') as f:
-#       pickle.dump([initial_pop,population], f)
+CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
+CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
 
+#%%
+
+def plot_growth_curves_population(pop):
+    
+    for cell in pop.values():
+        ts = cell.ts.dropna()
+        t = ts['Time']
+        v = ts['Volume']
+        p = ts['Phase']
+        
+        t_g1 = t[p =='G1']
+        v_g1 = v[p =='G1']
+        plt.plot(t_g1,v_g1,'b-')
+        
+        t_g2 = t[p =='S/G2/M']
+        v_g2 = v[p =='S/G2/M']
+        plt.plot(t_g2,v_g2,'r-')
+
+plot_growth_curves_population(pop2analyze)
 
