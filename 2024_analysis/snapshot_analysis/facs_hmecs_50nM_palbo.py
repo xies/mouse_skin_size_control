@@ -21,13 +21,16 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 from scipy import stats
-from mathUtils import cvariation_ci, cvariation_ci_bootstrap
+# from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/06-21-2024 HMECs RB WT 50nM Palbociclib mCh-Geminin'
 
 #%%
 
-filelist = glob(path.join(dirname,'HMECs WT mCh-Geminin Fixed Hoechst SE647.fcs'))
+filelist = glob(path.join(dirname,'*.fcs'))
+conditions = ['WT palbo']
+conditions = ['WT palbo']
+
 df = FCMeasurement(ID='Test Sample', datafile=filelist[0]).data
 
 #geminin should be on log scale
