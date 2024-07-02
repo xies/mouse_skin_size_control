@@ -26,8 +26,8 @@ import simulation
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 300
-dt = 12 # simulation step size in hours
+max_iter = 400
+dt = 1.0 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
 Ncells = 1000
@@ -96,14 +96,12 @@ def run_model(sim_clock, params, Ncells):
 
 params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/params.csv',index_col=0)
 
-#% Run model 
+#% Run model
 
 #% 1. Reset clock and initialize
 # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
 sim_clock['Current time'] = 0
 sim_clock['Current frame'] = 0
-
-# initial_pop = initialize_model(params, sim_clock, Ncells)
 
 # 2. Simulation steps
 population = run_model( sim_clock, params, Ncells)
@@ -112,10 +110,34 @@ population = run_model( sim_clock, params, Ncells)
 # Filter cells that have full cell cycles
 pop2analyze = {}
 for key,cell in population.items():
-    if (cell.divided == True and cell.generation > 2):
+    if (cell.divided == True) & (cell.generation > 2):
         pop2analyze[key] = cell
 
-#%% Clean up the dataframes
+def plot_growth_curves_population(pop):
+    
+    for cell in pop.values():
+        ts = cell.ts.dropna()
+        t = ts['Time']
+        v = ts['Volume']
+        p = ts['Phase']
+        
+        t_g1 = t[p =='G1']
+        v_g1 = v[p =='G1']
+        plt.plot(t_g1,v_g1,'b-',alpha=0.1)
+        
+        t_g2 = t[p =='S/G2/M']
+        v_g2 = v[p =='S/G2/M']
+        plt.plot(t_g2,v_g2,'r-',alpha=0.1)
+
+plot_growth_curves_population(population)
+
+#%% size control parameters
+
+bsize = np.array([c.birth_size for c in pop2analyze.values()])
+g1size = np.array([c.g1s_size for c in pop2analyze.values()])
+dsize = np.array([c.div_size for c in pop2analyze.values()])
+
+#%% Collect CVs
 
 collated = []
 for key,cell in pop2analyze.items():
@@ -130,8 +152,6 @@ for phase,x in collated[0].groupby('Phase')['Measured volume']:
 Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
 Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
 Tsg2m = Tdiv - Tg1
-
-#%% # Retrieve each datafield into a time-slice
 
 time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
 size = np.vstack( [ cell.ts['Measured volume'].astype(float) for cell in pop2analyze.values() ])
@@ -149,24 +169,4 @@ for t in range(max_iter):
 
 CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
 CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
-
-#%%
-
-def plot_growth_curves_population(pop):
-    
-    for cell in pop.values():
-        ts = cell.ts.dropna()
-        t = ts['Time']
-        v = ts['Measured volume']
-        p = ts['Phase']
-        
-        t_g1 = t[p =='G1']
-        v_g1 = v[p =='G1']
-        plt.plot(t_g1,v_g1,'b-',alpha=0.1)
-        
-        t_g2 = t[p =='S/G2/M']
-        v_g2 = v[p =='S/G2/M']
-        plt.plot(t_g2,v_g2,'r-',alpha=0.1)
-
-plot_growth_curves_population(pop2analyze)
 

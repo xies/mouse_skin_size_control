@@ -45,26 +45,37 @@ class Cell():
         '''
         
         self.cellID = cellID
+        
         # ts -- time series
         self.ts = pd.DataFrame( columns = ['Time','Volume','Phase','Measured volume'],
                             index=pd.RangeIndex( sim_clock['Max frame'] ))
         
-        # scalar summaries of overall cell state (single statistics and not time-series)
+        # empirical parameters
         self.exp_growth_rate = np.nan
-        self.birth_vol = np.nan
-        self.div_vol = np.nan
+        self.g1s_size_threshold = np.nan
+        self.sg2m_size_threshold = np.nan
+        self.g1s_adder = np.nan
+        self.sg2m_adder = np.nan
+        
+        # Sizes
+        self.birth_size = np.nan
+        self.birth_size_measured = np.nan
+        self.div_size= np.nan
+        self.div_measured = np.nan
         self.g1s_size = np.nan
         self.g1s_size_measured = np.nan
         
+        # Timing
         self.birth_time = np.nan
         self.div_time = np.nan
         self.g1s_time = np.nan
         
+        # Frame
         self.birth_frame = np.nan
         self.div_frame = np.nan
         self.g1s_frame = np.nan
         
-        self.g1s_size_threshold = np.nan
+        # Durations
         self.g1_duration = np.nan
         self.sg2_duration = np.nan
         self.total_duration = np.nan
@@ -77,7 +88,7 @@ class Cell():
         # Check if a mother cell was passed in during construction
         if mother == None:
             
-            
+            # @todo: create a helper function
             # If Mother is not provided, must provide empirical parameters to initialize de novo
             # Will initialize a cell at birth
             assert(params is not None)
@@ -99,18 +110,40 @@ class Cell():
             self.parentID = np.nan
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
-            self.birth_vol = birth_vol
+            self.birth_size = birth_vol
+            self.birth_size_measured = birth_vol+V_noise
             self.exp_growth_rate = gr
             
-            theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
-            theta = max(theta,300)
-            self.g1s_size_threshold = theta
+            # Set up the G1S decision function
+            if params.loc['Volume','G1S_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+                theta = max(theta,300)
+                self.g1s_size_threshold = theta
+            if params.loc['Volume','G1S_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params.loc['Volume','G1S_added_std'] * params.loc['Volume','G1S_added_mean']
+                DV = max(50,DV)
+                self.g1s_adder = DV
+            if params.loc['Volume','G1S_model'].lower() == 'timer':
+                Tg1 = random.randn(1)[0]*(params.loc['Volume','Tg1Std']) + params.loc['Volume','Tg1Mean']
+                # Impose minimum of 1h
+                Tg1 = max(Tg1,5)
+                self.g1_duration = Tg1
             
-            # Pre-determine SG2M duration to avoid doing the random processes math
-            Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
-            # Impose minimum of 1h
-            Tsg2m = max(Tsg2m,5)
-            self.sg2m_duration = Tsg2m
+            # Set up the division decision function
+            if params.loc['Volume','SG2M_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params.loc['Volume','SG2M_th_error'] + params.loc['Volume','SG2M_sizethreshold']
+                theta = max(theta,500)
+                self.sg2m_size_threshold = theta
+            if params.loc['Volume','SG2M_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params.loc['Volume','SG2M_added_std'] * params.loc['Volume','SG2M_added_mean']
+                DV = max(50,DV)
+                self.sg2m_adder = DV
+            if params.loc['Volume','SG2M_model'].lower() == 'timer':
+                # Pre-determine SG2M duration to avoid doing the random processes math
+                Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+                # Impose minimum of 1h
+                Tsg2m = max(Tsg2m,5)
+                self.sg2m_duration = Tsg2m
             
             self.params = params
             self.generation = 0
@@ -121,31 +154,51 @@ class Cell():
             #NB: the "halving" is taken care of in @divide function
             self.params = mother.params
             params = self.params
-            init_vol = mother.div_vol * inheritance
+            init_vol = mother.div_size * inheritance
             
             V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
             init_cell = {'Time':sim_clock['Current time'],'Measured volume':init_vol+V_noise,
                                    'Volume':init_vol,'Phase':'G1'}
             self.parentID = mother.cellID
-            self.birth_vol = init_vol
+            self.birth_size = init_vol
+            self.birth_size_measured = init_vol+V_noise
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             
-            # @todo: Is this inherited?
-            theta = mother.g1s_size_threshold
-            # theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
-            # theta = max(theta,300)
-            self.g1s_size_threshold = theta
+            if params.loc['Volume','G1S_model'].lower() == 'sizer':
+                # @todo: Is this inherited?
+                theta = mother.g1s_size_threshold
+                # theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+                # theta = max(theta,300)
+                self.g1s_size_threshold = theta
+            if params.loc['Volume','G1S_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params.loc['Volume','G1S_added_std'] * params.loc['Volume','G1S_added_mean']
+                DV = max(50,DV)
+                self.g1s_adder = DV
+            elif params.loc['Volume','G1S_model'].lower() == 'timer':
+                Tg1 = random.randn(1)[0]*(params.loc['Volume','Tg1Std']) + params.loc['Volume','Tg1Mean']
+                # Impose minimum of 1h
+                Tg1 = max(Tg1,5)
+                self.g1_duration = Tg1
             
             #Pick new growth rate
             self.exp_growth_rate = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             self.generation = mother.generation + 1
             
             # Pre-determine SG2M duration to avoid doing the random processes math
-            Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
-            # Impose minimum of 1h
-            Tsg2m = max(Tsg2m,5)
-            self.sg2m_duration = Tsg2m
+            if params.loc['Volume','SG2M_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params.loc['Volume','SG2M_th_error'] + params.loc['Volume','SG2M_sizethreshold']
+                theta = max(theta,500)
+                self.sg2m_size_threshold = theta
+            if params.loc['Volume','SG2M_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params.loc['Volume','SG2M_added_std'] * params.loc['Volume','SG2M_added_mean']
+                DV = max(50,DV)
+                self.sg2m_adder = DV
+            if params.loc['Volume','SG2M_model'].lower() == 'timer':
+                Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+                # Impose minimum of 1h
+                Tsg2m = max(Tsg2m,5)
+                self.sg2m_duration = Tsg2m
         
         self.ts.iloc[ sim_clock['Current frame'],:] = init_cell
         
@@ -177,7 +230,6 @@ class Cell():
         self.g1s_duration = self.g1s_time - self.birth_time
         self.sg2m_duration = self.div_time - self.g1s_time
         self.total_duration = self.div_time - self.birth_time
-        # calculate final stats
         
         # Calculate respective inheritance fractions 
         assert(asymmetry < 1.0)
@@ -219,10 +271,15 @@ class Cell():
         # Grow cell in volume following parameter sheet
         dV = self.volume_growth(clock,params)
         
-        current_values['Volume'] += dV
+        final_V = current_values['Volume'] + dV
+        final_V = max(final_V,0)
+        current_values['Volume'] = final_V
+        
         #Add measurement noise
         V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
-        current_values['Measured volume'] = current_values['Volume']+V_noise
+        final_V = current_values['Volume']+V_noise
+        final_V = max(0,final_V)
+        current_values['Measured volume'] = final_V
         
         # Check for G1/S transition
         if prev_values['Phase'] == 'G1' and self.g1s_transition(clock,params):
@@ -237,7 +294,7 @@ class Cell():
             
             current_values['Volume'] = np.nan
             self.div_time = prev_values['Time']
-            self.div_vol = prev_values['Volume']
+            self.div_size = prev_values['Volume']
             self.div_frame = prev_frame
             self.divided = True
             print('-----DIVIDED-----')
@@ -258,16 +315,26 @@ class Cell():
         return dV * sim_clock['dt']
         
     def g1s_transition(self,sim_clock,params):
+        
         # Always 'work' based on prev_frame information
         frame = sim_clock['Current frame'] -1
         cell = self.ts.iloc[frame]
-        # theta = params.loc['Volume','G1S_sizethreshold']
         
-        if cell['Volume'] > self.g1s_size_threshold:
-            return True
+        assert(cell['Phase'] == 'G1')
+        
+        if params.loc['Volume','G1S_model'].lower() == 'sizer':
+            return cell['Volume'] > self.g1s_size_threshold
+        
+        elif params.loc['Volume','G1S_model'].lower() == 'adder':
+            added_since_birth = cell['Volume'] - self.birth_size
+            return added_since_birth > self.g1s_adder
+        
+        elif params.loc['Volume','G1S_model'].lower() == 'timer':
+            time_of_birth = self.birth_time
+            time_since_birth = cell['Time'] - time_of_birth
+            return (time_since_birth > self.g1_duration)
         else:
-            return False
-        
+            error
     
     def decide2divide(self,sim_clock,params):
         # Always 'work' based on prev_frame information
@@ -278,22 +345,21 @@ class Cell():
         # Only S/G2/M cells divide
         assert(cell['Phase'] == 'S/G2/M')
         
-        # Calculate time since g1s
-        time_of_g1s = self.g1s_time
-        time_since_g1s = sim_clock['Current time'] - time_of_g1s
+        if params.loc['Volume','SG2M_model'].lower() == 'sizer':
+            return cell['Volume'] > self.sg2m_size_threshold
         
-        return time_since_g1s > self.sg2m_duration
+        elif params.loc['Volume','SG2M_model'].lower() == 'adder':
+            added_since_g1s = cell['Volume'] - self.g1s_size
+            return added_since_g1s > self.sg2m_adder
         
-        #NB: this doesn't seem to work out correctly... can't figure out math, so just predetermine
-        # Construct timing distrubtion LUT
-        # Tsg2m_distribution = sp.stats.norm(loc=params['Tsg2mMean'],scale=params['Tsg2mStd'])
-        # prob_threshold = Tsg2m_distribution.pdf(Tsg2m)
-        # # Metropolis method
-        # p = random.uniform(size=1)[0]
-        # if p < prob_threshold:
-        #     return True
-        # else:
-        #     return False 
+        elif params.loc['Volume','SG2M_model'].lower() == 'timer':
+            # Calculate time since g1s
+            time_of_g1s = self.g1s_time
+            time_since_g1s = sim_clock['Current time'] - time_of_g1s
+            return time_since_g1s > self.sg2m_duration
+        else:
+            # Todo: error
+            return None
 
         
 # --- DATA METHODS ----
