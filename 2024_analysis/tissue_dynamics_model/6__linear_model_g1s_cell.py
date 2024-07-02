@@ -33,6 +33,7 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
 collated = list(c1.values()) + list(c2.values())
 
 #%%
+
 df = pd.DataFrame()
 df['Birth nuclear volume'] = np.array([c.iloc[0]['Nuclear volume (sm)'] for c in collated])
 df['Birth volume'] = np.array([c.iloc[0]['Volume (sm)'] for c in collated])

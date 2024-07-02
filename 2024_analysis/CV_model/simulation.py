@@ -55,13 +55,16 @@ class Cell():
         self.div_vol = np.nan
         self.g1s_size = np.nan
         self.g1s_size_measured = np.nan
+        
         self.birth_time = np.nan
         self.div_time = np.nan
         self.g1s_time = np.nan
+        
         self.birth_frame = np.nan
         self.div_frame = np.nan
         self.g1s_frame = np.nan
         
+        self.g1s_size_threshold = np.nan
         self.g1_duration = np.nan
         self.sg2_duration = np.nan
         self.total_duration = np.nan
@@ -88,6 +91,7 @@ class Cell():
             gr = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
             gr = max(0,gr)
             
+            
             init_cell = {'Time':sim_clock['Current time']
                                 ,'Volume':birth_vol
                                 ,'Measured volume':birth_vol+V_noise
@@ -97,6 +101,10 @@ class Cell():
             self.birth_time = sim_clock['Current time']
             self.birth_vol = birth_vol
             self.exp_growth_rate = gr
+            
+            theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+            theta = max(theta,300)
+            self.g1s_size_threshold = theta
             
             # Pre-determine SG2M duration to avoid doing the random processes math
             Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
@@ -122,6 +130,12 @@ class Cell():
             self.birth_vol = init_vol
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
+            
+            # @todo: Is this inherited?
+            theta = mother.g1s_size_threshold
+            # theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+            # theta = max(theta,300)
+            self.g1s_size_threshold = theta
             
             #Pick new growth rate
             self.exp_growth_rate = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
@@ -247,8 +261,9 @@ class Cell():
         # Always 'work' based on prev_frame information
         frame = sim_clock['Current frame'] -1
         cell = self.ts.iloc[frame]
-        theta = params.loc['Volume','G1S_sizethreshold']
-        if cell['Volume'] > theta:
+        # theta = params.loc['Volume','G1S_sizethreshold']
+        
+        if cell['Volume'] > self.g1s_size_threshold:
             return True
         else:
             return False

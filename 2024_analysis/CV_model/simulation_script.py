@@ -26,8 +26,8 @@ import simulation
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 5000
-dt = 10.0/60 # simulation step size in hours
+max_iter = 300
+dt = 12 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
 Ncells = 1000
@@ -157,16 +157,16 @@ def plot_growth_curves_population(pop):
     for cell in pop.values():
         ts = cell.ts.dropna()
         t = ts['Time']
-        v = ts['Volume']
+        v = ts['Measured volume']
         p = ts['Phase']
         
         t_g1 = t[p =='G1']
         v_g1 = v[p =='G1']
-        plt.plot(t_g1,v_g1,'b-')
+        plt.plot(t_g1,v_g1,'b-',alpha=0.1)
         
         t_g2 = t[p =='S/G2/M']
         v_g2 = v[p =='S/G2/M']
-        plt.plot(t_g2,v_g2,'r-')
+        plt.plot(t_g2,v_g2,'r-',alpha=0.1)
 
 plot_growth_curves_population(pop2analyze)
 
