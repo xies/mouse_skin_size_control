@@ -21,7 +21,7 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 from scipy import stats
-# from mathUtils import cvariation_ci, cvariation_ci_bootstrap
+from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/07-01-2024 HMECs WT RBKO palbo repeat'
 
@@ -99,7 +99,9 @@ CV = pd.DataFrame()
 
 for (condition,phase),_df in diploids.groupby(['Condition','Geminin_high']):
     
-    CV.loc[condition,phase] = stats.variation(_df['Alexa Fluor™ 647-A'])
+    # CV.loc[condition,phase] = stats.variation(_df['Alexa Fluor™ 647-A'])
+    CV.loc[condition,phase] = stats.variation(_df['SSC-A'])
+    
     # CV.loc[phase,'FSC'] = stats.variation(_df['FSC-A'])
     
     # lb,ub = cvariation_ci(_df['FSC-A'])
@@ -117,31 +119,35 @@ for (condition,phase),_df in diploids.groupby(['Condition','Geminin_high']):
     # CV.loc[phase,'SSC lb bootstrap'],CV.loc[phase,'SSC ub bootstrap'] = lb,ub
     # CV.loc[phase,'SSC error bootstrap'] = (ub-lb)/2
 
-
 #%% Plot the CVs as errorbars
 
-plt.figure()
-plt.subplot(1,3,1)
-sb.barplot(diploids,y='FSC-A',x='Geminin_high'
-           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-           ,order=[False,True])
-plt.ylabel('CV of FSC')
-plt.ylim([0,.25])
-plt.title('HMECs WT cell cycle determined by High/Low Geminin')
+def plot_size_CV_subplots(df,x,title=None):
+    
+    plt.figure()
+    plt.subplot(1,3,1)
+    sb.barplot(df,y='FSC-A',x=x
+               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
+               ,order=[False,True])
+    plt.ylabel('CV of FSC')
+    
+    plt.subplot(1,3,2)
+    sb.barplot(df,y='SSC-A',x=x
+               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
+               ,order=[False,True])
+    plt.ylabel('CV of SSC')
+    plt.title(title)
+    
+    plt.subplot(1,3,3)
+    sb.barplot(df,y='Alexa Fluor™ 647-A',x=x
+               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
+               ,order=[False,True])
+    plt.ylabel('CV of SE-647')
 
-plt.subplot(1,3,2)
-sb.barplot(diploids,y='SSC-A',x='Geminin_high'
-           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-           ,order=[False,True])
-plt.ylabel('CV of SSC')
-plt.ylim([0,.7])
 
-plt.subplot(1,3,3)
-sb.barplot(diploids,y='Alexa Fluor™ 647-A',x='Geminin_high'
-           ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-           ,order=[False,True])
-plt.ylabel('CV of SE-647')
-plt.ylim([0,.7])
+plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT'],'Geminin_high','HMEC WT')
+plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT palbo'],'Geminin_high','HMEC WT 100nM Palbo')
 
+plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO'],'Geminin_high','HMEC RBKO')
+plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO palbo'],'Geminin_high','HMEC RBKO Palbo')
 
 

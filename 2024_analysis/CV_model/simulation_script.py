@@ -136,6 +136,9 @@ plot_growth_curves_population(population)
 bsize = np.array([c.birth_size for c in pop2analyze.values()])
 g1size = np.array([c.g1s_size for c in pop2analyze.values()])
 dsize = np.array([c.div_size for c in pop2analyze.values()])
+g1_growth = g1size - bsize
+sg2_growth = dsize - g1size
+total_growth = dsize - bsize
 
 #%% Collect CVs
 
@@ -169,4 +172,6 @@ for t in range(max_iter):
 
 CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
 CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
+
+print(CV)
 
