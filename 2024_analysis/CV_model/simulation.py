@@ -61,7 +61,7 @@ class Cell():
         self.birth_size = np.nan
         self.birth_size_measured = np.nan
         self.div_size= np.nan
-        self.div_measured = np.nan
+        self.div_size_measured = np.nan
         self.g1s_size = np.nan
         self.g1s_size_measured = np.nan
         
@@ -94,12 +94,12 @@ class Cell():
             assert(params is not None)
             # Create cell de novo using empirical paramters
             # Random log-normal birth sizes
-            mu,sigma = estimate_log_normal_parameters(params.loc['Volume']['BirthMean'],params.loc['Volume']['BirthStd'])
+            mu,sigma = estimate_log_normal_parameters(params['BirthMean'],params.loc['BirthStd'])
             birth_vol = random.lognormal(mean =mu, sigma=sigma)
             # Add measurement noise
-            V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
+            V_noise = random.randn(1)[0]*params['MsmtNoise']
             # Random normal exp growth rates
-            gr = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
+            gr = random.randn(1)[0]*params['GrStd'] + params['GrMean']
             gr = max(0,gr)
             
             
@@ -115,32 +115,32 @@ class Cell():
             self.exp_growth_rate = gr
             
             # Set up the G1S decision function
-            if params.loc['Volume','G1S_model'].lower() == 'sizer':
-                theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+            if params['G1S_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params['G1S_th_error'] + params['G1S_sizethreshold']
                 theta = max(theta,300)
                 self.g1s_size_threshold = theta
-            if params.loc['Volume','G1S_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params.loc['Volume','G1S_added_std'] * params.loc['Volume','G1S_added_mean']
+            if params['G1S_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params['G1S_added_std'] * params['G1S_added_mean']
                 DV = max(50,DV)
                 self.g1s_adder = DV
-            if params.loc['Volume','G1S_model'].lower() == 'timer':
-                Tg1 = random.randn(1)[0]*(params.loc['Volume','Tg1Std']) + params.loc['Volume','Tg1Mean']
+            if params['G1S_model'].lower() == 'timer':
+                Tg1 = random.randn(1)[0]*(params['Tg1Std']) + params['Tg1Mean']
                 # Impose minimum of 1h
                 Tg1 = max(Tg1,5)
                 self.g1_duration = Tg1
             
             # Set up the division decision function
-            if params.loc['Volume','SG2M_model'].lower() == 'sizer':
-                theta = random.randn(1)[0]*params.loc['Volume','SG2M_th_error'] + params.loc['Volume','SG2M_sizethreshold']
+            if params['SG2M_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params['SG2M_th_error'] + params['SG2M_sizethreshold']
                 theta = max(theta,500)
                 self.sg2m_size_threshold = theta
-            if params.loc['Volume','SG2M_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params.loc['Volume','SG2M_added_std'] * params.loc['Volume','SG2M_added_mean']
+            if params['SG2M_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params['SG2M_added_std'] * params['SG2M_added_mean']
                 DV = max(50,DV)
                 self.sg2m_adder = DV
-            if params.loc['Volume','SG2M_model'].lower() == 'timer':
+            if params['SG2M_model'].lower() == 'timer':
                 # Pre-determine SG2M duration to avoid doing the random processes math
-                Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+                Tsg2m = random.randn(1)[0]*(params['Tsg2mStd']) + params['Tsg2mMean']
                 # Impose minimum of 1h
                 Tsg2m = max(Tsg2m,5)
                 self.sg2m_duration = Tsg2m
@@ -156,7 +156,7 @@ class Cell():
             params = self.params
             init_vol = mother.div_size * inheritance
             
-            V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
+            V_noise = random.randn(1)[0]*params['MsmtNoise']
             init_cell = {'Time':sim_clock['Current time'],'Measured volume':init_vol+V_noise,
                                    'Volume':init_vol,'Phase':'G1'}
             self.parentID = mother.cellID
@@ -165,37 +165,37 @@ class Cell():
             self.birth_frame = sim_clock['Current frame']
             self.birth_time = sim_clock['Current time']
             
-            if params.loc['Volume','G1S_model'].lower() == 'sizer':
+            if params['G1S_model'].lower() == 'sizer':
                 # @todo: Is this inherited?
                 theta = mother.g1s_size_threshold
-                # theta = random.randn(1)[0]*params.loc['Volume','G1S_th_error'] + params.loc['Volume','G1S_sizethreshold']
+                # theta = random.randn(1)[0]*params['G1S_th_error'] + params['G1S_sizethreshold']
                 # theta = max(theta,300)
                 self.g1s_size_threshold = theta
-            if params.loc['Volume','G1S_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params.loc['Volume','G1S_added_std'] * params.loc['Volume','G1S_added_mean']
+            if params['G1S_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params['G1S_added_std'] * params['G1S_added_mean']
                 DV = max(50,DV)
                 self.g1s_adder = DV
-            elif params.loc['Volume','G1S_model'].lower() == 'timer':
-                Tg1 = random.randn(1)[0]*(params.loc['Volume','Tg1Std']) + params.loc['Volume','Tg1Mean']
+            elif params['G1S_model'].lower() == 'timer':
+                Tg1 = random.randn(1)[0]*(params['Tg1Std']) + params['Tg1Mean']
                 # Impose minimum of 1h
                 Tg1 = max(Tg1,5)
                 self.g1_duration = Tg1
             
             #Pick new growth rate
-            self.exp_growth_rate = random.randn(1)[0]*params.loc['Volume','GrStd'] + params.loc['Volume','GrMean']
+            self.exp_growth_rate = random.randn(1)[0]*params['GrStd'] + params['GrMean']
             self.generation = mother.generation + 1
             
             # Pre-determine SG2M duration to avoid doing the random processes math
-            if params.loc['Volume','SG2M_model'].lower() == 'sizer':
-                theta = random.randn(1)[0]*params.loc['Volume','SG2M_th_error'] + params.loc['Volume','SG2M_sizethreshold']
+            if params['SG2M_model'].lower() == 'sizer':
+                theta = random.randn(1)[0]*params['SG2M_th_error'] + params['SG2M_sizethreshold']
                 theta = max(theta,500)
                 self.sg2m_size_threshold = theta
-            if params.loc['Volume','SG2M_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params.loc['Volume','SG2M_added_std'] * params.loc['Volume','SG2M_added_mean']
+            if params['SG2M_model'].lower() == 'adder':
+                DV = random.randn(1)[0]*params['SG2M_added_std'] * params['SG2M_added_mean']
                 DV = max(50,DV)
                 self.sg2m_adder = DV
-            if params.loc['Volume','SG2M_model'].lower() == 'timer':
-                Tsg2m = random.randn(1)[0]*(params.loc['Volume','Tsg2mStd']) + params.loc['Volume','Tsg2mMean']
+            if params['SG2M_model'].lower() == 'timer':
+                Tsg2m = random.randn(1)[0]*(params['Tsg2mStd']) + params['Tsg2mMean']
                 # Impose minimum of 1h
                 Tsg2m = max(Tsg2m,5)
                 self.sg2m_duration = Tsg2m
@@ -276,7 +276,7 @@ class Cell():
         current_values['Volume'] = final_V
         
         #Add measurement noise
-        V_noise = random.randn(1)[0]*params.loc['Volume','MsmtNoise']
+        V_noise = random.randn(1)[0]*params['MsmtNoise']
         final_V = current_values['Volume']+V_noise
         final_V = max(0,final_V)
         current_values['Measured volume'] = final_V
@@ -295,6 +295,7 @@ class Cell():
             current_values['Volume'] = np.nan
             self.div_time = prev_values['Time']
             self.div_size = prev_values['Volume']
+            self.div_size_measured = prev_values['Measured volume']
             self.div_frame = prev_frame
             self.divided = True
             print('-----DIVIDED-----')
@@ -309,7 +310,7 @@ class Cell():
         cell = self.ts.iloc[frame]
         gr = self.exp_growth_rate
         # Add fluctuation in gr
-        gr = gr*(1 + random.randn(1)[0]*params.loc['Volume','GrFluct'])
+        gr = gr*(1 + random.randn(1)[0]*params['GrFluct'])
         dV = cell['Volume'] * gr # Euler update
         
         return dV * sim_clock['dt']
@@ -322,14 +323,14 @@ class Cell():
         
         assert(cell['Phase'] == 'G1')
         
-        if params.loc['Volume','G1S_model'].lower() == 'sizer':
+        if params['G1S_model'].lower() == 'sizer':
             return cell['Volume'] > self.g1s_size_threshold
         
-        elif params.loc['Volume','G1S_model'].lower() == 'adder':
+        elif params['G1S_model'].lower() == 'adder':
             added_since_birth = cell['Volume'] - self.birth_size
             return added_since_birth > self.g1s_adder
         
-        elif params.loc['Volume','G1S_model'].lower() == 'timer':
+        elif params['G1S_model'].lower() == 'timer':
             time_of_birth = self.birth_time
             time_since_birth = cell['Time'] - time_of_birth
             return (time_since_birth > self.g1_duration)
@@ -345,14 +346,14 @@ class Cell():
         # Only S/G2/M cells divide
         assert(cell['Phase'] == 'S/G2/M')
         
-        if params.loc['Volume','SG2M_model'].lower() == 'sizer':
+        if params['SG2M_model'].lower() == 'sizer':
             return cell['Volume'] > self.sg2m_size_threshold
         
-        elif params.loc['Volume','SG2M_model'].lower() == 'adder':
+        elif params['SG2M_model'].lower() == 'adder':
             added_since_g1s = cell['Volume'] - self.g1s_size
             return added_since_g1s > self.sg2m_adder
         
-        elif params.loc['Volume','SG2M_model'].lower() == 'timer':
+        elif params['SG2M_model'].lower() == 'timer':
             # Calculate time since g1s
             time_of_g1s = self.g1s_time
             time_since_g1s = sim_clock['Current time'] - time_of_g1s

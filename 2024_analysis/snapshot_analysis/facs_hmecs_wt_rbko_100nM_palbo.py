@@ -102,23 +102,6 @@ for (condition,phase),_df in diploids.groupby(['Condition','Geminin_high']):
     # CV.loc[condition,phase] = stats.variation(_df['Alexa Fluor™ 647-A'])
     CV.loc[condition,phase] = stats.variation(_df['SSC-A'])
     
-    # CV.loc[phase,'FSC'] = stats.variation(_df['FSC-A'])
-    
-    # lb,ub = cvariation_ci(_df['FSC-A'])
-    # CV.loc[phase,'FSC lb parametric'],CV.loc[phase,'FSC ub parametric'] = lb,ub
-    # CV.loc[phase,'FSC error parametric'] = (ub-lb)/2
-    
-    # lb,ub = cvariation_ci(_df['SSC-A'])
-    # CV.loc[phase,'SSC lb parametric'],CV.loc[phase,'SSC ub parametric'] = lb,ub
-    # CV.loc[phase,'SSC error parametric'] = (ub-lb)/2
-    
-    # lb,ub = cvariation_ci_bootstrap(_df['FSC-A'],Nboot)
-    # CV.loc[phase,'FSC lb bootstrap'],CV.loc[phase,'FSC ub bootstrap'] = lb,ub
-    # CV.loc[phase,'FSC error bootstrap'] = (ub-lb)/2
-    # lb,ub = cvariation_ci_bootstrap(_df['SSC-A'],Nboot)
-    # CV.loc[phase,'SSC lb bootstrap'],CV.loc[phase,'SSC ub bootstrap'] = lb,ub
-    # CV.loc[phase,'SSC error bootstrap'] = (ub-lb)/2
-
 #%% Plot the CVs as errorbars
 
 def plot_size_CV_subplots(df,x,title=None):
@@ -148,6 +131,6 @@ plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT'],'Geminin_high','HM
 plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT palbo'],'Geminin_high','HMEC WT 100nM Palbo')
 
 plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO'],'Geminin_high','HMEC RBKO')
-plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO palbo'],'Geminin_high','HMEC RBKO Palbo')
+plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO palbo'],'Geminin_high','HMEC RBKO 100nM Palbo')
 
 

@@ -19,6 +19,8 @@ from glob import glob
 import pickle
 import copy
 from tqdm import tqdm
+from scipy import stats
+from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 import simulation
 
@@ -92,27 +94,6 @@ def run_model(sim_clock, params, Ncells):
         
     return population
 
-#%% Read parameter files
-
-params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/params.csv',index_col=0)
-
-#% Run model
-
-#% 1. Reset clock and initialize
-# Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
-sim_clock['Current time'] = 0
-sim_clock['Current frame'] = 0
-
-# 2. Simulation steps
-population = run_model( sim_clock, params, Ncells)
-
-# 3. Collate data for analysis
-# Filter cells that have full cell cycles
-pop2analyze = {}
-for key,cell in population.items():
-    if (cell.divided == True) & (cell.generation > 2):
-        pop2analyze[key] = cell
-
 def plot_growth_curves_population(pop):
     
     for cell in pop.values():
@@ -128,10 +109,73 @@ def plot_growth_curves_population(pop):
         t_g2 = t[p =='S/G2/M']
         v_g2 = v[p =='S/G2/M']
         plt.plot(t_g2,v_g2,'r-',alpha=0.1)
+        plt.xlabel('Time (h)')
+        plt.ylabel('Cell volume (fL)')
+        plt.legend(['G1','S/G2/M'])
+        
+def extract_CVs(population):
 
-plot_growth_curves_population(population)
+    collated = []
+    for key,cell in pop2analyze.items():
+        ts = cell.ts.dropna()
+        ts.loc[:,'Age'] = ts.loc[:,'Time'] - ts.iloc[0]['Time']
+        collated.append(ts)
+        
+    collated = pd.concat(collated,ignore_index=True)
+    CV = pd.DataFrame()
+    for phase,x in collated.groupby('Phase')['Measured volume']:
+        CV.loc['Time',phase] = x.std()/x.mean()
+    
+    time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
+    size = np.vstack( [ cell.ts['Measured volume'].astype(float) for cell in pop2analyze.values() ])
+    phases = np.vstack( [ cell.ts['Phase'] for cell in pop2analyze.values() ])
+    
+    CV_time = np.ones((max_iter,2))*np.nan
+    for t in range(max_iter):
+        p = phases[:,t]
+        s = size[p == 'G1',t]
+        if (len(s)>3):
+            CV_time[t,0] = s.std()/s.mean()
+        s = size[p == 'S/G2/M',t]
+        if (len(s)>3):
+            CV_time[t,1] = s.std()/s.mean()
+    
+    CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
+    CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
+    
+    return CV
 
-#%% size control parameters
+#%% Read parameter files
+
+params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1sizer_SG2adder/params.csv',index_col=0)
+
+#% Run model
+runs = []
+CVs = {}
+for model_name,p in params.iterrows():
+
+    #% 1. Reset clock and initialize
+    # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
+    sim_clock['Current time'] = 0
+    sim_clock['Current frame'] = 0
+    
+    # 2. Simulation steps
+    population = run_model( sim_clock, p, Ncells)
+    
+    # 3. Collate data for analysis
+    # Filter cells that have full cell cycles
+    pop2analyze = {}
+    for key,cell in population.items():
+        if (cell.divided == True) & (cell.generation > 2):
+            pop2analyze[key] = cell
+    
+    # plot_growth_curves_population(population)
+    # Extract CVs
+    CVs[model_name] = extract_CVs(pop2analyze)
+    runs.append(pop2analyze)
+    
+
+ #%% size control graphs
 
 bsize = np.array([c.birth_size for c in pop2analyze.values()])
 g1size = np.array([c.g1s_size for c in pop2analyze.values()])
@@ -140,38 +184,43 @@ g1_growth = g1size - bsize
 sg2_growth = dsize - g1size
 total_growth = dsize - bsize
 
-#%% Collect CVs
+plt.figure()
+plt.hist(bsize,50),plt.xlabel('Birth size'),plt.ylabel('G1| growth')
 
-collated = []
-for key,cell in pop2analyze.items():
-    ts = cell.ts.dropna()
-    ts.loc[:,'Age'] = ts.loc[:,'Time'] - ts.iloc[0]['Time']
-    collated.append(ts)
+plt.figure()
+plt.scatter(bsize,g1_growth),plt.xlabel('Birth size'),plt.ylabel('G1| growth')
+plt.figure()
+plt.scatter(g1size,sg2_growth),plt.xlabel('G1 size'),plt.ylabel('SG2M growth')
+plt.figure()
+plt.scatter(bsize,total_growth),plt.xlabel('Birth size'),plt.ylabel('Total growth')
 
-CV = pd.DataFrame()
-for phase,x in collated[0].groupby('Phase')['Measured volume']:
-    CV.loc['Time',phase] = x.std()/x.mean()
+#%% Cell cycle durations
 
 Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
 Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
 Tsg2m = Tdiv - Tg1
 
-time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
-size = np.vstack( [ cell.ts['Measured volume'].astype(float) for cell in pop2analyze.values() ])
-phases = np.vstack( [ cell.ts['Phase'] for cell in pop2analyze.values() ])
+plt.figure()
+plt.subplot(1,3,1)
+plt.hist(Tg1,50);plt.xlabel('G1 duration (h)')
+plt.subplot(1,3,2)
+plt.hist(Tsg2m,50);plt.xlabel('SG2M duration (h)')
+plt.subplot(1,3,3)
+plt.hist(Tdiv,50);plt.xlabel('Total duration (h)')
 
-CV_time = np.ones((max_iter,2))*np.nan
-for t in range(max_iter):
-    p = phases[:,t]
-    s = size[p == 'G1',t]
-    if (len(s)>3):
-        CV_time[t,0] = s.std()/s.mean()
-    s = size[p == 'S/G2/M',t]
-    if (len(s)>3):
-        CV_time[t,1] = s.std()/s.mean()
 
-CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
-CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
+#%%
 
-print(CV)
+# Nboot = 1000
+# collated['Measured volume'] = collated['Measured volume'].astype(float)
+
+# def plot_size_CV_subplots(df,x,title=None):
+    
+#     plt.figure()
+#     sb.barplot(df,y='Measured volume',x=x
+#                 ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot)))
+#     plt.ylabel('CV of Measured volume')
+    
+# plot_size_CV_subplots(collated,x='Phase',title='G1: sizer, SG2M: timer')
+
 
