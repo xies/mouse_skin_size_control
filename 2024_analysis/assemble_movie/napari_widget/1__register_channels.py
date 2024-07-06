@@ -200,13 +200,13 @@ def auto_register_b_and_rshg():
 
             # Find the slice with maximum mean value in R_shg channel
             z_ref = R_shg.mean(axis=2).mean(axis=1).argmax()
-            z_ref = R_shg.shape[0] // 2
+            z_ref = R_shg.shape[0] // 4
             print(f't = {t}: R_shg max std at {z_ref}')
             R_ref = R_shg[z_ref,...]
             R_ref = filters.gaussian(R_ref,sigma=0.5)
             z_moving = find_most_likely_z_slice_using_CC(R_ref,G)
             print(f'Cross correlation done and target Z-slice set at: {z_ref}')
-            target = filters.gaussian(B[z_ref,...],sigma=0.5)
+            target = filters.gaussian([z_ref,...],sigma=0.5)
 
             #NB: Here, move the R channel wrt the B channel
             print('StackReg + transform')
@@ -221,9 +221,9 @@ def auto_register_b_and_rshg():
 
             # z-pad
             print(R_transformed.shape)
-            R_padded = z_translate_and_pad(G,R_transformed,z_ref,z_moving).astype(np.uint)
+            R_padded = z_translate_and_pad(G,R_transformed,z_ref,z_moving).astype(np.uint16)
             print(R_padded.shape)
-            R_shg_padded = z_translate_and_pad(G,R_shg_transformed,z_ref,z_moving).astype(np.uint)
+            R_shg_padded = z_translate_and_pad(G,R_shg_transformed,z_ref,z_moving).astype(np.uint16)
 
             output_dir = path.dirname(filelist.loc[t,'G'])
 
@@ -313,6 +313,7 @@ def filter_gaussian3d( image2filter:Image,
     '''
     image_data = image2filter.data
     image_data = ndimage.gaussian_filter(image_data,sigma=[sigma_z,sigma_xy,sigma_xy])
+    image_data = util.img_as_uint(image_data/image_data.max())
     return Image(image_data,name = image2filter.name + '_filt', blending='additive',colormap=image2filter.colormap)
 
 viewer = napari.Viewer()
