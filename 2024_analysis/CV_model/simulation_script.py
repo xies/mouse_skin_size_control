@@ -20,7 +20,7 @@ import pickle
 import copy
 from tqdm import tqdm
 from scipy import stats
-from mathUtils import cvariation_ci, cvariation_ci_bootstrap
+# from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 import simulation
 
@@ -81,9 +81,9 @@ def run_model(sim_clock, params, Ncells):
                 if this_cell.divided:
                     
                     # Newly divided cell: make daughter cells
-                    print(f'\nCellID #{this_cell.cellID} has divided at frame {t}')
+                    # print(f'\nCellID #{this_cell.cellID} has divided at frame {t}')
                     # Randomly draw an asymmettry
-                    a = np.abs( random.randn(1)[0]*0.05)
+                    a = np.abs( random.randn(1)[0]*params['InhAsym']/100)
                     daughters = this_cell.divide(next_cellID, sim_clock, asymmetry=a)
                     next_cellID += 1
                     
@@ -113,21 +113,22 @@ def plot_growth_curves_population(pop):
         plt.ylabel('Cell volume (fL)')
         plt.legend(['G1','S/G2/M'])
         
-def extract_CVs(population):
+def extract_CVs(population,measurement_field='Measured volume'):
 
     collated = []
     for key,cell in pop2analyze.items():
-        ts = cell.ts.dropna()
-        ts.loc[:,'Age'] = ts.loc[:,'Time'] - ts.iloc[0]['Time']
+        ts = cell.ts.dropna().copy()
+        btime = ts.iloc[0]['Time']
+        ts['Age'] = ts['Time'] - btime
         collated.append(ts)
         
     collated = pd.concat(collated,ignore_index=True)
     CV = pd.DataFrame()
-    for phase,x in collated.groupby('Phase')['Measured volume']:
+    for phase,x in collated.groupby('Phase')[measurement_field]:
         CV.loc['Time',phase] = x.std()/x.mean()
     
     time = np.vstack( [ cell.ts['Time'].astype(float) for cell in pop2analyze.values() ])
-    size = np.vstack( [ cell.ts['Measured volume'].astype(float) for cell in pop2analyze.values() ])
+    size = np.vstack( [ cell.ts[measurement_field].astype(float) for cell in pop2analyze.values() ])
     phases = np.vstack( [ cell.ts['Phase'] for cell in pop2analyze.values() ])
     
     CV_time = np.ones((max_iter,2))*np.nan
@@ -147,10 +148,10 @@ def extract_CVs(population):
 
 #%% Read parameter files
 
-params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1sizer_SG2adder/params.csv',index_col=0)
+params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/params.csv',index_col=0)
 
 #% Run model
-runs = []
+runs = {}
 CVs = {}
 for model_name,p in params.iterrows():
 
@@ -172,10 +173,36 @@ for model_name,p in params.iterrows():
     # plot_growth_curves_population(population)
     # Extract CVs
     CVs[model_name] = extract_CVs(pop2analyze)
-    runs.append(pop2analyze)
+    runs[model_name] = pop2analyze
     
 
+#%%
+
+CVs = {}
+for model_name,pop2analyze in tqdm(runs.items()):
+    CVs[model_name] = extract_CVs(pop2analyze,measurement_field='Volume')
+
+CV_diff = []
+method = []
+name = []
+for model_name,_df in CVs.items():
+    
+    CV_diff.append(_df.loc['Time','G1']- _df.loc['Time','S/G2/M'])
+    method.append('Time')
+    name.append(model_name)
+
+    CV_diff.append(_df.loc['Population','G1']- _df.loc['Population','S/G2/M'])
+    method.append('Population')
+    name.append(model_name)
+    
+df = pd.DataFrame()
+df['CV_diff'] = CV_diff
+df['Method'] = method
+df['model_name'] = name
+
  #%% size control graphs
+
+pop2analyze = runs['adder_adder']
 
 bsize = np.array([c.birth_size for c in pop2analyze.values()])
 g1size = np.array([c.g1s_size for c in pop2analyze.values()])
@@ -208,8 +235,14 @@ plt.hist(Tsg2m,50);plt.xlabel('SG2M duration (h)')
 plt.subplot(1,3,3)
 plt.hist(Tdiv,50);plt.xlabel('Total duration (h)')
 
+#%% CVs
 
-#%%
+
+
+
+
+
+#%% Boot strapped CIs
 
 # Nboot = 1000
 # collated['Measured volume'] = collated['Measured volume'].astype(float)

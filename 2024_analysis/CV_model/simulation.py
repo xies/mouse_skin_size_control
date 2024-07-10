@@ -233,9 +233,10 @@ class Cell():
         
         # Calculate respective inheritance fractions 
         assert(asymmetry < 1.0)
+
         inh_a = (asymmetry + 1.) / 2
         inh_b = 1 - (asymmetry + 1.) / 2
-        
+            
         daughter_a = Cell(cellID_beginning, sim_clock, mother=self, inheritance=inh_a)
         daughter_b = Cell(cellID_beginning+1, sim_clock, mother=self, inheritance=inh_b)
         
@@ -298,7 +299,6 @@ class Cell():
             self.div_size_measured = prev_values['Measured volume']
             self.div_frame = prev_frame
             self.divided = True
-            print('-----DIVIDED-----')
         
         # Put the current values into the timeseries
         self.ts.iloc[prev_frame + 1,:] = current_values
