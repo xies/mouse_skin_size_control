@@ -183,22 +183,55 @@ for model_name,pop2analyze in tqdm(runs.items()):
     CVs[model_name] = extract_CVs(pop2analyze,measurement_field='Volume')
 
 CV_diff = []
+p_g1sizecontrol = []
+p_sg2sizecontrol = []
 method = []
 name = []
+mean_bsize = []
+mean_growth_ratio = []
+
+Tg1 = []
+Tsg2m = []
+Tdiv = []
+
 for model_name,_df in CVs.items():
     
-    CV_diff.append(_df.loc['Time','G1']- _df.loc['Time','S/G2/M'])
-    method.append('Time')
-    name.append(model_name)
-
     CV_diff.append(_df.loc['Population','G1']- _df.loc['Population','S/G2/M'])
     method.append('Population')
     name.append(model_name)
+
+    bsize = np.array([c.birth_size for c in runs[model_name].values()])
+    g1size = np.array([c.g1s_size for c in runs[model_name].values()])
+    dsize = np.array([c.div_size for c in runs[model_name].values()])
+    g1_growth = g1size - bsize
+    sg2_growth = dsize - g1size
+    
+    g1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in runs[model_name].values()])
+    div = np.array([cell.div_time - cell.ts['Time'].min() for cell in runs[model_name].values()])
+    Tg1.append(g1.mean())
+    Tdiv.append(div.mean())
+    Tsg2m.append( (div - g1).mean() )
+
+    p = np.polyfit(bsize,g1_growth,1)
+    p_g1sizecontrol.append(p[0])
+    p = np.polyfit(g1size,sg2_growth,1)
+    p_sg2sizecontrol.append(p[0])
+    
+    mean_bsize.append(bsize.mean())
+    print(g1_growth.mean()/sg2_growth.mean())
+    mean_growth_ratio.append(g1_growth.mean()/sg2_growth.mean())
     
 df = pd.DataFrame()
 df['CV_diff'] = CV_diff
+df['G1 size control slope'] = p_g1sizecontrol
+df['SG2M size control slope'] = p_sg2sizecontrol
 df['Method'] = method
 df['model_name'] = name
+df['Mean birth size'] = mean_bsize
+df['Mean growth ratio'] = mean_growth_ratio
+df['G1 duration'] = Tg1
+df['Division duration'] = Tdiv
+df['SG2M duration'] = Tsg2m
 
  #%% size control graphs
 
