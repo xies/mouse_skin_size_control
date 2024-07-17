@@ -23,6 +23,32 @@ from scipy import stats
 # from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 import simulation
+import pickle as pkl
+
+#%% Load empirical data
+
+# Load growth curves from pickle
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
+    c1 = pkl.load(f,encoding='latin-1')
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
+    c2 = pkl.load(f,encoding='latin-1')
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
+    c5 = pkl.load(f,encoding='latin-1')
+with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
+    c5f = pkl.load(f,encoding='latin-1')
+collated = c1+c2+c5+c5f
+
+
+# Filter for phase-annotated cells in collated
+collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
+
+# Concatenate all collated cells into dfc
+dfc = pd.concat(collated_filtered)
+
+emp_g1_cv = stats.variation(dfc[dfc['Phase'] == 'G1']['Volume (sm)'])
+emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
+
+#%% Helper functions + initial variables
 
 # Set random seed
 np.random.seed(42)
@@ -32,15 +58,13 @@ max_iter = 400
 dt = 1.0 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
-Ncells = 1000
+Ncells = 10000
 
 # Time information
 sim_clock = {}
 sim_clock['Max frame'] = max_iter
 sim_clock['Max time'] = max_iter * dt
 sim_clock['dt'] = dt
-
-#%% Helper functions
 
 def run_model(sim_clock, params, Ncells):
     
@@ -96,6 +120,7 @@ def run_model(sim_clock, params, Ncells):
 
 def plot_growth_curves_population(pop):
     
+    plt.figure()
     for cell in pop.values():
         ts = cell.ts.dropna()
         t = ts['Time']
@@ -131,18 +156,20 @@ def extract_CVs(population,measurement_field='Measured volume'):
     size = np.vstack( [ cell.ts[measurement_field].astype(float) for cell in pop2analyze.values() ])
     phases = np.vstack( [ cell.ts['Phase'] for cell in pop2analyze.values() ])
     
-    CV_time = np.ones((max_iter,2))*np.nan
-    for t in range(max_iter):
-        p = phases[:,t]
-        s = size[p == 'G1',t]
-        if (len(s)>3):
-            CV_time[t,0] = s.std()/s.mean()
-        s = size[p == 'S/G2/M',t]
-        if (len(s)>3):
-            CV_time[t,1] = s.std()/s.mean()
+    # for t in range(max_iter):
+    # Only look at last time point
+    t = max_iter-1
+    p = phases[:,t]
+    s = size[p == 'G1',t]
+    print(s)
+    if (len(s)>3):
+        CV_time_g1 = s.std()/s.mean()
+    s = size[p == 'S/G2/M',t]
+    if (len(s)>3):
+        CV_time_sg2 = s.std()/s.mean()
     
-    CV.loc['Population','G1'] = np.nanmean(CV_time[:,0])
-    CV.loc['Population','S/G2/M'] = np.nanmean(CV_time[:,1])
+    CV.loc['Population','G1'] = CV_time_g1
+    CV.loc['Population','S/G2/M'] = CV_time_sg2
     
     return CV
 
@@ -153,7 +180,7 @@ params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/
 #% Run model
 runs = {}
 CVs = {}
-for model_name,p in params.iterrows():
+for model_name,p in params.iloc[0:1].iterrows():
 
     #% 1. Reset clock and initialize
     # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
@@ -188,16 +215,16 @@ df = pd.DataFrame(index=CVs.keys(),columns=['G1 model','SG2M model'
                                             ,'Birth size','G1 size','Div size'
                                             ,'G1 growth','SG2M growth','Total growth','G1/G2 growth ratio'
                                             ,'Cycle duration','G1 duration','SG2M duration'
-                                            ,'G1 size control slope','SG2M size control slope','Final size control slope'
                                             ])
 
 for model_name,_df in CVs.items():
     
     df.loc[model_name,'G1 model'] = params.loc[model_name,'G1S_model']
     df.loc[model_name,'SG2M model'] = params.loc[model_name,'SG2M_model']
-    df.loc[model_name,'G1 CV'] =  _df.loc['Time','G1']
-    df.loc[model_name,'SG2M CV'] =  _df.loc['Time','S/G2/M']
-    df.loc[model_name,'CVdiff'] = _df.loc['Time','G1']- _df.loc['Time','S/G2/M']
+    df.loc[model_name,'G1 CV'] =  _df.loc['Population','G1']
+    df.loc[model_name,'SG2M CV'] =  _df.loc['Population','S/G2/M']
+    df.loc[model_name,'CVdiff'] = _df.loc['Population','G1']- _df.loc['Population','S/G2/M']
+    df.loc[model_name,'CVratio'] = _df.loc['Population','G1']- _df.loc['Population','S/G2/M']
 
     # Size
     bsize = np.array([c.birth_size for c in runs[model_name].values()])
@@ -233,14 +260,20 @@ for model_name,_df in CVs.items():
 #%%
 
 plt.figure()
-sb.scatterplot(df,x='G1 CV',y='CVdiff',hue='G1 model')
+sb.scatterplot(df,x='G1 CV',y='SG2M CV',hue='G1 model')
+plt.scatter(emp_g1_cv,emp_sg2_cv,color='r')
+
+# plt.figure()
+# plt.subplot(2,1,1)
+# sb.scatterplot(df,x='G1 growth ratio',y='G1 CV',hue='G1 model')
+# plt.subplot(2,1,2)
+# sb.scatterplot(df,x='G1 growth ratio',y='SG2M CV',hue='G1 model')
+
 plt.figure()
-sb.scatterplot(df,x='G1 growth ratio',y='CVdiff',hue='G1 model')
-plt.figure()
-sb.scatterplot(df,x='G1 growth ratio',y='G1 CV',hue='G1 model')
+sb.scatterplot(df,x='G1 size control slope',y='CVratio',hue='G1 model')
 
 
-# plot_growth_curves_population(runs['timer50_sizer'])
+plot_growth_curves_population(runs['sizer_timer'])
 
 
 
