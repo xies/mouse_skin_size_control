@@ -146,9 +146,9 @@ def extract_CVs(population,measurement_field='Measured volume'):
     
     return CV
 
-#%% Read parameter files
+#%% Run model from parameter files
 
-params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/params.csv',index_col=0)
+params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer/params.csv',index_col=0)
 
 #% Run model
 runs = {}
@@ -172,121 +172,75 @@ for model_name,p in params.iterrows():
     
     # plot_growth_curves_population(population)
     # Extract CVs
+
     CVs[model_name] = extract_CVs(pop2analyze)
     runs[model_name] = pop2analyze
     
-
-#%%
+#%% Collate stats for each model parameter set
 
 CVs = {}
 for model_name,pop2analyze in tqdm(runs.items()):
-    CVs[model_name] = extract_CVs(pop2analyze,measurement_field='Volume')
+    CVs[model_name] = extract_CVs(pop2analyze,measurement_field='Measured volume')
 
-CV_diff = []
-p_g1sizecontrol = []
-p_sg2sizecontrol = []
-method = []
-name = []
-mean_bsize = []
-mean_growth_ratio = []
-
-Tg1 = []
-Tsg2m = []
-Tdiv = []
+df = pd.DataFrame(index=CVs.keys(),columns=['G1 model','SG2M model'
+                                            ,'G1 CV','SG2M CV','CVdiff'
+                                            ,'G1 size control slope','SG2M size control slope'
+                                            ,'Birth size','G1 size','Div size'
+                                            ,'G1 growth','SG2M growth','Total growth','G1/G2 growth ratio'
+                                            ,'Cycle duration','G1 duration','SG2M duration'
+                                            ,'G1 size control slope','SG2M size control slope','Final size control slope'
+                                            ])
 
 for model_name,_df in CVs.items():
     
-    CV_diff.append(_df.loc['Population','G1']- _df.loc['Population','S/G2/M'])
-    method.append('Population')
-    name.append(model_name)
+    df.loc[model_name,'G1 model'] = params.loc[model_name,'G1S_model']
+    df.loc[model_name,'SG2M model'] = params.loc[model_name,'SG2M_model']
+    df.loc[model_name,'G1 CV'] =  _df.loc['Time','G1']
+    df.loc[model_name,'SG2M CV'] =  _df.loc['Time','S/G2/M']
+    df.loc[model_name,'CVdiff'] = _df.loc['Time','G1']- _df.loc['Time','S/G2/M']
 
+    # Size
     bsize = np.array([c.birth_size for c in runs[model_name].values()])
     g1size = np.array([c.g1s_size for c in runs[model_name].values()])
     dsize = np.array([c.div_size for c in runs[model_name].values()])
     g1_growth = g1size - bsize
     sg2_growth = dsize - g1size
+    total_growth = dsize - bsize
     
+    df.loc[model_name,'Birth size'] = bsize.mean()
+    df.loc[model_name,'G1 size'] = g1size.mean()
+    df.loc[model_name,'Div size'] = dsize.mean()
+    df.loc[model_name,'G1 growth'] = g1_growth.mean()
+    df.loc[model_name,'SG2M size'] = sg2_growth.mean()
+    df.loc[model_name,'Total growth'] = total_growth.mean()
+    df.loc[model_name,'G1 growth ratio'] = (g1_growth/total_growth).mean()
+
+    # Time
     g1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in runs[model_name].values()])
     div = np.array([cell.div_time - cell.ts['Time'].min() for cell in runs[model_name].values()])
-    Tg1.append(g1.mean())
-    Tdiv.append(div.mean())
-    Tsg2m.append( (div - g1).mean() )
-
+    
+    df.loc[model_name,'Cycle duration'] = div.mean()
+    df.loc[model_name,'G1 duration'] = g1.mean()
+    df.loc[model_name,'SG2M duration'] = (div - g1).mean()
+    
     p = np.polyfit(bsize,g1_growth,1)
-    p_g1sizecontrol.append(p[0])
+    df.loc[model_name,'G1 size control slope'] = p[0]
     p = np.polyfit(g1size,sg2_growth,1)
-    p_sg2sizecontrol.append(p[0])
-    
-    mean_bsize.append(bsize.mean())
-    print(g1_growth.mean()/sg2_growth.mean())
-    mean_growth_ratio.append(g1_growth.mean()/sg2_growth.mean())
-    
-df = pd.DataFrame()
-df['CV_diff'] = CV_diff
-df['G1 size control slope'] = p_g1sizecontrol
-df['SG2M size control slope'] = p_sg2sizecontrol
-df['Method'] = method
-df['model_name'] = name
-df['Mean birth size'] = mean_bsize
-df['Mean growth ratio'] = mean_growth_ratio
-df['G1 duration'] = Tg1
-df['Division duration'] = Tdiv
-df['SG2M duration'] = Tsg2m
+    df.loc[model_name,'SG2M size control slope'] = p[0]
+    p = np.polyfit(g1size,total_growth,1)
+    df.loc[model_name,'Final size control slope'] = p[0]
 
- #%% size control graphs
-
-pop2analyze = runs['adder_adder']
-
-bsize = np.array([c.birth_size for c in pop2analyze.values()])
-g1size = np.array([c.g1s_size for c in pop2analyze.values()])
-dsize = np.array([c.div_size for c in pop2analyze.values()])
-g1_growth = g1size - bsize
-sg2_growth = dsize - g1size
-total_growth = dsize - bsize
+#%%
 
 plt.figure()
-plt.hist(bsize,50),plt.xlabel('Birth size'),plt.ylabel('G1| growth')
-
+sb.scatterplot(df,x='G1 CV',y='CVdiff',hue='G1 model')
 plt.figure()
-plt.scatter(bsize,g1_growth),plt.xlabel('Birth size'),plt.ylabel('G1| growth')
+sb.scatterplot(df,x='G1 growth ratio',y='CVdiff',hue='G1 model')
 plt.figure()
-plt.scatter(g1size,sg2_growth),plt.xlabel('G1 size'),plt.ylabel('SG2M growth')
-plt.figure()
-plt.scatter(bsize,total_growth),plt.xlabel('Birth size'),plt.ylabel('Total growth')
-
-#%% Cell cycle durations
-
-Tg1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
-Tdiv = np.array([cell.div_time - cell.ts['Time'].min() for cell in pop2analyze.values()])
-Tsg2m = Tdiv - Tg1
-
-plt.figure()
-plt.subplot(1,3,1)
-plt.hist(Tg1,50);plt.xlabel('G1 duration (h)')
-plt.subplot(1,3,2)
-plt.hist(Tsg2m,50);plt.xlabel('SG2M duration (h)')
-plt.subplot(1,3,3)
-plt.hist(Tdiv,50);plt.xlabel('Total duration (h)')
-
-#%% CVs
+sb.scatterplot(df,x='G1 growth ratio',y='G1 CV',hue='G1 model')
 
 
+# plot_growth_curves_population(runs['timer50_sizer'])
 
-
-
-
-#%% Boot strapped CIs
-
-# Nboot = 1000
-# collated['Measured volume'] = collated['Measured volume'].astype(float)
-
-# def plot_size_CV_subplots(df,x,title=None):
-    
-#     plt.figure()
-#     sb.barplot(df,y='Measured volume',x=x
-#                 ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot)))
-#     plt.ylabel('CV of Measured volume')
-    
-# plot_size_CV_subplots(collated,x='Phase',title='G1: sizer, SG2M: timer')
 
 
