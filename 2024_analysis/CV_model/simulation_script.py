@@ -54,11 +54,11 @@ emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 400
+max_iter = 1000
 dt = 1.0 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
-Ncells = 10000
+Ncells = 1000
 
 # Time information
 sim_clock = {}
@@ -161,7 +161,6 @@ def extract_CVs(population,measurement_field='Measured volume'):
     t = max_iter-1
     p = phases[:,t]
     s = size[p == 'G1',t]
-    print(s)
     if (len(s)>3):
         CV_time_g1 = s.std()/s.mean()
     s = size[p == 'S/G2/M',t]
@@ -180,7 +179,7 @@ params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/
 #% Run model
 runs = {}
 CVs = {}
-for model_name,p in params.iloc[0:1].iterrows():
+for model_name,p in params.iterrows():
 
     #% 1. Reset clock and initialize
     # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
@@ -194,7 +193,7 @@ for model_name,p in params.iloc[0:1].iterrows():
     # Filter cells that have full cell cycles
     pop2analyze = {}
     for key,cell in population.items():
-        if (cell.divided == True) & (cell.generation > 2):
+        if cell.generation > 2:
             pop2analyze[key] = cell
     
     # plot_growth_curves_population(population)
@@ -273,7 +272,7 @@ plt.figure()
 sb.scatterplot(df,x='G1 size control slope',y='CVratio',hue='G1 model')
 
 
-plot_growth_curves_population(runs['sizer_timer'])
+plot_growth_curves_population(pop2analyze)
 
 
 

@@ -25,7 +25,6 @@ from sklearn.preprocessing import scale
 
 from sklearn.linear_model import LogisticRegression
 
-
 def keep_only_first_sg2(df):
     collated_first_s = []
     # Groupby CellID and then drop non-first S phase
@@ -66,7 +65,7 @@ df_g1s = keep_only_first_sg2(df_g1s)
 df_g1s_cell = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','nuc_vol_sm'])
 df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','vol_sm'])
 
-#%% Logistic for G1/S transition: skip all non-first SG2 timepoints
+#%% Logistic for G1/S transition using CELL VOL: skip all non-first SG2 timepoints
 # Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
@@ -135,7 +134,7 @@ plt.figure()
 plt.bar(range(len(params)),params['coef'],yerr=params['err'])
 plt.xticks(range(5),params['var'],rotation=30)
 
-#%% Logistic for G1/S transition: skip all non-first SG2 timepoints
+#%% Logistic for G1/S transition using NUCLEAR VOL: skip all non-first SG2 timepoints
 # Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
@@ -168,7 +167,6 @@ for i in range(Niter):
     li[i,:] = model_g1s.conf_int()[0].drop('Intercept')
     ui[i,:] = model_g1s.conf_int()[1].drop('Intercept')
     pvalues[i,:] = pvals.values
-
 
 coefficients = pd.DataFrame(coefficients,columns = df_g1s_nuc.columns.drop('G1S_logistic')).dropna()
 pvalues = pd.DataFrame(pvalues,columns = df_g1s_nuc.columns.drop('G1S_logistic')).dropna()
@@ -206,7 +204,7 @@ plt.bar(range(len(params)),params['coef'],yerr=params['err'])
 plt.xticks(range(5),params['var'],rotation=30)
 
 
-#%% Swich to sklearn
+#%% Swich to sklearn and 
 
 from sklearn import metrics
 

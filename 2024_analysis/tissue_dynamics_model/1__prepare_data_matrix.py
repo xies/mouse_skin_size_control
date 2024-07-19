@@ -19,7 +19,7 @@ from numpy.linalg import eig
 
 def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
-
+ 
 #%% Load features from training + test set
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
@@ -59,8 +59,9 @@ features_list = { # Cell identity, position
                 ,'Height to BM relative to cell height':'rel_height_to_bm'
                 
                 # Cell geometry
-                ,'Volume':'vol_sm'
-                ,'Nuclear volume':'nuc_vol_sm'
+                ,'Volume (sm)':'vol_sm'
+                ,'Nuclear volume (sm)':'nuc_vol_sm'
+                # ,'Surface area':'sa'
                 ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
@@ -176,23 +177,39 @@ df2plot = df_g1s.drop(columns=['region','cellID','G1S_logistic','diff','time_g1s
 C = MinCovDet().fit(df2plot)
 plt.figure()
 L,D = eig(C.covariance_)
-plt.title(f'MinCovDet, C = {L.max() / L.min()}')
+plt.title(f'MinCovDet, C = {L.max() / L.min():.2f}')
 sb.heatmap(C.covariance_,xticklabels=df2plot.columns,yticklabels=df2plot.columns,cmap='vlag',center=0)
 plt.gca().set_aspect('equal', 'box')
 plt.tight_layout()
 
 print('----')
-print(f'Condition number (MinCovDet): {L.max() / L.min()}')
-
+print(f'Condition number (MinCovDet): {L.max() / L.min():.2f}')
 
 df_.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv')
 df_g1s.to_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv')
 
+
 #%%
 
+plt.figure()
+df2plot = df_g1s.drop(columns=['nuc_vol_sm','cellID','region','G1S_logistic','time_g1s','diff'])
+C = MinCovDet().fit(df2plot)
+L,D = eig(C.covariance_)
 stats = pd.Series({df2plot.columns[i]:variance_inflation_factor(df2plot,i) for i in range(len(df2plot.columns))},name='VIF')
 stats.sort_values().plot.bar()
 plt.tight_layout()
+plt.title(f'Cell volume, C = {L.max() / L.min():.2f}')
+
+plt.figure()
+df2plot = df_g1s.drop(columns=['vol_sm','cellID','region','G1S_logistic','time_g1s','diff'])
+C = MinCovDet().fit(df2plot)
+L,D = eig(C.covariance_)
+stats = pd.Series({df2plot.columns[i]:variance_inflation_factor(df2plot,i) for i in range(len(df2plot.columns))},name='VIF')
+stats.sort_values().plot.bar()
+plt.tight_layout()
+plt.title(f'Nuc volume C = {L.max() / L.min():.2f}')
+
+#%%
 
 
 
