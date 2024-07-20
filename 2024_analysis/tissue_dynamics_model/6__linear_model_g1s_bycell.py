@@ -37,6 +37,7 @@ collated = list(c1.values()) + list(c2.values())
 df = pd.DataFrame()
 df['Birth nuclear volume'] = np.array([c.iloc[0]['Nuclear volume (sm)'] for c in collated])
 df['Birth volume'] = np.array([c.iloc[0]['Volume (sm)'] for c in collated])
+df['Birth NC ratio'] = df['Birth nuclear volume'] / df['Birth volume']
 df['Exponential growth rate'] = np.array([c.iloc[0]['Exponential growth rate'] for c in collated])
 
 g1_duration = np.ones(len(collated))*np.nan
@@ -50,12 +51,13 @@ df = df.dropna()
 
 #%% Prep variables
 
-X = df.drop(columns='G1 duration')
+# X = df.drop(columns=['G1 duration','Birth NC ratio','Birth nuclear volume'])
+X = df.drop(columns=['G1 duration','Birth nuclear volume'])
 y = df['G1 duration']
 
 X = scale(X)
 
-#%% Linear model for in sample R2 score
+#% Linear model for in sample R2 score
 
 lin_model = linear_model.LinearRegression()
 lin_model.fit(X,y)

@@ -20,6 +20,7 @@ import pickle
 import copy
 from tqdm import tqdm
 from scipy import stats
+from basicUtils import nonan_pairs
 # from mathUtils import cvariation_ci, cvariation_ci_bootstrap
 
 import simulation
@@ -38,7 +39,6 @@ with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5-full/tracked_cel
     c5f = pkl.load(f,encoding='latin-1')
 collated = c1+c2+c5+c5f
 
-
 # Filter for phase-annotated cells in collated
 collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
 
@@ -54,7 +54,7 @@ emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 1000
+max_iter = 500
 dt = 1.0 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
@@ -178,8 +178,7 @@ params = pd.read_csv('/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/
 
 #% Run model
 runs = {}
-CVs = {}
-for model_name,p in params.iterrows():
+for model_name,p in params.iloc[0:3].iterrows():
 
     #% 1. Reset clock and initialize
     # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
@@ -197,9 +196,6 @@ for model_name,p in params.iterrows():
             pop2analyze[key] = cell
     
     # plot_growth_curves_population(population)
-    # Extract CVs
-
-    CVs[model_name] = extract_CVs(pop2analyze)
     runs[model_name] = pop2analyze
     
 #%% Collate stats for each model parameter set
@@ -233,13 +229,13 @@ for model_name,_df in CVs.items():
     sg2_growth = dsize - g1size
     total_growth = dsize - bsize
     
-    df.loc[model_name,'Birth size'] = bsize.mean()
-    df.loc[model_name,'G1 size'] = g1size.mean()
-    df.loc[model_name,'Div size'] = dsize.mean()
-    df.loc[model_name,'G1 growth'] = g1_growth.mean()
-    df.loc[model_name,'SG2M size'] = sg2_growth.mean()
-    df.loc[model_name,'Total growth'] = total_growth.mean()
-    df.loc[model_name,'G1 growth ratio'] = (g1_growth/total_growth).mean()
+    df.loc[model_name,'Birth size'] = np.nanmean(bsize)
+    df.loc[model_name,'G1 size'] = np.nanmean(g1size)
+    df.loc[model_name,'Div size'] = np.nanmean(dsize)
+    df.loc[model_name,'G1 growth'] = np.nanmean(g1_growth)
+    df.loc[model_name,'SG2M size'] = np.nanmean(sg2_growth)
+    df.loc[model_name,'Total growth'] = np.nanmean(total_growth)
+    df.loc[model_name,'G1 growth ratio'] = np.nanmean(g1_growth/total_growth)
 
     # Time
     g1 = np.array([cell.g1s_time - cell.ts['Time'].min() for cell in runs[model_name].values()])
@@ -249,11 +245,14 @@ for model_name,_df in CVs.items():
     df.loc[model_name,'G1 duration'] = g1.mean()
     df.loc[model_name,'SG2M duration'] = (div - g1).mean()
     
-    p = np.polyfit(bsize,g1_growth,1)
+    X,Y = nonan_pairs(bsize,g1_growth)
+    p = np.polyfit(X,Y,1)
     df.loc[model_name,'G1 size control slope'] = p[0]
-    p = np.polyfit(g1size,sg2_growth,1)
+    X,Y = nonan_pairs(g1size,sg2_growth)
+    p = np.polyfit(X,Y,1)
     df.loc[model_name,'SG2M size control slope'] = p[0]
-    p = np.polyfit(g1size,total_growth,1)
+    X,Y = nonan_pairs(g1size,total_growth)
+    p = np.polyfit(X,Y,1)
     df.loc[model_name,'Final size control slope'] = p[0]
 
 #%%
@@ -270,6 +269,7 @@ plt.scatter(emp_g1_cv,emp_sg2_cv,color='r')
 
 plt.figure()
 sb.scatterplot(df,x='G1 size control slope',y='CVratio',hue='G1 model')
+
 
 
 plot_growth_curves_population(pop2analyze)
