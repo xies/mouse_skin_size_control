@@ -36,8 +36,9 @@ for cell in time.columns:
     
     Ig1s = np.where(time[cell] == 0)[0][0]
     df.loc[cell,'G1 size'] = (nuc_vol[cell].iloc[Ig1s-1:Ig1s+2].values).mean()
-    
     df.loc[cell,'Birth size'] = nuc_vol[cell].iloc[3:6].mean()
+    Idiv = np.where(~np.isnan(nuc_vol[cell]))[0].max()
+    df.loc[cell,'Div size'] = nuc_vol[cell].iloc[Idiv-3:Idiv].mean()
     
 df['G1 growth'] = df['G1 size'] - df['Birth size']
 df['CDK high'] = df['G1 length'] < 6*3
@@ -75,6 +76,15 @@ CV_sg2_low = cvariation_ci_bootstrap(nonans(sg2_size_low), 1000)[0]
 print(f'{CV_sg2_high}')
 print(f'{CV_sg2_low}')
 
-#%% Look at CV -- pan cell cycle
+#%% Look at CV -- only birth, G1, div
+
+CV_birth_low = cvariation_ci_bootstrap(cdk_low['Birth size'], 1000)[0]
+CV_g1_low = cvariation_ci_bootstrap(cdk_low['G1 size'], 1000)[0]
+CV_div_low = cvariation_ci_bootstrap(cdk_low['Div size'], 1000)[0]
+
+
+CV_birth_high = cvariation_ci_bootstrap(cdk_high['Birth size'], 1000)[0]
+CV_g1_high = cvariation_ci_bootstrap(cdk_high['G1 size'], 1000)[0]
+CV_div_high = cvariation_ci_bootstrap(cdk_high['Div size'], 1000)[0]
 
 
