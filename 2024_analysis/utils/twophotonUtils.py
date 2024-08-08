@@ -15,6 +15,7 @@ import numpy as np
 
 from skimage import filters
 from mathUtils import normxcorr2
+from tqdm import tqdm
 
 import xml.etree.ElementTree as ET
 from dateutil import parser
@@ -189,14 +190,31 @@ def parse_voxel_resolution_from_XML(region_dir):
 
     return float(dx),float(dz)
 
-def find_most_likely_z_slice_using_CC(R_ref,B):
-    XX = B.shape[1]
-    CC = np.zeros((B.shape[0],XX * 2 - 1,XX * 2 -1))
+def find_most_likely_z_slice_using_CC(ref_slice,stack):
+    '''
+
+    Parameters
+    ----------
+    ref_slice : YxX array
+        Single slice of reference image
+    stack : 3xYxX array
+        A z-stack image to find the slice correspoinding to ref_slice.
+
+    Returns
+    -------
+    Iz : int
+        index in stack of the corresponding ref_slice.
+
+    '''
+    assert(ref_slice.ndim == 2)
+    assert(stack.ndim == 3)
+    XX = stack.shape[1]
+    CC = np.zeros((stack.shape[0],XX * 2 - 1,XX * 2 -1))
 
     print('Cross correlation started')
-    for i,B_slice in enumerate(B):
+    for i,B_slice in enumerate(stack):
         B_slice = filters.gaussian(B_slice,sigma=0.5)
-        CC[i,...] = normxcorr2(R_ref,B_slice,mode='full')
+        CC[i,...] = normxcorr2(ref_slice,B_slice,mode='full')
     [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
     return Iz
 
@@ -205,6 +223,7 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
     being the same index in the translated image. Will also truncate/pad im_moving
     to be the same size as im_ref
+    
     '''
     XX = im_moving.shape[1]
 
@@ -230,3 +249,32 @@ def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
     assert(np.all(im_ref.shape == im_padded.shape))
 
     return im_padded
+
+def z_align_ragged_timecourse(ragged_stack_list,same_Zs):
+    '''
+    Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
+    being the same index in the translated image. Will also truncate/pad im_moving
+    to be the same size as im_ref
+    
+    '''
+    same_Zs = same_Zs.astype(int)
+    original_stack_sizes = np.array([x.shape[0] for x in ragged_stack_list])
+    top_size = (original_stack_sizes - same_Zs)
+    
+    ragged_bottom_Z = same_Zs.max() - same_Zs
+    
+    TT = len(ragged_stack_list)
+    XX = ragged_stack_list[0].shape[1]
+    
+    aligned_stack_timecourse = np.zeros((TT,int(same_Zs.max()+top_size.max()),XX,XX))
+
+    for t in tqdm(range(TT)):
+        
+        # Take the 'bottom' portion of original stack
+        aligned_stack_timecourse[t, ragged_bottom_Z[t]:same_Zs.max() ,:,:] \
+            = ragged_stack_list[t][0:same_Zs[t],:,:]
+        # Take the 'top' portion of the original stack
+        aligned_stack_timecourse[t,same_Zs.max():same_Zs.max()+top_size[t],:,:] \
+            = ragged_stack_list[t][same_Zs[t]:,:,:]
+        
+    return aligned_stack_timecourse

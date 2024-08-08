@@ -22,6 +22,8 @@ import pickle as pkl
 dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
+print(f'--- Working on {dirname} ---')
+
 ZZ = 72
 XX = 460
 T = 15
@@ -96,6 +98,9 @@ def get_growth_rate(cf,field='Volume',time_field='Time'):
 exp_model = lambda x,p1,p2 : p1 * np.exp(p2 * x)
 
 def get_exponential_growth_rate(df,field='Volume (sm)', time_field='Age'):
+    
+    if len(df) < 3:
+        return np.nan
     
     t = df[time_field].values
     y = df[field].values
@@ -233,11 +238,9 @@ for t in tqdm(range(T)):
         collated[basalID].at[idx,'Collagen orientation'] = theta
         collated[basalID].at[idx,'Collagen fibrousness'] = fibrousness
     
-    
 df = pd.concat(collated,ignore_index=True)
 
-
-#%% Calculate spline + growth rates
+#%% Calculate spline + growth rates + save
 
 if DEMO:
     g1_anno = pd.read_csv(path.join(dirname,'g1_frame.txt'),index_col=0)
@@ -245,55 +248,68 @@ else:
     g1_anno = pd.read_csv(path.join(dirname,'2020 CB analysis/tracked_cells/g1_frame.txt'),index_col=0)
 
 for basalID, df in collated.items():
+    
     # put in the birth volume
-    collated[basalID]['Birth volume'] = collated[basalID]['Volume'].values[0]
+    df['Birth volume'] = df['Volume'].values[0]
     
     df['Phase'] = '?'
-    if len(df) > 1:
-        df['Axial eccentricity'] = df['Axial component'] / df['Planar component 2']
-        df['Planar eccentricity'] = df['Planar component 2'] / df['Planar component 1']
-        df['SA to vol'] = df['Surface area'] / df['Volume']
-        collated[basalID] = df
-        
-        NVsm,dVdt = get_interpolated_curve(df,field='Nuclear volume')
-        df['Nuclear volume (sm)'] = NVsm
-        
-        Vsm,dVdt = get_interpolated_curve(df)
-        df['Volume (sm)'] = Vsm
-        gr_f,gr_b,gr_c,gr_sm_b,gr_sm_f,gr_sm_c = get_growth_rate(df,'Volume')
-        df['Growth rate spl'] = dVdt
-        df['Growth rate b'] = gr_f
-        df['Growth rate f'] = gr_b
-        df['Growth rate c'] = gr_c
-        df['Growth rate b (sm)'] = gr_sm_b
-        df['Growth rate f (sm)'] = gr_sm_f
-        df['Growth rate c (sm)'] = gr_sm_c
-        df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
-        df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
-        df['Specific GR c (sm)'] = gr_sm_c / df['Volume (sm)']
-        df['Specific GR spl'] = dVdt / df['Volume (sm)']
-        df['Age'] = (df['Time']-df['Time'].min())
-        cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
-        
-        df.loc[df['Daughter'],'Growth rate b'] = np.nan
-        df.loc[df['Daughter'],'Growth rate f'] = np.nan
-        
-        gamma = get_exponential_growth_rate(df)
-        df['Exponential growth rate'] = gamma
-        
-        df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
-        
-        # G1 annotations
-        g1_frame = g1_anno.loc[basalID]['Frame'] #NB: 1-indexed!
-        if g1_frame == '?':
-            continue
-        else:
-            g1_frame = int(g1_frame)
-            df['G1S frame'] = g1_frame
-            df['Phase'] = 'G1'
-            df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
-            df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
-            
+    df['Age'] = (df['Time']-df['Time'].min())
+    
+    # G1 annotations
+    g1_frame = g1_anno.loc[basalID]['Frame'] #NB: 1-indexed!
+    if not g1_frame == '?':
+        g1_frame = int(g1_frame)
+        df['G1S frame'] = g1_frame
+        df['Phase'] = 'G1'
+        df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
+        df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
+    else:
+        df['G1S frame'] = np.nan
+        df['Time to G1s'] = np.nan
+    
+    # Derivations
+    df['Axial eccentricity'] = df['Axial component'] / df['Planar component 2']
+    df['Planar eccentricity'] = df['Planar component 2'] / df['Planar component 1']
+    df['SA to vol'] = df['Surface area'] / df['Volume']
+    
+    # Spline-smoothing
+    Vsm,dVdt = get_interpolated_curve(df)
+    df['Volume (sm)'] = Vsm
+    NVsm,dVdt = get_interpolated_curve(df,field='Nuclear volume')
+    df['Nuclear volume (sm)'] = NVsm
+    
+    # Instantaneous growth rates
+    gr_f,gr_b,gr_c,gr_sm_b,gr_sm_f,gr_sm_c = get_growth_rate(df,'Volume')
+    df['Growth rate spl'] = dVdt
+    df['Growth rate b'] = gr_f
+    df['Growth rate f'] = gr_b
+    df['Growth rate c'] = gr_c
+    df['Growth rate b (sm)'] = gr_sm_b
+    df['Growth rate f (sm)'] = gr_sm_f
+    df['Growth rate c (sm)'] = gr_sm_c
+    df['Specific GR b (sm)'] = gr_sm_b / df['Volume (sm)']
+    df['Specific GR f (sm)'] = gr_sm_f / df['Volume (sm)']
+    df['Specific GR c (sm)'] = gr_sm_c / df['Volume (sm)']
+    df['Specific GR spl'] = dVdt / df['Volume (sm)']
+    df.loc[df['Daughter'],'Growth rate b'] = np.nan
+    df.loc[df['Daughter'],'Growth rate f'] = np.nan
+    
+    # Exponential fits
+    gamma = get_exponential_growth_rate(df)
+    df['Exponential growth rate'] = gamma
+    nuc_gamma = get_exponential_growth_rate(df,field='Nuclear volume (sm)')
+    df['Exponential nuc growth rate'] = nuc_gamma
+    
+    df_g1_only = df[df['Phase'] == 'G1']
+    gamma_g1s = get_exponential_growth_rate(df_g1_only)
+    nuc_gamma_g1s = get_exponential_growth_rate(df_g1_only, field='Nuclear volume (sm)')
+    df['Exponential growth rate G1 only'] = gamma_g1s
+    df['Exponential nuc growth rate G1 only'] = nuc_gamma_g1s
+    
+    # Collagen
+    cos = np.cos(df['Collagen orientation'] - df['Basal orientation'])
+    df['Collagen alignment'] = np.abs(cos) #alignment + anti-alignment are the same
+    
     collated[basalID] = df
 
 with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
@@ -334,6 +350,7 @@ for basalID,daughter in daughters.items():
 
 with open(path.join(dirname,'basal_with_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
+    
 df = pd.concat(collated,ignore_index=True)
 
  #%% Visualize somethings

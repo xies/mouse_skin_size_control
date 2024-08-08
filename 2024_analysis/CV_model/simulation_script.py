@@ -54,8 +54,8 @@ emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
 np.random.seed(42)
 
 # Growth rate is set to 0.01 per hour, i.e. 70hr doubling rate
-max_iter = 1000
-dt = 1.0 # simulation step size in hours
+max_iter = 2000
+dt = 0.5 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
 Ncells = 1000
@@ -171,6 +171,14 @@ def extract_CVs(population,measurement_field='Measured volume'):
     CV.loc['Population','S/G2/M'] = CV_time_sg2
     
     return CV
+
+def extract_time_window_after_g1s(pop2analyze,num_frames_to_extract,field2extract='Measured volume'):
+    Ncells = len(pop2analyze)
+    windowed = np.ones((Ncells,num_frames_to_extract)) * np.nan
+    for i,(_,cell) in enumerate(pop2analyze.items()):
+        if not np.isnan(cell.g1s_frame):
+            windowed[i,:] = cell.ts[field2extract][cell.g1s_frame:cell.g1s_frame+num_frames_to_extract]
+    return windowed
 
 #%% Run model from parameter files
 

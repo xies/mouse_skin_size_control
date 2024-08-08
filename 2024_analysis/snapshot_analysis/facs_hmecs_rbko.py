@@ -22,7 +22,7 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 from scipy import stats
-from mathUtils import cvariation_ci, cvariation_ci_bootstrap
+from mathUtils import cvariation_ci, cvariation_bootstrap
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/06-15-2024 HMECs RB-KO mCh-Geminin'
 
@@ -58,24 +58,36 @@ plt.gca().add_patch(patch)
 
 #%% Use High geminin to gate on Gemin+
 
-pts = plt.scatter(diploids['Hoechst-A'],diploids['Log-geminin'],alpha=0.005)
+pts = plt.scatter(diploids['Hoechst-A'],diploids['Log-geminin'],alpha=0.01)
+plt.ylim([7,12])
 plt.xlabel('Hoechst-area');plt.ylabel('Log-geminin');
 selector = SelectFromCollection(plt.gca(), pts)
 
 #%% Geminin-high cells are 'SG2'
 
-th = 8.85
-plt.hist(diploids['Log-geminin'],100)
-plt.vlines(x=th,ymin=0,ymax=1000,color='r')
-plt.xlabel('Log-Geminin'); plt.ylabel('Count')
+verts = np.array(selector.poly.verts)
+x = verts[:,0];y = verts[:,1]
+p_ = Path(np.array([x,y]).T)
+I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Hoechst-A'],diploids['Log-geminin'])])
+# I = diploids['Log-geminin'] > th
+diploids.loc[:,'Geminin'] = 'NA'
+diploids.loc[I,'Geminin'] = 'Mid'
 
-# verts = np.array(selector.poly.verts)
-# x = verts[:,0];y = verts[:,1]
-# p_ = Path(np.array([x,y]).T)
-# I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Hoechst-A'],diploids['Log-geminin'])])
-I = diploids['Log-geminin'] > th
-diploids.loc[:,'Geminin_high'] = False
-diploids.loc[I,'Geminin_high'] = True
+#%% Low Geminin
+
+pts = plt.scatter(diploids['Hoechst-A'],diploids['Log-geminin'],alpha=0.01)
+plt.xlabel('Hoechst-area');plt.ylabel('Log-geminin');
+plt.ylim([7,12])
+selector = SelectFromCollection(plt.gca(), pts)
+
+#%%
+
+verts = np.array(selector.poly.verts)
+x = verts[:,0];y = verts[:,1]
+p_ = Path(np.array([x,y]).T)
+I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Hoechst-A'],diploids['Log-geminin'])])
+# I = diploids['Log-geminin'] > th
+diploids.loc[I,'Geminin'] = 'Low'
 
 # %% Use High geminin to gate on geminin- 2n cells (G1)
 

@@ -16,8 +16,10 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
+
+print(f'--- Working on {dirname} ---')
 
 ZZ = 72
 XX = 460
@@ -57,7 +59,7 @@ df['Volume frame-2'] = np.nan
 df['Collagen alignment-1'] = np.nan
 df['Collagen alignment-2'] = np.nan
 
-#%% Look back 1-2 frames
+#%% Look back 1-2 frames + save
 
 col_idx = len(df.columns)
 df['Neighbor mean dist frame-1'] = np.nan

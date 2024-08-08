@@ -18,7 +18,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import r2_score
 from sklearn import linear_model
+from basicUtils import jitter
 
+from numpy import random
 from tqdm import tqdm
 
 #%%
@@ -39,6 +41,9 @@ df['Birth nuclear volume'] = np.array([c.iloc[0]['Nuclear volume (sm)'] for c in
 df['Birth volume'] = np.array([c.iloc[0]['Volume (sm)'] for c in collated])
 df['Birth NC ratio'] = df['Birth nuclear volume'] / df['Birth volume']
 df['Exponential growth rate'] = np.array([c.iloc[0]['Exponential growth rate'] for c in collated])
+df['Exponential nuc growth rate'] = np.array([c.iloc[0]['Exponential nuc growth rate'] for c in collated])
+df['Exponential growth rate G1 only'] = np.exp(np.array([c.iloc[0]['Exponential growth rate G1 only'] for c in collated]))
+df['Exponential nuc growth rate G1 only'] = np.exp(np.array([c.iloc[0]['Exponential nuc growth rate G1 only'] for c in collated]))
 
 g1_duration = np.ones(len(collated))*np.nan
 for i,c in enumerate(collated):
@@ -49,27 +54,31 @@ for i,c in enumerate(collated):
 df['G1 duration'] = g1_duration
 df = df.dropna()
 
-#%% Prep variables
+#%% Linear regression 
 
-# X = df.drop(columns=['G1 duration','Birth NC ratio','Birth nuclear volume'])
-X = df.drop(columns=['G1 duration','Birth nuclear volume'])
+endo_var_names = ['Birth volume','Birth nuclear volume','Exponential growth rate']
+var_names_str = ' + '.join(endo_var_names)
+X = df[endo_var_names].copy()
 y = df['G1 duration']
 
-X = scale(X)
+X_ = scale(X)
 
 #% Linear model for in sample R2 score
 
 lin_model = linear_model.LinearRegression()
-lin_model.fit(X,y)
-y_pred = lin_model.predict(X)
+lin_model.fit(X_,y)
+y_pred = lin_model.predict(X_)
 R2 = r2_score(y,y_pred)
 
-plt.plot([y.min(),y.max()],[y.min(),y.max()],'r--')
-plt.scatter(y,y_pred)
+plt.figure()
+plt.plot([y.min(),y.max()],[y.min(),y.max()],'r')
+plt.plot([y.min(),y.max()],[y.min()-6,y.max()-6],'r--')
+plt.plot([y.min(),y.max()],[y.min()+6,y.max()+6],'r--')
+plt.scatter(jitter(y,sigma=2.5),y_pred, alpha=0.5,s=50)
 plt.gca().set_aspect('equal', adjustable='box')
 plt.xlabel('Measured G1 duration')
 plt.ylabel('Predicted G1 duration')
-plt.title(f'Linear regression using: volume, nuc vol, exp growth rate; R2={R2:.2f};max R2=0.89')
+plt.title(f'Linear regression using: {var_names_str}; R2={R2:.2f}; maxR2=0.88')
 
 #%% Renormalize R2 given sampling rate of empirical data
 

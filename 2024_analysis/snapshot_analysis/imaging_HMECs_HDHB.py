@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import seaborn as sb
 from basicUtils import nonans,plot_bin_means
-from mathUtils import cvariation_ci_bootstrap
+from mathUtils import cvariation_bootstrap
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Shuyuan HMECs HDBD/'
 
@@ -55,6 +55,21 @@ plot_bin_means(cdk_high['Birth size'],cdk_high['G1 growth'],bin_edges=10,color='
 p = np.polyfit(cdk_low['Birth size'],cdk_low['G1 growth'],1)
 print(f'Low {p[0]}')
 p = np.polyfit(cdk_high['Birth size'],cdk_high['G1 growth'],1)
+print(f'High {p[0]}')
+
+
+#%%
+
+(_,cdk_low),(_,cdk_high) = df.groupby('CDK high')
+
+sb.lmplot(df,x = 'Birth size',y='G1 length',hue='CDK high')
+
+plot_bin_means(cdk_low['Birth size'],cdk_low['G1 length'],bin_edges=10,color='r')
+plot_bin_means(cdk_high['Birth size'],cdk_high['G1 length'],bin_edges=10,color='r')
+
+p = np.polyfit(cdk_low['Birth size'],cdk_low['G1 length'],1)
+print(f'Low {p[0]}')
+p = np.polyfit(cdk_high['Birth size'],cdk_high['G1 length'],1)
 print(f'High {p[0]}')
 
 #%% Look at CV -- pan cell cycle

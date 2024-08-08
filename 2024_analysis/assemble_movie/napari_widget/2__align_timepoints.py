@@ -24,7 +24,7 @@ from scipy import ndimage
 
 from pystackreg import StackReg
 from twophotonUtils import parse_unaligned_channels, find_most_likely_z_slice_using_CC, \
-    z_translate_and_pad, parse_aligned_timecourse_directory
+    z_align_ragged_timecourse, parse_aligned_timecourse_directory
 from imageLoadingWidgets import LoadChannelForInspection
 
 from pathlib import Path
@@ -102,6 +102,11 @@ def auto_align_timecourse():
         print(f'Reference z-slice: {z_ref}')
         output_imgs = [Image(ref_img)]
 
+        ragged_B_stacks = []
+        ragged_G_stacks = []
+        ragged_R_stacks = []
+        ragged_R_shg_stacks = []
+        
         for t in progress(timepoints_to_register):
 
             # Check for overwriting
@@ -134,7 +139,6 @@ def auto_align_timecourse():
             T = sr.register(target_img,ref_img) #Obtain the transformation matrices
             T = EuclideanTransform(T)
 
-
             # Load other channels + apply transformations
             B = io.imread(filelist.loc[t,'B']).astype(float)
             G = io.imread(filelist.loc[t,'G']).astype(float)
@@ -151,21 +155,40 @@ def auto_align_timecourse():
                 R_transformed[i,...] = warp(R[i,...],T)
                 R_shg_transformed[i,...] = warp(R_shg[i,...],T)
 
+            # Save the 'ragged' zstacks
+            ragged_B_stacks.append(B)
+            ragged_G_stacks.append(G)
+            ragged_R_stacks.append(R)
+            ragged_R_shg_stacks.append(R_transformed)
             # z-pad
-            B_padded = z_translate_and_pad(B_ref,B_transformed,z_ref,z_target).astype(np.uint)
-            G_padded = z_translate_and_pad(B_ref,G_transformed,z_ref,z_target).astype(np.uint)
-            R_padded = z_translate_and_pad(B_ref,R_transformed,z_ref,z_target).astype(np.uint)
-            R_shg_padded = z_translate_and_pad(B_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
+            # B_padded = z_translate_and_pad(B_ref,B_transformed,z_ref,z_target).astype(np.uint)
+            # G_padded = z_translate_and_pad(B_ref,G_transformed,z_ref,z_target).astype(np.uint)
+            # R_padded = z_translate_and_pad(B_ref,R_transformed,z_ref,z_target).astype(np.uint)
+            # R_shg_padded = z_translate_and_pad(B_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
 
+        
+        
+        B_aligned_ZXY = z_align_ragged_timecourse(ragged_B_stacks, z_pos_in_original)
+        G_aligned_ZXY = z_align_ragged_timecourse(ragged_G_stacks, z_pos_in_original)
+        R_aligned_ZXY = z_align_ragged_timecourse(ragged_R_stacks, z_pos_in_original)
+        R_shg_aligned_ZXY = z_align_ragged_timecourse(ragged_R_shg_stacks, z_pos_in_original)
+        
+        for t in timepoints_to_register:
+
+            output_dir = path.dirname(filelist.loc[t,'R'])
             # Save transformation matrix for display later
             # Save images directly
             print(f'Saving to {output_dir}')
-            io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(B_padded/B_padded.max()),check_contrast=False)
-            io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(G_padded/G_padded.max()),check_contrast=False)
-            io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(R_padded/R_padded.max()),check_contrast=False)
-            io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(R_shg_padded/R_shg_padded.max()),check_contrast=False)
-
-            output_imgs.append(Image(R_shg_padded[z_target],name=f'{t}_after'))
+            im = B_aligned_ZXY[t,...]
+            io.imsave(path.join(output_dir,'B_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
+            im = G_aligned_ZXY[t,...]
+            io.imsave(path.join(output_dir,'G_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
+            im = R_aligned_ZXY[t,...]
+            io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
+            im = R_shg_aligned_ZXY[t,...]
+            io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
+    
+            output_imgs.append(Image(im[z_target],name=f'{t}_after'))
 
         return output_imgs
 
