@@ -112,13 +112,13 @@ np.savez(path.join(dirname,'refined_tmats.npz'),refined_tmats)
 
 #%% Use the final TMATs to transform the stacks
 
-refined_tmats = np.load(path.join(dirname,'refined_tmats.npz'))['arr_0']
+shifted_tmats = np.load(path.join(dirname,'shifted_tmats.npz'))['arr_0']
 
 mCherry_XY_transformed = []
 venus_XY_transformed = []
 
 for t in tqdm(range(len(stacks_mCherry))):
-    T = transform.SimilarityTransform(matrix=refined_tmats[t,...])
+    T = transform.SimilarityTransform(matrix=shifted_tmats[t,...])
     _stack_mCh = np.zeros_like(stacks_mCherry[t]).astype(float)
     _stack_ven = np.zeros_like(stacks_venus[t]).astype(float)
     
@@ -129,20 +129,20 @@ for t in tqdm(range(len(stacks_mCherry))):
     mCherry_XY_transformed.append(_stack_mCh)
     venus_XY_transformed.append(_stack_ven)
 
+io.imsave('/Users/xies/Desktop/t0.tif',mCherry_XY_transformed[0])
+io.imsave('/Users/xies/Desktop/t1.tif',mCherry_XY_transformed[1])
+
 #%% Find Z-slice alignment
 
 from twophotonUtils import find_most_likely_z_slice_using_CC
 
 ref_img = mCherry_XY_transformed[0][18,...]
 
-    
 same_Zs = np.array([find_most_likely_z_slice_using_CC(ref_img,mCherry_XY_transformed[t]) for t in range(TT)])
 
 stack_sizes = np.array([x.shape[0] for x in stacks_mCherry])
 bottom_size = max(same_Zs)
 top_size = (stack_sizes - same_Zs).max()
-
-aligned_stack_mch = np.zeros((TT,bottom_size,top_size))
 
 np.savez(path.join(dirname,'same_Zs.npz'),same_Zs)
 
@@ -152,16 +152,16 @@ from twophotonUtils import z_align_ragged_timecourse
 
 same_Zs = np.load(path.join(dirname,'same_Zs.npz'))['arr_0']
 
-aligned_stack_mch = z_align_ragged_timecourse(stacks_mCherry,same_Zs)
-aligned_stack_venus = z_align_ragged_timecourse(stacks_venus,same_Zs)
+aligned_stack_mch = z_align_ragged_timecourse(mCherry_XY_transformed,same_Zs)
+# aligned_stack_venus = z_align_ragged_timecourse(stacks_venus,same_Zs)
 
 #%% Save final alignments
 
 for t in tqdm(range(TT)):
     im = aligned_stack_mch[t,...]
     io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_mch_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
-    im = aligned_stack_venus[t,...]
-    io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_venus_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
+    # im = aligned_stack_venus[t,...]
+    # io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_venus_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
 
 
 
