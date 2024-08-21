@@ -362,7 +362,16 @@ class Cell():
             # Todo: error
             return None
 
-        
+        def _subsample(self,sim_clock,params,sub_sample_dt):
+            assert( sub_sample_dt % sim_clock.dt == 0)
+            
+            subsample_factor = sub_sample_dt // sim_clock
+            
+            
+            return ts
+            
+
+
 # --- DATA METHODS ----
     # def decatenate_fields()
     def __repr__(self):

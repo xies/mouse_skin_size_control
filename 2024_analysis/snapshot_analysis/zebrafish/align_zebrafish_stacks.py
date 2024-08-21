@@ -40,12 +40,11 @@ for i in tqdm(range(len(stacks_venus))):
     stacks_venus[i] = ndimage.gaussian_filter(stacks_venus[i],sigma=[1,1,1])
     stacks_mCherry[i] = ndimage.gaussian_filter(stacks_mCherry[i],sigma=[1,1,1])
 
-
 #%% Save MIP
 
-# for i in tqdm(range(len(stacks_venus))):
-#     io.imsave(path.join(dirname,f'3d_blur_combined_MIP/venus_MIP_t{i}.tif'),stacks_venus[i].max(axis=0))
-#     io.imsave(path.join(dirname,f'3d_blur_combined_MIP/mCherry_MIP_t{i}.tif'),stacks_mCherry[i].max(axis=0))
+for i in tqdm(range(len(stacks_venus))):
+    io.imsave(path.join(dirname,f'3d_blur_combined_MIP/venus_MIP_t{i}.tif'),stacks_venus[i].max(axis=0))
+    io.imsave(path.join(dirname,f'3d_blur_combined_MIP/mCherry_MIP_t{i}.tif'),stacks_mCherry[i].max(axis=0))
 
 #% Load MIPs as timeseries
 # files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/venus_MIP*.tif')))
@@ -74,7 +73,7 @@ rough_aligned_venus = sr.transform_stack(MIP_venus)
 #           util.img_as_uint(rough_aligned_venus/rough_aligned_venus.max()),check_contrast=False)
 
 initial_tmats = [transform.EuclideanTransform(matrix=x) for x in tmats]
-np.savez(path.join(dirname,'_initial_tmats.npz'),initial_tmats)
+np.savez(path.join(dirname,'initial_tmats.npz'),initial_tmats)
 
 #%% Manually stitch the problematic timepoints
 # initial_tmats = np.load(path.join(dirname,'initial_tmats.npz'))['arr_0']
@@ -120,7 +119,7 @@ np.savez(path.join(dirname,'refined_tmats.npz'),refined_tmats)
 
 #%% Use the final TMATs to transform the stacks
 
-initial_tmats = np.load(path.join(dirname,'_initial_tmats.npz'))['arr_0']
+initial_tmats = np.load(path.join(dirname,'initial_tmats.npz'))['arr_0']
 shifted_tmats = np.load(path.join(dirname,'shifted_tmats.npz'))['arr_0']
 # refined_tmats = np.load(path.join(dirname,'refined_tmats.npz'))['arr_0']
 
@@ -160,7 +159,7 @@ aligned_stack_mch = z_align_ragged_timecourse(mCherry_XY_transformed,same_Zs)
 #%% Save final alignments
 
 for t in tqdm(np.arange(0,TT)):
-    im = aligned_stack_mch[t,0:38]
+    im = aligned_stack_mch[t,5:45]
     io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_mch_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
     # im = aligned_stack_venus[t,0:38]
     # io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_venus_t{t:02d}.tif'),util.img_as_uint(im/im.max()))

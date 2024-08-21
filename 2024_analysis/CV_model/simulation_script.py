@@ -172,13 +172,15 @@ def extract_CVs(population,measurement_field='Measured volume'):
     
     return CV
 
-def extract_time_window_after_g1s(pop2analyze,num_frames_to_extract,field2extract='Measured volume'):
+def extract_time_window_after_g1s(pop2analyze,num_frames_to_extract,
+                                  field2extract='Measured volume'):
     Ncells = len(pop2analyze)
     windowed = np.ones((Ncells,num_frames_to_extract)) * np.nan
     for i,(_,cell) in enumerate(pop2analyze.items()):
         if not np.isnan(cell.g1s_frame):
             windowed[i,:] = cell.ts[field2extract][cell.g1s_frame:cell.g1s_frame+num_frames_to_extract]
     return windowed
+
 
 #%% Run model from parameter files
 
