@@ -17,16 +17,15 @@ from os import mkdir
 
 model = models.Cellpose(model_type='nuclei')
 
-dirnames = ['/home/xies/data/Skin/06-25-2022/M6 RBKO/R1/im_seq']
-dirnames.append('/home/xies/data/Skin/06-25-2022/M1 WT/R1/im_seq')
+dirnames = ['/home/xies/data/Skin/NMS/09-29-2022 RB-KO pair/RBKO/R2/im_seq']
 
-diameter = 30 #OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 27 #OK for 1.5x BE basal cells at 1.4 zoomin
 
 # Load the raw image (RGB,Z,X,Y)
 filenames = []
 for dirname in dirnames:
 	filenames = filenames + glob(path.join(dirname,'t*.tif'))
-channels = [0,2]
+channels = [0]
 
 OVERWRITE = True
 

@@ -52,6 +52,34 @@ for t,im in tqdm(enumerate(G)):
                                           cellprob_threshold=cellprob_threshold,
                                           anisotropy=anisotropy)
     #    io.masks_flows_to_seg(im, masks,flows,diams,npy_savepath)
+=======
+filenames = []
+print(dirnames)
+for dirname in dirnames:
+	filenames = filenames + glob(path.join(dirname,'*.tif'))
+
+OVERWRITE = False
+
+for f in filenames:
+	d = path.dirname(f)
+	basename = path.splitext(path.basename(f))[0] # i.e. 't9'
+	output_dir = path.join(d,basename + '_3d_cyto')
+	print(f'EXISTS?: {path.exists(output_dir)}' )
+	if path.exists( output_dir ):
+		if OVERWRITE:
+		print(f'Skipping {f}')
+		continue
+	else:
+		mkdir(output_dir)
+
+	tic = time()
+	print(f'Predicting on {f}')
+	im = io.imread(f)
+	masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True,channels=channels,
+					cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
+	io.masks_flows_to_seg(im, masks,flows,diams,f)
+	# annoyingly, need to manually move
+	move(path.join(d, basename + '_seg.npy'), path.join(output_dir,basename + '_seg.npy'))
 	
 	# Also resave the mask as standalone .tif for convenience
     io.imsave(mask_savepath,masks)
