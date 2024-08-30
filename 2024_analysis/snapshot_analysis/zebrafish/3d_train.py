@@ -26,7 +26,7 @@ from os import path
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/diTalia_zebrafish/osx_fucci_26hpp_11_4_17/stardist'
+dirname = '/home/xies/data/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
 
 X = sorted(glob(path.join(dirname,'training_images/*.tif')))
 Y = sorted(glob(path.join(dirname,'training_labels/*.tif')))
@@ -63,7 +63,9 @@ print('empirical anisotropy of labeled objects = %s' % str(anisotropy))
 n_rays = 96
 
 # Use OpenCL-based computations for data generator during training (requires 'gputools')
-use_gpu = True and gputools_available()
+use_gpu = True
+import tensorflow as tf
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 # Predict on subsampled grid for increased efficiency and larger field of view
 grid = tuple(1 if a > 1.5 else 2 for a in anisotropy)
@@ -127,19 +129,35 @@ def augmenter(x, y):
     x = random_intensity_change(x)
     return x, y
 
-quick_demo = True
+model.train(X_trn, Y_trn, validation_data=(X_val,Y_val), augmenter=augmenter)
+model.optimize_thresholds(X_val, Y_val)
 
-if quick_demo:
-    print (
-        "NOTE: This is only for a quick demonstration!\n"
-        "      Please set the variable 'quick_demo = False' for proper (long) training.",
-        file=sys.stderr, flush=True
-    )
-    model.train(X_trn, Y_trn, validation_data=(X_val,Y_val), augmenter=augmenter,
-                epochs=2, steps_per_epoch=5)
+Y_val_pred = [model.predict_instances(x, n_tiles=model._guess_n_tiles(x), show_tile_progress=False)[0]
+              for x in tqdm(X_val)]
 
-    print("====> Stopping training and loading previously trained demo model from disk.", file=sys.stderr, flush=True)
-    model = StarDist3D.from_pretrained('3D_demo')
-else:
-    model.train(X_trn, Y_trn, validation_data=(X_val,Y_val), augmenter=augmenter)
-None;
+taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+stats = [matching_dataset(Y_val, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)]
+
+stats[taus.index(0.7)]
+
+fig, (ax1,ax2) = plt.subplots(1,2, figsize=(15,5))
+
+for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'mean_matched_score', 'panoptic_quality'):
+    ax1.plot(taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+ax1.set_xlabel(r'IoU threshold $\tau$')
+ax1.set_ylabel('Metric value')
+ax1.grid()
+ax1.legend()
+
+for m in ('fp', 'tp', 'fn'):
+    ax2.plot(taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+ax2.set_xlabel(r'IoU threshold $\tau$')
+ax2.set_ylabel('Number #')
+ax2.grid()
+ax2.legend();
+
+plt.savefig("Statistics_train.png", dpi='figure', format=None, metadata=None,
+        bbox_inches=None, pad_inches=0.1,
+        facecolor='auto', edgecolor='auto',
+        backend=None
+       )
