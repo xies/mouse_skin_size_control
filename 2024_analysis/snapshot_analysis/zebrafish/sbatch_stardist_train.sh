@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
-#SBATCH --partition=batch
+#SBATCH --partition=nih_s10
 #SBATCH --account=skotheim
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=100gb
