@@ -135,7 +135,7 @@ model.optimize_thresholds(X_val, Y_val)
 Y_val_pred = [model.predict_instances(x, n_tiles=model._guess_n_tiles(x), show_tile_progress=False)[0]
               for x in tqdm(X_val)]
 
-def plot_img_label(img, lbl, img_title="image (XY slice)", lbl_title="label (XY slice)",figure_title='figure.png', z=None, **kwargs):
+def plot_img_label(img, lbl, img_title="image (XY slice)", lbl_title="label (XY slice)",fig_savename=None, z=None, **kwargs):
     if z is None:
         z = img.shape[0] // 2    
     fig, (ai,al) = plt.subplots(1,2,figsize=(12,5), gridspec_kw=dict(width_ratios=(1.25,1)))
@@ -145,13 +145,14 @@ def plot_img_label(img, lbl, img_title="image (XY slice)", lbl_title="label (XY 
     al.imshow(lbl[z], cmap=lbl_cmap)
     al.set_title(lbl_title)
     plt.tight_layout()
-	plt.savefig(figure_title,dpi='figure',format=None,metadata=None,
-			bbox_inches=None,pad_inches=0.1,
-			facecolor='auto',edgecolor='auto',
-			backend=None)
+    if fig_savename is not None:
+        plt.savefig(fig_savename,dpi='figure',format=None,metadata=None,
+                bbox_inches=None,pad_inches=0.1,
+                facecolor='auto',edgecolor='auto',
+                backend=None)
 
-plot_img_label(X_val[0],Y_val[0], lbl_title="label GT (XY slice)",figure_title='GT.png')
-plot_img_label(X_val[0],Y_val_pred[0], lbl_title="label Pred (XY slice)",figure_title='pred.png')
+plot_img_label(X_val[0],Y_val[0], lbl_title="label GT (XY slice)",fig_savename='GT.png')
+plot_img_label(X_val[0],Y_val_pred[0], lbl_title="label Pred (XY slice)",fig_savename='pred.png')
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [matching_dataset(Y_val, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)]

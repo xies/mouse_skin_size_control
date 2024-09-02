@@ -12,14 +12,15 @@ from stardist.models import StarDist3D
 
 lbl_cmap = random_label_cmap()
 
-dirname = '/home/xies/data/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
+#dirname = '/home/xies/data/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
+dirname='/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist/'
 
-files = glob(path.join(dirname,'training_images/*.tif'))
+files = glob(path.join(dirname,'test_images/*.tif'))
 axis_norm = (0,1,2)
 
 n_channel = 1
 
-model = StarDist3D(None,name='stardist',basedir='models')
+model = StarDist3D(None,name='stardist',basedir=path.join(dirname,'models'))
 
 for f in files:
 	img = imread(f)

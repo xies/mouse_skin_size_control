@@ -17,7 +17,7 @@ from tqdm import tqdm
 from scipy import ndimage
 from pystackreg import StackReg
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/diTalia_zebrafish/osx_fucci_26hpp_11_4_17/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/'
 
 #%% Load stacks
 
@@ -154,15 +154,15 @@ from twophotonUtils import z_align_ragged_timecourse
 same_Zs = pd.read_csv(path.join(dirname,'same_Zs.csv'),index_col=0)['slice']
 
 aligned_stack_mch = z_align_ragged_timecourse(mCherry_XY_transformed,same_Zs)
-# aligned_stack_venus = z_align_ragged_timecourse(venus_XY_transformed,same_Zs)
+aligned_stack_venus = z_align_ragged_timecourse(venus_XY_transformed,same_Zs)
 
 #%% Save final alignments
 
 for t in tqdm(np.arange(0,TT)):
-    im = aligned_stack_mch[t,5:45]
+    im = aligned_stack_mch[t,7:45]
     io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_mch_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
-    # im = aligned_stack_venus[t,0:38]
-    # io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_venus_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
+    im = aligned_stack_venus[t,7:45]
+    io.imsave(path.join(dirname,f'aligned_stacks/aligned_stack_venus_t{t:02d}.tif'),util.img_as_uint(im/im.max()))
 
 #%%
 

@@ -23,87 +23,125 @@ from matplotlib.patches import PathPatch
 from scipy import stats
 from mathUtils import cvariation_ci, cvariation_bootstrap
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/HMECs/07-30-2024 HMECs WT Hoechst phosRB-488 mCh-Geminin'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/HMECs/08-21-2024 HMECs phosRB Hoechst mCherry-Gem'
+
+def draw_gate(df,gating_axes,alpha=0.005,title='Gate'):
+    plt.figure()
+    pts = plt.scatter(df[gating_axes[0]],df[gating_axes[1]],alpha=alpha)
+    plt.xlabel(gating_axes[0]); plt.ylabel(gating_axes[1])
+    selector = SelectFromCollection(plt.gca(),pts)
+    plt.title(title)
+    return selector
+
+def gate_data(df,selector,gating_axes,field_name,value):
+    verts = np.array(selector.poly.verts)
+    x = verts[:,0];y = verts[:,1]
+    p_ = Path(np.array([x,y]).T)
+    I = np.array([p_.contains_point([x,y]) for x,y in zip(df[gating_axes[0]],df[gating_axes[1]])])
+    df.loc[I,field_name] = value
+    return df
 
 #%%
 
 filelist = glob(path.join(dirname,'*.*'))
-conditions = ['WT']
+conditions = ['WT','100nM']
 
-df = []
+datasets = []
 for i,f in enumerate(filelist):
     _df = FCMeasurement(ID='Test Sample', datafile=f).data
     _df['Condition'] = conditions[i]
-    df.append(_df)
-df = pd.concat(df,ignore_index=True)    
 
-#geminin should be on log scale
-df['Log-geminin'] = np.log(df['mCherry-A'])
-df['Log-pRB'] = np.log(df['BL1-A'])
+    #geminin should be on log scale
+    _df['Log-geminin'] = np.log(_df['mCherry-A'])
+    _df['Log-pRB'] = np.log(_df['BL1-A'])
+    
+    # put in the default gate values
+    _df['Diploids'] = False
+    _df['Phase'] = 'NA'
+    _df['phosRB'] = 'Low'
+    datasets.append(_df)
 
-# Gate on singlets based on H/W
-plt.figure()
-pts = plt.scatter(df['Hoechst-H'],df['Hoechst-W'],alpha=0.005)
-plt.xlabel('Hoechst-height');plt.ylabel('Hoechst-width');
-selector = SelectFromCollection(plt.gca(), pts)
+#%% Gate on singlets
 
-#%%  Gate diploids
+gates2draw = {'singlets':['Hoechst-A','Hoechst-W'],
+              'G1':['Hoechst-A','mCherry-A'],
+              'SG2':['Hoechst-A','mCherry-A'],
+              'phosRB':['Log-geminin','Log-pRB']}
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(df['Hoechst-H'],df['Hoechst-W'])])
+singlet_selectors = []
+for df in datasets:
+    singlet_selectors.append(draw_gate(df,gating_axes=gates2draw['singlets']))
 
-diploids = df[I]
+#%% Propagate gates and filter only diploids
 
-# Display gate
-plt.figure()
-pts = plt.scatter(df['Hoechst-H'],df['Hoechst-W'],alpha=0.005)
-plt.xlabel('Hoechst-height');plt.ylabel('Hoechst-width');
-patch = PathPatch(p_,lw=2,facecolor='r',alpha=0.5)
-plt.gca().add_patch(patch)
+for i in range(len(datasets)):
+    datasets[i] = gate_data(datasets[i], singlet_selectors[i], gates2draw['singlets'],'Diploids',True)
+    datasets[i] = datasets[i][datasets[i]['Diploids']]
+    
+#%% Gate on G1 and SG2
 
-#%% Use High geminin to gate on S phase
+g1_selectors = []
+for df in datasets:
+    g1_selectors.append(draw_gate(df,gating_axes=gates2draw['G1'],alpha=0.01,title='G1'));
 
-pts = plt.scatter(diploids['Hoechst-A'],diploids['Log-geminin'],alpha=0.01)
-plt.xlabel('Hoechst-A');plt.ylabel('Log-geminin');
-selector = SelectFromCollection(plt.gca(), pts)
+g2_selectors = []
+for df in datasets:
+    g2_selectors.append(draw_gate(df,gating_axes=gates2draw['SG2'],alpha=0.01,title='SG2'));
 
-#%% Geminin-high cells are 'SG2'
+#%% Propagate gates
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Hoechst-A'],diploids['Log-geminin'])])
-# I = diploids['Log-geminin'] > th
-diploids.loc[:,'Phase'] = 'SG2'
-diploids.loc[I,'Phase'] = 'post-G1S'
+for i in range(len(datasets)):
+    datasets[i] = gate_data(datasets[i], g1_selectors[i], gates2draw['G1'],'Phase','G1')
+    datasets[i] = gate_data(datasets[i], g2_selectors[i], gates2draw['SG2'],'Phase','SG2')
 
-#%% Use High geminin to gate on S phase
+#%% Gate on phosRB
 
-pts = plt.scatter(diploids['Log-pRB'],diploids['Log-geminin'],alpha=0.05)
-plt.xlabel('Log-pRB');plt.ylabel('Log-geminin')
-selector = SelectFromCollection(plt.gca(), pts)
+rb_selectors = []
+for df in datasets:
+    rb_selectors.append(draw_gate(df,gating_axes=gates2draw['phosRB'],alpha=0.002,title='phosRB'));
 
-#%% Geminin-high cells are 'SG2'
+#%% Propagate gates
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Log-pRB'],diploids['Log-geminin'])])
-diploids.loc[I,'Phase'] = 'pre-G1'
+for i in range(len(datasets)):
+    datasets[i] = gate_data(datasets[i], rb_selectors[i], gates2draw['phosRB'],'phosRB','High')
+
+#%% Concatenate all dataframes
+
+df = pd.concat(datasets,ignore_index=True)
 
 #%%
 
+(_,wt),(_,palbo) = df.groupby('Condition')
+
 Nboot = 1000
 CV = pd.DataFrame()
+CV_ci = pd.DataFrame()
 
-for phase,_df in diploids.groupby('Phase'):
-    
-    CV.loc[phase,'SSC-A'],_,_ = cvariation_bootstrap(_df['SSC-A'].values,1000)
-    CV.loc[phase,'FSC-A'],_,_ = cvariation_bootstrap(_df['FSC-A'].values,1000)
-    
+_df = wt[(wt['Phase'] == 'G1') & (wt['phosRB'] == 'Low')]
+CV.loc['WT','pre-G1S'],lb,ub = cvariation_bootstrap(_df['SSC-A'].values,1000)
+CV_ci.loc['WT','pre-G1S'] = (ub-lb)/2
+
+_df = wt[(wt['Phase'] == 'G1') & (wt['phosRB'] == 'High')]
+CV.loc['WT','G1S'],lb,ub = cvariation_bootstrap(_df['SSC-A'].values,1000)
+CV_ci.loc['WT','G1S'] = (ub-lb)/2
+
+_df = palbo[(palbo['Phase'] == 'G1') & (palbo['phosRB'] == 'Low')]
+CV.loc['palbo','pre-G1S'],lb,ub = cvariation_bootstrap(_df['SSC-A'].values,1000)
+CV_ci.loc['palbo','pre-G1S'] = (ub-lb)/2
+
+_df = palbo[(palbo['Phase'] == 'G1') & (palbo['phosRB'] == 'High')]
+CV.loc['palbo','G1S'],lb,ub = cvariation_bootstrap(_df['SSC-A'].values,1000)
+CV_ci.loc['palbo','G1S'] = (ub-lb)/2
+
 print(CV)
+
+plt.errorbar([1,2],CV.loc['WT'].values,yerr=CV_ci.loc['WT'].values)
+plt.errorbar([1,2],CV.loc['palbo'].values,yerr=CV_ci.loc['palbo'].values)
+
+plt.gca().set_xticks([1,2]);plt.gca().set_xticklabels(['pre-G1S','G1S'])
+plt.xlabel('Cell cycle phase')
+plt.ylabel('CV in side scatter')
+plt.legend(['Normal','100nM Palbo 48h'])
 
 #%% Plot the CVs as errorbars
 
