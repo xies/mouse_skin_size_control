@@ -21,13 +21,15 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from s
 
 #%% Load stacks
 
-files = natsorted(glob(path.join(dirname,'stacks','*Position001_t*_ch00*.tif')))
+# dropped = [9,16,21,27,31,39]
+
+files = natsorted(glob(path.join(dirname,'stacks','*Position002_t*_ch00*.tif')))
 stacks_ch0 = list(map(io.imread,files))
-files = natsorted(glob(path.join(dirname,'stacks','*Position001_t*_ch01*.tif')))
+files = natsorted(glob(path.join(dirname,'stacks','*Position002_t*_ch01*.tif')))
 stacks_ch1 = list(map(io.imread,files))
-files = natsorted(glob(path.join(dirname,'stacks','*Position001_t*_ch02*.tif')))
+files = natsorted(glob(path.join(dirname,'stacks','*Position002_t*_ch02*.tif')))
 stacks_ch2 = list(map(io.imread,files))
-files = natsorted(glob(path.join(dirname,'stacks','*Position001_t*_ch03*.tif')))
+files = natsorted(glob(path.join(dirname,'stacks','*Position002_t*_ch03*.tif')))
 stacks_ch3 = list(map(io.imread,files))
 
 XX = 1024
@@ -47,17 +49,17 @@ for i in tqdm(range(len(stacks_venus))):
     io.imsave(path.join(dirname,f'3d_blur_combined_MIP/mCherry_MIP_t{i}.tif'),stacks_mCherry[i].max(axis=0))
 
 #% Load MIPs as timeseries
-# files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/venus_MIP*.tif')))
-# MIP_venus = np.stack(list(map(io.imread,files)))
-# files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/mCherry_MIP_t*.tif')))
-# MIP_mCherry = np.stack(list(map(io.imread,files)))
+files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/venus_MIP*.tif')))
+MIP_venus = np.stack(list(map(io.imread,files)))
+files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/mCherry_MIP_t*.tif')))
+MIP_mCherry = np.stack(list(map(io.imread,files)))
 
 MIP_venus = np.stack([x.max(axis=0) for x in stacks_venus])
 MIP_mCherry = np.stack([x.max(axis=0) for x in stacks_mCherry])
 
 # Save MIP of z-blurred
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/raw_mCherry_MIP.tif'),util.img_as_uint(MIP_mCherry))
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates//raw_venus_MIP.tif'),util.img_as_uint(MIP_venus))
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/raw_mCherry_MIP.tif'),util.img_as_uint(MIP_mCherry))
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates//raw_venus_MIP.tif'),util.img_as_uint(MIP_venus))
 
 #%% Stack Reg on MIP timeseries
 
@@ -67,10 +69,10 @@ tmats = sr.register_stack(MIP_mCherry, reference='previous')
 rough_aligned_mCherry = sr.transform_stack(MIP_mCherry)
 rough_aligned_venus = sr.transform_stack(MIP_venus)
 
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_mCherry.tif'),
-#           util.img_as_uint(rough_aligned_mCherry/rough_aligned_mCherry.max()),check_contrast=False)
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_venus.tif'),
-#           util.img_as_uint(rough_aligned_venus/rough_aligned_venus.max()),check_contrast=False)
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_mCherry.tif'),
+          util.img_as_uint(rough_aligned_mCherry/rough_aligned_mCherry.max()),check_contrast=False)
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_venus.tif'),
+          util.img_as_uint(rough_aligned_venus/rough_aligned_venus.max()),check_contrast=False)
 
 initial_tmats = [transform.EuclideanTransform(matrix=x) for x in tmats]
 np.savez(path.join(dirname,'initial_tmats.npz'),initial_tmats)
@@ -78,28 +80,34 @@ np.savez(path.join(dirname,'initial_tmats.npz'),initial_tmats)
 #%% Manually stitch the problematic timepoints
 # initial_tmats = np.load(path.join(dirname,'initial_tmats.npz'))['arr_0']
 
-ref_T = 13
-target_T = 14
-
-shifted_tmats = [transform.EuclideanTransform(matrix=np.eye(3)) for i in range(target_T)]
-reference_image = rough_aligned_venus[ref_T,...]
-target_image = rough_aligned_venus[target_T,...]
-
-# shifts = registration.phase_cross_correlation(reference_image, target_image)[0]
-T = transform.EuclideanTransform(translation=[100,-40],rotation=np.deg2rad(2))
-shifted_mCherry = rough_aligned_mCherry.copy()
-shifted_venus = rough_aligned_venus.copy()
-
-for t in tqdm(np.arange(target_T,TT)):
+def manually_transform(stack1,stack2,ref_T,target_T,T, shifted_tmats = None):
     
-    warped = transform.warp(rough_aligned_mCherry[t,...],T)
-    shifted_mCherry[t,...] = warped
-    warped = transform.warp(rough_aligned_venus[t,...],T)
-    shifted_venus[t,...] = warped
-    shifted_tmats.append(T)
+    TT = stack1.shape[0]
+    
+    if shifted_tmats is None:
+        # Keep identical until stitch point
+        shifted_tmats = [transform.EuclideanTransform(matrix=np.eye(3)) for i in range(TT)]
+    
+    shifted_stack1 = stack1.copy()
+    shifted_stack2 = stack2.copy()
+        
+    for t in tqdm(np.arange(target_T,TT)):
+        
+        warped = transform.warp(stack1[t,...],T)
+        shifted_stack1[t,...] = warped
+        warped = transform.warp(stack2[t,...],T)
+        shifted_stack2[t,...] = warped
+        shifted_tmats[t] = shifted_tmats[t] + T
 
-io.imsave(path.join(dirname,'shifted_mCherry_MIP.tif'),util.img_as_uint(shifted_mCherry/shifted_mCherry.max()))
-io.imsave(path.join(dirname,'shifted_venus_MIP.tif'),util.img_as_uint(shifted_venus/shifted_venus.max()))
+    return [shifted_stack1,shifted_stack2,shifted_tmats]
+
+T = transform.EuclideanTransform(translation=[120,-60],rotation=np.deg2rad(3))
+shifted_mCherry, shifted_venus, shifted_tmats = manually_transform(
+    rough_aligned_mCherry,rough_aligned_venus,ref_T = 12, target_T = 13, T=T)
+
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/shifted_mCherry_MIP.tif'),util.img_as_uint(shifted_mCherry/shifted_mCherry.max()))
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/shifted_venus_MIP.tif'),util.img_as_uint(shifted_venus/shifted_venus.max()))
+
 np.savez(path.join(dirname,'shifted_tmats.npz'),shifted_tmats)
 
 #%% Rerun SR to refine final XY transformation and then resave
@@ -110,14 +118,14 @@ tmats = sr.register_stack(shifted_venus,reference='previous')
 refined_venus = sr.transform_stack(shifted_venus)
 refined_mCherry = sr.transform_stack(shifted_venus)
 
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/refined_mCherry_MIP.tif'),util.img_as_uint(refined_mCherry/refined_mCherry.max()))
-# io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/refined_venus_MIP.tif'),util.img_as_uint(refined_venus/refined_venus.max()))
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/refined_mCherry_MIP.tif'),util.img_as_uint(refined_mCherry/refined_mCherry.max()))
+io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/refined_venus_MIP.tif'),util.img_as_uint(refined_venus/refined_venus.max()))
 
 refined_tmats = [transform.EuclideanTransform(x) for x in tmats]
 
 np.savez(path.join(dirname,'refined_tmats.npz'),refined_tmats)
 
-#%% Use the final TMATs to transform the stacks
+ #%% Use the final TMATs to transform the stacks
 
 initial_tmats = np.load(path.join(dirname,'initial_tmats.npz'))['arr_0']
 shifted_tmats = np.load(path.join(dirname,'shifted_tmats.npz'))['arr_0']
@@ -151,7 +159,7 @@ for t in tqdm(range(len(stacks_mCherry))):
 from twophotonUtils import z_align_ragged_timecourse
 
 # Use manual z-alignment
-same_Zs = pd.read_csv(path.join(dirname,'same_Zs.csv'),index_col=0)['slice']
+same_Zs = pd.read_csv(path.join(dirname,'same_Zs_.csv'),index_col=0)['slice']
 
 aligned_stack_mch = z_align_ragged_timecourse(mCherry_XY_transformed,same_Zs)
 aligned_stack_venus = z_align_ragged_timecourse(venus_XY_transformed,same_Zs)
