@@ -6,10 +6,12 @@ Created on Wed Sep  4 12:26:03 2024
 @author: xies
 """
 
+import numpy as np
 from glob import glob
 from os import path
 from re import findall
-# import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET
+from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
 from natsort import natsorted
@@ -31,22 +33,7 @@ to get correct time stamp
 
 '''
 
-img_files = natsorted(glob(path.join(dirname,'stacks/*Position001*ch00*.tif')))
-
-def parse_img_name(f):
-    part = findall('pt(\d+)',f)
-    find = findall('Mark_and_Find_(\d+)',f)
-    time = findall('_t(\d+)_',f)
-    channel = findall('_ch(\d+)_',f)
-    position = findall('Position(\d+)',f)
-    assert len(part) == 1 and len(find) == 1 and len(time) == 1 and len(channel) == 1 and len(position) == 1
-    
-    return part[0], find[0], position[0], time[0], channel[0]
-
-img_manifest = pd.DataFrame(list(map(parse_img_name, img_files)),columns=['Part','Find','Position','Time','Channel'])
-img_manifest['img'] = img_files
-
-#%% Map back the corresponding XML file using table joins
+#%% Parse XML manifest
 
 def parse_xml_name(f):
     part = findall('pt(\d+)',f)
@@ -62,28 +49,77 @@ xmls = natsorted(glob(path.join(dirname,'MetaData/*Position001_Properties.xml'))
 xml_manifest = pd.DataFrame(list(map(parse_xml_name,xmls)),columns=['Part','Find','Position'])
 xml_manifest['xml'] = xmls
 
-manifest = pd.merge(img_manifest,xml_manifest,on=['Part','Find','Position'])
+### Parse XML to get X/T dimensions
+
+for idx,row in xml_manifest.iterrows():
+    root = ET.parse(row['xml']).getroot()
+    dimension_desc = [e for e in root.iter('DimensionDescription')]
+    for dim in dimension_desc:
+        if dim.attrib['DimID'] == 'T':
+            T = int(dim.attrib['NumberOfElements'])
+        elif dim.attrib['DimID'] == 'Z':
+            Z = int(dim.attrib['NumberOfElements'])
+    xml_manifest.at[idx,'Z'] = Z
+    xml_manifest.at[idx,'T'] = T
+
+xml_manifest.index = xml_manifest['xml']
 
 #%% Parse XML time stamps (put into dict keyed by xml name) and use the manifest to look put where to put the info
 
-from datetime import datetime
+def parse_datetime_from_leicaformat(date,time):
+    # Strip the msec mark
+    d = datetime.strptime(date,'%m/%d/%Y')
+    t = datetime.strptime(time,'%I:%M:%S %p').time()
+    return datetime.combine(d,t)
 
-def parse_time_stamp_from_xml(filename):
-    with open(filename) as f:
+timestamps = {}
+for idx,row in xml_manifest.iterrows():
+    # start_time,end_time = parse_time_stamp_from_xml(xml_manifest.iloc[0]['xml'])
+    with open(row['xml']) as f:
         soup = BeautifulSoup(f,'xml')
+    
+    timestamps_for_each_timepoint = soup.find_all('TimeStamp')[::4][:: int(row['Z'])]
+    this_timestamps = []
+    for t in timestamps_for_each_timepoint:
+        this_timestamps.append(parse_datetime_from_leicaformat(date = t.attrs['Date'],time = t.attrs['Time']))
         
-    start_time = list(soup.find_all('StartTime')[0].children)[0]
-    # Strip the msec mark
-    start_time = findall('(.+)\.',start_time)[0]
-    start_time = datetime.strptime(start_time,'%m/%d/%Y %I:%M:%S %p')
+    if not len(timestamps_for_each_timepoint) == row['T']:
+        missing_ts = int(row['T'] - len(timestamps_for_each_timepoint))
+        for i in range(missing_ts):
+            this_timestamps.append(np.nan)
     
-    end_time = list(soup.find_all('EndTime')[0].children)[0]
-    # Strip the msec mark
-    end_time = findall('(.+)\.',start_time)[0]
-    end_time = datetime.strptime(start_time,'%m/%d/%Y %I:%M:%S %p')
-    
-    return start_time,end_time
+    timestamps[idx] = this_timestamps
 
-start_time,end_time = parse_time_stamp_from_xml(xml_manifest.iloc[0]['xml'].values)
+#%% Merge back onto TIFF manifest
+
+img_files = natsorted(glob(path.join(dirname,'stacks/*Position001*ch00*.tif')))
+
+def parse_img_name(f):
+    part = findall('pt(\d+)',f)
+    find = findall('Mark_and_Find_(\d+)',f)
+    time = findall('_t(\d+)_',f)
+    channel = findall('_ch(\d+)_',f)
+    position = findall('Position(\d+)',f)
+    assert len(part) == 1 and len(find) == 1 and len(time) == 1 and len(channel) == 1 and len(position) == 1
     
+    return part[0], find[0], position[0], time[0], channel[0]
+
+img_manifest = pd.DataFrame(list(map(parse_img_name, img_files)),columns=['Part','Find','Position','Time','Channel'])
+img_manifest['img'] = img_files
+
+manifest = pd.merge(img_manifest,xml_manifest,on=['Part','Find','Position'])
+
+#%% Iterate through rows and use each time point to XML to index into dictionary, and pull out the right order of frame
+
+for idx,row in manifest.iterrows():
+    
+    t = timestamps[row['xml']][int(row.Time)]
+    manifest.at[idx,'Timestamp'] = t
+    
+manifest['Elapsed'] = manifest['Timestamp'] - manifest.iloc[0]['Timestamp']
+manifest.to_csv(path.join(dirname,'Position001_manifest.csv'))
+manifest.to_pickle(path.join(dirname,'Position001_manifest.pkl'))
+    
+
+
 
