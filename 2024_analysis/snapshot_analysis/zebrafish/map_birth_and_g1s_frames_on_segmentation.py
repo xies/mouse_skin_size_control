@@ -117,9 +117,13 @@ io.imsave(path.join(dirname,'Position001_Mastodon/birth/birth_predicted.tif'), b
 
 #%%
 
+current_trackID = 0
+
 g1s_img = np.zeros((TT,ZZ,XX,XX),np.uint16)
 for this_cell in tqdm(g1s_spots):
-    tID = int(this_cell.iloc[0]['TrackID'])
+    # tID = int(this_cell.iloc[0]['TrackID'])
+    current_trackID += 1
+    
     for _,this_frame in this_cell.iterrows():
         
         x = int(np.round(this_frame['X']))
@@ -133,14 +137,14 @@ for this_cell in tqdm(g1s_spots):
             label = im[z,y,x]
         if label > 0:
             mask = im == label
-            g1s_img[t,mask] = tID
+            g1s_img[t,mask] = current_trackID
         else:
             # Create a 'cube' around spots that are missing segmentations
             # print(f'Time {t} -- {i}: {ID}')
             y_low = max(0,y - radius); y_high = min(XX,y + radius)
             x_low = max(0,x - radius); x_high = min(XX,x + radius)
             z_low = max(0,z - radius); z_high = min(ZZ,z + radius)
-            g1s_img[t,z_low:z_high, y_low:y_high, x_low:x_high] = tID
+            g1s_img[t,z_low:z_high, y_low:y_high, x_low:x_high] = current_trackID
 
 io.imsave(path.join(dirname,'Position001_Mastodon/g1s/g1s_predicted.tif'), g1s_img)
 
