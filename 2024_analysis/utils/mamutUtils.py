@@ -8,6 +8,7 @@ Created on Fri Jul 22 18:01:35 2022
 
 import pandas as pd
 from os import path
+import xml.etree.ElementTree as ET
 
 def sort_links_by_time(links,spots):
     for idx,link in links.iterrows():
@@ -21,6 +22,28 @@ def sort_links_by_time(links,spots):
             links.at[idx,'SPOT_TARGET_ID'] = source['ID']
             
     return links
+
+def annotate_spots_xml
+
+# def load_mamut_xml(fi):
+#     #     root = ET.parse(filename.getroot()
+
+#     # _tracks = {}
+#     # spotsIDs_belonging_to_track = {}
+#     # for track in root.iter('Track'):
+#     #     # NB: Edge object not guaranteed to be 'chronological'
+#     #     _this_edges = []
+#     #     for e in track.iter('Edge'):
+#     #         e = pd.Series({'SourceID':int(e.attrib['SPOT_SOURCE_ID'])
+#     #             ,'TargetID':int(e.attrib['SPOT_TARGET_ID']) })
+#     #         _this_edges.append(e)
+#     #     _this_edges = pd.DataFrame(_this_edges)
+#     #     # _this_edges['TrackID'] = track.attrib['TRACK_ID']
+#     #     spotsIDs_belonging_to_track[int(track.attrib['TRACK_ID'])] = set([*_this_edges['SourceID'],*_this_edges['TargetID']])
+        
+#     #     _tracks[int(track.attrib['TRACK_ID'])] = _this_edges
+        
+#     # return 
 
 def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
 
@@ -108,18 +131,6 @@ def construct_data_frame_dense(_tracks,_links,_spots):
                 spots.at[idx,'Division'] = True
             elif len(links_from_this_spot) == 0:
                 spots.at[idx,'Terminus'] = True
-        
-        # For each cell, follow track and built up Track object until we hit either Division or Terminus
-        # If Division, complete current Track and add daughter cells onto stack of things to track
-        # If Terminus, complete current Track and check if there are other things to trace
-        
-        # divisions = spots[ spots['Division'] == True ]
-        # first_division = divisions.sort_values('Frame').iloc[0]
-        
-        # daughter_a = spots[spots['ID'] == first_division['Left']]
-        # daughter_b = spots[spots['ID'] == first_division['Right']]
-        
-        tracks_ = []
         
         spots2trace = [spots.head(1)]
         while len(spots2trace) > 0:
