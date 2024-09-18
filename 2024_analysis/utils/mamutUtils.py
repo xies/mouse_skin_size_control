@@ -23,27 +23,26 @@ def sort_links_by_time(links,spots):
             
     return links
 
-def annotate_spots_xml
 
-# def load_mamut_xml(fi):
-#     #     root = ET.parse(filename.getroot()
+def load_mamut_xml(fi):
+    root = ET.parse(filename.getroot()
 
-#     # _tracks = {}
-#     # spotsIDs_belonging_to_track = {}
-#     # for track in root.iter('Track'):
-#     #     # NB: Edge object not guaranteed to be 'chronological'
-#     #     _this_edges = []
-#     #     for e in track.iter('Edge'):
-#     #         e = pd.Series({'SourceID':int(e.attrib['SPOT_SOURCE_ID'])
-#     #             ,'TargetID':int(e.attrib['SPOT_TARGET_ID']) })
-#     #         _this_edges.append(e)
-#     #     _this_edges = pd.DataFrame(_this_edges)
-#     #     # _this_edges['TrackID'] = track.attrib['TRACK_ID']
-#     #     spotsIDs_belonging_to_track[int(track.attrib['TRACK_ID'])] = set([*_this_edges['SourceID'],*_this_edges['TargetID']])
+    _tracks = {}
+    spotsIDs_belonging_to_track = {}
+    for track in root.iter('Track'):
+        # NB: Edge object not guaranteed to be 'chronological'
+        _this_edges = []
+        for e in track.iter('Edge'):
+            e = pd.Series({'SourceID':int(e.attrib['SPOT_SOURCE_ID'])
+                ,'TargetID':int(e.attrib['SPOT_TARGET_ID']) })
+            _this_edges.append(e)
+        _this_edges = pd.DataFrame(_this_edges)
+        # _this_edges['TrackID'] = track.attrib['TRACK_ID']
+        spotsIDs_belonging_to_track[int(track.attrib['TRACK_ID'])] = set([*_this_edges['SourceID'],*_this_edges['TargetID']])
         
-#     #     _tracks[int(track.attrib['TRACK_ID'])] = _this_edges
+        _tracks[int(track.attrib['TRACK_ID'])] = _this_edges
         
-#     # return 
+    return 
 
 def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
 
