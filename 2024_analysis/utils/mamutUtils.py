@@ -23,26 +23,73 @@ def sort_links_by_time(links,spots):
             
     return links
 
-
-def load_mamut_xml(fi):
-    root = ET.parse(filename.getroot()
-
-    _tracks = {}
-    spotsIDs_belonging_to_track = {}
-    for track in root.iter('Track'):
-        # NB: Edge object not guaranteed to be 'chronological'
-        _this_edges = []
-        for e in track.iter('Edge'):
-            e = pd.Series({'SourceID':int(e.attrib['SPOT_SOURCE_ID'])
-                ,'TargetID':int(e.attrib['SPOT_TARGET_ID']) })
-            _this_edges.append(e)
-        _this_edges = pd.DataFrame(_this_edges)
-        # _this_edges['TrackID'] = track.attrib['TRACK_ID']
-        spotsIDs_belonging_to_track[int(track.attrib['TRACK_ID'])] = set([*_this_edges['SourceID'],*_this_edges['TargetID']])
+def trace_single_generation(root,spots,linkages):
+    # Trace from root and check outgoing links
+    
+    # First need to check that this is either the lineage root or a newly born cell
+    assert(root['Spot_N_links_N_incoming_links'] == 0 or root['Phase'] == 'Birth' or root['Phase'] == 'Visible birth')
+    
+    current_spot = root
+    this_cell = []
+    TERMINATE = False
+    
+    while not TERMINATE:
         
-        _tracks[int(track.attrib['TRACK_ID'])] = _this_edges
+        this_cell.append(current_spot)
+        next_spotID = linkages[linkages['SourceID'] == int(current_spot['SpotID'])]['TargetID'].values
         
-    return 
+        # Seems like there are 'self' linkages?
+        next_spotID = next_spotID[next_spotID != current_spot['SpotID']]
+        
+        if len(next_spotID) == 0:
+            TERMINATE = True
+            
+        elif len(next_spotID) == 1:
+            
+            assert(len(next_spotID) == 1)
+            next_spotID = next_spotID[0]
+            current_spot = spots[spots['SpotID'] == next_spotID].iloc[0]
+            
+        elif len(next_spotID) == 2:
+            TERMINATE = True
+            this_cell[-1]['Phase'] = 'Division'
+            # print(current_spot)
+            # Find the two next spots
+            assert(len(next_spotID) == 2)
+            this_cell[-1]['DaughterID_1'] = next_spotID[0]
+            this_cell[-1]['DaughterID_2'] = next_spotID[1]
+
+    this_cell = pd.DataFrame(this_cell)
+    return this_cell
+
+def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID = 1):
+
+    all_cells_in_lineage = []
+    roots2trace = [lineage_root]
+    
+    while len(roots2trace) > 0:
+        
+        this_cell = trace_single_generation(roots2trace.pop(),_spots,_linkage_table)
+        this_cell['TrackID'] = trackID
+        this_cell['LineageID'] = lineageID
+        all_cells_in_lineage.append(this_cell)
+        
+        if this_cell.iloc[-1]['Phase'] == 'Division':
+            daughter1 = _spots[_spots['SpotID'] == this_cell.iloc[-1]['DaughterID_1']].iloc[0]
+            daughter2 = _spots[_spots['SpotID'] == this_cell.iloc[-1]['DaughterID_2']].iloc[0]
+            # Only overwrite if not 'Visible birth':
+            if daughter1['Phase'] != 'Visible birth':
+                daughter1['Phase'] = 'Birth'
+            if daughter2['Phase'] != 'Visible birth':
+                daughter2['Phase'] = 'Birth'
+            daughter1['MotherID'] = trackID
+            daughter2['MotherID'] = trackID
+            roots2trace.append(daughter1)
+            roots2trace.append(daughter2)
+            
+        trackID += 1
+    return all_cells_in_lineage
+
 
 def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
 

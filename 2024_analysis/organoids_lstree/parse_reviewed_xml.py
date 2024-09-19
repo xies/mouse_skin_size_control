@@ -9,18 +9,22 @@ Created on Tue Sep 17 14:42:26 2024
 import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
+from os import path
+from tqdm import tqdm
+from mamutUtils import trace_single_generation, trace_lineage
 
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
 #%%
 
-filename = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/dataset_deconv_Pos5_reviewedMimi-mamut.xml'
+filename = path.join(dirname,'dataset_deconv_Pos5_reviewedMimi-mamut.xml')
 
 root = ET.parse(filename).getroot()
 
 # Convert spots into a dataframe
 _spots = pd.DataFrame([pd.Series(s.attrib) for s in root.iter('Spot')]).astype(float)
 _spots = _spots.rename(columns={'ID':'SpotID'
-                                ,'POSITION_X':'X','POSITION_X':'Y','POSITION_Z':'Z'
+                                ,'POSITION_X':'X','POSITION_Y':'Y','POSITION_Z':'Z'
                                 ,'Frame':'Frame'})
 _spots['TrackID'] = np.nan
 _spots['LineageID'] = np.nan
@@ -29,9 +33,11 @@ _spots['MotherID'] = np.nan
 _spots['DaughterID_1'] = np.nan
 _spots['DaughterID_2'] = np.nan
 
-# Annotage G1/S frames since we can't infer from lineage topology
-
-
+# Annotage G1/S and visible birth frames since we can't infer from lineage topology
+g1s_spots = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/g1s/g1s-Spot.csv'),skiprows=[1,2])
+_spots.loc[np.isin(_spots['SpotID'],g1s_spots['ID']),'Phase'] = 'G1S'
+g1s_spots = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/birth/birth-Spot.csv'),skiprows=[1,2])
+_spots.loc[np.isin(_spots['SpotID'],g1s_spots['ID']),'Phase'] = 'Visible birth'
 
 #%%
 
@@ -46,80 +52,17 @@ NB: These could be overwritten with manual cell cycle annotations from mastodon 
 
 '''
 
-
-def trace_single_generation(root,spots,linkages):
-    # Trace from root and check outgoing links
-    
-    # First need to check that this is either the lineage root or a newly born cell
-    assert(root['Spot_N_links_N_incoming_links'] == 0 or root['Phase'] == 'Birth')
-    
-    current_spot = root
-    this_cell = []
-    TERMINATE = False
-    
-    while not TERMINATE:
-        
-        this_cell.append(current_spot)
-        next_spotID = linkages[linkages['SourceID'] == int(current_spot['SpotID'])]['TargetID'].values
-        
-        # Seems like there are 'self' linkages?
-        next_spotID = next_spotID[next_spotID != current_spot['SpotID']]
-        
-        if len(next_spotID) == 0:
-            TERMINATE = True
-            
-        elif len(next_spotID) == 1:
-            
-            assert(len(next_spotID) == 1)
-            next_spotID = next_spotID[0]
-            current_spot = spots[spots['SpotID'] == next_spotID].iloc[0]
-            
-        elif len(next_spotID) == 2:
-            TERMINATE = True
-            this_cell[-1]['Phase'] = 'Division'
-            # print(current_spot)
-            # Find the two next spots
-            assert(len(next_spotID) == 2)
-            this_cell[-1]['DaughterID_1'] = next_spotID[0]
-            this_cell[-1]['DaughterID_2'] = next_spotID[1]
-        else:
-            STOP
-            break
-
-    this_cell = pd.DataFrame(this_cell)
-    return this_cell
-
-def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID = 1):
-
-    all_cells_in_lineage = []
-    roots2trace = [lineage_root]
-    
-    while len(roots2trace) > 0:
-        
-        this_cell = trace_single_generation(roots2trace.pop(),_spots,_linkage_table)
-        this_cell['TrackID'] = trackID
-        all_cells_in_lineage.append(this_cell)
-        
-        if this_cell.iloc[-1]['Phase'] == 'Division':
-            daughter1 = _spots[_spots['SpotID'] == this_cell.iloc[-1]['DaughterID_1']].iloc[0]
-            daughter2 = _spots[_spots['SpotID'] == this_cell.iloc[-1]['DaughterID_2']].iloc[0]
-            daughter1['Phase'] = 'Birth'
-            daughter2['Phase'] = 'Birth'
-            daughter1['MotherID'] = trackID
-            daughter2['MotherID'] = trackID
-            roots2trace.append(daughter1)
-            roots2trace.append(daughter2)
-            
-        trackID += 1
-    return all_cells_in_lineage
-
 _lineages = [t for t in root.iter('Track')]
 
-lineageID = 1
+# Keep track of lineage + track numbers
+lineageID = 0
 
 all_lineages = []
-for t in _lineages:
+for t in tqdm(_lineages):
     
+    trackID = len(all_lineages) + 1
+    
+    lineageID += 1
     _linkage_table = []
     for e in t.iter('Edge'):
         e = pd.Series({'SourceID':int(e.attrib['SPOT_SOURCE_ID'])
@@ -133,8 +76,14 @@ for t in _lineages:
     
     # Only the 'root' of the lineage will have NO incoming linkages
     lineage_root = spots_in_track.loc[ spots_in_track['Spot_N_links_N_incoming_links'] == 0 ].iloc[0]
-    this_lineage = trace_lineage(lineage_root, _spots, _linkage_table, lineageID= 1, trackID = 1)
+    this_lineage = trace_lineage(lineage_root, _spots, _linkage_table, lineageID= lineageID, trackID = trackID)
+
+    # Filter for cells with manual 'G1S' annotations ONLY
+    this_lineage = [t for t in this_lineage if 
+                    (t['Phase'] == 'G1S').sum() > 0]
+    all_lineages.extend(this_lineage)
 
 
-    
+pd.concat(all_lineages).to_csv(path.join(dirname,'manual_cellcycle_annotations/filtered_tracks.csv'))
+
 
