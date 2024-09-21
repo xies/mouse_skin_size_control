@@ -107,6 +107,11 @@ TT = 60
 mCh_files = natsorted(glob(path.join(dirname,'predicted_labels/*mch**labels.tif')))
 ven_files = natsorted(glob(path.join(dirname,'predicted_labels/*ven**labels.tif')))
 
+# load manual segs also
+birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
+g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
+
+
 # Use 1-indexed trackIDs for now?
 current_trackID = 0
 
@@ -118,10 +123,10 @@ for this_cell in tqdm(all_lineages):
     birth_frames = this_cell[this_cell['Phase'] == 'Visible birth']
     for _,this_frame in birth_frames.iterrows():
         [x,y,z,t] = this_frame[['X','Y','Z','FRAME']].astype(int)
-        im = io.imread(ven_files[t])
+        im = birth_img[t,...]
         label = im[z,y,x]
         if label == 0:
-            im = io.imread(mCh_files[t])
+            im = io.imread(ven_files[t])
             label = im[z,y,x]
         if label > 0:
             mask = im == label
@@ -133,7 +138,7 @@ for this_cell in tqdm(all_lineages):
     g1s_frames = this_cell[this_cell['Phase'] == 'G1S']
     for _,this_frame in g1s_frames.iterrows():
         [x,y,z,t] = this_frame[['X','Y','Z','FRAME']].astype(int)
-        im = io.imread(ven_files[t])
+        im = g1s_img[t,...]
         label = im[z,y,x]
         if label == 0:
             im = io.imread(mCh_files[t])
