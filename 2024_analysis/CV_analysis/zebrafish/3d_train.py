@@ -26,8 +26,7 @@ from os import path
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
-#dirname = '/home/xies/data/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
+dirname = '/home/xies/data/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/stardist'
 
 X = sorted(glob(path.join(dirname,'training_images/*.tif')))
 Y = sorted(glob(path.join(dirname,'training_labels/*.tif')))
