@@ -16,6 +16,8 @@ from tqdm import tqdm
 from mamutUtils import trace_lineage
 from skimage import io
 
+import matplotlib.pyplot as plt
+
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/Position001_Mastodon/'
 
 #%%
@@ -108,8 +110,8 @@ mCh_files = natsorted(glob(path.join(dirname,'predicted_labels/*mch**labels.tif'
 ven_files = natsorted(glob(path.join(dirname,'predicted_labels/*ven**labels.tif')))
 
 # load manual segs also
-birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
-g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
+birth_manual = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
+g1s_manual = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
 
 
 # Use 1-indexed trackIDs for now?
@@ -123,7 +125,7 @@ for this_cell in tqdm(all_lineages):
     birth_frames = this_cell[this_cell['Phase'] == 'Visible birth']
     for _,this_frame in birth_frames.iterrows():
         [x,y,z,t] = this_frame[['X','Y','Z','FRAME']].astype(int)
-        im = birth_img[t,...]
+        im = birth_manual[t,...]
         label = im[z,y,x]
         if label == 0:
             im = io.imread(ven_files[t])
@@ -138,7 +140,7 @@ for this_cell in tqdm(all_lineages):
     g1s_frames = this_cell[this_cell['Phase'] == 'G1S']
     for _,this_frame in g1s_frames.iterrows():
         [x,y,z,t] = this_frame[['X','Y','Z','FRAME']].astype(int)
-        im = g1s_img[t,...]
+        im = g1s_manual[t,...]
         label = im[z,y,x]
         if label == 0:
             im = io.imread(mCh_files[t])
@@ -155,24 +157,31 @@ io.imsave(path.join(dirname,'birth_to_g1s_tracking/g1s_tracked.tif'), g1s_img)
 
 #%%
 
-birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_tracked.tif'))
-g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_tracked.tif'))
+birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
+g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
 
 #%%
 
-cellIDs = np.arange(1,29)
+cellIDs = np.arange(1,37)
 
 df = []
 for i in tqdm(cellIDs):
     birth_sizes = (birth_img == i).sum(axis=1).sum(axis=1).sum(axis=1)
+    birth_sizes = birth_sizes[birth_sizes != 1000]
     birth_size = birth_sizes[birth_sizes > 0].mean()
     
     g1_sizes = (g1s_img == i).sum(axis=1).sum(axis=1).sum(axis=1)
+    g1_sizes = g1_sizes[g1_sizes != 1000]
     g1_size = g1_sizes[g1_sizes > 0].mean()
     
     df.append(pd.Series({'Birth size':birth_size,'G1 size':g1_size}))
+
+df = pd.concat(df,axis=1).T
     
 #%%
+
+df['G1 growth'] = df['G1 size'] - df['Birth size']
+plt.scatter(df['Birth size'], df['G1 growth'])
 
 
     
