@@ -14,7 +14,7 @@ from natsort import natsorted
 from glob import glob
 from tqdm import tqdm
 from mamutUtils import trace_lineage
-from skimage import io
+from skimage import io, measure
 
 import matplotlib.pyplot as plt
 
@@ -156,34 +156,44 @@ io.imsave(path.join(dirname,'birth_to_g1s_tracking/birth_tracked.tif'), birth_im
 io.imsave(path.join(dirname,'birth_to_g1s_tracking/g1s_tracked.tif'), g1s_img)
 
 #%%
+dx = 0.6
+dz = 1.8
 
 birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
 g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
 
-#%%
-
-cellIDs = np.arange(1,37)
-
 df = []
-for i in tqdm(cellIDs):
-    birth_sizes = (birth_img == i).sum(axis=1).sum(axis=1).sum(axis=1)
-    birth_sizes = birth_sizes[birth_sizes != 1000]
-    birth_size = birth_sizes[birth_sizes > 0].mean()
+for t in tqdm(range(TT)):
+    births = pd.DataFrame(measure.regionprops_table(birth_img[t,...],properties=['area','label']))
+    g1s = pd.DataFrame(measure.regionprops_table(g1s_img[t,...],properties=['area','label']))
+    births = births.rename(columns={'area':'Birth size'})
+    births['Birth frame'] = t
+    g1s = g1s.rename(columns={'area':'G1S size'})
+    g1s['G1 frame'] = t
     
-    g1_sizes = (g1s_img == i).sum(axis=1).sum(axis=1).sum(axis=1)
-    g1_sizes = g1_sizes[g1_sizes != 1000]
-    g1_size = g1_sizes[g1_sizes > 0].mean()
-    
-    df.append(pd.Series({'Birth size':birth_size,'G1 size':g1_size}))
+    df.extend([births,g1s])
 
-df = pd.concat(df,axis=1).T
-    
-#%%
+df = pd.concat(df)
 
-df['G1 growth'] = df['G1 size'] - df['Birth size']
-plt.scatter(df['Birth size'], df['G1 growth'])
+mean_bsize = df.groupby('label').mean()['Birth size']
+mean_g1ssize = df.groupby('label').mean()['G1S size']
+mean_g1growth = mean_g1ssize - mean_bsize
+
+g1_duration = df.groupby('label').min()['G1 frame'] - df.groupby('label').min()['Birth frame']
+
+plt.figure()
+plt.scatter(mean_bsize*dx**2*dz,g1_duration*20)
+plt.xlabel('Nuclear size at birth (fL)')
+plt.ylabel('G1 duration (min)')
+plt.figure()
+plt.scatter(mean_bsize*dx**2*dz,mean_g1growth)
+plt.xlabel('Nuclear size at birth (fL)')
+plt.ylabel('G1 grioth (fL)')
 
 
-    
-    
+
+
+
+
+
 
