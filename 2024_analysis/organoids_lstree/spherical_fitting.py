@@ -24,7 +24,7 @@ dz = 2
 
 #%%
 
-for t in tqdm(np.arange(1,31)):
+for t in tqdm(np.arange(1,40)):
 
     labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     
@@ -71,12 +71,7 @@ for t in tqdm(np.arange(1,31)):
     np.savez(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.npz'),
              vertices,faces,values)
     
-# #%% Load meshes and make an 'image'
-
-# vox = pv.voxelize_volume(smooth_mesh,density=1)
-# slices = vox.slice_orthogonal()
-# slices.plot(scalars='InsideMesh', show_edges=True)
-
+#%%
 
 
 
