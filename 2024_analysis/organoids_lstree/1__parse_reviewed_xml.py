@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from os import path
 from tqdm import tqdm
-from mamutUtils import trace_single_generation, trace_lineage
+from mamutUtils import trace_lineage
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -55,12 +55,12 @@ NB: These could be overwritten with manual cell cycle annotations from mastodon 
 _lineages = [t for t in root.iter('Track')]
 
 # Keep track of lineage + track numbers
-lineageID = 0
+lineageID = 1
+trackID = 1
 
 all_lineages = []
 for t in tqdm(_lineages):
     
-    trackID = len(all_lineages) + 1
     
     lineageID += 1
     _linkage_table = []
@@ -82,7 +82,23 @@ for t in tqdm(_lineages):
     this_lineage = [t for t in this_lineage if 
                     (t['Phase'] == 'G1S').sum() > 0]
     all_lineages.extend(this_lineage)
+    
+    trackID = all_lineages[-1].iloc[0]['TrackID'] + 1
 
+#%% Go through each track and mark G1 v. SG2
+
+for i,t in enumerate(all_lineages):
+    
+    t = t.sort_values('FRAME').reset_index()
+    t = t.drop(columns=['index'])
+    idx_nan = np.where(t['Phase'] == 'NA')[0]
+    first_g1s_idx = t.index[np.where(t['Phase'] == 'G1S')[0][0]]
+    t.loc[idx_nan[idx_nan < first_g1s_idx],'Phase'] = 'G1'
+    
+    last_g1s_idx = t.index[np.where(t['Phase'] == 'G1S')[0][-1]]
+    t.loc[idx_nan[idx_nan > last_g1s_idx],'Phase'] = 'SG2'
+    
+    all_lineages[i] = t
 
 pd.concat(all_lineages).to_csv(path.join(dirname,'manual_cellcycle_annotations/filtered_tracks.csv'))
 

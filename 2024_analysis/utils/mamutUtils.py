@@ -62,7 +62,7 @@ def trace_single_generation(root,spots,linkages):
     this_cell = pd.DataFrame(this_cell)
     return this_cell
 
-def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID = 1):
+def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID):
 
     all_cells_in_lineage = []
     roots2trace = [lineage_root]
@@ -88,6 +88,7 @@ def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID = 1):
             roots2trace.append(daughter2)
             
         trackID += 1
+        
     return all_cells_in_lineage
 
 
