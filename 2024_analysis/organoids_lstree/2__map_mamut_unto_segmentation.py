@@ -41,7 +41,7 @@ ZZ,YY,XX = manual_segmentations[0].shape
 #%%
 
 # trackID = 0
-filt_seg = np.zeros((40,ZZ,YY,XX),dtype=int)
+filt_seg = np.zeros((46,ZZ,YY,XX),dtype=int)
 
 for track in tqdm(tracks):
     trackID = track.iloc[0]['TrackID']
@@ -53,7 +53,7 @@ for track in tqdm(tracks):
         
         t = int(row['FRAME'])
         x,y,z = row[['X-pixel','Y-pixel','Z-pixel']]
-        if t < 40:
+        if t < 46:
             this_seg = manual_segmentations[int(t)]
             label = this_seg[z,y,x]
             if label > 0:

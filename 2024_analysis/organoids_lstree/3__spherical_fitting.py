@@ -25,7 +25,7 @@ dz = 2
 
 #%%
 
-for t in tqdm(np.arange(1,40)):
+for t in tqdm(np.arange(1,65)):
 
     labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     
@@ -63,7 +63,9 @@ for t in tqdm(np.arange(1,40)):
     
     # p.show()
     
+    # Save VTK
     smooth_mesh.save(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.vtk'))
+
     # Export vert, face, value tuple for napari usage
     vertices = np.asarray(smooth_mesh.points)
     faces = np.asarray(smooth_mesh.faces).reshape((-1,4))[:,1:]
@@ -71,32 +73,6 @@ for t in tqdm(np.arange(1,40)):
     values = np.dot(normals,[1,-1,1])
     np.savez(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.npz'),
              vertices,faces,values)
-    
-#%% Map all cells onto closet point on smooth mesh
-
-from scipy.spatial import cKDTree as KDTree
-
-
-#Load current time point:
-t = 1
-mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.vtk'))
-
-
-p = pv.Plotter()
-p.add_mesh(mesh)
-p.add_points(ptCloud, color='red')
- 
-p.show()
- 
-
-tree = KDTree(sphere.points.astype(np.double))
-
-pts = np.array([[0, 0.2, 0.2]])
-dist, idx = tree.query(pts)
-
-nearest_pt = sphere.points[idx]
-print(f'Nearest point from {pts[0]}')
-print(f'...       is point {nearest_pt[0]}')
 
 #%%
 
