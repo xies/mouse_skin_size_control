@@ -31,19 +31,20 @@ tracks = [t for _,t in df.groupby('TrackID')]
 manifest = pd.DataFrame({'filename':natsort.natsorted(glob(path.join(dirname,'manual_segmentation/*.tif')))})
 pattern = r'T(\d{4}).tif'
 manifest['timestr'] = manifest['filename'].apply(lambda x: findall(pattern, x)[0])
-manifest['T'] = manifest['timestr'].astype(int) - 1
+# manifest['T'] = manifest['timestr'].astype(int) - 1
 # Dict of manual segmentations keyed on the actual time frame (in 0-index)
 manual_segmentations = dict(map(
-    lambda i,j: (i,j) , manifest['T'].values,  map(io.imread,manifest['filename'].values)) )
+    lambda i,j: (i,j) , manifest.index,  map(io.imread,manifest['filename'].values)) )
 
-ZZ,YY,XX = manual_segmentations[0].shape
+ZZ,YY,XX = manual_segmentations[1].shape
 
 #%%
 
 # trackID = 0
-filt_seg = np.zeros((46,ZZ,YY,XX),dtype=int)
+filt_seg = np.zeros((len(manifest),ZZ,YY,XX),dtype=int)
 
 for track in tqdm(tracks):
+    
     trackID = track.iloc[0]['TrackID']
     track['X-pixel'] = np.round(track['X']/dx).astype(int)
     track['Y-pixel'] = np.round(track['Y']/dx).astype(int)
@@ -53,7 +54,7 @@ for track in tqdm(tracks):
         
         t = int(row['FRAME'])
         x,y,z = row[['X-pixel','Y-pixel','Z-pixel']]
-        if t < 46:
+        if t < 65:
             this_seg = manual_segmentations[int(t)]
             label = this_seg[z,y,x]
             if label > 0:

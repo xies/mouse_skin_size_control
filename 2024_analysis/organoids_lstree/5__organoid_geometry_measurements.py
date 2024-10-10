@@ -25,6 +25,8 @@ dz = 2
 
 T = 65
 
+#%%
+
 def find_nearest_vertex(tmesh,query_pts,face_idx):
     assert(len(query_pts) == len(face_idx))
     vert_idx = np.zeros_like(face_idx)
@@ -44,8 +46,10 @@ df_by_frame = {k:v for k,v in df.groupby('Frame')}
 # for t in tqdm(range(T-1)):
 t = 0
 
+# Load and query all cells in timepoint
+
 import pyvista as pv
-# Load organoid mesh
+# Load organoid shape mesh
 mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
 
 faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]

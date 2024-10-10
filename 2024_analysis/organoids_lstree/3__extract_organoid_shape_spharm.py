@@ -26,7 +26,7 @@ dz = 2
 
 #%%
 
-for t in tqdm(np.arange(1,65)):
+for t in tqdm(np.arange(1,66)):
 
     labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     
@@ -84,7 +84,7 @@ for t in tqdm(np.arange(1,65)):
     
     # Export vert, face, value tuple for napari usage
     v = np.asarray(pretty_mesh.points)
-    v = np.swapaxes(v,0,1)
+    v = v[:,[2,1,0]]
     f = np.asarray(pretty_mesh.faces).reshape((-1,4))[:,1:]
     val = np.asarray(pretty_mesh['label_id'])
     np.savez(path.join(dirname,f'manual_seg_mesh/pretty_mesh_t{t:04d}.npz'),
