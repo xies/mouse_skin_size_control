@@ -15,7 +15,7 @@ from skimage import io, measure
 from tqdm import tqdm
 from scipy.stats import variation
 import matplotlib.pyplot as plt
-from mathUtils import cvariation_bootstrap, cv_difference_pvalue
+# from mathUtils import cvariation_bootstrap, cv_difference_pvalue
 
 import xml.etree.ElementTree as ET
 
