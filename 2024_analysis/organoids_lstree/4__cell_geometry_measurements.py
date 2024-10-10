@@ -15,7 +15,7 @@ from tqdm import tqdm
 from mathUtils import parse_3D_inertial_tensor, get_interpolated_curve
 import seaborn as sb
 import pyvista as pv
-import meshFMI
+
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -72,8 +72,7 @@ for t in tqdm(range(T)):
             _df.loc[i,'Surface area'] = mesh.area
             _df.loc[i,'Mesh volume'] = mesh.volume
             
-            pl.add_mesh(mesh)
-        
+    
     df.append(_df)
     
 df = pd.concat(df,ignore_index=True)
