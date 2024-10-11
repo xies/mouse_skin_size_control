@@ -30,7 +30,9 @@ T = filt_seg.shape[0]
 pl = pv.Plotter()
 df = []
 for t in tqdm(range(T)):
-    
+
+    #@todo: measure from B and R channels as well
+
     all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
     props = measure.regionprops(all_labels)
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
@@ -40,8 +42,8 @@ for t in tqdm(range(T)):
                                                         ,'Planar angle'
                                                         ,'Z','Y','X'
                                                         ,'Surface area'])
-    
-    
+
+
     for i,p in enumerate(props):
         _df['Frame'] = t
         _df.loc[i,'cellID'] = p['label']
@@ -57,7 +59,7 @@ for t in tqdm(range(T)):
         _df.loc[i,'Y - px'] = y
         _df.loc[i,'X - px'] = x
         if p['area'] > 400:
-        
+
             # Extract cropped mask and generated mesht using VTK (meshFMI), and convert into pyVista API
             bbox = p['bbox']
             minZ,minY,minX = bbox[:3]
@@ -65,22 +67,23 @@ for t in tqdm(range(T)):
             cropped_mask = (all_labels == p['label'])[minZ - 5 : maxZ + 5,
                                                            minY - 5 : maxY + 5,
                                                            minX- 5 : maxX + 5]
-            
-            cropped_vtk = meshFMI.numpy_img_to_vtk(cropped_mask.astype(int),[dz,dx,dx], 
+
+            cropped_vtk = meshFMI.numpy_img_to_vtk(cropped_mask.astype(int),[dz,dx,dx],
                                                     origin=[minZ*dz,minY*dx,minX*dx], deep_copy=False)
             mesh = pv.PolyData( meshFMI.extract_smooth_mesh(cropped_vtk,[1,1]) )
-            
+
+            _df.loc[i,'Mesh model'] = mesh
             _df.loc[i,'Surface area'] = mesh.area
             _df.loc[i,'Mesh volume'] = mesh.volume
-    
+
     # Load the cell tracking and merge the trackID via centroid matching
     _tracked = pd.DataFrame(measure.regionprops_table(filt_seg[t,...],properties=['centroid','label']))
     _tracked = _tracked.rename(columns={'label':'trackID',
                                         'centroid-0':'Z - px','centroid-1':'Y - px','centroid-2':"X - px"})
     _df = pd.merge(_df,_tracked,on=['X - px','Y - px','Z - px'],how='left')
-    
+
     df.append(_df)
-    
+
 df = pd.concat(df,ignore_index=True)
 df.loc[df['Nuclear volume px'] == 400,'Nuclear volume'] = np.nan
 df = df.sort_values(['trackID','Frame'])
@@ -94,27 +97,27 @@ annos = {trackID:cell for trackID,cell in tracking_df.groupby('TrackID')}
 tracks = {trackID:cell for trackID,cell in df.groupby('trackID')}
 
 for trackID,t in tracks.items():
-    
+
     # Truncate since didn't do whole time course yet
     this_anno = annos[trackID]
     this_anno = this_anno.rename(columns={'FRAME':'Frame'})
     t = pd.merge(t,this_anno[['Phase','name','Frame']],on='Frame')
     t = t.rename(columns={'name':'SpotID'})
     tracks[trackID] = t
-    
+
     # Calculate cell age if there is a confirmed birth frame
     birth_frames = (t['Phase'] == 'Birth') | (t['Phase'] == 'Visible Birth')
     if birth_frames.sum() > 0:
         t['Age'] = t['Time'] - t[birth_frames].iloc[0]['Time']
     else:
         t['Age'] = np.nan
-        
+
     # Smooth the growth curve
     Vsm,dVsm = get_interpolated_curve(t,y_field='Nuclear volume',x_field='Time',smoothing_factor=1e10)
     t['Nuclear volume (sm)'] = Vsm
     t['Growth rates (sm)'] = dVsm
     t = t.set_index('index')
-    
+
 _df = pd.concat(tracks,ignore_index=True)
 _df.set_index('index')
 
@@ -156,7 +159,3 @@ df_g1s['Nuclear volume (sm)'] = df_g1s['Nuclear volume (sm)'].astype(float)
 df_g1s['G1S_logistic'] = df['Phase'] == 'G1S'
 
 sb.regplot(df_g1s,x='Nuclear volume (sm)',y='G1S_logistic',logistic=True, y_jitter=.1, scatter_kws={'alpha':0.1})
-
-
-
-

@@ -51,6 +51,9 @@ t = 0
 import pyvista as pv
 # Load organoid shape mesh
 mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
+df_by_frame[t]['Organoid volume'] = mesh.volume
+
+# Categorize cells that are entirely interior ro the organoid
 
 faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
 tmesh = tm.Trimesh(mesh.points, faces_as_array)
@@ -63,6 +66,7 @@ query_on_surface,_,face_idx = tmesh.nearest.on_surface(cell_points)
 vert_idx = find_nearest_vertex(tmesh,cell_points.values,face_idx)
 
 curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,query_on_surface,radius = kappa_radius)/kappa_radius
+df_by_frame[t]['Mean curvature'] = curvature
 
 #Define geodesic distance
 DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
@@ -77,12 +81,20 @@ neighborhood_distance = 20 #um
 
 cell_neighbors = {}
 for i,pt in enumerate(cell_points.values):
-    
+
     # Find the df entries of all cells within distance
     neighbors = df.loc[cell_points.iloc[np.where(DistMat_cells[i,:] < neighborhood_distance)[0]].index]
     cell_neighbors[cell_points.iloc[i].name] = neighbors.index
-    
-    
-    
-    
 
+# Propagate information on the neighborhood
+for centerID,neighborsID in cell_neighbors.items():
+
+    # center_cell = df.loc[center_cell]
+    neighbors = df.loc[neighborID]
+    # Mean/std neighbor volume
+    df_by_frame[t].loc[center_cell,'Mean neighbor volume']
+    df_by_frame[t].loc[center_cell,'Std neighbor volume']
+    df_by_frame[t].loc[center_cell,'Frac neighbor in G1']
+    df_by_frame[t].loc[center_cell,'Local cell density']
+
+# Do 'look backs' for the tracked cells

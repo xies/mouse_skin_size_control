@@ -41,7 +41,7 @@ def load_surface_from_npz(filename,transpose=False):
     surf = Surface(vertices,faces,values)
     return surf
 
-t = 64
+t = 1
 
 filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.npz')
 organoid_surface = load_surface_from_npz(filename)
