@@ -8,13 +8,12 @@ Created on Tue Oct  8 17:45:00 2024
 
 import numpy as np
 import pandas as pd
-from skimage import io, measure
+# from skimage import io, measure
 from os import path
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import seaborn as sb
+# import seaborn as sb
 import trimesh as tm
-import networkx as nx
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -38,7 +37,7 @@ def find_nearest_vertex(tmesh,query_pts,face_idx):
 
 #%% Calculate cell position WRT spherical coordinates of organoid mesh
 
-kappa_radius = 2
+kappa_radius = 15
 
 # Decimate dataframe into frames
 df_by_frame = {k:v for k,v in df.groupby('Frame')}
@@ -66,7 +65,7 @@ query_on_surface,_,face_idx = tmesh.nearest.on_surface(cell_points)
 vert_idx = find_nearest_vertex(tmesh,cell_points.values,face_idx)
 
 curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,query_on_surface,radius = kappa_radius)/kappa_radius
-df_by_frame[t]['Mean curvature'] = curvature
+df_by_frame[t]['Mean curvature'] = curvatures
 
 #Define geodesic distance
 DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
@@ -80,21 +79,24 @@ for i,pt in enumerate(vert_idx):
 neighborhood_distance = 20 #um
 
 cell_neighbors = {}
+cell_neighbors_idx = {}
 for i,pt in enumerate(cell_points.values):
 
     # Find the df entries of all cells within distance
     neighbors = df.loc[cell_points.iloc[np.where(DistMat_cells[i,:] < neighborhood_distance)[0]].index]
-    cell_neighbors[cell_points.iloc[i].name] = neighbors.index
+    cell_neighbors_idx[cell_points.iloc[i].name] = neighbors.index
+    cell_neighbors[df_by_frame[t].iloc[i]['cellID']] = neighbors['cellID']
 
 # Propagate information on the neighborhood
-for centerID,neighborsID in cell_neighbors.items():
+for center_idx,neighbors_idx in cell_neighbors_idx.items():
 
     # center_cell = df.loc[center_cell]
-    neighbors = df.loc[neighborID]
-    # Mean/std neighbor volume
-    df_by_frame[t].loc[center_cell,'Mean neighbor volume']
-    df_by_frame[t].loc[center_cell,'Std neighbor volume']
-    df_by_frame[t].loc[center_cell,'Frac neighbor in G1']
-    df_by_frame[t].loc[center_cell,'Local cell density']
-
+    neighbors = df.loc[neighbors_idx]
+    if len(neighbors) > 0:
+        # Mean/std neighbor volume
+        df_by_frame[t].at[center_idx,'Mean neighbor volume'] = neighbors['Mesh volume'].mean()
+        df_by_frame[t].at[center_idx,'Std neighbor volume'] = neighbors['Mesh volume'].std()
+        df_by_frame[t].at[center_idx,'Frac neighbor in G1'] = (neighbors['Phase'] == 'G1').sum()/len(neighbors)
+        df_by_frame[t].at[center_idx,'Local cell density'] = 1/len(neighbors)
+    
 # Do 'look backs' for the tracked cells

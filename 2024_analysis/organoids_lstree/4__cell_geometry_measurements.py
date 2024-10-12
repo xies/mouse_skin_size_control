@@ -16,6 +16,7 @@ from mathUtils import parse_3D_inertial_tensor, get_interpolated_curve
 import seaborn as sb
 import pyvista as pv
 import meshFMI
+import pickle as pkl
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -30,23 +31,28 @@ T = filt_seg.shape[0]
 pl = pv.Plotter()
 df = []
 for t in tqdm(range(T)):
-
+    
     #@todo: measure from B and R channels as well
-
+    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t+1:04d}.tif'))
+    Cdt1 = io.imread(path.join(dirname,f'Channel1-Deconv/Channel1-T{t+1:04d}.tif'))
+    Gem = io.imread(path.join(dirname,f'Channel2-Deconv/Channel2-T{t+1:04d}.tif'))
+    
     all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
-    props = measure.regionprops(all_labels)
+    props = measure.regionprops(all_labels,intensity_image=H2B)
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
                                                         ,'Axial moment','Axial angle'
                                                         ,'Planar moment 1'
                                                         ,'Planar moment 2'
                                                         ,'Planar angle'
                                                         ,'Z','Y','X'
-                                                        ,'Surface area'])
+                                                        ,'Surface area'
+                                                        ,'Mean H2B intensity'])
 
-
+    meshes_in_frame = {}
     for i,p in enumerate(props):
         _df['Frame'] = t
         _df.loc[i,'cellID'] = p['label']
+        _df.loc[i,'Mean H2B intensity']= p['mean_intensity']
         _df.loc[i,'Nuclear volume px'] = p['area']
         _df.loc[i,'Nuclear volume'] = p['area'] * dx**2 * dz
         I = p['inertia_tensor']
@@ -71,10 +77,25 @@ for t in tqdm(range(T)):
             cropped_vtk = meshFMI.numpy_img_to_vtk(cropped_mask.astype(int),[dz,dx,dx],
                                                     origin=[minZ*dz,minY*dx,minX*dx], deep_copy=False)
             mesh = pv.PolyData( meshFMI.extract_smooth_mesh(cropped_vtk,[1,1]) )
+            meshes_in_frame[p['label']] = mesh
 
-            _df.loc[i,'Mesh model'] = mesh
             _df.loc[i,'Surface area'] = mesh.area
             _df.loc[i,'Mesh volume'] = mesh.volume
+    
+    # Export the meshes
+    with open(path.join(dirname,f'manual_seg_mesh/individual_mesh_by_cellID_T{t+1:04d}.pkl'),'wb') as f:
+         pkl.dump(meshes_in_frame,f)
+    
+    # Measure other channels + merge
+    _R = pd.DataFrame(
+        measure.regionprops_table(all_labels,intensity_image=Cdt1,properties=['label','mean_intensity']))
+    _R = _R.rename(columns={'label':'cellID','mean_intensity':'Mean Cdt1 intensity'})
+    _df = _df.merge(_R,on='cellID')
+
+    _G = pd.DataFrame(
+        measure.regionprops_table(all_labels,intensity_image=Gem,properties=['label','mean_intensity']))
+    _G = _G.rename(columns={'label':'cellID','mean_intensity':'Mean Gem intensity'})
+    _df = _df.merge(_G,on='cellID')
 
     # Load the cell tracking and merge the trackID via centroid matching
     _tracked = pd.DataFrame(measure.regionprops_table(filt_seg[t,...],properties=['centroid','label']))
@@ -145,7 +166,6 @@ age_summary.columns = age_summary.columns.droplevel(0)
 age_summary['G1 length'] = age_summary['G1S'] - age_summary['Birth']
 
 summary = pd.merge(age_summary['G1 length'],size_summary, on='trackID')
-
 
 
 plt.scatter(summary['Visible birth'],summary['G1 length'])
