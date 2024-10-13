@@ -6,7 +6,6 @@ Created on Wed Sep 18 13:58:19 2024
 @author: xies
 """
 
-import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
 from os import path

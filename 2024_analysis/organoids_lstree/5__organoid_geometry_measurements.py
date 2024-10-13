@@ -105,12 +105,19 @@ for t in tqdm(range(T-1)):
             df_by_frame[t].at[center_idx,'Mean neighbor H2B intensity'] = neighbors['Mean H2B intensity'].mean()
             df_by_frame[t].at[center_idx,'Mean neighbor Cdt1 intensity'] = neighbors['Mean Cdt1 intensity'].mean()
             df_by_frame[t].at[center_idx,'Mean neighbor Gem intensity'] = neighbors['Mean Gem intensity'].mean()
-            df_by_frame[t].at[center_idx,'Local cell density'] = 1/len(neighbors)
+            df_by_frame[t].at[center_idx,'Local cell density'] = len(neighbors)
+    
+    # Save neighborhood information
+    with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_T{t+1:04d}.pkl'),'wb') as f:
+        pkl.dump(cell_neighbors,f)
+    with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_dfindex_T{t+1:04d}.pkl'),'wb') as f:
+        pkl.dump(cell_neighbors_idx,f)
     
 # Recombine into dataframe
 df_combined = pd.concat(df_by_frame,ignore_index=True)
+df_combined = df_combined.drop(columns='index')
                       
-                      
+df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'))
 
 
 
