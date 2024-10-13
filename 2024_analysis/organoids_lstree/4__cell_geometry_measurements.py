@@ -47,7 +47,7 @@ for t in tqdm(range(T)):
                                                         ,'Z','Y','X'
                                                         ,'Surface area'
                                                         ,'Mean H2B intensity'])
-
+    
     meshes_in_frame = {}
     for i,p in enumerate(props):
         _df['Frame'] = t
