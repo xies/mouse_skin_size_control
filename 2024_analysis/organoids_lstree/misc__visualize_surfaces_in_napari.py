@@ -41,7 +41,7 @@ def load_surface_from_npz(filename,transpose=False):
     surf = Surface(vertices,faces,values)
     return surf
 
-t = 1
+t = 65
 
 filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.npz')
 organoid_surface = load_surface_from_npz(filename)
@@ -53,8 +53,8 @@ rot = load_surface_from_npz(filename,transpose=False)
 viewer.add_surface((rot.vertices,rot.faces,rot.values)
         ,name='tracked_cells',colormap='magma')
 
-im = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t:04d}.tif'))
-viewer.add_image(im,name='image', scale=[2,.26,.26],rendering='attenuated_mip',blending='additive')
+# im = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t:04d}.tif'))
+# viewer.add_image(im,name='image', scale=[2,.26,.26],rendering='attenuated_mip',blending='additive')
 
-# im = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
-# viewer.add_labels(im,name='labels', scale=[2,.26,.26])
+im = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
+viewer.add_labels(im,name='labels', scale=[2,.26,.26])

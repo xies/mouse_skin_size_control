@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 # import seaborn as sb
 import trimesh as tm
-
-from basicUtils import nonans
+import pyvista as pv
+import pickle as pkl
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -42,20 +42,23 @@ kappa_radius = 15
 # Decimate dataframe into frames
 df_by_frame = {k:v for k,v in df.groupby('Frame')}
 
+
 for t in tqdm(range(T-1)):
 
-# Load and query all cells in timepoint
-
-    import pyvista as pv
     # Load organoid shape mesh
     mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
     df_by_frame[t]['Organoid volume'] = mesh.volume
-    
-    # Categorize cells that are entirely interior ro the organoid
-    
     faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
     tmesh = tm.Trimesh(mesh.points, faces_as_array)
     
+    # Categorize cells that are entirely interior ro the organoid
+    with open(path.join(dirname,f'manual_seg_mesh/individual_mesh_by_cellID_T{t+1:04d}.pkl'),'rb') as f:
+        cell_meshes = pkl.load(f)
+        
+    for cellID,cell_mesh in cell_meshes.items():
+        df_by_frame[t].loc[df_by_frame[t]['cellID'] == cellID,'Organoid interiority'] = \
+            -tm.proximity.signed_distance(tmesh,cell_mesh.points).sum()
+            
     # calculate organoid curvature at each cell coordinate
     cell_points = df_by_frame[t][['Z','Y','X']]
     
@@ -71,8 +74,12 @@ for t in tqdm(range(T-1)):
     for i,pt in enumerate(vert_idx):
         for j,other_pt in enumerate(vert_idx):
             if i > j:
-                geod = mesh.geodesic(pt,other_pt)
-                DistMat_cells[i,j] = geod.length
+                try:
+                    geod = mesh.geodesic(pt,other_pt)
+                    l = geod.length
+                except:
+                    l = 1000 # placeholder
+                DistMat_cells[i,j] = l
     
     # Define 'neighborhood'
     neighborhood_distance = 20 #um
