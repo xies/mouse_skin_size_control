@@ -43,7 +43,7 @@ kappa_radius = 15
 df_by_frame = {k:v for k,v in df.groupby('Frame')}
 
 
-for t in tqdm(range(T-1)):
+for t in tqdm(range(T)):
 
     # Load organoid shape mesh
     mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))

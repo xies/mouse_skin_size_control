@@ -9,6 +9,7 @@ Created on Sun Oct 13 15:52:56 2024
 import pandas as pd
 import numpy as np
 from os import path
+import pickle as pkl
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 dx = 0.26
@@ -18,9 +19,29 @@ df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_f
 
 #%%
 
+all_neighbor_idx = []
+for t in range(65):
+    with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_dfindex_T{t+1:04d}.pkl'),'rb') as f:
+        all_neighbor_idx.append(pkl.load(f))
+    
+def smooth():
+
+#%%
+    
 df_by_frame = {frame:_df for frame,_df in df.groupby('Frame')}
 tracks = {ID:t for ID,t in df.groupby('trackID')}
 
 for trackID,track in tracks.items():
     
-    track['']
+    for idx,timepoint in track.iterrows():
+        
+        t = timepoint['Frame']
+        neighbor_idxs = all_neighbor_idx[t]
+        
+        # Smooth the relevant things
+        
+        # Grab the last 30min
+        
+        # Grab the 30min previous to that
+        
+        
