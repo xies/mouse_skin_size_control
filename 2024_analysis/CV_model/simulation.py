@@ -6,7 +6,6 @@ Created on Thu Oct 29 19:45:04 2020
 @author: xies
 """
 
-
 import numpy as np
 from numpy import random
 import pandas as pd

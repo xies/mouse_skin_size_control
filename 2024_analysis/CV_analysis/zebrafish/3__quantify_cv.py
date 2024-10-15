@@ -41,36 +41,9 @@ g1s['Phase'] = 'G1S'
 div = quantify_volume(path.join(dirname,'Position001_Mastodon/division/div_manual.tif'))
 div['Phase'] = 'Division'
 df = pd.concat((birth,g1s,div),ignore_index=True)
+df.to_csv(path.join(dirname,'cell_size_by_cellcycle_position.csv'))
 
-# birth = io.imread(path.join(dirname,'Position001_Mastodon/birth/birth_manual.tif'))
-
-# _df = []
-# for t in tqdm(range(birth.shape[0])):
-#     this_df = pd.DataFrame(measure.regionprops_table(birth[t,...],properties=['label','area']))
-#     this_df['Frame'] = t
-#     _df.append(this_df)
-# _df = pd.concat(_df)
-# _df = _df.rename(columns={'area':'Volume'})
-
-# df = pd.DataFrame(_df.groupby('label')['Volume'].mean())
-# df['Phase'] = 'Birth'
-
-# g1s = io.imread(path.join(dirname,'Position001_Mastodon/g1s/g1s_manual.tif'))
-
-# _df = []
-# for t in tqdm(range(g1s.shape[0])):
-#     this_df = pd.DataFrame(measure.regionprops_table(g1s[t,...],properties=['label','area']))
-#     this_df['Frame'] = t
-#     _df.append(this_df)
-# _df = pd.concat(_df)
-# _df = _df.rename(columns={'area':'Volume'})
-# _df = pd.DataFrame(_df.groupby('label')['Volume'].mean())
-# _df['Phase'] = 'G1S'
-
-# df = pd.concat((df,_df),ignore_index=True)
-
-#%%
-
+#%% Estimate CV via bootstrap
 
 CV = pd.DataFrame()
 
@@ -85,8 +58,9 @@ plt.ylabel('CV in nuclear size +/- 95% interval via bootstrap')
 plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
 
 print(CV)
+CV.to_csv(path.join(dirname,'cv_cellcyce_position.csv'))
 
-#%% Calculate P-values
+#%% Calculate P-values via bootstrap
 
 cv_difference_pvalue(df[df['Phase'] == 'Birth']['Volume'],df[df['Phase'] == 'G1S']['Volume'], Nboot=10000)
 cv_difference_pvalue(df[df['Phase'] == 'Division']['Volume'],df[df['Phase'] == 'G1S']['Volume'], Nboot=10000)

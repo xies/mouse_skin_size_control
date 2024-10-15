@@ -12,7 +12,7 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 
 from FlowCytometryTools import FCMeasurement
-from sklearn import mixture
+# from sklearn import mixture
 from glob import glob
 from os import path
 
@@ -21,11 +21,12 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 
 from scipy import stats
-from mathUtils import cvariation_ci, cvariation_ci_bootstrap
+from mathUtils import cvariation_bootstrap
+from ifUtils import Gate
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/07-01-2024 HMECs WT RBKO palbo repeat'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Flow/HMECs/07-01-2024 HMECs WT RBKO palbo repeat'
 
-#%%
+#%% Load and preprocess variables
 
 filelist = glob(path.join(dirname,'*.fcs'))
 conditions = ['RBKO palbo','WT palbo','WT','RBKO']
@@ -39,98 +40,112 @@ df = pd.concat(df,ignore_index=True)
 #geminin should be on log scale
 df['Log-geminin'] = np.log(df['mCherry-A'])
 
-# Gate on FSC-SSC
-plt.figure()
-pts = plt.scatter(df['FSC-A'],df['SSC-A'],alpha=0.005)
-plt.xlabel('FSC-A');plt.ylabel('SSC-A');
-selector = SelectFromCollection(plt.gca(), pts)
+#%% Define the gates
 
-#%% 
+fsc_ssc_gate = Gate('fsc-scc','FSC-A','SSC-A')
+diploid_gate = Gate('diploids','Hoechst-H','Hoechst-W')
+geminin_gate = Gate('Geminin_high','Hoechst-A','Log-geminin')
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(df['FSC-A'],df['SSC-A'])])
+#%% gate on real cells
 
-df = df[I]
+fsc_ssc_gate.draw_gates(df)
 
-#%% Gate on singlets based on H/W
-plt.figure()
-pts = plt.scatter(df['Hoechst-H'],df['SSC-W'],alpha=0.005)
-plt.xlabel('Hoechst-height');plt.ylabel('Hoechst-width');
-selector = SelectFromCollection(plt.gca(), pts)
+#%% Throwaway non cells
 
-#%% 
+cells = df[fsc_ssc_gate.get_gated_indices(df)]
+fsc_ssc_gate.draw_gate_as_patch(df)
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(df['Hoechst-H'],df['Hoechst-W'])])
+#%% Gate on diploids
 
-diploids = df[I]
+diploid_gate.draw_gates(cells,alpha=0.005)
 
-# Display gate
-plt.figure()
-pts = plt.scatter(df['Hoechst-H'],df['Hoechst-W'],alpha=0.005)
-plt.xlabel('Hoechst-height');plt.ylabel('Hoechst-width');
-patch = PathPatch(p_,lw=2,facecolor='r',alpha=0.5)
-plt.gca().add_patch(patch)
+#%% Throwaway non diploids
 
-#%% Use High geminin to gate on Gemin+
+diploids = df[diploid_gate.get_gated_indices(df)]
+diploid_gate.draw_gate_as_patch(cells)
 
-pts = plt.scatter(diploids['Hoechst-A'],diploids['Log-geminin'],alpha=0.005)
-plt.xlabel('Hoechst-area');plt.ylabel('Log-geminin');
-selector = SelectFromCollection(plt.gca(), pts)
+#%% Gate on Geminin+
 
-#%% Geminin-high cells are 'SG2'
+geminin_gate.draw_gates(diploids)
 
-verts = np.array(selector.poly.verts)
-x = verts[:,0];y = verts[:,1]
-p_ = Path(np.array([x,y]).T)
-I = np.array([p_.contains_point([x,y]) for x,y in zip(diploids['Hoechst-A'],diploids['Log-geminin'])])
-# I = diploids['Log-geminin'] > th
-diploids.loc[:,'Geminin_high'] = False
+#%% Propagate geminin status
+
+I = geminin_gate.get_gated_indices(diploids)
+diploids['Geminin_high'] = False
 diploids.loc[I,'Geminin_high'] = True
 
-#%%
+#%% Build CV table using bootstrap
 
 Nboot = 1000
-CV = pd.DataFrame()
+CV = []
 
 for (condition,phase),_df in diploids.groupby(['Condition','Geminin_high']):
     
-    # CV.loc[condition,phase] = stats.variation(_df['Alexa Fluor™ 647-A'])
-    CV.loc[condition,phase] = stats.variation(_df['SSC-A'])
+    # _cv,_lb,_ub = cvariation_bootstrap(_df['SSC-A'],Nboot=1000,subsample=10000)
+    _cv,_lb,_ub = cvariation_bootstrap(_df['Alexa Fluor™ 647-A'],Nboot=1000,subsample=10000)
+
+    CV.append(pd.DataFrame({'Condition':condition,
+                         'Geminin_high':phase,
+                         'CV':_cv,
+                         'UB':_ub,
+                         'LB':_lb,
+                         },index=[0]))
+CV = pd.concat(CV,ignore_index=True)
+
+#%% Plot CV table
+
+plt.figure()
+for i,(condition,_df) in enumerate(CV.groupby('Condition')):
     
+    if condition.startswith('WT'):
+        plt.subplot(1,2,1)
+        plt.title('Wild type')
+    if condition.startswith('RBKO'):
+        plt.subplot(1,2,2)
+        plt.title('RB-KO')
+    
+    g1 = _df[~_df['Geminin_high']]
+    sg2 = _df[_df['Geminin_high']]
+    _cv = np.hstack((g1['CV'].values, sg2['CV'].values))
+    _yerr = np.hstack(( g1['UB']-g1['LB'].values, sg2['UB']-sg2['LB'].values ))/2
+    plt.errorbar([1,2],_cv,yerr=_yerr)
+    plt.ylim([0,.5])
+    plt.xticks([1,2],labels=['G1','Post-G1/S'])
+    plt.xlabel('Cell cycle phase')
+    plt.ylabel('CV in cell size (SSC-A)')
+
+    print(condition)
+plt.legend(['DMSO','Palbo'])
+
 #%% Plot the CVs as errorbars
 
-def plot_size_CV_subplots(df,x,title=None):
+# def plot_size_CV_subplots(df,x,title=None):
     
-    plt.figure()
-    plt.subplot(1,3,1)
-    sb.barplot(df,y='FSC-A',x=x
-               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-               ,order=[False,True])
-    plt.ylabel('CV of FSC')
+#     plt.figure()
+#     plt.subplot(1,3,1)
+#     sb.barplot(df,y='FSC-A',x=x
+#                ,estimator=stats.variation,errorbar=(lambda x: cvariation_bootstrap(x,Nboot)[:1:2])
+#                ,order=[False,True])
+#     plt.ylabel('CV of FSC')
     
-    plt.subplot(1,3,2)
-    sb.barplot(df,y='SSC-A',x=x
-               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-               ,order=[False,True])
-    plt.ylabel('CV of SSC')
-    plt.title(title)
+#     plt.subplot(1,3,2)
+#     sb.barplot(df,y='SSC-A',x=x
+#                ,estimator=stats.variation,errorbar=(lambda x: cvariation_bootstrap(x,Nboot)[:1:2])
+#                ,order=[False,True])
+#     plt.ylabel('CV of SSC')
+#     plt.title(title)
     
-    plt.subplot(1,3,3)
-    sb.barplot(df,y='Alexa Fluor™ 647-A',x=x
-               ,estimator=stats.variation,errorbar=(lambda x: cvariation_ci_bootstrap(x,Nboot))
-               ,order=[False,True])
-    plt.ylabel('CV of SE-647')
+#     plt.subplot(1,3,3)
+#     sb.barplot(df,y='Alexa Fluor™ 647-A',x=x
+#                ,estimator=stats.variation,errorbar=(lambda x: cvariation_bootstrap(x,Nboot)[:1:2])
+#                ,order=[False,True])
+#     plt.ylabel('CV of SE-647')
 
 
-plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT'],'Geminin_high','HMEC WT')
-plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT palbo'],'Geminin_high','HMEC WT 100nM Palbo')
+# plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT'],'Geminin_high','HMEC WT')
+# plot_size_CV_subplots(diploids[diploids['Condition'] == 'WT palbo'],'Geminin_high','HMEC WT 100nM Palbo')
 
-plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO'],'Geminin_high','HMEC RBKO')
-plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO palbo'],'Geminin_high','HMEC RBKO 100nM Palbo')
+# plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO'],'Geminin_high','HMEC RBKO')
+# plot_size_CV_subplots(diploids[diploids['Condition'] == 'RBKO palbo'],'Geminin_high','HMEC RBKO 100nM Palbo')
 
 
