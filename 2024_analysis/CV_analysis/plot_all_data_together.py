@@ -11,9 +11,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mathUtils import cvariation_bootstrap, cv_difference_pvalue
 from os import path
-from scipy import stats
-import pickle as pkl
-from basicUtils import nonans
 
 #%% Load empirical data
 
@@ -42,6 +39,14 @@ plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
 plt.ylabel('C.V. in cell volume')
 plt.title('Mouse basal layer cells')
 
+Pb_v_g1 = cv_difference_pvalue(skin['Birth volume'],skin['G1 volume'],Nboot=1000)
+Pdiv_v_g1 = cv_difference_pvalue(skin['Division volume'],skin['G1 volume'],Nboot=1000)
+Pb_v_div = cv_difference_pvalue(skin['Birth volume'],skin['Division volume'],Nboot=1000)
+print('--- Skin CV bootstrap tests --- ')
+print(f'Birth v. G1: P = {Pb_v_g1}')
+print(f'Division v. G1: P = {Pdiv_v_g1}')
+print(f'Birth v. division: P = {Pb_v_div}')
+
 #%% fish
 
 # Load all the zebrafish
@@ -65,24 +70,16 @@ plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
 plt.ylabel('C.V. in cell volume')
 plt.title('Zebrafish osteoblasts')
 
-#%% yy plot
-
-fig, ax1 = plt.subplots()
-
-ax1.errorbar([1,2,3],cv_fish.loc[['Birth','G1S','Division']]['CV'], cv_fish.loc[['Birth','G1S','Division']]['Err'])
-ax1.tick_params(axis='y', color='C0', labelcolor='C0')
-plt.legend(['Mouse skin'])
-plt.ylabel('C.V. in cell volume')
-
-ax2 = ax1.twinx()
-ax2.errorbar([1,2,3],cv_skin.loc[['Birth','G1S','Division']]['CV'], cv_skin.loc[['Birth','G1S','Division']]['Err'],
-             color='r')
-plt.legend(['Zebrafish'])
-plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
-ax2.tick_params(axis='y', color='r', labelcolor='r')
-plt.ylabel('C.V. in nuclear volume')
-
-plt.show()
+Pb_v_g1 = cv_difference_pvalue(fish[fish['Phase'] == 'Birth']['Volume'],
+                               fish[fish['Phase'] == 'G1S']['Volume'],Nboot=1000)
+Pdiv_v_g1 = cv_difference_pvalue(fish[fish['Phase'] == 'Division']['Volume'],
+                                 fish[fish['Phase'] == 'G1S']['Volume'],Nboot=1000)
+Pb_v_div = cv_difference_pvalue(fish[fish['Phase'] == 'Division']['Volume'],
+                                 fish[fish['Phase'] == 'Birth']['Volume'],Nboot=1000)
+print('--- Fish CV bootstrap tests --- ')
+print(f'Birth v. G1: P = {Pb_v_g1}')
+print(f'Division v. G1: P = {Pdiv_v_g1}')
+print(f'Birth v. division: P = {Pb_v_div}')
 
 #%% Model
 
