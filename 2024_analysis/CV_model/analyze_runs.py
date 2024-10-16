@@ -21,7 +21,6 @@ from scipy import stats
 from basicUtils import nonan_pairs, nonans
 from mathUtils import cvariation_bootstrap
 
-
 def plot_growth_curves_population(pop):
     
     plt.figure()
@@ -135,12 +134,12 @@ for model_name,_df in CVs.items():
     df.loc[model_name,'G1 growth ratio'] = np.nanmean(g1_growth/total_growth)
     
     # CV of size
-    df.loc[model_name,['[Birth CV','Birth CV LB','Birth CV UB']] = \
-        cvariation_bootstrap(bsize,Nboot=1000,subsample=100)
+    df.loc[model_name,['Birth CV','Birth CV LB','Birth CV UB']] = \
+        cvariation_bootstrap(bsize,Nboot=1000,subsample=200)
     df.loc[model_name,['G1S CV','G1S CV LB','G1S CV UB']] = \
-        cvariation_bootstrap(g1size,Nboot=1000,subsample=100)
+        cvariation_bootstrap(g1size,Nboot=1000,subsample=200)
     df.loc[model_name,['Div CV','Div CV LB','Div CV UB']] = \
-        cvariation_bootstrap(dsize,Nboot=1000,subsample=100)
+        cvariation_bootstrap(dsize,Nboot=1000,subsample=200)
     _df = pd.DataFrame()
     _df['Generation'] = [c.generation for c in runs[model_name].values()]
     _df['Birth size'] = bsize
