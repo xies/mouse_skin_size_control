@@ -57,6 +57,11 @@ for t in tqdm(range(T)):
         _df.loc[i,'Nuclear volume'] = p['area'] * dx**2 * dz
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
+        _df.loc[i,'Axial moment'] = Iaxial
+        _df.loc[i,'Axial angle'] = phi
+        _df.loc[i,'Planar moment 1'] = Ia
+        _df.loc[i,'Planar moment 2'] = Ib
+        _df.loc[i,'Planar angle'] = theta
         z,y,x = p['centroid']
         _df.loc[i,'Z'] = z*dz
         _df.loc[i,'Y'] = y*dx

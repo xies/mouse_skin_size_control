@@ -24,24 +24,20 @@ for t in range(65):
     with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_dfindex_T{t+1:04d}.pkl'),'rb') as f:
         all_neighbor_idx.append(pkl.load(f))
     
-def smooth():
+
 
 #%%
-    
+
 df_by_frame = {frame:_df for frame,_df in df.groupby('Frame')}
 tracks = {ID:t for ID,t in df.groupby('trackID')}
 
 for trackID,track in tracks.items():
     
-    for idx,timepoint in track.iterrows():
-        
-        t = timepoint['Frame']
-        neighbor_idxs = all_neighbor_idx[t]
-        
-        # Smooth the relevant things
-        
-        # Grab the last 30min
-        
-        # Grab the 30min previous to that
-        
-        
+    # Smooth the relevant things
+    df['Change in local cell density'] = np.gradient(df['Local cell density'],2)
+    df['Change in local cell density'] = np.gradient(df['Local cell density'],2)
+    df['Change in mean neighbor Cdt1'] = np.gradient(df['Mean neighbor Cdt1'],2)
+    df['Change in Cdt1'] = np.gradient(df['Mean Cdt1 intensity'],2)
+    df['Change in Cdt1'] = np.gradient(df['Mean Cdt1 intensity'],2)
+    
+    
