@@ -89,18 +89,18 @@ def extract_time_window_after_g1s(pop2analyze,num_frames_to_extract,
 
 #%% Load runs and collate stats for each model parameter set
 
-dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
-params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
+# dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
+# params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
 
-with open(path.join(dirname,'runs.pkl'),'rb') as f:
-    runs = pkl.load(f)
+# with open(path.join(dirname,'adders.pkl'),'rb') as f:
+#     runs = pkl.load(f)
 
 CVs = {}
 for model_name,pop2analyze in tqdm(runs.items()):
     CVs[model_name] = extract_CVs(pop2analyze,measurement_field='Measured volume')
 
 df = pd.DataFrame(index=CVs.keys(),columns=['G1 model','SG2M model'
-                                            ,'G1 CV','SG2M CV','CVdiff'
+                                            ,'G1 CV','SG2M CV','CVdiff','Birth CV','G1S CV','Div CV'
                                             ,'G1 size control slope','SG2M size control slope'
                                             ,'Birth size','G1 size','Div size'
                                             ,'G1 growth','SG2M growth','Total growth','G1/G2 growth ratio'
@@ -135,9 +135,12 @@ for model_name,_df in CVs.items():
     df.loc[model_name,'G1 growth ratio'] = np.nanmean(g1_growth/total_growth)
     
     # CV of size
-    df.loc[model_name,'Birth CV'] = np.nanstd(bsize)/np.nanmean(bsize)
-    df.loc[model_name,'G1S CV'] = np.nanstd(g1size)/np.nanmean(g1size)
-    df.loc[model_name,'Div CV'] = np.nanstd(dsize)/np.nanmean(dsize)
+    df.loc[model_name,['[Birth CV','Birth CV LB','Birth CV UB']] = \
+        cvariation_bootstrap(bsize,Nboot=1000,subsample=100)
+    df.loc[model_name,['G1S CV','G1S CV LB','G1S CV UB']] = \
+        cvariation_bootstrap(g1size,Nboot=1000,subsample=100)
+    df.loc[model_name,['Div CV','Div CV LB','Div CV UB']] = \
+        cvariation_bootstrap(dsize,Nboot=1000,subsample=100)
     _df = pd.DataFrame()
     _df['Generation'] = [c.generation for c in runs[model_name].values()]
     _df['Birth size'] = bsize
@@ -166,7 +169,9 @@ for model_name,_df in CVs.items():
     X,Y = nonan_pairs(g1size,total_growth)
     p = np.polyfit(X,Y,1)
     df.loc[model_name,'Final size control slope'] = p[0]
-    
+
+df.to_csv(path.join(dirname,'model_summary.csv'))
+
 #%% Collate 'birth-aligned', 'G1S aligned' and 'normalized' time series
 
 pop2analyze = runs['timer40_sizer']

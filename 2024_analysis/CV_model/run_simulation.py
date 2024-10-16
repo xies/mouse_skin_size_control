@@ -60,7 +60,7 @@ max_iter = 2000
 dt = 0.5 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
-Ncells = 1000
+Ncells = 100
 
 # Time information
 sim_clock = {}
@@ -147,7 +147,7 @@ params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
 
 #% Run model
 runs = {}
-for model_name,p in params.iterrows():
+for model_name,p in params.iloc[-3:].iterrows():
 
     #% 1. Reset clock and initialize
     # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
@@ -167,5 +167,6 @@ for model_name,p in params.iterrows():
     # plot_growth_curves_population(population)
     runs[model_name] = pop2analyze
 
-with open(path.join(dirname,'runs.pkl'),'wb') as f:
+with open(path.join(dirname,'adders.pkl'),'wb') as f:
     pkl.dump(runs,f)
+

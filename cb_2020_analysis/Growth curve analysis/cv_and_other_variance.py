@@ -6,6 +6,11 @@ Created on Mon Aug 12 14:49:27 2019
 @author: xies
 """
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
 df = df_has_daughter
 Ncells = len(df)
 
@@ -67,9 +72,9 @@ plt.ylabel('Coefficient of variation')
 
 # Calculate if bCV > gCV in bootstrap
 
-print 'P(birth CV > div CV) = ', float((bdCV_diff > 0).sum()) / len(bdCV_diff)
-print 'P(birth CV > g1 CV) = ', float((bgCV_diff > 0).sum()) / len(bgCV_diff)
-print 'P(g1 CV > div CV) = ', float((gdCV_diff > 0).sum()) / len(gdCV_diff)
+print('P(birth CV > div CV) = ', float((bdCV_diff > 0).sum()) / len(bdCV_diff) )
+print('P(birth CV > g1 CV) = ', float((bgCV_diff > 0).sum()) / len(bgCV_diff) )
+print('P(g1 CV > div CV) = ', float((gdCV_diff > 0).sum()) / len(gdCV_diff) )
 
 # Calculate dispersion index
 #birthFano = np.var(df['Birth volume']) / np.mean(df['Birth volume'])

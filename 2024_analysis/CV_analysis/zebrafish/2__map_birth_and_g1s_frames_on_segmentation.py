@@ -18,6 +18,9 @@ import xml.etree.ElementTree as ET
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/zebrafish_ditalia/osx_fucci_26hpp_11_4_17/'
 
+dx = 0.60546875
+dz = 1.75
+
 #%%
 
 # Load MaMuT-XML file
