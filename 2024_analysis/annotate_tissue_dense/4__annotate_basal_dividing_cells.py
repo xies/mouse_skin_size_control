@@ -14,12 +14,13 @@ import matplotlib.pylab as plt
 from scipy.optimize import curve_fit
 
 from mathUtils import surface_area, parse_3D_inertial_tensor
+from imageUtils import colorize_segmentation
 
 from os import path,makedirs
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 print(f'--- Working on {dirname} ---')
@@ -28,6 +29,7 @@ ZZ = 72
 XX = 460
 T = 15
 dx = 0.25
+dz = 1
 
 from toeplitzDifference import backward_difference,forward_difference,central_difference
 
@@ -130,7 +132,8 @@ collated = {k:[] for k in allIDs}
 for t,im in tqdm(enumerate(basal_tracking)):
 
     nuc_mask = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif')) > 0
-    properties = measure.regionprops(im, intensity_image = nuc_mask, extra_properties = [surface_area])
+    properties = measure.regionprops(im, intensity_image = nuc_mask, extra_properties = [surface_area]
+                                     , spacing = [dz,dx,dx])
     
     for p in properties:
         
@@ -142,14 +145,14 @@ for t,im in tqdm(enumerate(basal_tracking)):
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
         
-        nuc_vol = p['mean_intensity']*p['area'] * dx**2
+        nuc_vol = p['mean_intensity']*p['area']
         
         s = {'basalID': basalID
                        ,'Daughter':False
                        ,'Volume':V
                        ,'Z':Z,'Frame': t,'Time':t*12
-                       ,'Y-pixels':Y,'X-pixels':X
-                       ,'Y':Y * dx**2,'X':X * dx**2
+                       ,'Y-pixels':Y/dx,'X-pixels':X/dx
+                       ,'Y':Y,'X':X
                        ,'Surface area':SA
                        ,'Axial angle':phi
                        ,'Axial component':Iaxial
@@ -322,31 +325,31 @@ df = pd.concat(collated,ignore_index=True)
 # Load into a dict of individual cells (some daughter cell pairs have >1 time points)
 daughter_tracking = io.imread(path.join(dirname,'manual_basal_tracking_lineage/basal_tracking_daughters_cyto.tif'))
 daughterIDs = np.unique(daughter_tracking)[1:]
-daughters = {k:pd.DataFrame() for k in daughterIDs}
+daughters = {k:list() for k in daughterIDs}
 
 for t,im in enumerate(daughter_tracking):
 
     properties = measure.regionprops(im)
-    
-    for p in properties:
-        
-        basalID = p['label']
-        V = p['area'] * dx**2
-        s = pd.Series({'basalID': basalID
-                       ,'Daughter volume':V})
-        
-        daughters[basalID] = daughters[basalID].append(s,ignore_index=True)
+    if len(properties) > 0:
+        for p in properties:
+            basalID = p['label']
+            V = p['area'] * dx**2
+            s = {'basalID': basalID,'Daughter volume':V}
+            daughters[basalID].append(s)
+
+for k,v in daughters.items():
+    daughters[k] = pd.DataFrame(v)
 
 # Trim to only first daughter time point
 for basalID,daughter in daughters.items():
     if len(daughter) > 0:
         daughters[basalID] = daughter.iloc[0]
     last_time = collated[basalID]['Time'].max()
-    collated[basalID] = collated[basalID].append(pd.Series({'basalID':basalID,
+    collated[basalID] = pd.concat(( collated[basalID],pd.DataFrame({'basalID':basalID,
                                                             'Time':last_time + 12,
                                                             'Volume':daughter['Daughter volume'].values[0],
                                                             'Daughter':True
-                                                            }),ignore_index=True)
+                                                            },index=['Daughter']) ))
 
 with open(path.join(dirname,'basal_with_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)

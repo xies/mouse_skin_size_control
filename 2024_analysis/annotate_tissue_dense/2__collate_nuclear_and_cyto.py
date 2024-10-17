@@ -19,6 +19,7 @@ from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_l
 from tqdm import tqdm
 from os import path
 
+dz = 1
 dx = 0.25
 XX = 460
 Z_SHIFT = 10

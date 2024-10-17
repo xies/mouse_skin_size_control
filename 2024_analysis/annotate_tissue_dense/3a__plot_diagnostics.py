@@ -56,6 +56,18 @@ sb.histplot(df,x='Nuclear volume',y='Frame',bins=[15,15])
 plt.subplot(2,1,2)
 sb.histplot(df,x='Cell volume',y='Frame',bins=[15,15])
 
-#%%
+#%% Colorize + visualze some other features on cell-by-cell basis
+ 
+    # Colorize nuclei based on mean curvature (for inspection)
+    # mean_colors = (mean-mean.min())/mean.max()
+    # colorized = colorize_segmentation(nuc_dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
+ 
 
-
+    #% Compute local curvature
+    # Visualize mesh
+    # from mpl_toolkits.mplot3d import Axes3D as ax3d
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection='3d')
+    # ax.plot_trisurf(dense_coords_3d[:,1],dense_coords_3d[:,2],Z,cmap=plt.cm.viridis)
+    # ax.scatter(dense_coords_3d[:,1],dense_coords_3d[:,2],local_neighborhood,color='k')
+    

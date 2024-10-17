@@ -16,8 +16,6 @@ from trimesh.curvature import discrete_gaussian_curvature_measure, discrete_mean
 from basicUtils import nonans
 
 import matplotlib.pylab as plt
-# from matplotlib.path import Path
-# from roipoly import roipoly
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
 from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, argsort_counter_clockwise
 
@@ -30,10 +28,11 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
+# Filenames
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
-
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# Demo files
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 # im_demo = io.imread(path.join(dirname,'example_mouse_skin_image.tif'))
 # flattened_3d_seg_demo = io.imread(path.join(dirname,'flattened_segmentation.tif'))
@@ -43,6 +42,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # FUCCI threshold (in stds)
 alpha_threshold = 1
 dx = 0.25
+dz = 1
 #NB: idx - the order in array in dense segmentation
 
 #%% Load the segmentation and coordinates
@@ -112,9 +112,11 @@ for t in tqdm(range(15)):
     # Initialize measurements from nuclear segmentation
     df_dense = pd.DataFrame( measure.regionprops_table(nuc_dense_seg, intensity_image=cyto_dense_seg
                                                        ,properties=['label','area','centroid','solidity','bbox']
-                                                       ,extra_properties = [most_likely_label]))
-    df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y-pixels','centroid-2':'X-pixels'
-                                        ,'label':'CellposeID','area':'Nuclear volume','bbox-0':'Nuclear bbox top'
+                                                       ,extra_properties = [most_likely_label]
+                                                       ,spacing = [dz,dx,dx]))
+    df_dense = df_dense.rename(columns={'centroid-0':'Z','centroid-1':'Y','centroid-2':'X'
+                                        ,'label':'CellposeID','area':'Nuclear volume'
+                                        ,'bbox-0':'Nuclear bbox top'
                                         ,'bbox-3':'Nuclear bbox bottom'
                                         ,'solidity':'Nuclear solidity'
                                         ,'most_likely_label':'CytoID'})
@@ -123,7 +125,8 @@ for t in tqdm(range(15)):
     # Measurements from cortical segmentation
     df_cyto = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=nuc_dense_seg
                                                       , properties=['label','area','centroid']
-                                                      ,extra_properties=[most_likely_label]))
+                                                      , extra_properties=[most_likely_label]
+                                                      , spacing=[dz,dx,dx]))
     df_cyto = df_cyto.rename(columns={'area':'Cell volume','label':'CytoID','most_likely_label':'CellposeID'
                                       ,'centroid-0':'Z-cell','centroid-1':'Y-cell','centroid-2':'X-cell'})
     # Initiate fields
@@ -143,16 +146,16 @@ for t in tqdm(range(15)):
     df_cyto['Collagen alignment'] = np.nan
     
     df_cyto.index = df_cyto['CytoID'] # index w CytoID so we can key from regionprops
-    df_cyto['Cell volume'] = df_cyto['Cell volume']*dx**2
-    df_cyto['Y-cell'] = df_cyto['Y-cell']*dx
-    df_cyto['X-cell'] = df_cyto['X-cell']*dx
-    for p in measure.regionprops(cyto_dense_seg):
+    df_cyto['Cell volume'] = df_cyto['Cell volume']
+    df_cyto['Y-cell'] = df_cyto['Y-cell']
+    df_cyto['X-cell'] = df_cyto['X-cell']
+    for p in measure.regionprops(cyto_dense_seg, spacing=[dz,dx,dx]):
         i = p['label']
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
-        df_cyto.at[i,'Axial component'] = Iaxial * dx**2
-        df_cyto.at[i,'Planar component 1'] = Ia * dx**2
-        df_cyto.at[i,'Planar component 2'] = Ib * dx**2
+        df_cyto.at[i,'Axial component'] = Iaxial
+        df_cyto.at[i,'Planar component 1'] = Ia
+        df_cyto.at[i,'Planar component 2'] = Ib
         df_cyto.at[i,'Axial angle'] = phi
         df_cyto.at[i,'Planar angle'] = theta
     
@@ -233,10 +236,11 @@ for t in tqdm(range(15)):
         makedirs(path.join(dirname,'Image flattening/basal_masks'))
     io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
     
+    # Book-keeping
     df_dense = df_dense.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
-    df_dense['Nuclear volume'] = df_dense['Nuclear volume'] * dx**2
-    df_dense['X'] = df_dense['X-pixels'] * dx
-    df_dense['Y'] = df_dense['Y-pixels'] * dx
+    # df_dense['Nuclear volume'] = df_dense['Nuclear volume']
+    df_dense['X-pixels'] = df_dense['X'] / dx
+    df_dense['Y-pixels'] = df_dense['Y'] / dx
     df_dense['Frame'] = t
     df_dense['basalID'] = np.nan
     
@@ -281,8 +285,8 @@ for t in tqdm(range(15)):
         this_seg_dilated = morphology.dilation(nuc_dense_seg,footprint=footprint)
         this_seg_dilated[~mask] = 0
         threshed_volumes = pd.DataFrame(measure.regionprops_table(
-            this_seg_dilated, properties=['label','area']) )
-        threshed_volumes['area'] = threshed_volumes['area'] * dx**2
+            this_seg_dilated, properties=['label','area'], spacing=[dz,dx,dx] ))
+        threshed_volumes['area'] = threshed_volumes['area']
         threshed_volumes = threshed_volumes.rename(columns={'label':'CellposeID','area':'Nuclear volume th'})
         df_dense = df_dense.merge(threshed_volumes,on='CellposeID', how='outer')
     
@@ -350,7 +354,8 @@ for t in tqdm(range(15)):
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d_um))
     
-    #----- Use macrophase annotations to find distance to them -----
+    #----- Use macrophage annotations to find distance to them -----
+    #NB: the macrophage coords are in um
     if not DEMO:
         macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
         macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
@@ -359,6 +364,7 @@ for t in tqdm(range(15)):
         df_dense['Distance to closest macrophage'] = \
             find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
     
+    # Propagate differentiation annotations
     A_diff = A.copy()
     A_diff[:,~df_dense['Differentiating']] = 0
     A_diff = A_diff + A_diff.T
@@ -427,7 +433,7 @@ for t in tqdm(range(15)):
         I = props[i]['inertia_tensor']
         SA = props[i]['surface_area'] * dx**2
         Iaxial,phi,Ia,Ib,theta = parse_3D_inertial_tensor(I)
-        df_dense.at[i,'Nuclear surface area'] = SA  * dx**2
+        df_dense.at[i,'Nuclear surface area'] = SA  * dx**2 # currentlly the function doesn't native use spacing
         df_dense.at[i,'Nuclear axial component'] = Iaxial
         df_dense.at[i,'Nuclear axial angle'] = phi
         df_dense.at[i,'Nuclear planar component 1'] = Ia
@@ -545,18 +551,3 @@ if SAVE:
     df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
     print(f'Saved to: {dirname}')
 
-#%% Colorize + visualze some other features on cell-by-cell basis
- 
-    # Colorize nuclei based on mean curvature (for inspection)
-    # mean_colors = (mean-mean.min())/mean.max()
-    # colorized = colorize_segmentation(nuc_dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
- 
-
-    #% Compute local curvature
-    # Visualize mesh
-    # from mpl_toolkits.mplot3d import Axes3D as ax3d
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection='3d')
-    # ax.plot_trisurf(dense_coords_3d[:,1],dense_coords_3d[:,2],Z,cmap=plt.cm.viridis)
-    # ax.scatter(dense_coords_3d[:,1],dense_coords_3d[:,2],local_neighborhood,color='k')
-    

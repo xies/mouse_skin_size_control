@@ -16,7 +16,7 @@ from glob import glob
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 print(f'--- Working on {dirname} ---')
@@ -193,18 +193,6 @@ df.to_csv(path.join(dirname,'MLR model/ts_features.csv'))
 df_ = df[df['Phase'] != '?']
 
 #%%
-
-# sb.pairplot(df_,vars=['Volume','Height to BM',
-#                      'Mean curvature','Mean neighbor dist','Growth rate (sm)','Specific GR (sm)'
-#                      ,'Axial angle','Coronal eccentricity'],plot_kws={'alpha':0.5}
-#             , hue='Phase')
-
-# sb.pairplot(df_,vars=['Volume','Collagen fibrousness','Collagen alignment',
-#                       'Neighbor mean height frame-2','Neighbor mean height frame-1',
-#                       'Specific GR b (sm)','Coronal density'],
-#             plot_kws={'alpha':0.5}
-#             ,kind='hist')
-
 
 
 sb.pairplot(df_,vars=['Volume','Planar component 1','Coronal area',
