@@ -23,8 +23,7 @@ all_neighbor_idx = []
 for t in range(65):
     with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_dfindex_T{t+1:04d}.pkl'),'rb') as f:
         all_neighbor_idx.append(pkl.load(f))
-    
-
+        
 
 #%%
 
@@ -35,9 +34,11 @@ for trackID,track in tracks.items():
     
     # Smooth the relevant things
     df['Change in local cell density'] = np.gradient(df['Local cell density'],2)
-    df['Change in local cell density'] = np.gradient(df['Local cell density'],2)
     df['Change in mean neighbor Cdt1'] = np.gradient(df['Mean neighbor Cdt1'],2)
+    df['Change in mean neighbor Geminin'] = np.gradient(df['Mean neighbor Gem'],2)
     df['Change in Cdt1'] = np.gradient(df['Mean Cdt1 intensity'],2)
-    df['Change in Cdt1'] = np.gradient(df['Mean Cdt1 intensity'],2)
+    df['Change in Geminin'] = np.gradient(df['Mean Gem intensity'],2)
+    
+    
     
     

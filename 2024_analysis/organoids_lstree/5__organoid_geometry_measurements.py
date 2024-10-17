@@ -42,7 +42,6 @@ kappa_radius = 15
 # Decimate dataframe into frames
 df_by_frame = {k:v for k,v in df.groupby('Frame')}
 
-
 for t in tqdm(range(T)):
 
     # Load organoid shape mesh
@@ -61,7 +60,6 @@ for t in tqdm(range(T)):
             
     # calculate organoid curvature at each cell coordinate
     cell_points = df_by_frame[t][['Z','Y','X']]
-    
     # # Query for nearest point and then calculate curvature on organoid
     query_on_surface,_,face_idx = tmesh.nearest.on_surface(cell_points)
     vert_idx = find_nearest_vertex(tmesh,cell_points.values,face_idx)
@@ -80,6 +78,19 @@ for t in tqdm(range(T)):
                 except:
                     l = 1000 # placeholder
                 DistMat_cells[i,j] = l
+    
+    # Define surface normal of surface
+    normals = tmesh.vertex_normals[tmesh.faces[face_idx]]
+    # find 'centroid' of triangle face
+    bary = tm.triangles.points_to_barycentric(triangles=tmesh.triangles[face_idx], points=query_on_surface)
+    norm_vecs = tm.unitize((normals * bary.reshape((-1, 3, 1))).sum(axis=1))
+    # Export surface normals
+    pd.DataFrame(np.hstack((query_on_surface,norm_vecs)),
+                 columns=['Z','Y','X','Normal-0','Normal-1','Normal-2']).to_csv(path.join(dirname,f'harmonic_mesh/surface_normals_T{t+1:04d}.csv'))
+    # Cell orientation wrt to surface normal
+    orientations = np.zeros(len(norm_vecs))
+    for i,n in enumerate(norm_vecs):
+        orientations[i] = np.dot(n,df_by_frame[t].iloc[i][['Principal axis-0','Principal axis-1','Principal axis-2']])
     
     # Define 'neighborhood'
     neighborhood_distance = 20 #um
