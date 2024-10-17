@@ -42,12 +42,19 @@ def load_surface_from_npz(filename,transpose=False):
     surf = Surface(vertices,faces,values)
     return surf
 
-t = 64
+t = 63
 
+# Use segmentations
 filename = path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t+1:04d}.npz')
 rot = load_surface_from_npz(filename,transpose=False)
-all_segs = viewer.add_surface((rot.vertices,rot.faces,rot.values)
+segs = viewer.add_surface((rot.vertices,rot.faces,rot.values)
         ,name='all_segmentations',colormap='magma')
+
+# Use organoid surface model
+filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_T{t+1:04d}.npz')
+organoid_surface = load_surface_from_npz(filename)
+organoid = viewer.add_surface((organoid_surface.vertices,organoid_surface.faces,organoid_surface.values)
+        ,name='organoid', colormap='orange', opacity=0.6)
 
 im = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t+1:04d}.tif'))
 raw_image = viewer.add_image(im,name='image', scale=[2,.26,.26],rendering='attenuated_mip',blending='additive'
@@ -64,8 +71,11 @@ rotation_frames = 30
 # Rocking animations with raw image only
 viewer.dims.ndisplay=3
 viewer.camera.angles = (0,0,90)
+viewer.camera.zoom = 6
+
 raw_image.visible=True
-all_segs.visible=False
+segs.visible = False
+organoid.visible = False
 animation.capture_keyframe()
 
 # 180
@@ -73,23 +83,38 @@ viewer.camera.angles = (0,180,90)
 animation.capture_keyframe(steps=rotation_frames)
 
 #360
-viewer.camera.angles = (0,0,90)
+viewer.camera.angles = (0,359,90)
 animation.capture_keyframe(steps=rotation_frames)
 
 # Pause
-animation.capture_keyframe(steps=10)
-all_segs.visible=True
+viewer.camera.angles = (0,0,90)
 animation.capture_keyframe(steps=10)
 
+segs.visible = True
+animation.capture_keyframe(steps=10)
 # 180
 viewer.camera.angles = (0,180,90)
 animation.capture_keyframe(steps=rotation_frames)
-
 #360
-viewer.camera.angles = (0,0,90)
+viewer.camera.angles = (0,359,90)
 animation.capture_keyframe(steps=rotation_frames)
 
 # Pause
+viewer.camera.angles = (0,0,90)
+animation.capture_keyframe(steps=10)
+segs.visible = False
+organoid.visible = True
+animation.capture_keyframe(steps=10)
+# 180
+viewer.camera.angles = (0,180,90)
+animation.capture_keyframe(steps=rotation_frames)
+#360
+viewer.camera.angles = (0,359,90)
+animation.capture_keyframe(steps=rotation_frames)
+
+# Pause
+viewer.camera.angles = (0,0,90)
 animation.capture_keyframe(steps=10)
 
+animation.animate('/Users/xies/Desktop/rocking', canvas_only=True)
 animation.animate('/Users/xies/Desktop/rocking.mov', canvas_only=True)

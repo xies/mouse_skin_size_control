@@ -87,19 +87,31 @@ print(f'Birth v. division: P = {Pb_v_div}')
 dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
 model = pd.read_csv(path.join(dirname,'model_summary.csv'),index_col=0)
 
-err = model.loc['sizer450_timer14',['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc['sizer450_timer14',['Birth CV','G1S CV','Div CV']].values
 fig,ax1 = plt.subplots()
-ax1.errorbar([1,2,3],model.loc['sizer450_timer14',['Birth CV','G1S CV','Div CV']],err)
+err = model.loc['sizer550_timer14',['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc['sizer550_timer14',['Birth CV','G1S CV','Div CV']].values
+ax1.errorbar([1-0.05,2-0.05,3-0.05],model.loc['sizer550_timer14',['Birth CV','G1S CV','Div CV']],err)
+err = model.loc['timer40_sizer',['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc['timer40_sizer',['Birth CV','G1S CV','Div CV']].values
+ax1.errorbar([1,2,3],model.loc['timer40_sizer',['Birth CV','G1S CV','Div CV']],err)
 ax1.tick_params(axis='y', color='C0', labelcolor='C0')
-plt.legend(['Sizer model'])
-plt.ylabel('C.V. in cell size')
+plt.ylabel('Change in C.V. of cell size')
 
 ax2 = ax1.twinx()
-err = model.loc['adder_100_adder_100',['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc['adder_100_adder_100',['Birth CV','G1S CV','Div CV']].values
-ax2.errorbar([1.05,2.05,3.05],model.loc['adder_100_adder_100',['Birth CV','G1S CV','Div CV']],err,color='r')
+err = model.loc['adder_100_adder_300',['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc['adder_100_adder_300',['Birth CV','G1S CV','Div CV']].values
+ax2.errorbar([1.05,2.05,3.05],model.loc['adder_100_adder_300',['Birth CV','G1S CV','Div CV']],err,color='r')
 ax2.tick_params(axis='y', color='C0', labelcolor='r')
-plt.legend(['Adder model'])
+plt.legend(['G1/S adder; S/G2/M adder'])
 plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
+
+#%% Multiplot all model configs
+
+colors = {'sizer':'C0','adder':'r','timer':'C1'}
+
+for model_name in model.index:
+    
+    err = model.loc[model_name,['Birth CV UB','G1S CV UB','Div CV UB']].values - model.loc[model_name,['Birth CV','G1S CV','Div CV']].values
+    plt.errorbar([1,2,3],model.loc[model_name,['Birth CV','G1S CV','Div CV']],err
+                 , color=colors[model.loc[model_name,'G1 model']])
+    plt.xticks([1,2,3],labels=['Birth','G1/S','Division'])
 
 
 

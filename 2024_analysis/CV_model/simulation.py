@@ -310,6 +310,8 @@ class Cell():
         gr = self.exp_growth_rate
         # Add fluctuation in gr
         gr = gr*(1 + random.randn(1)[0]*params['GrFluct'])
+        # Rewriter new growth rate
+        self.exp_growth_rate = gr
         dV = cell['Volume'] * gr # Euler update
         
         return dV * sim_clock['dt']

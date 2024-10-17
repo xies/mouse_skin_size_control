@@ -118,9 +118,9 @@ for model_name,_df in CVs.items():
     df.loc[model_name,'CVratio'] = _df.loc['Population','G1']- _df.loc['Population','S/G2/M']
 
     # Size
-    bsize = np.array([c.birth_size for c in runs[model_name].values()])
-    g1size = np.array([c.g1s_size for c in runs[model_name].values()])
-    dsize = np.array([c.div_size for c in runs[model_name].values()])
+    bsize = np.array([c.birth_size_measured for c in runs[model_name].values()])
+    g1size = np.array([c.g1s_size_measured for c in runs[model_name].values()])
+    dsize = np.array([c.div_size_measured for c in runs[model_name].values()])
     g1_growth = g1size - bsize
     sg2_growth = dsize - g1size
     total_growth = dsize - bsize
