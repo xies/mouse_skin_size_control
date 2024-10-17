@@ -17,6 +17,7 @@ import seaborn as sb
 import pyvista as pv
 import meshFMI
 import pickle as pkl
+from imageUtils import most_likely_label
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -38,7 +39,7 @@ for t in tqdm(range(T)):
     Gem = io.imread(path.join(dirname,f'Channel2-Deconv/Channel2-T{t+1:04d}.tif'))
     
     all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
-    props = measure.regionprops(all_labels,intensity_image=H2B)
+    props = measure.regionprops(all_labels,intensity_image=H2B, spacing=[dz,dx,dx])
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
                                                         ,'Axial moment','Axial angle'
                                                         ,'Planar moment 1'
@@ -49,12 +50,13 @@ for t in tqdm(range(T)):
                                                         ,'Mean H2B intensity'])
     
     meshes_in_frame = {}
+    cell_vectors = {}
     for i,p in enumerate(props):
         _df['Frame'] = t
         _df.loc[i,'cellID'] = p['label']
         _df.loc[i,'Mean H2B intensity']= p['mean_intensity']
-        _df.loc[i,'Nuclear volume px'] = p['area']
-        _df.loc[i,'Nuclear volume'] = p['area'] * dx**2 * dz
+        _df.loc[i,'Nuclear volume px'] = p['area'] / dz / dx /dx
+        _df.loc[i,'Nuclear volume'] = p['area']
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
         _df.loc[i,'Axial moment'] = Iaxial
@@ -62,14 +64,21 @@ for t in tqdm(range(T)):
         _df.loc[i,'Planar moment 1'] = Ia
         _df.loc[i,'Planar moment 2'] = Ib
         _df.loc[i,'Planar angle'] = theta
+        
+        # Also just save the principal axis
+        L,D = np.linalg.eig(I)
+        _df.loc[i,['Principal axis-0','Principal axis-1','Principal axis-2']] = D[:,0]
+        cell_vectors[p['label']] = D[:,0]
+        
         z,y,x = p['centroid']
-        _df.loc[i,'Z'] = z*dz
-        _df.loc[i,'Y'] = y*dx
-        _df.loc[i,'X'] = x*dx
-        _df.loc[i,'Z - px'] = z
-        _df.loc[i,'Y - px'] = y
-        _df.loc[i,'X - px'] = x
-        if p['area'] > 400:
+        _df.loc[i,'Z'] = z
+        _df.loc[i,'Y'] = y
+        _df.loc[i,'X'] = x
+        _df.loc[i,'Z - px'] = z / dz
+        _df.loc[i,'Y - px'] = y / dx
+        _df.loc[i,'X - px'] = x /dx
+        
+        if p['area'] > 55:
 
             # Extract cropped mask and generated mesht using VTK (meshFMI), and convert into pyVista API
             bbox = p['bbox']
@@ -90,6 +99,10 @@ for t in tqdm(range(T)):
     # Export the meshes
     with open(path.join(dirname,f'manual_seg_mesh/individual_mesh_by_cellID_T{t+1:04d}.pkl'),'wb') as f:
          pkl.dump(meshes_in_frame,f)
+    # Export the principal vectors
+    _df.loc[:,['Z','Y','X',
+               'Principal axis-0','Principal axis-1','Principal axis-2']].to_csv(
+                   path.join(dirname,f'manual_seg_mesh/principal_vector_cellID_T{t+1:04d}.csv'))
     
     # Measure other channels + merge
     _R = pd.DataFrame(
@@ -102,11 +115,14 @@ for t in tqdm(range(T)):
     _G = _G.rename(columns={'label':'cellID','mean_intensity':'Mean Gem intensity'})
     _df = _df.merge(_G,on='cellID')
 
-    # Load the cell tracking and merge the trackID via centroid matching
-    _tracked = pd.DataFrame(measure.regionprops_table(filt_seg[t,...],properties=['centroid','label']))
-    _tracked = _tracked.rename(columns={'label':'trackID',
-                                        'centroid-0':'Z - px','centroid-1':'Y - px','centroid-2':"X - px"})
-    _df = pd.merge(_df,_tracked,on=['X - px','Y - px','Z - px'],how='left')
+    # Measure the cell tracking to find the track label
+    _tracked = pd.DataFrame(measure.regionprops_table(all_labels,intensity_image=filt_seg[t,...],
+                                                      extra_properties=[most_likely_label]))
+    _tracked = _tracked[['label','most_likely_label']]
+    _tracked = _tracked.rename(columns={'label':'cellID','most_likely_label':'trackID'})
+    _tracked.loc[_tracked['trackID'] == 0,'trackID'] = np.nan
+    
+    _df = pd.merge(_df,_tracked,on='cellID',how='left')
 
     df.append(_df)
 

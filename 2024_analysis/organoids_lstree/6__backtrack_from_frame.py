@@ -33,12 +33,15 @@ tracks = {ID:t for ID,t in df.groupby('trackID')}
 for trackID,track in tracks.items():
     
     # Smooth the relevant things
-    df['Change in local cell density'] = np.gradient(df['Local cell density'],2)
-    df['Change in mean neighbor Cdt1'] = np.gradient(df['Mean neighbor Cdt1'],2)
-    df['Change in mean neighbor Geminin'] = np.gradient(df['Mean neighbor Gem'],2)
-    df['Change in Cdt1'] = np.gradient(df['Mean Cdt1 intensity'],2)
-    df['Change in Geminin'] = np.gradient(df['Mean Gem intensity'],2)
+    track['Change in local cell density'] = np.gradient(track['Local cell density'],2)
+    track['Change in mean neighbor Cdt1'] = np.gradient(track['Mean neighbor Cdt1'],2)
+    track['Change in mean neighbor Geminin'] = np.gradient(track['Mean neighbor Gem'],2)
+    track['Change in Cdt1'] = np.gradient(track['Mean Cdt1 intensity'],2)
+    track['Change in Geminin'] = np.gradient(track['Mean Gem intensity'],2)
     
+    track['Change in mean neighbor size'] = np.gradient(track['Mean neighbor volume'],2)
+    track['Change in std neighbor size'] = np.gradient(track['Std neighbor volume'],2)
     
-    
-    
+# Collapse df again
+df_combined = pd.concat(tracks,ignore_index=True)
+df_combined.to_csv(path.join('manual_cellcycle_annotations/cell_organoid_features.csv'))
