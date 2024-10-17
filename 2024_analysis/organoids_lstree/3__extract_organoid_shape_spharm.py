@@ -65,7 +65,7 @@ for t in tqdm(np.arange(1,66)):
     # p.show()
     
     # Save VTK
-    smooth_mesh.save(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.vtk'))
+    smooth_mesh.save(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_T{t:04d}.vtk'))
     
     # Export vert, face, value tuple for napari usage
     vertices = np.asarray(smooth_mesh.points)
@@ -80,15 +80,14 @@ for t in tqdm(np.arange(1,66)):
     # Export pretty mesh per time point
     pretty_mesh = meshFMI.labels_to_mesh(labels,[dz,dx,dx],show_progress=False)
     pretty_mesh = pv.PolyData( pretty_mesh )
-    pretty_mesh.save(path.join(dirname,f'manual_seg_mesh/pretty_mesh_t{t:04d}.vtk'))
+    pretty_mesh.save(path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t:04d}.vtk'))
     
     # Export vert, face, value tuple for napari usage
     v = np.asarray(pretty_mesh.points)
     v = v[:,[2,1,0]]
     f = np.asarray(pretty_mesh.faces).reshape((-1,4))[:,1:]
     val = np.asarray(pretty_mesh['label_id'])
-    np.savez(path.join(dirname,f'manual_seg_mesh/pretty_mesh_t{t:04d}.npz'),
+    np.savez(path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t:04d}.npz'),
               v,f,val)
-
 
 #%%

@@ -7,9 +7,11 @@ Created on Mon Sep 23 13:25:38 2024
 """
 
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass
 from os import path
 from skimage import io
+import pickle as pkl
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -41,20 +43,33 @@ def load_surface_from_npz(filename,transpose=False):
     surf = Surface(vertices,faces,values)
     return surf
 
-t = 65
+t = 0
 
-filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t:04d}.npz')
+filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_T{t+1:04d}.npz')
 organoid_surface = load_surface_from_npz(filename)
 viewer.add_surface((organoid_surface.vertices,organoid_surface.faces,organoid_surface.values)
         ,name='organoid')
 
-filename = path.join(dirname,f'manual_seg_mesh/pretty_mesh_t{t:04d}.npz')
+filename = path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t+1:04d}.npz')
 rot = load_surface_from_npz(filename,transpose=False)
 viewer.add_surface((rot.vertices,rot.faces,rot.values)
-        ,name='tracked_cells',colormap='magma')
+        ,name='all_segmentations',colormap='magma')
 
 # im = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t:04d}.tif'))
 # viewer.add_image(im,name='image', scale=[2,.26,.26],rendering='attenuated_mip',blending='additive')
 
-im = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
+im = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
 viewer.add_labels(im,name='labels', scale=[2,.26,.26])
+
+# Visualize vectors
+vectors = pd.read_csv(path.join(dirname,f'manual_seg_mesh/principal_vector_cellID_T{t+1:04d}.csv'))
+pos = np.zeros((len(vectors),2,3))
+pos[:,0,:] = vectors[['Z','Y','X']].values
+pos[:,1,:] = vectors[['Principal axis-0','Principal axis-1','Principal axis-2']].values
+viewer.add_vectors(pos, edge_width=1, length=10,name='Cell axes')
+
+vectors = pd.read_csv(path.join(dirname,f'harmonic_mesh/surface_normals_T{t+1:04d}.csv'))
+pos = np.zeros((len(vectors),2,3))
+pos[:,0,:] = vectors[['Z','Y','X']].values
+pos[:,1,:] = vectors[['Normal-0','Normal-1','Normal-2']].values
+viewer.add_vectors(pos, edge_width=1, length=10,name='Surface normals')
