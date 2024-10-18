@@ -17,14 +17,14 @@ import trimesh as tm
 import pyvista as pv
 import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 
 dx = 0.26
 dz = 2
 
-T = 65
+T = 46
 
 def find_nearest_vertex(tmesh,query_pts,face_idx):
     assert(len(query_pts) == len(face_idx))

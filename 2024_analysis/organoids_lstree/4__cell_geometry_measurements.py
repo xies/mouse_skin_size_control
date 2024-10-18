@@ -19,7 +19,7 @@ import meshFMI
 import pickle as pkl
 from imageUtils import most_likely_label
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 
 dx = 0.26
 dz = 2
@@ -169,34 +169,3 @@ df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features
 
 for t in tracks.values():
     plt.plot(t.Age,t['Nuclear volume (sm)'])
-
-#%%
-
-size_summary = df.groupby(['trackID','Phase']).mean()['Nuclear volume (sm)']
-size_summary = size_summary.reset_index()
-
-size_summary = pd.pivot(size_summary,index='trackID',columns=['Phase'])
-size_summary.columns = size_summary.columns.droplevel(0)
-size_summary['G1 growth'] = size_summary['G1S'] - size_summary['Visible birth']
-
-
-age_summary = df.groupby(['trackID','Phase']).min()['Age']
-age_summary = age_summary.reset_index()
-age_summary = pd.pivot(age_summary,index='trackID',columns=['Phase'])
-age_summary.columns = age_summary.columns.droplevel(0)
-age_summary['G1 length'] = age_summary['G1S'] - age_summary['Birth']
-
-summary = pd.merge(age_summary['G1 length'],size_summary, on='trackID')
-
-
-plt.scatter(summary['Visible birth'],summary['G1 length'])
-plt.scatter(summary['Visible birth'],summary['G1 growth'])
-
-
-#%%
-
-df_g1s = df[ (df['Phase'] == 'Visible birth') | (df['Phase'] == 'G1') | (df['Phase'] == 'G1S')]
-df_g1s['Nuclear volume (sm)'] = df_g1s['Nuclear volume (sm)'].astype(float)
-df_g1s['G1S_logistic'] = df['Phase'] == 'G1S'
-
-sb.regplot(df_g1s,x='Nuclear volume (sm)',y='G1S_logistic',logistic=True, y_jitter=.1, scatter_kws={'alpha':0.1})

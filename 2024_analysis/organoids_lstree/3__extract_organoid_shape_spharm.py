@@ -19,14 +19,16 @@ from tqdm import tqdm
 from aicsshparam import shtools, shparam
 import pyvista as pv
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 
 dx = 0.26
 dz = 2
 
+TT = 46
+
 #%%
 
-for t in tqdm(np.arange(1,66)):
+for t in tqdm(np.arange(1,TT)):
 
     labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     

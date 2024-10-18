@@ -319,6 +319,7 @@ with open(path.join(dirname,'basal_no_daughters.pkl'),'wb') as f:
     pkl.dump(collated,f)
 df = pd.concat(collated,ignore_index=True)
 
+
 #%% Load the daughter cells + save
 #NB: won't work with the demo dataset
 

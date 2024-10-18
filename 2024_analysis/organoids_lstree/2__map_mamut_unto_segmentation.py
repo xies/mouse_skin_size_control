@@ -16,7 +16,7 @@ from skimage import io
 from re import findall
 from imageUtils import fill_in_cube
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 dx = 0.26
 dz = 2
 
@@ -37,7 +37,9 @@ manual_segmentations = dict(map(
 
 ZZ,YY,XX = manual_segmentations[1].shape
 
-#%%
+TT = len(manifest)
+
+#%% Filter and save tracked segmentations
 
 # trackID = 0
 filt_seg = np.zeros((len(manifest),ZZ,YY,XX),dtype=int)
@@ -53,7 +55,7 @@ for track in tqdm(tracks):
         
         t = int(row['FRAME'])
         x,y,z = row[['X-pixel','Y-pixel','Z-pixel']]
-        if t < 65:
+        if t < TT:
             this_seg = manual_segmentations[int(t)]
             label = this_seg[z,y,x]
             if label > 0:

@@ -40,12 +40,39 @@ for trackID, track in tracks.items():
     I = track['Phase'] == 'Division'
     summary.loc[trackID,'Division volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     
-    # summary.loc[trackID,'Birth frame'] = 
+    # Find lengths
+    summary.loc[trackID,'Birth time'] = track.iloc[0]['Time']
+    I = track['Phase'] == 'G1S'
+    if I.sum() > 0:
+        summary.loc[trackID,'G1S time'] = track.iloc[np.where(I)[0][0]]['Time'].mean()
+    I = track['Phase'] == 'Division'
+    if I.sum() > 0:
+        summary.loc[trackID,'Division time'] = track.iloc[np.where(I)[0][-1]]['Time'].mean()
+    
 
 summary['G1 growth'] = summary['G1S volume'] - summary['Birth volume']
+summary['SG2 growth'] = summary['Division volume'] - summary['G1S volume']
 summary['Total growth'] = summary['Division volume'] - summary['Birth volume']
+summary['G1 length'] = summary['G1S time'] - summary['Birth time']
+summary['SG2 length'] = summary['Division time'] - summary['G1S time']
+summary['Total length'] = summary['Division time'] - summary['Birth time']
 
+plt.figure()
+plt.subplot(2,1,1)
 plt.scatter(summary['Birth volume'],summary['G1 growth'])
+plt.ylabel('G1 growth (fL)')
+plt.subplot(2,1,2)
+plt.scatter(summary['Birth volume'],summary['G1 length'])
+plt.ylabel('G1 length (min)')
+
+plt.figure()
+plt.subplot(2,1,1)
+plt.scatter(summary['G1S volume'],summary['SG2 growth'])
+plt.ylabel('SG12 growth (fL)'); plt.xlabel('G1S size')
+plt.subplot(2,1,2)
+plt.scatter(summary['G1S volume'],summary['SG2 length'])
+plt.ylabel('G2 length (min)')
+
 
 #%% load old organoid data
 
@@ -53,6 +80,8 @@ dirnames = ['/Users/xies/Onedrive - Stanford/In vitro/mIOs/Light sheet movies/20
             '/Users/xies/Onedrive - Stanford/In vitro/mIOs/Light sheet movies/20200306_165005_01']
 homeo = pd.concat([pd.read_csv(path.join(d,'size_control.csv')) for d in dirnames])
 
-plt.scatter(summary['Birth volume'],summary['G1S volume'])
 
-plt.scatter(homeo['Birth volume'],homeo['G1 volume'])
+plt.scatter(homeo['Birth volume']*1.5**2,homeo['G1 growth']*1.5**2)
+plt.scatter(summary['Birth volume'],summary['G1 growth'])
+
+#%%
