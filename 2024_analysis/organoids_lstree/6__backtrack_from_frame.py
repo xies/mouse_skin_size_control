@@ -11,7 +11,7 @@ import numpy as np
 from os import path
 import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 dx = 0.26
 dz = 2
 
@@ -19,15 +19,16 @@ df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_f
 
 def gradient_with_nan(y,edge_order):
     I = ~np.isnan(y)
-    x = np.cumsum(I)
-    y = y[I]
-    x = x[x>0]
-    return np.gradient(y, x, edge_order=edge_order)
+    dy = np.ones(len(y))*np.nan
+    if I.sum() > 1:
+        x = np.arange(len(y))
+        dy[I] = np.gradient(y[I], x[I], edge_order=edge_order)
+    return dy
 
 #%%
 
 all_neighbor_cellID = []
-for t in range(65):
+for t in range(45):
     with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_T{t+1:04d}.pkl'),'rb') as f:
         all_neighbor_cellID.append(pkl.load(f))
         
@@ -52,3 +53,4 @@ for trackID,track in tracks.items():
 df_combined = pd.concat(tracks,ignore_index=True)
 df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'))
 
+#%%

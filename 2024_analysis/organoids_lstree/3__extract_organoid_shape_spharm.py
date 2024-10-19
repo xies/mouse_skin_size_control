@@ -28,7 +28,7 @@ TT = 46
 
 #%%
 
-for t in tqdm(np.arange(1,TT)):
+for t in tqdm(np.arange(1,TT+1)):
 
     labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     
