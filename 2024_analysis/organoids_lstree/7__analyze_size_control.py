@@ -24,6 +24,11 @@ df = pd.concat((df5,df2),ignore_index=True)
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 regen = df
 
+#%% Print CV by cell cycle phase
+
+CV = pd.DataFrame()
+df.groupby('Phase')['Nuclear volume (sm)'].std() / df.groupby('Phase')['Nuclear volume (sm)'].mean()
+
 #%%
 
 # Filter out all non-tracked cells
@@ -67,6 +72,8 @@ summary['SG2 duration'] = (summary['Division time'] - summary['G1S time'])/60
 summary['Total duration'] = (summary['Division time'] - summary['Birth time'])/60
 
 sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
+
+summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'))
 
 #%% load old organoid data
 
