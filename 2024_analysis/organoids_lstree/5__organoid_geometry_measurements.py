@@ -17,14 +17,14 @@ import trimesh as tm
 import pyvista as pv
 import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 
 dx = 0.26
 dz = 2
 
-T = 65
+T = 45
 
 def find_nearest_vertex(tmesh,query_pts,face_idx):
     assert(len(query_pts) == len(face_idx))
@@ -37,6 +37,7 @@ def find_nearest_vertex(tmesh,query_pts,face_idx):
 
 #%% Calculate cell position WRT spherical coordinates of organoid mesh
 
+RECALCULATE_NEIGHBORHOOD = False
 kappa_radius = 15
 
 # Decimate dataframe into frames
@@ -67,17 +68,24 @@ for t in tqdm(range(T)):
     curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,query_on_surface,radius = kappa_radius)/kappa_radius
     df_by_frame[t]['Mean curvature'] = curvatures
     
-    #Define geodesic distance
-    DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
-    for i,pt in enumerate(vert_idx):
-        for j,other_pt in enumerate(vert_idx):
-            if i > j:
-                try:
-                    geod = mesh.geodesic(pt,other_pt)
-                    l = geod.length
-                except:
-                    l = 1000 # placeholder
-                DistMat_cells[i,j] = l
+    if path.exists(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl')) and not RECALCULATE_NEIGHBORHOOD:
+        with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'rb') as f:
+            DistMat_cells = pkl.load(f)
+    else:
+        #Define geodesic distance
+        DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
+        for i,pt in enumerate(vert_idx):
+            for j,other_pt in enumerate(vert_idx):
+                if i > j:
+                    try:
+                        geod = mesh.geodesic(pt,other_pt)
+                        l = geod.length
+                    except:
+                        l = 1000 # placeholder
+                    DistMat_cells[i,j] = l
+        # Save distmat
+        with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'wb') as f:
+            pkl.dump(DistMat_cells,f)
     
     # Define surface normal of surface
     normals = tmesh.vertex_normals[tmesh.faces[face_idx]]
@@ -114,9 +122,9 @@ for t in tqdm(range(T)):
             # Mean/std neighbor volume
             df_by_frame[t].at[center_idx,'Mean neighbor volume'] = neighbors['Mesh volume'].mean()
             df_by_frame[t].at[center_idx,'Std neighbor volume'] = neighbors['Mesh volume'].std()
-            df_by_frame[t].at[center_idx,'Mean neighbor H2B intensity'] = neighbors['Mean H2B intensity'].mean()
-            df_by_frame[t].at[center_idx,'Mean neighbor Cdt1 intensity'] = neighbors['Mean Cdt1 intensity'].mean()
-            df_by_frame[t].at[center_idx,'Mean neighbor Gem intensity'] = neighbors['Mean Gem intensity'].mean()
+            df_by_frame[t].at[center_idx,'Mean neighbor H2B intensity'] = neighbors['Normalized H2B intensity'].mean()
+            df_by_frame[t].at[center_idx,'Mean neighbor Cdt1 intensity'] = neighbors['Normalized Cdt1 intensity'].mean()
+            df_by_frame[t].at[center_idx,'Mean neighbor Gem intensity'] = neighbors['Normalized Gem intensity'].mean()
             df_by_frame[t].at[center_idx,'Local cell density'] = len(neighbors)
     
     # Save neighborhood information

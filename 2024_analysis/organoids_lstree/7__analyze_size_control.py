@@ -94,11 +94,35 @@ homeo.loc[homeo['Lgr5'],'Cell type'] = 'Stem cell'
 fields2concat = ['Cell type','Birth volume','G1 duration','G1 growth','G1 volume']
 df = pd.concat((homeo[fields2concat],summary[fields2concat]))
 
-sb.lmplot(df,x='Birth volume',y='G1 growth',hue='Cell type')
-sb.lmplot(df,x='Birth volume',y='G1 duration',hue='Cell type')
+colors = ['g','m','b'];sb.color_palette(colors)
+sb.lmplot(df,x='Birth volume',y='G1 growth',hue='Cell type',palette=colors)
+sb.lmplot(df,x='Birth volume',y='G1 duration',hue='Cell type',palette=colors)
 
 sb.catplot(df.reset_index(),y='Birth volume',x='Cell type',kind='violin')
 sb.catplot(df.reset_index(),y='G1 volume',x='Cell type',kind='violin')
+
+#%% Ttests
+
+from scipy.stats import ttest_ind
+
+print('---- Birth sizes-----')
+regenerative,stem,ta = [x.dropna(subset='Birth volume') for _,x in df.groupby('Cell type')]
+
+P = ttest_ind(regenerative['Birth volume'],ta['Birth volume'],equal_var=False)
+print(f'TA v. regen: {P.pvalue:2f}')
+
+P = ttest_ind(stem['Birth volume'],ta['Birth volume'],equal_var=False)
+print(f'TA v. stem: {P.pvalue:2f}')
+
+print('---- G1/S sizes-----')
+regenerative,stem,ta = [x.dropna(subset='G1 volume') for _,x in df.groupby('Cell type')]
+
+P = ttest_ind(regenerative['G1 volume'],ta['G1 volume'],equal_var=False)
+print(f'TA v. regen: {P.pvalue:2f}')
+
+P = ttest_ind(stem['G1 volume'],ta['G1 volume'],equal_var=False)
+print(f'TA v. stem: {P.pvalue:2f}')
+
 
 #%% Load skin data?
 

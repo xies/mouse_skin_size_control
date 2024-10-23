@@ -45,10 +45,13 @@ df = pd.concat((regen_g1[fields2concat],homeo[fields2concat]),ignore_index=True)
 
 sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
 
+colors = {'Regenerative':'b','TA':'m','Stem cell':'g'}
+
 plt.figure()
 names = []
 for name, celltype in df.groupby('Cell type'):
-    plot_bin_means(celltype['Nuclear volume'],celltype['Specific GR (sm)'],bin_edges=12,minimum_n=25)
+    plot_bin_means(celltype['Nuclear volume'],celltype['Specific GR (sm)'],bin_edges=12,minimum_n=25,
+                   color=colors[name])
     names.append(name)
 
 plt.xlabel('Nuclear volume (fL)')

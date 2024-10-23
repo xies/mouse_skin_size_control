@@ -132,7 +132,7 @@ df = df.sort_values(['trackID','Frame'])
 df['Time'] = df['Frame'] * 10
 df = df.reset_index()
 
-#%% Collate with cell cycle annotations and then smooth
+#%% Collate with cell cycle annotations, smoothe, and normalize
 
 tracking_df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/filtered_tracks.csv'),index_col=0)
 annos = {trackID:cell for trackID,cell in tracking_df.groupby('TrackID')}
@@ -158,8 +158,13 @@ for trackID,t in tracks.items():
     Vsm,dVsm = get_interpolated_curve(t,y_field='Nuclear volume',x_field='Time',smoothing_factor=1e10)
     t['Nuclear volume (sm)'] = Vsm
     t['Growth rates (sm)'] = dVsm
+    
+    # Normalize H2B/Cdt/Geminin
+    t['Normalized Gem intensity'] = t['Mean Gem intensity'] / t['Mean Gem intensity'].mean()
+    t['Normalized H2B intensity'] = t['Mean H2B intensity'] / t['Mean H2B intensity'].mean()
+    t['Normalized Cdt1 intensity'] = t['Mean Cdt1 intensity'] / t['Mean Cdt1 intensity'].mean()
     t = t.set_index('index')
-
+    
 _df = pd.concat(tracks,ignore_index=True)
 _df.set_index('index')
 
@@ -169,3 +174,5 @@ df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features
 
 for t in tracks.values():
     plt.plot(t.Age,t['Nuclear volume (sm)'])
+    
+    

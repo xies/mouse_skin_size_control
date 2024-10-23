@@ -9,18 +9,20 @@ Created on Sat Oct 19 13:58:01 2024
 import numpy as np
 import pandas as pd
 from os import path
+import seaborn as sb
 from tqdm import tqdm
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
-df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
+df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
 df5['organoidID'] = 5
 df5 = df5[ (df5['cellID'] !=77) | (df5['cellID'] != 120)]
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
-df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
-df2['organoidID'] = 2
-df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
+# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+# df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+# df2['organoidID'] = 2
+# df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
 
-df = pd.concat((df5,df2),ignore_index=True)
+# df = pd.concat((df5,df2),ignore_index=True)
+df = df5
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 # Derive some ratios
@@ -32,7 +34,7 @@ tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
 # First, drop everything but first G1/S frame
 g1s_tracks = {}
 for trackID,track in tracks.items():
-    I = track['Phase'] == 'G1S'
+    I = track['Auto phase']
     if I.sum() > 0:
         first_g1s_idx = np.where(I)[0][0]
         g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
@@ -42,8 +44,10 @@ g1s = g1s.dropna()
 
 #%% 
 
+from sklearn.preprocessing import scale
+
 # @todo: neighbor interiority, orientation, neighbor orientation
-y = g1s['Phase'] == 'G1S'
+y = g1s['Auto phase']
 
 feature_list = {'Nuclear volume':'nuc_vol',
                 'Axial moment':'axial_moment',
@@ -84,7 +88,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 Niter = 25
-X = df_g1s
+X = scale(df_g1s)
 
 score = np.zeros(Niter);
 scores = pd.DataFrame()
