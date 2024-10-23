@@ -15,14 +15,14 @@ from tqdm import tqdm
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
 df5['organoidID'] = 5
-df5 = df5[ (df5['cellID'] !=77) | (df5['cellID'] != 120)]
-# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
-# df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
-# df2['organoidID'] = 2
-# df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
+df5 = df5[ (df5['cellID'] !=77) | (df5['cellID'] != 120)] #tetraploid/super weird
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+df2['organoidID'] = 2
+df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
 
-# df = pd.concat((df5,df2),ignore_index=True)
-df = df5
+df = pd.concat((df5,df2),ignore_index=True)
+# df = df5
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 # Derive some ratios
@@ -40,15 +40,12 @@ for trackID,track in tracks.items():
         g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
         
 g1s = pd.concat(g1s_tracks, ignore_index=True)
-g1s = g1s.dropna()
 
 #%% 
 
 from sklearn.preprocessing import scale
 
 # @todo: neighbor interiority, orientation, neighbor orientation
-y = g1s['Auto phase']
-
 feature_list = {'Nuclear volume':'nuc_vol',
                 'Axial moment':'axial_moment',
                 'Axial angle':'axial_angle',
@@ -74,12 +71,15 @@ feature_list = {'Nuclear volume':'nuc_vol',
                 'Change in Geminin':'delta_gem',
                 'Change in mean neighbor size':'delta_neighb_vol',
                 'Change in std neighbor size':'delta_std_neighb_vol',
-                # 'Orientation':'orientation',
+                'Orientation':'orientation',
                 }
 
 df_g1s = g1s.loc[:,feature_list.keys()]
+df_g1s['G1S_logistic'] = g1s['Auto phase']
 
-df_g1s = df_g1s.rename(columns=feature_list)
+df_g1s = df_g1s.rename(columns=feature_list).dropna()
+
+y = df_g1s['G1S_logistic']
 
 #%%
 
@@ -88,13 +88,19 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 Niter = 25
-X = scale(df_g1s)
 
 score = np.zeros(Niter);
 scores = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
+    g1 = df_g1s[~df_g1s['G1S_logistic']].sample(75)
+    sg2 = df_g1s[df_g1s['G1S_logistic']]
+    balanced = pd.concat((g1,sg2),ignore_index=True)
+    
+    y = df_g1s['G1S_logistic']
+    X = scale(df_g1s.drop(columns='G1S_logistic'))
+
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = i)
     forest = RandomForestClassifier()
     

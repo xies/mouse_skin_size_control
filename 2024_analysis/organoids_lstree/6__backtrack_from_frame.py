@@ -16,7 +16,7 @@ dx = 0.26
 dz = 2
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
-df['organoidID'] = 5
+df['organoidID'] = 2
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 def gradient_with_nan(y,edge_order):

@@ -27,7 +27,7 @@ regen = df
 #%% Print CV by cell cycle phase
 
 CV = pd.DataFrame()
-df.groupby('Phase')['Nuclear volume (sm)'].std() / df.groupby('Phase')['Nuclear volume (sm)'].mean()
+df.groupby('Phase')['Nuclear volume'].std() / df.groupby('Phase')['Nuclear volume '].mean()
 
 #%%
 
@@ -47,13 +47,13 @@ for trackID, track in tracks.items():
     
     # Birth
     # I = track['Phase'] == 'Visible birth'
-    summary.loc[trackID,'Birth volume'] = track.iloc[:2]['Nuclear volume (sm)'].mean()
+    summary.loc[trackID,'Birth volume'] = track.iloc[:2]['Nuclear volume'].mean()
     #first G1S
     I = track['Phase'] == 'G1S'
-    summary.loc[trackID,'G1 volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
+    summary.loc[trackID,'G1 volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume'].mean()
     # Div
     I = track['Phase'] == 'Division'
-    summary.loc[trackID,'Division volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
+    summary.loc[trackID,'Division volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume'].mean()
     
     # Find lengths
     summary.loc[trackID,'Birth time'] = track.iloc[0]['Time']

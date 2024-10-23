@@ -12,31 +12,51 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 from os import path
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+# df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+# df5['organoidID'] = 5
+# df5 = df5[ (df5['trackID'] !=77) & (df5['trackID'] != 120) & (df5['trackID'] != 88)]
 
-df_combined = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+df2['organoidID'] = 2
+# df2 = df2[ (df2['trackID'] !=53) & (df2['trackID'] != 6)]
 
-tracks = {trackIDs:t for trackIDs,t in df_combined.groupby('trackID')}
-trackIDs = list(tracks.keys())
+# df = pd.concat((df5,df2),ignore_index=True)
+df = df2
+df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
+
+tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
+
+# First, drop everything but first G1/S frame
+g1s_tracks = {}
+for trackID,track in tracks.items():
+    I = track['Auto phase']
+    if I.sum() > 0:
+        first_g1s_idx = np.where(I)[0][0]
+        g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
+        
+g1s = pd.concat(g1s_tracks, ignore_index=True)
 
 #%% Single variables
 
-i = 27
+trackOI = '2_33.0'
 
-t = tracks[trackIDs[i]]
+t = tracks[ trackOI ]
 g1 = t[~t['Auto phase']]
 sg2 = t[t['Auto phase']]
 
 plt.subplot(2,1,1)
-plt.plot(g1['Age'],g1['Normalized Cdt1 intensity'])
-plt.plot(sg2['Age'],sg2['Normalized Cdt1 intensity'])
+plt.plot(g1['Frame'],g1['Normalized Cdt1 intensity'])
+plt.plot(sg2['Frame'],sg2['Normalized Cdt1 intensity'])
 
 plt.subplot(2,1,2)
-plt.plot(g1['Age'],g1['Change in Cdt1'])
-plt.plot(sg2['Age'],sg2['Change in Cdt1'])
-
+plt.plot(g1['Frame'],g1['Nuclear volume'])
+plt.plot(sg2['Frame'],sg2['Nuclear volume'])
 
 #%% Plot logistic curves
+
+# df_g1s_balanced = np.
 
 # Truncate
 tracks_g1s = {}
@@ -45,6 +65,10 @@ for trackID,track in tracks.items():
     if I.sum()>0:
         tracks_g1s[trackID] = track.iloc[:I[0]+1]
 
-df_g1s = pd.concat(tracks_g1s,ignore_index=True).dropna()
-sb.regplot(df_g1s,x='Normalized Cdt1 intensity',y='Auto phase',y_jitter=0.1,logistic=True)
+df_g1s = pd.concat(tracks_g1s,ignore_index=True)
+
+# sb.regplot(df_g1s,x='Normalized Cdt1 intensity',y='Auto phase',y_jitter=0.1,logistic=True)
+
+plt.figure()
+sb.regplot(df_g1s,x='Nuclear volume',y='Auto phase',y_jitter=0.1,logistic=True)
 

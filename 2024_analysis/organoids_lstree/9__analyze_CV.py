@@ -13,7 +13,7 @@ from os import path
 import matplotlib.pyplot as plt
 from mathUtils import cvariation_bootstrap, cv_difference_pvalue
 
-summary = pd.read_csvpath.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'),index_col=0)
+summary = pd.read_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'),index_col=0)
 
 #%% Print CV by cell cycle phase
 
