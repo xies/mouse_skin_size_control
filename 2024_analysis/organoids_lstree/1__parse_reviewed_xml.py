@@ -13,11 +13,11 @@ from os import path
 from tqdm import tqdm
 from mamutUtils import trace_lineage
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
 
 #%%
 
-filename = path.join(dirname,'dataset_deconv_Pos2_reviewedMimi-mamut.xml')
+filename = path.join(dirname,'dataset_deconv_Pos6_reviewedMimi-mamut.xml')
 
 root = ET.parse(filename).getroot()
 

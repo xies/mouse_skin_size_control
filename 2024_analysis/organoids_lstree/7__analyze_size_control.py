@@ -24,11 +24,6 @@ df = pd.concat((df5,df2),ignore_index=True)
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 regen = df
 
-#%% Print CV by cell cycle phase
-
-CV = pd.DataFrame()
-df.groupby('Phase')['Nuclear volume'].std() / df.groupby('Phase')['Nuclear volume '].mean()
-
 #%%
 
 # Filter out all non-tracked cells
@@ -74,6 +69,18 @@ summary['Total duration'] = (summary['Division time'] - summary['Birth time'])/6
 sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
 
 summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'))
+
+#%% Print CV by cell cycle phase
+
+from mathUtils import cvariation_bootstrap, cv_difference_pvalue
+
+CV = pd.DataFrame()
+
+CV.loc['Birth',['CV','LB','UB']] = cvariation_bootstrap(summary['Birth volume'],Nboot=1000,subsample=80)
+CV.loc['G1S',['CV','LB','UB']] = cvariation_bootstrap(summary['G1 volume'],Nboot=1000,subsample=80)
+CV.loc['Division',['CV','LB','UB']] = cvariation_bootstrap(summary['Division volume'],Nboot=1000,subsample=80)
+
+
 
 #%% load old organoid data
 
@@ -123,7 +130,6 @@ print(f'TA v. regen: {P.pvalue:2f}')
 P = ttest_ind(stem['G1 volume'],ta['G1 volume'],equal_var=False)
 print(f'TA v. stem: {P.pvalue:2f}')
 
-
 #%% Load skin data?
 
 dirname='/Users/xies/OneDrive - Stanford/Skin/Mesa et al/tracked_data_collated'
@@ -145,5 +151,4 @@ plt.hist(skin_summary['G1S volume'])
 # plt.hist(skin_summary['G1S volume'])
 # plt.hist(homeo['G1 volume'])
 # plt.hist(summary['G1 volume'],weights=1/len(summary))
-
 
