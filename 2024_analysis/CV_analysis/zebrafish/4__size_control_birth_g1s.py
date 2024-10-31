@@ -162,9 +162,12 @@ dz = 1.8
 
 dropped_indices = np.array([9,16,21,27,31,39])
 
-def correct_for_dropped_frames(t, dropped_indices):
-    num_correct_for = (t >= dropped_indices).sum()
-    return t + num_correct_for    
+# Load file manifest
+manifest = pd.read_pickle(path.join(
+    path.split(path.split(dirname)[0])[0],'Position001_manifest.pkl'))
+# def correct_for_dropped_frames(t, dropped_indices):
+#     num_correct_for = (t >= dropped_indices).sum()
+#     return t + num_correct_for
 
 birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
 g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
@@ -174,13 +177,19 @@ for t in tqdm(range(TT)):
     births = pd.DataFrame(measure.regionprops_table(birth_img[t,...],properties=['area','label']))
     g1s = pd.DataFrame(measure.regionprops_table(g1s_img[t,...],properties=['area','label']))
     births = births.rename(columns={'area':'Birth size'})
-    births['Birth frame'] = correct_for_dropped_frames(t,dropped_indices)
+    births['Birth frame'] = manifest.loc[t,'Elapsed']
     g1s = g1s.rename(columns={'area':'G1S size'})
-    g1s['G1 frame'] = correct_for_dropped_frames(t,dropped_indices)
+    g1s['G1 frame'] = births['Birth frame'] = manifest.loc[t,'Elapsed']
     
     df.extend([births,g1s])
 
 df = pd.concat(df)
+df.to_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'))
+
+
+#%%
+
+df = pd.read_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'),index_col=0)
 
 mean_bsize = df.groupby('label')['Birth size'].apply(np.nanmean)
 mean_g1ssize = df.groupby('label')['G1S size'].apply(np.nanmean)
@@ -188,10 +197,8 @@ mean_g1growth = mean_g1ssize - mean_bsize
 
 g1_duration = df.groupby('label').min()['G1 frame'] - df.groupby('label').min()['Birth frame']
 
-#%%
-
 plt.figure()
-plt.scatter(mean_bsize*dx**2*dz,g1_duration/3)
+plt.scatter(mean_bsize*dx**2*dz,g1_duration.dt.total_seconds()/3600)
 plt.xlabel('Nuclear size at birth (fL)')
 plt.ylabel('G1 duration (h)')
 plt.figure()

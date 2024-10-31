@@ -44,7 +44,7 @@ def parse_xml_name(f):
     return part[0], find[0], position[0]
 
 
-xmls = natsorted(glob(path.join(dirname,'MetaData/*Position001_Properties.xml')))
+xmls = natsorted(glob(path.join(dirname,'MetaData/*Position002_Properties.xml')))
 
 xml_manifest = pd.DataFrame(list(map(parse_xml_name,xmls)),columns=['Part','Find','Position'])
 xml_manifest['xml'] = xmls
@@ -92,7 +92,7 @@ for idx,row in xml_manifest.iterrows():
 
 #%% Merge back onto TIFF manifest
 
-img_files = natsorted(glob(path.join(dirname,'stacks/*Position001*ch00*.tif')))
+img_files = natsorted(glob(path.join(dirname,'stacks/*Position002*ch00*.tif')))
 
 def parse_img_name(f):
     part = findall('pt(\d+)',f)
@@ -117,8 +117,8 @@ for idx,row in manifest.iterrows():
     manifest.at[idx,'Timestamp'] = t
     
 manifest['Elapsed'] = manifest['Timestamp'] - manifest.iloc[0]['Timestamp']
-manifest.to_csv(path.join(dirname,'Position001_manifest.csv'))
-manifest.to_pickle(path.join(dirname,'Position001_manifest.pkl'))
+manifest.to_csv(path.join(dirname,'Position002_manifest.csv'))
+manifest.to_pickle(path.join(dirname,'Position002_manifest.pkl'))
     
 
 
