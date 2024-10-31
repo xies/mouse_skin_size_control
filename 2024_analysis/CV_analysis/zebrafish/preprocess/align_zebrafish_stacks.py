@@ -45,21 +45,21 @@ for i in tqdm(range(len(stacks_venus))):
 #%% Save MIP
 
 for i in tqdm(range(len(stacks_venus))):
-    io.imsave(path.join(dirname,f'3d_blur_combined_MIP/venus_MIP_t{i}.tif'),stacks_venus[i].max(axis=0))
-    io.imsave(path.join(dirname,f'3d_blur_combined_MIP/mCherry_MIP_t{i}.tif'),stacks_mCherry[i].max(axis=0))
+    io.imsave(path.join(dirname,f'Position002_aligned/3d_blur_combined_MIP/venus_MIP_t{i}.tif'),stacks_venus[i].max(axis=0))
+    io.imsave(path.join(dirname,f'Position002_aligned/3d_blur_combined_MIP/mCherry_MIP_t{i}.tif'),stacks_mCherry[i].max(axis=0))
 
 #% Load MIPs as timeseries
-files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/venus_MIP*.tif')))
+files = natsorted(glob(path.join(dirname,'Position002_aligned/3d_blur_combined_MIP/venus_MIP*.tif')))
 MIP_venus = np.stack(list(map(io.imread,files)))
-files = natsorted(glob(path.join(dirname,'3d_blur_combined_MIP/mCherry_MIP_t*.tif')))
+files = natsorted(glob(path.join(dirname,'Position002_aligned/3d_blur_combined_MIP/mCherry_MIP_t*.tif')))
 MIP_mCherry = np.stack(list(map(io.imread,files)))
 
 MIP_venus = np.stack([x.max(axis=0) for x in stacks_venus])
 MIP_mCherry = np.stack([x.max(axis=0) for x in stacks_mCherry])
 
 # Save MIP of z-blurred
-io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/raw_mCherry_MIP.tif'),util.img_as_uint(MIP_mCherry))
-io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates//raw_venus_MIP.tif'),util.img_as_uint(MIP_venus))
+io.imsave(path.join(dirname,'Position002_aligned/3d_blurred_MIP_alignment_intermediates/raw_mCherry_MIP.tif'),util.img_as_uint(MIP_mCherry))
+io.imsave(path.join(dirname,'Position002_aligned/3d_blurred_MIP_alignment_intermediates//raw_venus_MIP.tif'),util.img_as_uint(MIP_venus))
 
 #%% Stack Reg on MIP timeseries
 
@@ -69,9 +69,9 @@ tmats = sr.register_stack(MIP_mCherry, reference='previous')
 rough_aligned_mCherry = sr.transform_stack(MIP_mCherry)
 rough_aligned_venus = sr.transform_stack(MIP_venus)
 
-io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_mCherry.tif'),
+io.imsave(path.join(dirname,'Position002_aligned/3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_mCherry.tif'),
           util.img_as_uint(rough_aligned_mCherry/rough_aligned_mCherry.max()),check_contrast=False)
-io.imsave(path.join(dirname,'3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_venus.tif'),
+io.imsave(path.join(dirname,'Position002_aligned/3d_blurred_MIP_alignment_intermediates/rough_aligned_stacks_venus.tif'),
           util.img_as_uint(rough_aligned_venus/rough_aligned_venus.max()),check_contrast=False)
 
 initial_tmats = [transform.EuclideanTransform(matrix=x) for x in tmats]

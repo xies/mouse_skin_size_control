@@ -156,8 +156,15 @@ io.imsave(path.join(dirname,'birth_to_g1s_tracking/birth_tracked.tif'), birth_im
 io.imsave(path.join(dirname,'birth_to_g1s_tracking/g1s_tracked.tif'), g1s_img)
 
 #%%
+
 dx = 0.6
 dz = 1.8
+
+dropped_indices = np.array([9,16,21,27,31,39])
+
+def correct_for_dropped_frames(t, dropped_indices):
+    num_correct_for = (t >= dropped_indices).sum()
+    return t + num_correct_for    
 
 birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
 g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
@@ -167,28 +174,30 @@ for t in tqdm(range(TT)):
     births = pd.DataFrame(measure.regionprops_table(birth_img[t,...],properties=['area','label']))
     g1s = pd.DataFrame(measure.regionprops_table(g1s_img[t,...],properties=['area','label']))
     births = births.rename(columns={'area':'Birth size'})
-    births['Birth frame'] = t
+    births['Birth frame'] = correct_for_dropped_frames(t,dropped_indices)
     g1s = g1s.rename(columns={'area':'G1S size'})
-    g1s['G1 frame'] = t
+    g1s['G1 frame'] = correct_for_dropped_frames(t,dropped_indices)
     
     df.extend([births,g1s])
 
 df = pd.concat(df)
 
-mean_bsize = df.groupby('label').mean()['Birth size']
-mean_g1ssize = df.groupby('label').mean()['G1S size']
+mean_bsize = df.groupby('label')['Birth size'].apply(np.nanmean)
+mean_g1ssize = df.groupby('label')['G1S size'].apply(np.nanmean)
 mean_g1growth = mean_g1ssize - mean_bsize
 
 g1_duration = df.groupby('label').min()['G1 frame'] - df.groupby('label').min()['Birth frame']
 
+#%%
+
 plt.figure()
-plt.scatter(mean_bsize*dx**2*dz,g1_duration*20)
+plt.scatter(mean_bsize*dx**2*dz,g1_duration/3)
 plt.xlabel('Nuclear size at birth (fL)')
-plt.ylabel('G1 duration (min)')
+plt.ylabel('G1 duration (h)')
 plt.figure()
 plt.scatter(mean_bsize*dx**2*dz,mean_g1growth)
 plt.xlabel('Nuclear size at birth (fL)')
-plt.ylabel('G1 grioth (fL)')
+plt.ylabel('G1 growth (fL)')
 
 
 

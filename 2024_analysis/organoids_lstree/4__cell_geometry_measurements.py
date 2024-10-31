@@ -19,7 +19,7 @@ import meshFMI
 import pickle as pkl
 from imageUtils import most_likely_label
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
 
 dx = 0.26
 dz = 2
@@ -34,11 +34,11 @@ df = []
 for t in tqdm(range(T)):
     
     #@todo: measure from B and R channels as well
-    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t+1:04d}.tif'))
-    Cdt1 = io.imread(path.join(dirname,f'Channel1-Deconv/Channel1-T{t+1:04d}.tif'))
-    Gem = io.imread(path.join(dirname,f'Channel2-Deconv/Channel2-T{t+1:04d}.tif'))
+    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/h2birfp670-T{t+1:04d}.tif'))
+    Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/hcdt1mCh-T{t+1:04d}.tif'))
+    Gem = io.imread(path.join(dirname,f'Channel2-Denoised/hgemVenus-T{t+1:04d}.tif'))
     
-    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
+    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_h2birfp670-T{t+1:04d}.tif'))
     props = measure.regionprops(all_labels,intensity_image=H2B, spacing=[dz,dx,dx])
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
                                                         ,'Axial moment','Axial angle'

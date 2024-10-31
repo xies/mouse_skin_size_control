@@ -19,7 +19,7 @@ from tqdm import tqdm
 from aicsshparam import shtools, shparam
 import pyvista as pv
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
 
 dx = 0.26
 dz = 2
@@ -30,7 +30,7 @@ TT = 46
 
 for t in tqdm(np.arange(1,TT+1)):
 
-    labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
+    labels = io.imread(path.join(dirname,f'manual_segmentation/man_h2birfp670-T{t:04d}.tif'))
     
     # Extract the coords
     df = pd.DataFrame(measure.regionprops_table(labels,properties=['area','label','centroid']))
