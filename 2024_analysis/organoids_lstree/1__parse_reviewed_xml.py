@@ -13,11 +13,11 @@ from os import path
 from tqdm import tqdm
 from mamutUtils import trace_lineage
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
 #%%
 
-filename = path.join(dirname,'dataset_deconv_Pos6_reviewedMimi-mamut.xml')
+filename = path.join(dirname,'dataset_deconv_Pos5_reviewedMimi-mamut.xml')
 
 root = ET.parse(filename).getroot()
 
@@ -36,8 +36,8 @@ _spots['DaughterID_2'] = np.nan
 # Annotage G1/S and visible birth frames since we can't infer from lineage topology
 g1s_spots = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/g1s-Spot.csv'),skiprows=[1,2])
 _spots.loc[np.isin(_spots['SpotID'],g1s_spots['ID']),'Phase'] = 'G1S'
-g1s_spots = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/birth-Spot.csv'),skiprows=[1,2])
-_spots.loc[np.isin(_spots['SpotID'],g1s_spots['ID']),'Phase'] = 'Visible birth'
+birth_spots = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/birth-Spot.csv'),skiprows=[1,2])
+_spots.loc[np.isin(_spots['SpotID'],birth_spots['ID']),'Phase'] = 'Visible birth'
 
 #%%
 

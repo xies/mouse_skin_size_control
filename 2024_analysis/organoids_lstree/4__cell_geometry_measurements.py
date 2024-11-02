@@ -19,7 +19,7 @@ import meshFMI
 import pickle as pkl
 from imageUtils import most_likely_label
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
 dx = 0.26
 dz = 2
@@ -34,10 +34,10 @@ df = []
 for t in tqdm(range(T)):
     
     # Everything image-wise is handled as 1-indexed
-    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/h2birfp670-T{t+1:04d}.tif'))
-    Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/hcdt1mCh-T{t+1:04d}.tif'))
-    Gem = io.imread(path.join(dirname,f'Channel2-Denoised/hgemVenus-T{t+1:04d}.tif'))
-    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_h2birfp670-T{t+1:04d}.tif'))
+    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t+1:04d}.tif'))
+    Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/Channel1-T{t+1:04d}.tif'))
+    Gem = io.imread(path.join(dirname,f'Channel2-Denoised/Channel2-T{t+1:04d}.tif'))
+    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
     
     props = measure.regionprops(all_labels,intensity_image=H2B, spacing=[dz,dx,dx])
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
@@ -138,10 +138,13 @@ tracking_df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/filter
 annos = {trackID:cell for trackID,cell in tracking_df.groupby('TrackID')}
 tracks = {trackID:cell for trackID,cell in df.groupby('trackID')}
 
+annotated = {}
 for trackID,t in tracks.items():
 
     # Truncate since didn't do whole time course yet
-    this_anno = annos[trackID]
+    if not int(trackID) in annos.keys():
+        continue
+    this_anno = annos[int(trackID)]
     this_anno = this_anno.rename(columns={'FRAME':'Frame'})
     t = pd.merge(t,this_anno[['Phase','name','Frame']],on='Frame')
     t = t.rename(columns={'name':'SpotID'})
@@ -164,15 +167,16 @@ for trackID,t in tracks.items():
     t['Normalized H2B intensity'] = t['Mean H2B intensity'] / t['Mean H2B intensity'].mean()
     t['Normalized Cdt1 intensity'] = t['Mean Cdt1 intensity'] / t['Mean Cdt1 intensity'].mean()
     t = t.set_index('index')
+    annotated[trackID] = t
 
-_df = pd.concat(tracks,ignore_index=True)
-_df.set_index('index')
+_df = pd.concat(annotated,ignore_index=True)
+# _df.set_index('index')
 
 # Merge backin
 df_combined = pd.merge(df,_df,how='left')
 df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'))
 
-for t in tracks.values():
+for t in annotated.values():
     plt.plot(t.Age,t['Nuclear volume'])
     
     
