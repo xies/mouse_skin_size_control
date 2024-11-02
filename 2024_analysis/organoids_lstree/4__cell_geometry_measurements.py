@@ -165,8 +165,6 @@ for trackID,t in tracks.items():
     t['Normalized Cdt1 intensity'] = t['Mean Cdt1 intensity'] / t['Mean Cdt1 intensity'].mean()
     t = t.set_index('index')
 
-tracks = {trackID:t for trackID,t in tracks.items() if t.iloc[0]['Nuclear volume'] < 200}
-
 _df = pd.concat(tracks,ignore_index=True)
 _df.set_index('index')
 

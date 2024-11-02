@@ -12,51 +12,46 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 from os import path
 
-# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
-# df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
-# df5['organoidID'] = 5
-# df5 = df5[ (df5['trackID'] !=77) & (df5['trackID'] != 120) & (df5['trackID'] != 88)]
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+df5['organoidID'] = 5
+df5 = df5[ (df5['trackID'] !=77) & (df5['trackID'] != 120) & (df5['trackID'] != 88)]
 
 # dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 # df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
 # df2['organoidID'] = 2
 # df2 = df2[ (df2['trackID'] !=53) & (df2['trackID'] != 6)]
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
-df6 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
-df6['organoidID'] = 6
+# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+# df6 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
+# df6['organoidID'] = 6
 
 # df = pd.concat((df5,df2),ignore_index=True)
-df = df6
+df = df5
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 df = df.dropna(subset='trackID')
 
 tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
 
 # First, drop everything but first G1/S frame
-# g1s_tracks = {}
-# for trackID,track in tracks.items():
-#     I = track['Auto phase']
-#     if I.sum() > 0:
-#         first_g1s_idx = np.where(I)[0][0]
-#         g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
+g1s_tracks = {}
+for trackID,track in tracks.items():
+    I = track['Auto phase']
+    if I.sum() > 0:
+        first_g1s_idx = np.where(I)[0][0]
+        g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
         
 g1s = pd.concat(tracks, ignore_index=True)
 
 
 #%% Single variables
 
-trackOI = tracks['6_35.0']
-
-plt.plot(trackOI['Frame'],trackOI['Nuclear volume'])
-
-#%% Single variables
-
-trackOI = '6_12.0'
+trackIDs = list(tracks.keys())
+trackOI = trackIDs[4]
 
 t = tracks[ trackOI ]
-g1 = t[~t['Auto phase']]
-sg2 = t[t['Auto phase']]
+g1 = t[t['Phase'] != 'Visible birth']
+sg2 = t[t['Phase'] == 'Visible birth']
 
 plt.subplot(2,1,1)
 plt.plot(g1['Frame'],g1['Normalized Cdt1 intensity'])
