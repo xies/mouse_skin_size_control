@@ -33,12 +33,12 @@ pl = pv.Plotter()
 df = []
 for t in tqdm(range(T)):
     
-    #@todo: measure from B and R channels as well
+    # Everything image-wise is handled as 1-indexed
     H2B = io.imread(path.join(dirname,f'Channel0-Deconv/h2birfp670-T{t+1:04d}.tif'))
     Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/hcdt1mCh-T{t+1:04d}.tif'))
     Gem = io.imread(path.join(dirname,f'Channel2-Denoised/hgemVenus-T{t+1:04d}.tif'))
-    
     all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_h2birfp670-T{t+1:04d}.tif'))
+    
     props = measure.regionprops(all_labels,intensity_image=H2B, spacing=[dz,dx,dx])
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
                                                         ,'Axial moment','Axial angle'
@@ -164,7 +164,9 @@ for trackID,t in tracks.items():
     t['Normalized H2B intensity'] = t['Mean H2B intensity'] / t['Mean H2B intensity'].mean()
     t['Normalized Cdt1 intensity'] = t['Mean Cdt1 intensity'] / t['Mean Cdt1 intensity'].mean()
     t = t.set_index('index')
-    
+
+tracks = {trackID:t for trackID,t in tracks.items() if t.iloc[0]['Nuclear volume'] < 200}
+
 _df = pd.concat(tracks,ignore_index=True)
 _df.set_index('index')
 
@@ -173,6 +175,6 @@ df_combined = pd.merge(df,_df,how='left')
 df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'))
 
 for t in tracks.values():
-    plt.plot(t.Age,t['Nuclear volume (sm)'])
+    plt.plot(t.Age,t['Nuclear volume'])
     
     

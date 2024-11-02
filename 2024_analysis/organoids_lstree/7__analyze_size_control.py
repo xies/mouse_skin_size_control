@@ -19,8 +19,12 @@ df5['organoidID'] = 5
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
 df2['organoidID'] = 2
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+df6 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
+df6['organoidID'] = 6
 
 df = pd.concat((df5,df2),ignore_index=True)
+# df = df6
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 regen = df
 
@@ -34,15 +38,16 @@ summary = pd.DataFrame()
 for trackID, track in tracks.items():
     
     # Skip tetraploids
-    if trackID == '5_77.0' or trackID == '5_120.0' or trackID == '2_53.0' or trackID == '2_6.0':
+    if trackID == '5_77.0' or trackID == '5_120.0' or trackID == '2_53.0' or trackID == '2_6.0' \
+        or trackID == '6_87.0' or trackID == '6_5.0' or trackID == '6_10.0':
         continue
     
     summary.loc[trackID,'organoidID'] = track.iloc[0]['organoidID']
     summary.loc[trackID,'trackID'] = track.iloc[0]['trackID']
     
     # Birth
-    # I = track['Phase'] == 'Visible birth'
-    summary.loc[trackID,'Birth volume'] = track.iloc[:2]['Nuclear volume'].mean()
+    I = (track['Phase'] == 'Visible birth')
+    summary.loc[trackID,'Birth volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume'].mean()
     #first G1S
     I = track['Phase'] == 'G1S'
     summary.loc[trackID,'G1 volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume'].mean()
@@ -66,7 +71,8 @@ summary['G1 duration'] = (summary['G1S time'] - summary['Birth time'])/60 # hour
 summary['SG2 duration'] = (summary['Division time'] - summary['G1S time'])/60
 summary['Total duration'] = (summary['Division time'] - summary['Birth time'])/60
 
-sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
+# sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
+sb.regplot(summary,x='Birth volume',y='G1 growth')
 
 summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'))
 
@@ -79,7 +85,6 @@ CV = pd.DataFrame()
 CV.loc['Birth',['CV','LB','UB']] = cvariation_bootstrap(summary['Birth volume'],Nboot=1000,subsample=80)
 CV.loc['G1S',['CV','LB','UB']] = cvariation_bootstrap(summary['G1 volume'],Nboot=1000,subsample=80)
 CV.loc['Division',['CV','LB','UB']] = cvariation_bootstrap(summary['Division volume'],Nboot=1000,subsample=80)
-
 
 
 #%% load old organoid data

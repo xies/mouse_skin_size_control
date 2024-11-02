@@ -24,7 +24,7 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/orga
 dx = 0.26
 dz = 2
 
-TT = 46
+TT = 56
 
 #%%
 

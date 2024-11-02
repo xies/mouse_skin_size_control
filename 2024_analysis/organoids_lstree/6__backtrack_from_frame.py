@@ -11,12 +11,12 @@ import numpy as np
 from os import path
 import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
 dx = 0.26
 dz = 2
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
-df['organoidID'] = 2
+df['organoidID'] = 6
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 def gradient_with_nan(y,edge_order):
@@ -28,15 +28,16 @@ def gradient_with_nan(y,edge_order):
     return dy
 
 all_neighbor_cellID = []
-for t in range(45):
+for t in range(56):
     with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_T{t+1:04d}.pkl'),'rb') as f:
         all_neighbor_cellID.append(pkl.load(f))
         
 #%%
 
 tracks = {ID:t for ID,t in df.groupby('organoidID_trackID')}
-del tracks['5_nan']
+# del tracks['5_nan']
 # del tracks['2_nan']
+del tracks['6_nan']
 
 for trackID,track in tracks.items():
     
@@ -52,7 +53,6 @@ for trackID,track in tracks.items():
     
 # Collapse df again
 df_combined = pd.concat(tracks,ignore_index=True)
-
 
 #%%  Automatically 'call' G1/S
 

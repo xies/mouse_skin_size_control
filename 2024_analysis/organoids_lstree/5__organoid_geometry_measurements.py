@@ -24,7 +24,7 @@ df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.c
 dx = 0.26
 dz = 2
 
-T = 45
+T = 56
 
 def find_nearest_vertex(tmesh,query_pts,face_idx):
     assert(len(query_pts) == len(face_idx))

@@ -43,7 +43,6 @@ def parse_xml_name(f):
     
     return part[0], find[0], position[0]
 
-
 xmls = natsorted(glob(path.join(dirname,'MetaData/*Position002_Properties.xml')))
 
 xml_manifest = pd.DataFrame(list(map(parse_xml_name,xmls)),columns=['Part','Find','Position'])

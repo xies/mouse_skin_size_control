@@ -56,7 +56,7 @@ for track in tqdm(tracks):
         t = int(row['FRAME'])
         x,y,z = row[['X-pixel','Y-pixel','Z-pixel']]
         if t < TT:
-            this_seg = manual_segmentations[int(t)+1]
+            this_seg = manual_segmentations[int(t)]
             label = this_seg[z,y,x]
             if label > 0:
                 mask = this_seg == label

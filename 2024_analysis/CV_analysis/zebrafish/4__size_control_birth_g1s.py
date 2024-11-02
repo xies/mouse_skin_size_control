@@ -165,9 +165,6 @@ dropped_indices = np.array([9,16,21,27,31,39])
 # Load file manifest
 manifest = pd.read_pickle(path.join(
     path.split(path.split(dirname)[0])[0],'Position001_manifest.pkl'))
-# def correct_for_dropped_frames(t, dropped_indices):
-#     num_correct_for = (t >= dropped_indices).sum()
-#     return t + num_correct_for
 
 birth_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/birth_manual.tif'))
 g1s_img = io.imread(path.join(dirname,'birth_to_g1s_tracking/g1s_manual.tif'))
@@ -188,8 +185,6 @@ df.to_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'))
 
 
 #%%
-
-df = pd.read_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'),index_col=0)
 
 mean_bsize = df.groupby('label')['Birth size'].apply(np.nanmean)
 mean_g1ssize = df.groupby('label')['G1S size'].apply(np.nanmean)
