@@ -19,7 +19,7 @@ from tqdm import tqdm
 from aicsshparam import shtools, shparam
 import pyvista as pv
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
 dx = 0.26
 dz = 2

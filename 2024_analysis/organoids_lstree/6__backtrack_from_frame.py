@@ -11,7 +11,7 @@ import numpy as np
 from os import path
 import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 dx = 0.26
 dz = 2
 
@@ -28,7 +28,7 @@ def gradient_with_nan(y,edge_order):
     return dy
 
 all_neighbor_cellID = []
-for t in range(56):
+for t in range(65):
     with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_T{t+1:04d}.pkl'),'rb') as f:
         all_neighbor_cellID.append(pkl.load(f))
         

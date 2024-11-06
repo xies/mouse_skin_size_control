@@ -181,25 +181,39 @@ for t in tqdm(range(TT)):
     df.extend([births,g1s])
 
 df = pd.concat(df)
+df.to_pickle(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.pkl'))
 df.to_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'))
 
-
 #%%
+
+import seaborn as sb
+
+df = pd.read_pickle(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.pkl'))
 
 mean_bsize = df.groupby('label')['Birth size'].apply(np.nanmean)
 mean_g1ssize = df.groupby('label')['G1S size'].apply(np.nanmean)
 mean_g1growth = mean_g1ssize - mean_bsize
-
 g1_duration = df.groupby('label').min()['G1 frame'] - df.groupby('label').min()['Birth frame']
 
+
+size_control = pd.DataFrame()
+size_control['Birth volume'] = mean_bsize * dx**2 * dz
+size_control['G1 growth'] = mean_g1growth
+size_control['G1 duration'] = g1_duration.dt.total_seconds()/3600
+
 plt.figure()
-plt.scatter(mean_bsize*dx**2*dz,g1_duration.dt.total_seconds()/3600)
+sb.regplot(size_control,x='Birth volume',y='G1 duration')
 plt.xlabel('Nuclear size at birth (fL)')
 plt.ylabel('G1 duration (h)')
+
 plt.figure()
-plt.scatter(mean_bsize*dx**2*dz,mean_g1growth)
+sb.regplot(size_control,x='Birth volume',y='G1 growth')
+p = np.polyfit(mean_bsize,mean_g1growth,1)[0]
 plt.xlabel('Nuclear size at birth (fL)')
 plt.ylabel('G1 growth (fL)')
+plt.title(f'Slope = {p:2f}')
+
+
 
 
 

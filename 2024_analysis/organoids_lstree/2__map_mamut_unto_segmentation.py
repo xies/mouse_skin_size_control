@@ -16,7 +16,7 @@ from skimage import io
 from re import findall
 from imageUtils import fill_in_cube
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 14_2um/'
 dx = 0.26
 dz = 2
 
@@ -31,7 +31,7 @@ manifest = pd.DataFrame({'filename':natsort.natsorted(glob(path.join(dirname,'ma
 pattern = r'T(\d{4}).tif'
 manifest['timestr'] = manifest['filename'].apply(lambda x: findall(pattern, x)[0])
 # manifest['T'] = manifest['timestr'].astype(int) - 1
-# Dict of manual segmentations keyed on the actual time frame (in 0-index)
+# Dict of manual segmentations keyed on the actual time frameio., (in 0-index)
 manual_segmentations = dict(map(
     lambda i,j: (i,j) , manifest.index,  map(io.imread,manifest['filename'].values)) )
 

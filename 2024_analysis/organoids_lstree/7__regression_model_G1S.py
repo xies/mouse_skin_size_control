@@ -50,6 +50,7 @@ from sklearn.covariance import MinCovDet, EmpiricalCovariance
 from numpy.linalg import eig
 
 # @todo: neighbor interiority, orientation, neighbor orientation
+
 feature_list = {'Nuclear volume':'nuc_vol',
                 'Axial moment':'axial_moment',
                 'Axial angle':'axial_angle',
@@ -81,6 +82,7 @@ feature_list = {'Nuclear volume':'nuc_vol',
                 # 'Mean Gem intensity':'gem_int',
                 }
 
+trackIDs = g1s['trackID']
 df_g1s = g1s.loc[:,feature_list.keys()]
 df_g1s['G1S_logistic'] = g1s['Auto phase']
 
@@ -95,7 +97,6 @@ print(f'Empirical cov: {L.max() / L.min():02f}')
 Cmcv = MinCovDet().fit(X)
 L,_ = eig(Cmcv.covariance_)
 print(f'Min Cov Det cov: {L.max() / L.min():02f}')
-
 
 #%% Logistic regression
 

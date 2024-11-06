@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from os import path
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
-df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df5['organoidID'] = 5
 df5 = df5[ (df5['trackID'] !=77) & (df5['trackID'] != 120) & (df5['trackID'] != 88)]
 
