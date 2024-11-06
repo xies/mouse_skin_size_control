@@ -15,11 +15,11 @@ import seaborn as sb
 from basicUtils import plot_bin_means
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
-df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
+df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df5['organoidID'] = 5
 df5 = df5[ (df5['cellID'] !=77) | (df5['cellID'] != 120)]
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
-df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features.csv'),index_col=0)
+df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df2['organoidID'] = 2
 df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
 
@@ -43,17 +43,20 @@ regen_g1 = regen[ (regen['Phase'] == 'G1') | (regen['Phase'] == 'G1S') ]
 fields2concat = ['Cell type','Nuclear volume','Specific GR (sm)']
 df = pd.concat((regen_g1[fields2concat],homeo[fields2concat]),ignore_index=True)
 
-sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
+# sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
 
 colors = {'Regenerative':'b','TA':'m','Stem cell':'g'}
 
 plt.figure()
 names = []
 for name, celltype in df.groupby('Cell type'):
-    plot_bin_means(celltype['Nuclear volume'],celltype['Specific GR (sm)'],bin_edges=12,minimum_n=25,
-                   color=colors[name])
+    plt.scatter(celltype['Nuclear volume'],celltype['Specific GR (sm)'], color=colors[name],alpha=0.1)
+    plot_bin_means(celltype['Nuclear volume'],celltype['Specific GR (sm)'],bin_edges=15,minimum_n=25,
+                   color=colors[name], style='fill')
     names.append(name)
 
+plt.xlim([100,400])
 plt.xlabel('Nuclear volume (fL)')
 plt.ylabel('Specific growth rate (h-1)')
 plt.legend(names)
+

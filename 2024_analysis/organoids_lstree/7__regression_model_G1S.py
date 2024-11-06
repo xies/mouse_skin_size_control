@@ -11,6 +11,7 @@ import pandas as pd
 from os import path
 import seaborn as sb
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 df5 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
@@ -27,7 +28,6 @@ df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].as
 
 # Derive some ratios
 df['SA to vol ratio'] = df['Surface area'] / df['Nuclear volume']
-
 
 #%% Preprocess
 tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
@@ -82,14 +82,7 @@ feature_list = {'Nuclear volume':'nuc_vol',
                 # 'Mean Gem intensity':'gem_int',
                 }
 
-trackIDs = g1s['trackID']
-df_g1s = g1s.loc[:,feature_list.keys()]
-df_g1s['G1S_logistic'] = g1s['Auto phase']
-
-df_g1s = df_g1s.rename(columns=feature_list).dropna()
-
-X = scale(df_g1s.drop(columns='G1S_logistic'))
-y = df_g1s['G1S_logistic']
+X = scale(g1s.loc[:,feature_list.keys()].dropna())
 
 Cemp = EmpiricalCovariance().fit(X)
 L,_ = eig(Cemp.covariance_)
@@ -98,26 +91,44 @@ Cmcv = MinCovDet().fit(X)
 L,_ = eig(Cmcv.covariance_)
 print(f'Min Cov Det cov: {L.max() / L.min():02f}')
 
+#%% Instead of randomly subsampling, randomly sample one time piont from pre-G1 and post-G1 from each cell
+
+def subsample_by_cell(df):
+    
+    subsampled = []
+    for ID,this_cell in df.groupby('trackID'):
+        
+        pre_g1 = this_cell[ np.in1d(this_cell['Phase'],['Birth','Visible birth','G1']) ]
+        post_g1 = this_cell[ ~np.in1d(this_cell['Phase'],['Birth','Visible birth','G1']) ]
+        
+        # print(post_g1)
+        subsampled.append(post_g1.sample(1))
+        subsampled.append(pre_g1.sample(1))
+    
+    subsampled = pd.concat(subsampled)
+    
+    return subsampled
+
 #%% Logistic regression
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-Niter = 50
+Niter = 1000
 
 score = np.zeros(Niter);
 scores = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
     
-    g1 = df_g1s[~df_g1s['G1S_logistic']]
-    sg2 = df_g1s[df_g1s['G1S_logistic']].sample(1000)
-    balanced = pd.concat((g1,sg2),ignore_index=True)
+    balanced = subsample_by_cell(g1s)
+    _df = balanced.loc[:,feature_list.keys()]
+    _df['G1S_logistic'] = np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
+    _df = _df.dropna()
     
-    y = df_g1s['G1S_logistic']
-    X = scale(df_g1s.drop(columns='G1S_logistic'))
-
+    X = scale(_df.drop(columns='G1S_logistic'))
+    y = _df['G1S_logistic']
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = i)
     reg = LogisticRegression()
     reg.fit(X_train,y_train)
@@ -128,20 +139,18 @@ for i in tqdm(range(Niter)):
     
 scores.plot.hist()
 
-imp = pd.DataFrame({'importance':reg.coef_[0]},
-                    index=df_g1s.drop(columns='G1S_logistic').columns)
+imp = pd.DataFrame({'importance':np.abs(reg.coef_[0])},
+                    index=feature_list.keys())
 imp.plot.bar();
+plt.tight_layout()
 
 #%% 
 
 from sklearn.inspection import permutation_importance
 
-g1 = df_g1s[~df_g1s['G1S_logistic']].sample(1096)
-sg2 = df_g1s[df_g1s['G1S_logistic']]
-balanced = pd.concat((g1,sg2),ignore_index=True)
-
-y = df_g1s['G1S_logistic']
-X = scale(df_g1s.drop(columns='G1S_logistic'))
+balanced = subsample_by_cell(g1s)
+X = scale(_df.drop(columns='G1S_logistic'))
+y = _df['G1S_logistic']
 
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = 42)
 reg = LogisticRegression()
@@ -149,7 +158,7 @@ reg.fit(X_train,y_train)
 r = permutation_importance(reg, X_test,y_test, n_repeats=50)
 
 perm_imp = pd.DataFrame({'importance':r.importances_mean},
-                        index=df_g1s.drop(columns='G1S_logistic').columns)
+                        index=balanced.drop(columns='G1S_logistic').columns)
 perm_imp.plot.bar();
 
 #%%
@@ -164,13 +173,10 @@ score = np.zeros(Niter);
 scores = pd.DataFrame()
 
 for i in tqdm(range(Niter)):
-    
-    g1 = df_g1s[~df_g1s['G1S_logistic']]
-    sg2 = df_g1s[df_g1s['G1S_logistic']].sample(1096)
-    balanced = pd.concat((g1,sg2),ignore_index=True)
-    
-    y = df_g1s['G1S_logistic']
-    X = scale(df_g1s.drop(columns='G1S_logistic'))
+        
+    balanced = subsample_by_cell(g1s)
+    X = scale(_df.drop(columns='G1S_logistic'))
+    y = _df['G1S_logistic']
 
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = i)
     forest = RandomForestClassifier()
@@ -184,19 +190,16 @@ for i in tqdm(range(Niter)):
 scores.plot.hist()
 
 imp = pd.DataFrame({'importance':forest.feature_importances_},
-                    index=df_g1s.drop(columns='G1S_logistic').columns)
+                    index=balanced.drop(columns='G1S_logistic').columns)
 imp.plot.bar();
 
 #%% 
 
 from sklearn.inspection import permutation_importance
 
-g1 = df_g1s[~df_g1s['G1S_logistic']].sample(1096)
-sg2 = df_g1s[df_g1s['G1S_logistic']]
-balanced = pd.concat((g1,sg2),ignore_index=True)
-
-y = df_g1s['G1S_logistic']
-X = scale(df_g1s.drop(columns='G1S_logistic'))
+balanced = subsample_by_cell(g1s)
+X = scale(_df.drop(columns='G1S_logistic'))
+y = _df['G1S_logistic']
 
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = 42)
 forest = RandomForestClassifier()
@@ -204,7 +207,7 @@ forest.fit(X_train,y_train)
 r = permutation_importance(forest, X_test,y_test, n_repeats=50)
 
 perm_imp = pd.DataFrame({'importance':r.importances_mean},
-                        index=df_g1s.drop(columns='G1S_logistic').columns)
+                        index=balanced.drop(columns='G1S_logistic').columns)
 perm_imp.plot.bar();
 
 

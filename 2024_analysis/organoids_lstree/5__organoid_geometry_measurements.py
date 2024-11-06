@@ -37,7 +37,7 @@ def find_nearest_vertex(tmesh,query_pts,face_idx):
 
 #%% Calculate cell position WRT spherical coordinates of organoid mesh
 
-RECALCULATE_NEIGHBORHOOD = False
+RECALCULATE_NEIGHBORHOOD = True
 kappa_radius = 15
 
 # Decimate dataframe into frames
@@ -68,7 +68,8 @@ for t in tqdm(range(T)):
     curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,query_on_surface,radius = kappa_radius)/kappa_radius
     df_by_frame[t]['Mean curvature'] = curvatures
     
-    if path.exists(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl')) and not RECALCULATE_NEIGHBORHOOD:
+    if path.exists(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl')) \
+        and not RECALCULATE_NEIGHBORHOOD:
         with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'rb') as f:
             DistMat_cells = pkl.load(f)
     else:
