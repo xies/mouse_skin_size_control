@@ -155,7 +155,7 @@ sampling_rate = 0.5
 doubling = 3
 t = np.arange(0,end_time,sampling_rate)
 good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, doubling, visualize=True
-                                                         ,white_vol_noise={'fixed':0.1}
+                                                         ,white_vol_noise={'fixed':0}
                                                          ,behavior = 'adder'
                                                          ,synchrony={'wavelength':3/7,'dc_magnitude':0})
 plt.plot(t,field_avg,'k--')
@@ -166,6 +166,7 @@ plt.plot(t,field_avg,'k--')
 #                                                           frame_biases = bad_frames,
 #                                                           behavior = 'adder')
 # plt.plot(t,field_avg,'k--')
+
 
 plt.figure()
 sb.regplot(good_cells,x='Birth size',y='Growth')
@@ -203,7 +204,6 @@ for i,noise in enumerate(fixed_noise_mag):
 
 plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Additive noise magnitude'); plt.ylabel('Size control slope - growth'); 
 # plt.figure();plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration')
-
 
 #%% Perfect sizers or adders - explore effect of sampling rate
 

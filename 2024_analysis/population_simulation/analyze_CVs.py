@@ -84,8 +84,6 @@ def extract_time_window_after_g1s(pop2analyze,num_frames_to_extract,
             windowed[i,:] = cell.ts[field2extract][cell.g1s_frame:cell.g1s_frame+num_frames_to_extract]
     return windowed
 
-
-
 #%% Load runs and collate stats for each model parameter set
 
 # dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'

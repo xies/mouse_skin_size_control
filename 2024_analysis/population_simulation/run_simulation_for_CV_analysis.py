@@ -24,31 +24,9 @@ from basicUtils import nonan_pairs, nonans
 from mathUtils import cvariation_bootstrap
 
 import os
-os.chdir('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/CV_model')
+os.chdir('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/population_simulation')
 import simulation
 import pickle as pkl
-
-#%% Load empirical data
-
-# Load growth curves from pickle
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c1 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c2 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
-    c5f = pkl.load(f,encoding='latin-1')
-collated = c1+c2+c5+c5f
-
-# Filter for phase-annotated cells in collated
-collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
-
-# Concatenate all collated cells into dfc
-dfc = pd.concat(collated_filtered)
-
-emp_g1_cv = stats.variation(dfc[dfc['Phase'] == 'G1']['Volume (sm)'])
-emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
 
 #%% Helper functions + initial variables
 
@@ -120,6 +98,11 @@ def run_model(sim_clock, params, Ncells):
         
     return population
 
+def subsample_simulation(pop, new_sampling_dt):
+    
+    
+    return pop_subsampled
+
 def plot_growth_curves_population(pop):
     
     plt.figure()
@@ -141,34 +124,3 @@ def plot_growth_curves_population(pop):
         plt.legend(['G1','S/G2/M'])
         
 #%% Run model from parameter files
-
-dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
-params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
-
-#% Run model
-runs = {}
-for model_name,p in params.iterrows():
-    
-    print(f'Starting on: {model_name}')
-
-    #% 1. Reset clock and initialize
-    # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
-    sim_clock['Current time'] = 0
-    sim_clock['Current frame'] = 0
-    
-    # 2. Simulation steps
-    population = run_model( sim_clock, p, Ncells)
-    
-    # 3. Collate data for analysis
-    # Filter cells that have full cell cycles
-    pop2analyze = {}
-    for key,cell in population.items():
-        if cell.generation > 7:
-            pop2analyze[key] = cell
-    
-    # plot_growth_curves_population(population)
-    runs[model_name] = pop2analyze
-
-with open(path.join(dirname,'adders.pkl'),'wb') as f:
-    pkl.dump(runs,f)
-
