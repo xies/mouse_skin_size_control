@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Sat Nov  9 17:13:59 2024
+
+@author: xies
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Thu Oct 29 19:46:58 2020
 
 @author: xies
@@ -28,28 +36,6 @@ os.chdir('/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/populat
 import simulation
 import pickle as pkl
 
-#%% Load empirical data
-
-# Load growth curves from pickle
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c1 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c2 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5/2020 CB analysis/exports/collated_manual.pkl','rb') as f:
-    c5 = pkl.load(f,encoding='latin-1')
-with open('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R5-full/tracked_cells/collated_manual.pkl','rb') as f:
-    c5f = pkl.load(f,encoding='latin-1')
-collated = c1+c2+c5+c5f
-
-# Filter for phase-annotated cells in collated
-collated_filtered = [c for c in collated if c.iloc[0]['Phase'] != '?']
-
-# Concatenate all collated cells into dfc
-dfc = pd.concat(collated_filtered)
-
-emp_g1_cv = stats.variation(dfc[dfc['Phase'] == 'G1']['Volume (sm)'])
-emp_sg2_cv = stats.variation(dfc[dfc['Phase'] == 'SG2']['Volume (sm)'])
-
 #%% Helper functions + initial variables
 
 # Set random seed
@@ -60,7 +46,7 @@ max_iter = 2000
 dt = 0.5 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
-Ncells = 200
+Ncells = 20
 
 # Time information
 sim_clock = {}
@@ -120,6 +106,13 @@ def run_model(sim_clock, params, Ncells):
         
     return population
 
+def subsample_population(pop,sim_clock,new_dt):
+    assert( new_dt % sim_clock['dt'] == 0)
+    subsampled = dict()
+    for cellID,cell in pop.items():
+        subsampled[cellID] = cell._subsample(sim_clock,new_dt)
+    return subsampled
+
 def plot_growth_curves_population(pop):
     
     plt.figure()
@@ -131,7 +124,7 @@ def plot_growth_curves_population(pop):
         
         t_g1 = t[p =='G1']
         v_g1 = v[p =='G1']
-        plt.plot(t_g1,v_g1,'b-',alpha=0.1)
+        plt.plot(t_g1,v_g1,'b*-',alpha=0.1)
         
         t_g2 = t[p =='S/G2/M']
         v_g2 = v[p =='S/G2/M']
@@ -142,33 +135,20 @@ def plot_growth_curves_population(pop):
         
 #%% Run model from parameter files
 
+sim_clock['Current time'] = 0
+sim_clock['Current frame'] = 0
+
 dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
 params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
 
-#% Run model
-runs = {}
-for model_name,p in params.iterrows():
-    
-    print(f'Starting on: {model_name}')
+param = params.loc['sizer550_timer14']
 
-    #% 1. Reset clock and initialize
-    # Initialize each cell as a DataFrame at G1/S transition so we can specify Size and RB independently
-    sim_clock['Current time'] = 0
-    sim_clock['Current frame'] = 0
-    
-    # 2. Simulation steps
-    population = run_model( sim_clock, p, Ncells)
-    
-    # 3. Collate data for analysis
-    # Filter cells that have full cell cycles
-    pop2analyze = {}
-    for key,cell in population.items():
-        if cell.generation > 7:
-            pop2analyze[key] = cell
-    
-    # plot_growth_curves_population(population)
-    runs[model_name] = pop2analyze
+# wt = run_model(sim_clock,param,Ncells)
+wt_subsample = subsample_population(wt,sim_clock,12)
 
-with open(path.join(dirname,'adders.pkl'),'wb') as f:
-    pkl.dump(runs,f)
+
+
+
+
+
 

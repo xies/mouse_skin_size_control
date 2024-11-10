@@ -10,6 +10,7 @@ import numpy as np
 from numpy import random
 import pandas as pd
 import scipy as sp
+from copy import deepcopy
 from  mathUtils import estimate_log_normal_parameters
 
 class Cell():
@@ -363,14 +364,49 @@ class Cell():
             # Todo: error
             return None
 
-        def _subsample(self,sim_clock,params,sub_sample_dt):
-            assert( sub_sample_dt % sim_clock.dt == 0)
+    def _subsample(self,sim_clock,sub_sample_dt):
+        assert( sub_sample_dt % sim_clock['dt'] == 0)
+        
+        decimation_factor = int(sub_sample_dt // sim_clock['dt'])
+        
+        subsampled = deepcopy(self)
+        
+        # decimate timeseries
+        decimated_ts = self.ts[::decimation_factor]
+        subsampled.ts = decimated_ts
+        
+        # recalculate cell cycle positions
+        birth_idx = decimated_ts['Time'].argmin()
+        
+        # Birth
+        subsampled.birth_size = decimated_ts.iloc[birth_idx]['Volume']
+        subsampled.birth_size_measured = decimated_ts.iloc[birth_idx]['Measured volume']
+        subsampled.birth_time = decimated_ts.iloc[birth_idx]['Time']
+        subsampled.birth_frame = birth_idx
+        
+        if 'S/G2/M' in decimated_ts['Phase'].unique():
+            g1s_idx = np.where(decimated_ts['Phase'] == 'S/G2/M')[0][0]
             
-            subsample_factor = sub_sample_dt // sim_clock
-            
-            
-            return ts
-            
+            # G1/S
+            subsampled.g1s_size = decimated_ts.iloc[g1s_idx]['Volume']
+            subsampled.g1s_size_measured = decimated_ts.iloc[g1s_idx]['Measured volume']
+            subsampled.g1s_time = decimated_ts.iloc[g1s_idx]['Time']
+            subsampled.g1s_frame = g1s_idx
+        
+        if self.divided:
+            division_idx = decimated_ts['Time'].argmax()
+            # Division
+            subsampled.div_size = decimated_ts.iloc[division_idx]['Volume']
+            subsampled.div_size_measured = decimated_ts.iloc[division_idx]['Measured volume']
+            subsampled.div_time = decimated_ts.iloc[division_idx]['Time']
+            subsampled.div_frame = division_idx
+
+        # Recalculate duration + growth
+        subsampled.g1_duration = subsampled.g1s_time - subsampled.birth_time
+        subsampled.sg2_duration = subsampled.div_time - subsampled.birth_time
+        subsampled.total_duration = subsampled.div_time - subsampled.g1s_time
+        
+        return subsampled
 
 
 # --- DATA METHODS ----
