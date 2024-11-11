@@ -46,7 +46,7 @@ max_iter = 2000
 dt = 0.5 # simulation step size in hours
 # Total time simulated:
 print(f'Total hrs simulated: {max_iter * dt / 70} generations')
-Ncells = 20
+Ncells = 100
 
 # Time information
 sim_clock = {}
@@ -113,38 +113,148 @@ def subsample_population(pop,sim_clock,new_dt):
         subsampled[cellID] = cell._subsample(sim_clock,new_dt)
     return subsampled
 
-def plot_growth_curves_population(pop):
+def plot_growth_curves_population(pop,origin='simulation'):
     
     plt.figure()
     for cell in pop.values():
         ts = cell.ts.dropna()
+        
         t = ts['Time']
-        v = ts['Volume']
+        v = ts['Measured volume']
         p = ts['Phase']
+        if np.nansum(t) == 0:
+            continue
         
         t_g1 = t[p =='G1']
         v_g1 = v[p =='G1']
-        plt.plot(t_g1,v_g1,'b*-',alpha=0.1)
         
-        t_g2 = t[p =='S/G2/M']
-        v_g2 = v[p =='S/G2/M']
-        plt.plot(t_g2,v_g2,'r-',alpha=0.1)
+        if origin == 'simulation':
+            t0 = 0
+        elif origin == 'birth':
+            t0 = np.nanmin(t)
+        elif origin == 'g1s':
+            t0 = np.nanmax(t_g1)
+            
+        plt.plot(t_g1 - t0,v_g1,'b-',alpha=0.1)
+        
+        if len(t_g1) > 0:
+            t_g2 = np.hstack((t_g1.values[-1],t[p =='S/G2/M']))
+            # print(t_g2)
+            v_g2 = np.hstack((v_g1.values[-1],v[p =='S/G2/M']))
+        else:
+            t_g2 = t[p =='S/G2/M']
+            v_g2 = v[p =='S/G2/M']
+        plt.plot(t_g2 - t0,v_g2,'r-',alpha=0.1)
         plt.xlabel('Time (h)')
         plt.ylabel('Cell volume (fL)')
         plt.legend(['G1','S/G2/M'])
-        
+
+def plot_size_control(pop):
+    
+
+    bsizes = np.array([c.birth_size_measured for c in pop.values()])
+    g1sizes = np.array([c.g1s_size_measured for c in pop.values()])
+    divsizes = np.array([c.div_size_measured for c in pop.values()])
+    g1_growth = g1sizes - bsizes
+    total_growth = divsizes - bsizes
+    
+    plt.subplot(2,1,2)
+    plt.scatter(bsizes,g1_growth)
+    plt.title(np.polyfit(bsizes,g1_growth,1)[0])
+    
+    plt.subplot(2,1,1)
+    g1_duration = np.array([c.g1_duration for c in pop.values()])
+    plt.scatter(bsizes,g1_duration)
+    plt.title(np.corrcoef(bsizes,g1_duration)[0])
+
 #%% Run model from parameter files
 
 sim_clock['Current time'] = 0
 sim_clock['Current frame'] = 0
 
-dirname = '/Users/xies/OneDrive - Stanford/In vitro/CV from snapshot/CV model/G1timer_SG2sizer_asym05_grfluct05/'
-params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
+wt_param = pd.Series({'BirthMean':339,
+                      'BirthStd':61,
+                      'MsmtNoise':20,
+                      'GrMean':0.011,
+                      'GrStd':0.0037,
+                      'GrFluct':0.05,
+                      'G1S_model':'sizer',
+                      'SG2M_model':'timer',
+                      'InhAsym':5,
+                      'G1S_sizethreshold':550,
+                      'G1S_th_error':19,
+                      'Tsg2mMean':16,
+                      'Tsg2mStd':8})
 
-param = params.loc['sizer550_timer14']
-
-# wt = run_model(sim_clock,param,Ncells)
+wt = run_model(sim_clock,wt_param,Ncells)
+wt = {k:c for k,c in wt.items() if c.generation > 4 and c.divided}
 wt_subsample = subsample_population(wt,sim_clock,12)
+
+#%%
+
+plot_growth_curves_population(wt_subsample,origin='birth')
+
+plt.figure()
+# plt.hist([c.total_duration for c in wt_subsample.values()])
+
+plt.figure()
+plot_size_control(wt)
+plot_size_control(wt_subsample)
+
+#%%
+
+dko_param = pd.Series({'BirthMean':350,
+                      'BirthStd':50,
+                      'MsmtNoise':0,
+                      'GrMean':0.01,
+                      'GrStd':0.0037,
+                      'GrFluct':0.05,
+                      'G1S_model':'adder',
+                      'SG2M_model':'timer',
+                      'InhAsym':5,
+                      'G1S_added_mean':200,
+                      'G1S_added_std':30,
+                      'Tsg2mMean':14,
+                      'Tsg2mStd':6})
+
+dko = run_model(sim_clock,dko_param,Ncells)
+dko = {k:c for k,c in dko.items() if c.birth_time > 500 and c.divided}
+dko_subsample = subsample_population(dko,sim_clock,12)
+
+plot_growth_curves_population(dko_subsample,origin='birth')
+
+plt.figure()
+plot_size_control(dko)
+plt.figure()
+plot_size_control(dko_subsample)
+
+
+#%%
+
+dko_param = pd.Series({'BirthMean':350,
+                      'BirthStd':50,
+                      'MsmtNoise':0,
+                      'GrMean':0.01,
+                      'GrStd':0.0037,
+                      'GrFluct':0.05,
+                      'G1S_model':'adder',
+                      'SG2M_model':'timer',
+                      'InhAsym':5,
+                      'G1S_added_mean':50,
+                      'G1S_added_std':30,
+                      'Tsg2mMean':14,
+                      'Tsg2mStd':6})
+
+dko = run_model(sim_clock,dko_param,Ncells)
+dko = {k:c for k,c in dko.items() if c.birth_time > 500 and c.divided}
+dko_subsample = subsample_population(dko,sim_clock,12)
+
+plot_growth_curves_population(dko_subsample,origin='birth')
+
+plt.figure()
+plot_size_control(dko)
+plt.figure()
+plot_size_control(dko_subsample)
 
 
 

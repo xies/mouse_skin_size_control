@@ -37,7 +37,7 @@ def find_nearest_vertex(tmesh,query_pts,face_idx):
 
 #%% Calculate cell position WRT spherical coordinates of organoid mesh
 
-RECALCULATE_NEIGHBORHOOD = True
+RECALCULATE_NEIGHBORHOOD = False
 kappa_radius = 15
 
 # Decimate dataframe into frames

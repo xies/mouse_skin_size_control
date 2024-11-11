@@ -37,6 +37,8 @@ collated = list(c1.values()) + list(c2.values())
 #%%
 
 df = pd.DataFrame()
+
+df['Total duration'] = np.array([c.iloc[-1]['Age'] for c in collated])
 df['Birth nuclear volume'] = np.array([c.iloc[0]['Nuclear volume (sm)'] for c in collated])
 df['Birth volume'] = np.array([c.iloc[0]['Volume (sm)'] for c in collated])
 df['Birth NC ratio'] = df['Birth nuclear volume'] / df['Birth volume']
@@ -56,10 +58,10 @@ df = df.dropna()
 
 #%% Linear regression 
 
-endo_var_names = ['Birth volume','Birth nuclear volume','Exponential growth rate']
+endo_var_names = ['Birth volume','Birth nuclear volume','Exponential growth rate G1 only']
 var_names_str = ' + '.join(endo_var_names)
 X = df[endo_var_names].copy()
-y = df['G1 duration']
+y = df['Total duration']
 
 X_ = scale(X)
 
@@ -76,8 +78,8 @@ plt.plot([y.min(),y.max()],[y.min()-6,y.max()-6],'r--')
 plt.plot([y.min(),y.max()],[y.min()+6,y.max()+6],'r--')
 plt.scatter(jitter(y,sigma=2.5),y_pred, alpha=0.5,s=50)
 plt.gca().set_aspect('equal', adjustable='box')
-plt.xlabel('Measured G1 duration')
-plt.ylabel('Predicted G1 duration')
+plt.xlabel('Measured cell cycle duration')
+plt.ylabel('Predicted cell cycle duration')
 plt.title(f'Linear regression using: {var_names_str}; R2={R2:.2f}; maxR2=0.88')
 
 #%% Renormalize R2 given sampling rate of empirical data

@@ -34,22 +34,28 @@ df = df.dropna(subset='trackID')
 tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
 
 # First, drop everything but first G1/S frame
-g1s_tracks = {}
-for trackID,track in tracks.items():
-    I = track['Auto phase']
-    if I.sum() > 0:
-        first_g1s_idx = np.where(I)[0][0]
-        g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
+# g1s_tracks = {}
+# for trackID,track in tracks.items():
+#     I = track['Auto phase']
+#     if I.sum() > 0:
+#         first_g1s_idx = np.where(I)[0][0]
+#         g1s_tracks[trackID] = track.iloc[0:first_g1s_idx+1]
         
-g1s = pd.concat(tracks, ignore_index=True)
-
+# g1s = pd.concat(tracks, ignore_index=True)
 
 #%% Single variables
 
 trackIDs = list(tracks.keys())
-trackOI = trackIDs[4]
-
+trackOI = trackIDs[65]
+print(f'TrackID = {trackOI}')
+# trackOI = 46
 t = tracks[ trackOI ]
+
+plt.plot(t.Frame,t['Nuclear volume'])
+
+#%%
+
+
 g1 = t[t['Phase'] != 'Visible birth']
 sg2 = t[t['Phase'] == 'Visible birth']
 

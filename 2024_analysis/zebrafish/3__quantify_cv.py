@@ -30,7 +30,9 @@ def quantify_volume(f):
         _df.append(this_df)
     _df = pd.concat(_df)
     _df = _df.rename(columns={'area':'Volume'})
+    frames = pd.DataFrame(_df.groupby('label')['Frame'].mean())
     _df = pd.DataFrame(_df.groupby('label')['Volume'].mean())
+    _df['Frame'] = frames
 
     return _df
 
@@ -40,8 +42,15 @@ g1s = quantify_volume(path.join(dirname,'Position001_Mastodon/g1s/g1s_manual.tif
 g1s['Phase'] = 'G1S'
 div = quantify_volume(path.join(dirname,'Position001_Mastodon/division/div_manual.tif'))
 div['Phase'] = 'Division'
+df['Time'] = df['Frame'] / 3
 df = pd.concat((birth,g1s,div),ignore_index=True)
 df.to_csv(path.join(dirname,'cell_size_by_cellcycle_position.csv'))
+
+#%%
+
+sb.lmplot(df,x='Time',y='Volume',hue='Phase')
+plt.xlabel('Time (h)')
+plt.ylabel('Nuclear volume at cell cycle phase (h)')
 
 #%% Estimate CV via bootstrap
 

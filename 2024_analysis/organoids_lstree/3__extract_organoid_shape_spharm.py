@@ -30,7 +30,7 @@ TT = 56
 
 for t in tqdm(np.arange(1,TT+1)):
 
-    labels = io.imread(path.join(dirname,f'manual_segmentation/man_h2birfp670-T{t:04d}.tif'))
+    labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t:04d}.tif'))
     
     # Extract the coords
     df = pd.DataFrame(measure.regionprops_table(labels,properties=['area','label','centroid']))

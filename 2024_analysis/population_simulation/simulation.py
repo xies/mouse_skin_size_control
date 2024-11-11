@@ -94,7 +94,7 @@ class Cell():
             assert(params is not None)
             # Create cell de novo using empirical paramters
             # Random log-normal birth sizes
-            mu,sigma = estimate_log_normal_parameters(params['BirthMean'],params.loc['BirthStd'])
+            mu,sigma = estimate_log_normal_parameters(params['BirthMean'],params['BirthStd'])
             birth_vol = random.lognormal(mean =mu, sigma=sigma)
             # Add measurement noise
             V_noise = random.randn(1)[0]*params['MsmtNoise']
@@ -120,8 +120,8 @@ class Cell():
                 theta = max(theta,300)
                 self.g1s_size_threshold = theta
             if params['G1S_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params['G1S_added_std'] * params['G1S_added_mean']
-                DV = max(50,DV)
+                DV = random.randn(1)[0]*params['G1S_added_std'] + params['G1S_added_mean']
+                DV = max(0,DV)
                 self.g1s_adder = DV
             if params['G1S_model'].lower() == 'timer':
                 Tg1 = random.randn(1)[0]*(params['Tg1Std']) + params['Tg1Mean']
@@ -135,8 +135,8 @@ class Cell():
                 theta = max(theta,500)
                 self.sg2m_size_threshold = theta
             if params['SG2M_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params['SG2M_added_std'] * params['SG2M_added_mean']
-                DV = max(50,DV)
+                DV = random.randn(1)[0]*params['SG2M_added_std'] + params['SG2M_added_mean']
+                DV = max(0,DV)
                 self.sg2m_adder = DV
             if params['SG2M_model'].lower() == 'timer':
                 # Pre-determine SG2M duration to avoid doing the random processes math
@@ -172,8 +172,8 @@ class Cell():
                 # theta = max(theta,300)
                 self.g1s_size_threshold = theta
             if params['G1S_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params['G1S_added_std'] * params['G1S_added_mean']
-                DV = max(50,DV)
+                DV = random.randn(1)[0]*params['G1S_added_std'] + params['G1S_added_mean']
+                # DV = max(50,DV)
                 self.g1s_adder = DV
             elif params['G1S_model'].lower() == 'timer':
                 Tg1 = random.randn(1)[0]*(params['Tg1Std']) + params['Tg1Mean']
@@ -191,8 +191,8 @@ class Cell():
                 theta = max(theta,500)
                 self.sg2m_size_threshold = theta
             if params['SG2M_model'].lower() == 'adder':
-                DV = random.randn(1)[0]*params['SG2M_added_std'] * params['SG2M_added_mean']
-                DV = max(50,DV)
+                DV = random.randn(1)[0]*params['SG2M_added_std'] + params['SG2M_added_mean']
+                DV = max(0,DV)
                 self.sg2m_adder = DV
             if params['SG2M_model'].lower() == 'timer':
                 Tsg2m = random.randn(1)[0]*(params['Tsg2mStd']) + params['Tsg2mMean']
@@ -289,6 +289,7 @@ class Cell():
             self.g1s_size = current_values['Volume']
             self.g1s_size_measured = current_values['Measured volume']
             self.g1s_frame = clock['Current frame']
+            self.g1_duration = self.g1s_time - self.birth_time
             
         # Check for division
         if prev_values['Phase'] == 'S/G2/M' and self.decide2divide(clock,params):
@@ -298,6 +299,8 @@ class Cell():
             self.div_size = prev_values['Volume']
             self.div_size_measured = prev_values['Measured volume']
             self.div_frame = prev_frame
+            self.sg2m_duration = self.div_time - self.g1s_time
+            self.total_duration = self.div_time - self.birth_time
             self.divided = True
         
         # Put the current values into the timeseries
@@ -357,8 +360,7 @@ class Cell():
         
         elif params['SG2M_model'].lower() == 'timer':
             # Calculate time since g1s
-            time_of_g1s = self.g1s_time
-            time_since_g1s = sim_clock['Current time'] - time_of_g1s
+            time_since_g1s = sim_clock['Current time'] - self.g1s_time
             return time_since_g1s > self.sg2m_duration
         else:
             # Todo: error
@@ -372,7 +374,7 @@ class Cell():
         subsampled = deepcopy(self)
         
         # decimate timeseries
-        decimated_ts = self.ts[::decimation_factor]
+        decimated_ts = self.ts[::decimation_factor].reset_index()
         subsampled.ts = decimated_ts
         
         # recalculate cell cycle positions
@@ -403,8 +405,9 @@ class Cell():
 
         # Recalculate duration + growth
         subsampled.g1_duration = subsampled.g1s_time - subsampled.birth_time
-        subsampled.sg2_duration = subsampled.div_time - subsampled.birth_time
-        subsampled.total_duration = subsampled.div_time - subsampled.g1s_time
+        print(subsampled.g1_duration)
+        subsampled.sg2_duration = subsampled.g1s_time - subsampled.birth_time
+        subsampled.total_duration = subsampled.div_time - subsampled.birth_time
         
         return subsampled
 

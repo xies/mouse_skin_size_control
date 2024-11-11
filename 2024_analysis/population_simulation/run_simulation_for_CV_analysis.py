@@ -147,7 +147,7 @@ params = pd.read_csv(path.join(dirname,'params.csv'),index_col=0)
 
 #% Run model
 runs = {}
-for model_name,p in params.iterrows():
+for model_name,p in params.iloc[0:].iterrows():
     
     print(f'Starting on: {model_name}')
 
@@ -169,6 +169,6 @@ for model_name,p in params.iterrows():
     # plot_growth_curves_population(population)
     runs[model_name] = pop2analyze
 
-with open(path.join(dirname,'adders.pkl'),'wb') as f:
-    pkl.dump(runs,f)
+# with open(path.join(dirname,'adders.pkl'),'wb') as f:
+#     pkl.dump(runs,f)
 
