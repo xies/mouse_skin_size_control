@@ -23,7 +23,6 @@ df2['organoidID'] = 2
 df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
 
 df = pd.concat((df5,df2),ignore_index=True)
-# df = df5
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 # Derive some ratios
@@ -51,7 +50,7 @@ from numpy.linalg import eig
 
 # @todo: neighbor interiority, orientation, neighbor orientation
 
-feature_list = {'Nuclear volume':'nuc_vol',
+feature_list = {'Nuclear volume (sm)':'nuc_vol',
                 'Axial moment':'axial_moment',
                 'Axial angle':'axial_angle',
                 'Planar moment 1':'plan_moment_1',
@@ -60,7 +59,7 @@ feature_list = {'Nuclear volume':'nuc_vol',
                 'Z':'z','Y':'y','X':'x',
                 # 'SA to vol ratio':'SA_vol_ratio',
                 'Growth rates (sm)':'gr_sm',
-                'Organoid interiority':'interior',
+                # 'Organoid interiority':'interior',
                 'Mean curvature':'curvature',
                 'Mean neighbor volume':'mean_neighb_vol',
                 'Std neighbor volume':'std_neighb_vol',
@@ -101,9 +100,8 @@ def subsample_by_cell(df):
         pre_g1 = this_cell[ np.in1d(this_cell['Phase'],['Birth','Visible birth','G1']) ]
         post_g1 = this_cell[ ~np.in1d(this_cell['Phase'],['Birth','Visible birth','G1']) ]
         
-        # print(post_g1)
-        subsampled.append(post_g1.sample(1))
-        subsampled.append(pre_g1.sample(1))
+        subsampled.append(post_g1.sample( min(5,len(post_g1))) )
+        subsampled.append(pre_g1.sample(min(5,len(pre_g1))) )
     
     subsampled = pd.concat(subsampled)
     
@@ -117,7 +115,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from statsmodels.api import OLS
 from scipy import stats
 
-Niter = 1000
+Niter = 100
 
 coeffs = pd.DataFrame(columns=feature_list)
 pvals = pd.DataFrame(columns=feature_list)
@@ -126,6 +124,7 @@ scores = pd.DataFrame()
 for i in tqdm(range(Niter)):
     
     balanced = subsample_by_cell(g1s)
+    # balanced = g1s
     _df = balanced.loc[:,feature_list.keys()]
     _df['G1S_logistic'] = ~np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
     _df = _df.dropna()
@@ -154,7 +153,7 @@ plt.errorbar(x = coeffs.mean(),
               y = np.mean( -np.log10(pvals.values.astype(float)), axis = 0),
               yerr = np.std( -np.log10(pvals.values.astype(float)), axis = 0),
               fmt = 'o')
-plt.hlines(y = -np.log10(.05), xmin=-.2, xmax=.4, color='r')
+plt.hlines(y = -np.log10(.01), xmin=-.2, xmax=.4, color='r')
 plt.xlabel('Coefficient')
 plt.ylabel('-Log10 (P)')
 
@@ -162,18 +161,25 @@ plt.ylabel('-Log10 (P)')
 
 from sklearn.inspection import permutation_importance
 
-balanced = subsample_by_cell(g1s)
+balanced = g1s
+_df = balanced.loc[:,feature_list.keys()]
+_df['G1S_logistic'] = ~np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
+_df = _df.dropna()
+
+
 X = scale(_df.drop(columns='G1S_logistic'))
 y = _df['G1S_logistic']
 
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = 42)
 reg = LogisticRegression()
 reg.fit(X_train,y_train)
-r = permutation_importance(reg, X_test,y_test, n_repeats=50)
+r = permutation_importance(reg, X_test,y_test, n_repeats=100)
 
-perm_imp = pd.DataFrame({'importance':r.importances_mean},
-                        index=balanced.drop(columns='G1S_logistic').columns)
-perm_imp.plot.bar();
+perm_imp = pd.DataFrame({'importance':r.importances_mean,
+                         'std':r.importances_std},
+                        index=_df.drop(columns='G1S_logistic').columns)
+perm_imp.plot(kind='bar',y='importance',yerr='std');plt.tight_layout()
+plt.ylabel('Permutation importance')
 
 #%%
 
@@ -189,6 +195,10 @@ scores = pd.DataFrame()
 for i in tqdm(range(Niter)):
         
     balanced = subsample_by_cell(g1s)
+    _df = balanced.loc[:,feature_list.keys()]
+    _df['G1S_logistic'] = ~np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
+    _df = _df.dropna()
+
     X = scale(_df.drop(columns='G1S_logistic'))
     y = _df['G1S_logistic']
 
@@ -204,14 +214,18 @@ for i in tqdm(range(Niter)):
 scores.plot.hist()
 
 imp = pd.DataFrame({'importance':forest.feature_importances_},
-                    index=balanced.drop(columns='G1S_logistic').columns)
-imp.plot.bar();
+                    index=feature_list)
+imp.plot(kind='bar',y='importance'); plt.tight_layout()
 
 #%% 
 
 from sklearn.inspection import permutation_importance
 
 balanced = subsample_by_cell(g1s)
+_df = balanced.loc[:,feature_list.keys()]
+_df['G1S_logistic'] = ~np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
+_df = _df.dropna()
+
 X = scale(_df.drop(columns='G1S_logistic'))
 y = _df['G1S_logistic']
 
@@ -220,9 +234,10 @@ forest = RandomForestClassifier()
 forest.fit(X_train,y_train)
 r = permutation_importance(forest, X_test,y_test, n_repeats=50)
 
-perm_imp = pd.DataFrame({'importance':r.importances_mean},
-                        index=balanced.drop(columns='G1S_logistic').columns)
-perm_imp.plot.bar();
-
+perm_imp = pd.DataFrame({'importance':r.importances_mean,
+                         'std':r.importances_std},
+                        index=_df.drop(columns='G1S_logistic').columns)
+perm_imp.plot(kind='bar',y='importance',yerr='std');
+plt.ylabel('Permutation importance'); plt.tight_layout()
 
 

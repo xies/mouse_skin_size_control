@@ -12,19 +12,21 @@ import pandas as pd
 from os import path
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from glob import glob
 # import seaborn as sb
 import trimesh as tm
 import pyvista as pv
 import pickle as pkl
+from scipy.spatial import distance
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 
 dx = 0.26
 dz = 2
 
-T = 65
+T = len(glob(path.join(dirname,'manual_segmentation/*.tif')))
 
 def find_nearest_vertex(tmesh,query_pts,face_idx):
     assert(len(query_pts) == len(face_idx))
@@ -37,7 +39,7 @@ def find_nearest_vertex(tmesh,query_pts,face_idx):
 
 #%% Calculate cell position WRT spherical coordinates of organoid mesh
 
-RECALCULATE_NEIGHBORHOOD = False
+RECALCULATE_NEIGHBORHOOD = True
 kappa_radius = 15
 
 # Decimate dataframe into frames
@@ -48,6 +50,7 @@ for t in tqdm(range(T)):
     # Load organoid shape mesh
     mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
     df_by_frame[t]['Organoid volume'] = mesh.volume
+    vertices = np.asarray(mesh.points)
     faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
     tmesh = tm.Trimesh(mesh.points, faces_as_array)
     
@@ -64,29 +67,34 @@ for t in tqdm(range(T)):
     # # Query for nearest point and then calculate curvature on organoid
     query_on_surface,_,face_idx = tmesh.nearest.on_surface(cell_points)
     vert_idx = find_nearest_vertex(tmesh,cell_points.values,face_idx)
+    vert_of_cells = np.asarray(mesh.points)[vert_idx,:]
     
     curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,query_on_surface,radius = kappa_radius)/kappa_radius
     df_by_frame[t]['Mean curvature'] = curvatures
     
-    if path.exists(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl')) \
-        and not RECALCULATE_NEIGHBORHOOD:
-        with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'rb') as f:
-            DistMat_cells = pkl.load(f)
-    else:
-        #Define geodesic distance
-        DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
-        for i,pt in enumerate(vert_idx):
-            for j,other_pt in enumerate(vert_idx):
-                if i > j:
-                    try:
-                        geod = mesh.geodesic(pt,other_pt)
-                        l = geod.length
-                    except:
-                        l = 1000 # placeholder
-                    DistMat_cells[i,j] = l
-        # Save distmat
-        with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'wb') as f:
-            pkl.dump(DistMat_cells,f)
+    # if path.exists(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl')) \
+    #     and not RECALCULATE_NEIGHBORHOOD:
+    #     with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'rb') as f:
+    #         DistMat_cells = pkl.load(f)
+    # else:
+    #     #Define geodesic distance
+    #     # NB: I don't think this works well.. just use regular distances
+    #     DistMat_cells = np.ones((len(vert_idx),len(vert_idx))) * np.nan
+    #     for i,pt in enumerate(vert_idx):
+    #         for j,other_pt in enumerate(vert_idx):
+    #             if i > j:
+    #                 try:
+    #                     geod = mesh.geodesic(pt,other_pt)
+    #                     l = geod.length
+    #                 except:
+    #                     l = 1000 # placeholder
+    #                 DistMat_cells[i,j] = l
+    #     # Save distmat
+    #     with open(path.join(dirname,f'geodesic_neighbors/geodesic_distmat_T{t+1:04d}.pkl'),'wb') as f:
+    #         pkl.dump(DistMat_cells,f)
+    
+    DistMat_cells = distance.squareform(distance.pdist(cell_points))
+    DistMat_cells[np.eye(len(cell_points)).astype(bool)] = np.nan
     
     # Define surface normal of surface
     normals = tmesh.vertex_normals[tmesh.faces[face_idx]]
@@ -103,7 +111,7 @@ for t in tqdm(range(T)):
     df_by_frame[t]['Orientation'] = orientations
     
     # Define 'neighborhood'
-    neighborhood_distance = 20 #um
+    neighborhood_distance = 12 #um
     
     cell_neighbors = {}
     cell_neighbors_idx = {}
@@ -129,9 +137,9 @@ for t in tqdm(range(T)):
             df_by_frame[t].at[center_idx,'Local cell density'] = len(neighbors)
     
     # Save neighborhood information
-    with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_T{t+1:04d}.pkl'),'wb') as f:
+    with open(path.join(dirname,f'geometric_neighbors/geometric_neighbors_T{t+1:04d}.pkl'),'wb') as f:
         pkl.dump(cell_neighbors,f)
-    with open(path.join(dirname,f'geodesic_neighbors/geodesic_neighbors_dfindex_T{t+1:04d}.pkl'),'wb') as f:
+    with open(path.join(dirname,f'geometric_neighbors/geometric_neighbors_dfindex_T{t+1:04d}.pkl'),'wb') as f:
         pkl.dump(cell_neighbors_idx,f)
     
 # Recombine into dataframe
