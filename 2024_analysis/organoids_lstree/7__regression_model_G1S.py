@@ -115,7 +115,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from statsmodels.api import OLS
 from scipy import stats
 
-Niter = 100
+Niter = 10
 
 coeffs = pd.DataFrame(columns=feature_list)
 pvals = pd.DataFrame(columns=feature_list)
@@ -173,7 +173,7 @@ y = _df['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = 42)
 reg = LogisticRegression()
 reg.fit(X_train,y_train)
-r = permutation_importance(reg, X_test,y_test, n_repeats=100)
+r = permutation_importance(reg, X_test,y_test, n_repeats=10)
 
 perm_imp = pd.DataFrame({'importance':r.importances_mean,
                          'std':r.importances_std},

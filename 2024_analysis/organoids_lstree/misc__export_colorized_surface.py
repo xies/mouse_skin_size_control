@@ -13,6 +13,7 @@ from skimage import io
 import trimesh as tm
 import pickle as pkl
 import pyvista as pv
+import matplotlib.pyplot as plt
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
@@ -22,46 +23,65 @@ ymax = 105.04
 xmax = 102.96000000000001
 zmax = 84
 
-t = 64
-# Surface file
+
+for t in range(64):
+    
+    # Surface file
+    mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
+    vertices = np.asarray(mesh.points)
+    faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
+    tmesh = tm.Trimesh(mesh.points, faces_as_array)
+    
+    kappa_radius = 15
+    
+    curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,vertices,radius = kappa_radius)/kappa_radius
+    faces = np.asarray(mesh.faces).reshape((-1,4))[:,1:]
+    values = curvatures
+    
+    np.savez(path.join(dirname,f'visualization_on_mesh/curvature/t{t+1:04d}.npz'),
+              vertices,faces,values)
+
+#%% Extract from dataframe
+
+df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+collated = {k:v for k,v in df.groupby('trackID')}
+data = collated[80]
+
+plt.figure()
+plt.plot(data['Local cell density'])
+plt.plot(data['Change in local cell density'])
+
+plt.figure()
+plt.plot(data['Mean neighbor Gem intensity'])
+
+plt.figure()
+plt.plot(data['Mean curvature'])
+
+#%% Extract neighborhood mesh
+
+t = 1
+
+trackID = 1
+cellID = collated[trackID][collated[trackID].Frame == t]['cellID'].iloc[0]
+
 mesh = pv.read(path.join(dirname,f'harmonic_mesh/shmesh_lmax5_t{t+1:04d}.vtk'))
-vertices = np.asarray(mesh.points)
-faces_as_array = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
-tmesh = tm.Trimesh(mesh.points, faces_as_array)
 
-#%%
+with open(path.join(dirname,f'geometric_neighbors/geometric_neighbors_T{t+1:04d}.pkl'),'rb') as f:
+    cell_neighbors = pkl.load(f)
 
-kappa_radius = 15
+neighborIDs = cell_neighbors[cellID]
 
-curvatures = tm.curvature.discrete_mean_curvature_measure(tmesh,vertices,radius = kappa_radius)/kappa_radius
-faces = np.asarray(mesh.faces).reshape((-1,4))[:,1:]
-values = curvatures
+with open(path.join(dirname,f'manual_seg_mesh/individual_mesh_by_cellID_T{t+1:04d}.pkl'),'rb') as f:
+    cell_meshes = pkl.load(f)
 
-np.savez(path.join(dirname,f'visualization_on_mesh/curvature/t{t+1:04d}.npz'),
-          vertices,faces,values)
+pl = pv.Plotter()
+pl.add_mesh(mesh)
+center = cell_meshes[cellID]
+pl.add_mesh(center,color='r')
 
-#%% Extract geodesic neighbors
+for neighborID in neighborIDs.values:
+    pl.add_mesh(cell_meshes[neighborID],color='b')
+    
+pl.show()
 
-from scipy.spatial import distance
-
-neighborhood_distance = 20
-
-df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
-df_by_frame = {k:v for k,v in df.groupby('Frame')}
-cell_points = df_by_frame[t][['Z','Y','X']]
-
-DistMat_cells = distance.squareform(distance.pdist(cell_points))
-DistMat_cells[np.eye(len(vertices)).astype(bool)] = np.nan
-
-# Define 'neighborhood'
-neighborhood_distance = 10 #um
-
-cell_neighbors = {}
-cell_neighbors_idx = {}
-for i,pt in enumerate(cell_points.values):
-
-    # Find the df entries of all cells within distance
-    neighbors = df.loc[cell_points.iloc[np.where(DistMat_cells[i,:] < neighborhood_distance)[0]].index]
-    cell_neighbors_idx[cell_points.iloc[i].name] = neighbors.index
-    cell_neighbors[df_by_frame[t].iloc[i]['cellID']] = neighbors['cellID']
 

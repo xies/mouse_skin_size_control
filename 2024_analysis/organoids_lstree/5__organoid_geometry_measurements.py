@@ -19,7 +19,7 @@ import pyvista as pv
 import pickle as pkl
 from scipy.spatial import distance
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
 
 df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 
@@ -117,8 +117,10 @@ for t in tqdm(range(T)):
     cell_neighbors_idx = {}
     for i,pt in enumerate(cell_points.values):
     
+        selfID = df.loc[i]['cellID']
         # Find the df entries of all cells within distance
         neighbors = df.loc[cell_points.iloc[np.where(DistMat_cells[i,:] < neighborhood_distance)[0]].index]
+        neighbors = neighbors[neighbors['cellID'] != selfID]
         cell_neighbors_idx[cell_points.iloc[i].name] = neighbors.index
         cell_neighbors[df_by_frame[t].iloc[i]['cellID']] = neighbors['cellID']
     

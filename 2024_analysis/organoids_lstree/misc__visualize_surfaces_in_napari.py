@@ -42,22 +42,22 @@ def load_surface_from_npz(filename,transpose=False):
     surf = Surface(vertices,faces,values)
     return surf
 
-t = 64
+t = 0
 
 # filename = path.join(dirname,f'harmonic_mesh/shmesh_lmax5_T{t+1:04d}.npz')
 # organoid_surface = load_surface_from_npz(filename)
 # viewer.add_surface((organoid_surface.vertices,organoid_surface.faces,organoid_surface.values)
 #         ,name='organoid')
 
-filename = path.join(dirname,f'visualization_on_mesh/curvature/t{t+1:04d}.npz')
+filename = path.join(dirname,f'visualization_on_mesh/curvature/T{t+1:04d}.npz')
 organoid_surface = load_surface_from_npz(filename)
 viewer.add_surface((organoid_surface.vertices,organoid_surface.faces,organoid_surface.values)
         ,name='organoid',colormap='twilight_shifted')
-
-filename = path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t+1:04d}.npz')
-rot = load_surface_from_npz(filename,transpose=False)
-all_segs = viewer.add_surface((rot.vertices,rot.faces,rot.values)
-        ,name='all_segmentations',colormap='magma')
+#
+# filename = path.join(dirname,f'manual_seg_mesh/pretty_mesh_T{t+1:04d}.npz')
+# rot = load_surface_from_npz(filename,transpose=False)
+# all_segs = viewer.add_surface((rot.vertices,rot.faces,rot.values)
+#         ,name='all_segmentations',colormap='magma')
 
 # im = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
 # viewer.add_labels(im,name='labels', scale=[2,.26,.26])
