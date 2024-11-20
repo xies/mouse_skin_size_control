@@ -206,16 +206,20 @@ sb.regplot(size_control,x='Birth volume',y='G1 duration')
 plt.xlabel('Nuclear size at birth (fL)')
 plt.ylabel('G1 duration (h)')
 
+from statsmodels.api import OLS, LASSO
+
 plt.figure()
 sb.regplot(size_control,x='Birth volume',y='G1 growth')
 p = np.polyfit(mean_bsize,mean_g1growth,1)[0]
 plt.xlabel('Nuclear size at birth (fL)')
 plt.ylabel('G1 growth (fL)')
 plt.title(f'Slope = {p:2f}')
+ax = plt.gca()
+ax.set_aspect('equal', adjustable='box')
 
 
-
-
+lasso = OLS(size_control['Birth volume'],size_control['G1 growth']).fit_regularized()
+lasso.summary()
 
 
 

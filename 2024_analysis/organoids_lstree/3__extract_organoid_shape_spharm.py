@@ -15,7 +15,7 @@ from scipy.spatial import cKDTree as KDTree
 import meshFMI
 
 from tqdm import tqdm
-
+from glob import glob
 from aicsshparam import shtools, shparam
 import pyvista as pv
 
@@ -24,7 +24,7 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/orga
 dx = 0.26
 dz = 2
 
-TT = 56
+TT = len(glob(path.join(dirname,'manual_segmentation/*.tif')))
 
 #%%
 
