@@ -191,9 +191,8 @@ for i,noise in enumerate(fixed_noise_mag):
     size_duration_slope[i] = linreg.params.values[1]
     size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
 
-plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Additive noise magnitude'); plt.ylabel('Size control slope - growth'); 
-# plt.figure();plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration')
-
+plt.figure(1);plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Additive noise magnitude'); plt.ylabel('Size control slope - growth'); plt.tight_layout()
+plt.figure(2);plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration'); plt.tight_layout()
 
 #%% Perfect sizers or adders - explore effect of subsampling in time
 
@@ -209,7 +208,7 @@ size_duration_CI = np.zeros(len(sampling_rates))
 
 for i,sampling_rate in enumerate(sampling_rates):
     
-    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 40,
+    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 50,
                                                           white_vol_noise={'fixed':noise}, visualize=False,
                                                              frame_biases = None,
                                                              behavior = 'adder')
@@ -225,9 +224,9 @@ for i,sampling_rate in enumerate(sampling_rates):
     size_duration_slope[i] = linreg.params.values[1]
     size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
 
-plt.errorbar(sampling_rates, size_control_slope,size_control_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - growth');
+plt.figure(1);plt.errorbar(sampling_rates, size_control_slope,size_control_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - growth');
 
-plt.figure();plt.errorbar(sampling_rates, size_duration_slope,size_duration_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - duration')
+plt.figure(2);plt.errorbar(sampling_rates, size_duration_slope,size_duration_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - duration')
 
 
 

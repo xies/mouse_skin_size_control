@@ -57,9 +57,8 @@ feature_list = {'Nuclear volume (sm)':'nuc_vol',
                 'Planar moment 2':'plan_moment_2',
                 'Planar angle':'plan_angle',
                 'Z':'z','Y':'y','X':'x',
-                # 'SA to vol ratio':'SA_vol_ratio',
                 'Growth rates (sm)':'gr_sm',
-                # 'Organoid interiority':'interior',
+                'Organoid interiority':'interior',
                 'Mean curvature':'curvature',
                 'Mean neighbor volume':'mean_neighb_vol',
                 'Std neighbor volume':'std_neighb_vol',
@@ -115,7 +114,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from statsmodels.api import OLS
 from scipy import stats
 
-Niter = 10
+Niter = 20
 
 coeffs = pd.DataFrame(columns=feature_list)
 pvals = pd.DataFrame(columns=feature_list)
@@ -166,14 +165,13 @@ _df = balanced.loc[:,feature_list.keys()]
 _df['G1S_logistic'] = ~np.in1d(balanced['Phase'],['Birth','Visible birth','G1'])
 _df = _df.dropna()
 
-
 X = scale(_df.drop(columns='G1S_logistic'))
 y = _df['G1S_logistic']
 
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = 42)
 reg = LogisticRegression()
 reg.fit(X_train,y_train)
-r = permutation_importance(reg, X_test,y_test, n_repeats=10)
+r = permutation_importance(reg, X_test,y_test, n_repeats=100)
 
 perm_imp = pd.DataFrame({'importance':r.importances_mean,
                          'std':r.importances_std},
