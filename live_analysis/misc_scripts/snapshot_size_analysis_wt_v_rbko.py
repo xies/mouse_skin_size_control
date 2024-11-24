@@ -13,7 +13,7 @@ from os import path
 import seaborn as sb
 from scipy.stats import stats
 
-dirname = '/Users/xies/Box/Mouse/Skin/Two photon/NMS/snapshot_size/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/snapshot_size/'
 
 dx = 0.2920097
 

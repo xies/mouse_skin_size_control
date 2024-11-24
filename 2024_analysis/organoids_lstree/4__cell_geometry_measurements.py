@@ -132,7 +132,7 @@ df = df.sort_values(['trackID','Frame'])
 df['Time'] = df['Frame'] * 10
 df = df.reset_index()
 
-#%% Collate with cell cycle annotations, smoothe, and normalize
+#% Collate with cell cycle annotations, smoothe, and normalize
 
 tracking_df = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/filtered_tracks.csv'),index_col=0)
 annos = {trackID:cell for trackID,cell in tracking_df.groupby('TrackID')}

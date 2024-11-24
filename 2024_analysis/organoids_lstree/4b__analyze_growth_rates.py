@@ -36,6 +36,7 @@ homeo = pd.read_csv(path.join(dirname,'growth_rates.csv'),index_col=0)
 homeo = homeo.rename(columns={'Volume sm':'Nuclear volume (sm)','Type':'Cell type',
                               'Volume':'Nuclear volume','Specific GR sm':'Specific GR (sm)'})
 
+
 #%% Concatenate
 
 regen_g1 = regen[ (regen['Phase'] == 'G1') | (regen['Phase'] == 'G1S') ]
@@ -45,18 +46,23 @@ df = pd.concat((regen_g1[fields2concat],homeo[fields2concat]),ignore_index=True)
 
 # sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
 
+
+
 colors = {'Regenerative':'b','TA':'m','Stem cell':'g'}
 
 plt.figure()
 names = []
 for name, celltype in df.groupby('Cell type'):
-    plt.scatter(celltype['Nuclear volume'],celltype['Specific GR (sm)'], color=colors[name],alpha=0.1)
+    # plt.scatter(celltype['Nuclear volume'],celltype['Specific GR (sm)'], color=colors[name],alpha=0.1)
     plot_bin_means(celltype['Nuclear volume'],celltype['Specific GR (sm)'],bin_edges=15,minimum_n=25,
                    color=colors[name], style='fill')
     names.append(name)
 
-plt.xlim([100,400])
+plt.xlim([100,275])
+plt.ylim([-0.05,0.3])
 plt.xlabel('Nuclear volume (fL)')
 plt.ylabel('Specific growth rate (h-1)')
 plt.legend(names)
 
+plt.figure()
+sb.catplot(df,x='Cell type',y='Specific GR (sm)', kind='violin')
