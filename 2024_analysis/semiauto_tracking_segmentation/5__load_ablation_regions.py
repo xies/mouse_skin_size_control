@@ -41,8 +41,9 @@ regions = {}
 for name,dirname in dirnames.items():
     for mode in ['Ablation','Nonablation']:
         
-        with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'rb') as file:
-            tracks = pkl.load(file)
+        # with open(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'),'rb') as file:
+        #     tracks = pkl.load(file)
+        tracks = pd.read_pickle(path.join(dirname,'manual_tracking',f'{name}_{mode}_dense.pkl'))
                     
         all_tracks[name+'_'+mode] = tracks
         
@@ -69,7 +70,9 @@ for name,dirname in dirnames.items():
         #     df['S phase entry size'] = df['S phase entry size'] / 1.5
 
 df_all = pd.concat(regions,ignore_index=True)
+df_all['UniqueID'] = df_all['CellID'].astype(str) + '_' + df_all['Region']
 ts_all = pd.concat(ts_regions,ignore_index=True)
+ts_all['UniqueID'] = ts_all['CellID'].astype(str) + '_' + ts_all['Region']
 
 df_all.loc[df_all['Mouse'] == 'WT_Mclip','S phase entry size'] = df_all[df_all['Mouse'] == 'WT_Mclip']['S phase entry size']*.7
 df_all.loc[df_all['Mouse'] == 'WT_Mnonclip','S phase entry size'] = df_all[df_all['Mouse'] == 'WT_Mnonclip']['S phase entry size']*.7

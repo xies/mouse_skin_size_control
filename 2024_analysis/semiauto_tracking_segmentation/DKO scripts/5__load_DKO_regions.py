@@ -34,12 +34,14 @@ dirnames = {}
 # dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/03-26-2023 RB-KO pair/M1 RBKO/R2'
 
 # dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
-dirnames['DKO_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
-dirnames['WT_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
+# dirnames['DKO_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+# dirnames['WT_R1'] = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
+dirnames['DKO_R1'] = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+dirnames['WT_R1'] = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
 
 #%%
 
-from measureSemiauto import recalibrate_pixel_size
+# from measureSemiauto import recalibrate_pixel_size
 
 all_tracks = {}
 all_ts = {}
@@ -47,8 +49,7 @@ regions = {}
 for name,dirname in dirnames.items():
     for mode in ['curated']:
         
-        with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
-            tracks = pkl.load(file)
+        tracks = pd.read_pickle(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'))
         
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
         
@@ -69,7 +70,7 @@ for name,dirname in dirnames.items():
 df_all = pd.concat(regions,ignore_index=True)
 all_ts = pd.concat(all_ts,ignore_index=True)
 
-wt = df_all[df_all['Genotype'] == 'WT']
+sko = df_all[df_all['Genotype'] == 'WT']
 dko = df_all[df_all['Genotype'] == 'DKO']
 
 #%%
