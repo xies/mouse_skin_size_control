@@ -60,7 +60,7 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
-df_g1s = keep_only_first_sg2(df_g1s)
+# df_g1s = keep_only_first_sg2(df_g1s)
 
 df_g1s_cell = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','nuc_vol_sm'])
 df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','vol_sm'])

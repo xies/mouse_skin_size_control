@@ -24,7 +24,6 @@ from sklearn.preprocessing import scale
 
 from sklearn.linear_model import LogisticRegression
 
-
 def keep_only_first_sg2(df):
     collated_first_s = []
     # Groupby CellID and then drop non-first S phase
@@ -60,16 +59,15 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
-df_g1s = keep_only_first_sg2(df_g1s)
-
-# df['']
+# df_g1s = keep_only_first_sg2(df_g1s)
 
 df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region'])
+df_g1s = df_g1s.drop(columns=['nuc_vol_sm'])
 
 #%% Find how balance changes classification
 
 Niter = 50
-Ng12try = np.arange(130,250,10)
+Ng12try = np.arange(80,250,10)
 C_mlr = np.zeros((Niter,2,2))
 frac_withheld = 0.1
 
@@ -96,12 +94,12 @@ for Ng1 in Ng12try:
 AUC.plot()
 AP.plot()
 
-#%% Logistic for G1/S transition: skip all non-first SG2 timepoints
+#%% Logistic for G1/S transition
 # Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
 Ng1 = 150
-Niter = 100
+Niter = 1000
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -130,7 +128,6 @@ for i in range(Niter):
     li[i,:] = model_g1s.conf_int()[0].drop('Intercept')
     ui[i,:] = model_g1s.conf_int()[1].drop('Intercept')
     pvalues[i,:] = pvals.values
-
 
 coefficients = pd.DataFrame(coefficients,columns = df_g1s.columns.drop('G1S_logistic')).dropna()
 pvalues = pd.DataFrame(pvalues,columns = df_g1s.columns.drop('G1S_logistic')).dropna()
