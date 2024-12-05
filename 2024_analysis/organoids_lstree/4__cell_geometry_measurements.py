@@ -34,10 +34,10 @@ df = []
 for t in tqdm(range(T)):
     
     # Everything image-wise is handled as 1-indexed
-    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/Channel0-T{t+1:04d}.tif'))
-    Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/Channel1-T{t+1:04d}.tif'))
-    Gem = io.imread(path.join(dirname,f'Channel2-Denoised/Channel2-T{t+1:04d}.tif'))
-    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_Channel0-T{t+1:04d}.tif'))
+    H2B = io.imread(path.join(dirname,f'Channel0-Deconv/*-T{t+1:04d}.tif'))
+    Cdt1 = io.imread(path.join(dirname,f'Channel1-Denoised/*-T{t+1:04d}.tif'))
+    Gem = io.imread(path.join(dirname,f'Channel2-Denoised/*-T{t+1:04d}.tif'))
+    all_labels = io.imread(path.join(dirname,f'manual_segmentation/man_*-T{t+1:04d}.tif'))
     
     props = measure.regionprops(all_labels,intensity_image=H2B, spacing=[dz,dx,dx])
     _df = pd.DataFrame(index=range(len(props)),columns=['cellID', 'Nuclear volume'
@@ -177,6 +177,6 @@ df_combined = pd.merge(df,_df,how='left')
 df_combined.to_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'))
 
 for t in annotated.values():
-    plt.plot(t.Age,t['Nuclear volume'])
+    plt.plot(t.Frame,t['Nuclear volume'])
     
     
