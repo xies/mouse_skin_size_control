@@ -16,7 +16,7 @@ from skimage import io
 from re import findall
 from imageUtils import fill_in_cube
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 31_2um/'
 dx = 0.26
 dz = 2
 

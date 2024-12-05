@@ -44,7 +44,7 @@ dirnames['WT_R1'] = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two
 # from measureSemiauto import recalibrate_pixel_size
 
 all_tracks = {}
- all_ts = {}
+all_ts = {}
 regions = {}
 for name,dirname in dirnames.items():
     for mode in ['curated']:
