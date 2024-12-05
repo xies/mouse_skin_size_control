@@ -22,8 +22,11 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/orga
 df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df2['organoidID'] = 2
 df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 31_2um/'
+df31 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
+df31['organoidID'] = 31
 
-regen = pd.concat((df5,df2),ignore_index=True)
+regen = pd.concat((df5,df2,df31),ignore_index=True)
 regen['organoidID_trackID'] = regen['organoidID'].astype(str) + '_' + regen['trackID'].astype(str)
 regen['Cell type'] = 'Regenerative'
 
@@ -47,7 +50,6 @@ df = pd.concat((regen_g1[fields2concat],homeo[fields2concat]),ignore_index=True)
 # sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
 
 
-
 colors = {'Regenerative':'b','TA':'m','Stem cell':'g'}
 
 plt.figure()
@@ -65,4 +67,4 @@ plt.ylabel('Specific growth rate (h-1)')
 plt.legend(names)
 
 plt.figure()
-sb.catplot(df,x='Cell type',y='Specific GR (sm)', kind='violin')
+sb.catplot(df,x='Cell type',y='Specific GR (sm)', kind='box')

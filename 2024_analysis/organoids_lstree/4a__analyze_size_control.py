@@ -19,12 +19,12 @@ df5['organoidID'] = 5
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 2_2um/'
 df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df2['organoidID'] = 2
-# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 6_2um/'
-# df6 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
-# df6['organoidID'] = 6
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 31_2um/'
+df31 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
+df31['organoidID'] = 31
 
-df = pd.concat((df5,df2),ignore_index=True)
-# df = df6
+df = pd.concat((df5,df2,df31),ignore_index=True)
+# df = df31
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 regen = df
 
@@ -36,15 +36,15 @@ summary = pd.DataFrame()
 for trackID, track in tracks.items():
     
     # Skip tetraploids
-    if trackID == '5_77.0' or trackID == '5_118.0' or trackID == '2_53.0' or trackID == '2_6.0' \
-        or trackID == '6_87.0' or trackID == '6_5.0' or trackID == '6_10.0':
+    if trackID == '5_77.0' or trackID == '5_138.0' or trackID == '5_130.0' \
+        or trackID == '2_53.0' or trackID == '2_6.0':
         continue
     
     summary.loc[trackID,'organoidID'] = track.iloc[0]['organoidID']
     summary.loc[trackID,'trackID'] = track.iloc[0]['trackID']
     
     # Birth
-    I = (track['Phase'] == 'Birth') | (track['Phase'] == 'Visible birth')
+    I = (track['Phase'] == 'Visible birth')
     summary.loc[trackID,'Birth volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     
     #first G1S
@@ -56,6 +56,7 @@ for trackID, track in tracks.items():
     
     # Find lengths
     summary.loc[trackID,'Birth time'] = track.iloc[0]['Time']
+    summary.loc[trackID,'Birth frame'] = track.iloc[0]['Frame']
     I = track['Phase'] == 'G1S'
     if I.sum() > 0:
         summary.loc[trackID,'G1S time'] = track.iloc[np.where(I)[0][0]]['Time'].mean()
@@ -72,6 +73,7 @@ summary['Total duration'] = (summary['Division time'] - summary['Birth time'])/6
 
 # sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
 sb.regplot(summary,x='Birth volume',y='G1 growth')
+plt.gca().set_aspect('equal', 'box')
 
 summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'))
 
@@ -107,6 +109,7 @@ df = pd.concat((homeo[fields2concat],summary[fields2concat]))
 
 colors = ['g','m','b'];sb.color_palette(colors)
 sb.lmplot(df,x='Birth volume',y='G1 growth',hue='Cell type',palette=colors, robust=False)
+plt.gca().set_aspect('equal', 'box')
 sb.lmplot(df,x='Birth volume',y='G1 duration',hue='Cell type',palette=colors, robust=False)
 
 sb.catplot(df.reset_index(),y='Birth volume',x='Cell type',kind='violin')

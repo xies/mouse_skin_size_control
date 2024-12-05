@@ -21,8 +21,11 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/orga
 df2 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
 df2['organoidID'] = 2
 df2 = df2[ (df2['cellID'] !=53) | (df2['cellID'] != 6)]
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 31_2um/'
+df31 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_organoid_features_dynamic.csv'),index_col=0)
+df31['organoidID'] = 31
 
-df = pd.concat((df5,df2),ignore_index=True)
+df = pd.concat((df5,df2,df31),ignore_index=True)
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 
 # Derive some ratios
@@ -111,15 +114,18 @@ def subsample_by_cell(df):
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, roc_auc_score, confusion_matrix
 from statsmodels.api import OLS
 from scipy import stats
 
-Niter = 10
+Niter = 100
 
 coeffs = pd.DataFrame(columns=feature_list)
 pvals = pd.DataFrame(columns=feature_list)
-scores = pd.DataFrame()
+AP = pd.DataFrame()
+AUC = pd.DataFrame()
+
+Cmlr = np.zeros((Niter,2,2))
 
 for i in tqdm(range(Niter)):
     
@@ -131,18 +137,25 @@ for i in tqdm(range(Niter)):
     
     X = scale(_df.drop(columns='G1S_logistic'))
     y = _df['G1S_logistic']
-    # X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = i)
-    # reg = LogisticRegression()
-    # reg.fit(X_train,y_train)
-    # y_pred = reg.predict(X_test)
-    
     reg = OLS(y,X).fit()
-    # y_pred = reg.predict(X_test)
-    # scores.loc[i,'AP'] = average_precision_score(y_test,y_pred)
-    # scores.loc[i,'AUC'] = roc_auc_score(y_test,y_pred)
-    
     coeffs.loc[i,:] = reg.params.values.astype(float)
     pvals.loc[i,:] = reg.pvalues.values.astype(float)
+    
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state = i)
+    reg = LogisticRegression()
+    reg.fit(X_train,y_train)
+    y_pred = reg.predict(X_test)
+    AP.loc[i,'data'] = average_precision_score(y_test,y_pred)
+    AUC.loc[i,'data'] = roc_auc_score(y_test,y_pred)
+    
+    Cmlr[i,...] = confusion_matrix(y_test,y_pred)/len(y_test)
+    
+    X_rand = np.random.randn(*X_train.shape)
+    reg = LogisticRegression()
+    reg.fit(X_rand,y_train)
+    y_pred = reg.predict(X_test)
+    AP.loc[i,'random'] = average_precision_score(y_test,y_pred)
+    AUC.loc[i,'random'] = roc_auc_score(y_test,y_pred)
     
 # scores.plot.hist(bins=50)
 # plt.tight_layout()
@@ -156,6 +169,14 @@ plt.errorbar(x = coeffs.mean(),
 plt.hlines(y = -np.log10(.01), xmin=-.2, xmax=.4, color='r')
 plt.xlabel('Coefficient')
 plt.ylabel('-Log10 (P)')
+
+plt.figure()
+
+AP.plot.hist(); plt.xlabel('Average precision')
+AUC.plot.hist(); plt.xlabel('AUC')
+
+plt.figure()
+sb.heatmap(Cmlr.mean(axis=0),annot=True)
 
 #%% 
 
