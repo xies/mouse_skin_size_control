@@ -27,8 +27,8 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-VISUALIZE = True
-DEMO = True
+VISUALIZE = False
+DEMO = False
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 

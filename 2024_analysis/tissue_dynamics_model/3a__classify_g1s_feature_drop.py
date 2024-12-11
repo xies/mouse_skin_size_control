@@ -64,7 +64,7 @@ df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue mod
 
 df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
+df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','nuc_vol_sm'])
 
 Ng1 = 150
 

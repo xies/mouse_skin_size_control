@@ -32,6 +32,7 @@ df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].as
 df['SA to vol ratio'] = df['Surface area'] / df['Nuclear volume']
 
 #%% Preprocess
+
 tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
 
 # First, drop everything but first G1/S frame
@@ -117,7 +118,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score, confusion_ma
 from statsmodels.api import OLS
 from scipy import stats
 
-Niter = 100
+Niter = 1000
 
 coeffs = pd.DataFrame(columns=feature_list)
 pvals = pd.DataFrame(columns=feature_list)
@@ -171,8 +172,8 @@ plt.ylabel('-Log10 (P)')
 
 plt.figure()
 
-AP.plot.hist(); plt.xlabel('Average precision')
-AUC.plot.hist(); plt.xlabel('AUC')
+AP.plot.hist(); plt.xlabel('Average precision'); plt.vlines(0.826,ymin=0,ymax=100)
+AUC.plot.hist(); plt.xlabel('AUC');plt.vlines(0.917,ymin=0,ymax=100)
 
 plt.figure()
 sb.heatmap(Cmlr.mean(axis=0),annot=True)

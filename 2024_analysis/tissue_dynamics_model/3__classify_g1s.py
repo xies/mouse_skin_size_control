@@ -44,7 +44,6 @@ def rebalance_g1(df,Ng1):
     df_g1s_balanced = pd.concat((g1_sampled,sg2),ignore_index=True)
     return df_g1s_balanced
 
-
 def run_cross_validation(X,y,split_ratio,model,random_state=42):
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=split_ratio,random_state=random_state)
     model.fit(X_train,y_train)
@@ -59,9 +58,9 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
-# df_g1s = keep_only_first_sg2(df_g1s)
+df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region'])
+df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
 df_g1s = df_g1s.drop(columns=['nuc_vol_sm'])
 
 #%% Find how balance changes classification
@@ -99,7 +98,7 @@ AP.plot()
 # No cross-validation, in-model estimates only
 
 Ng1 = 150
-Niter = 1000
+Niter = 50
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -166,7 +165,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 #%% Cross-validation for MLR
 
-Niter = 1000
+Niter = 100
 frac_withheld = 0.1
 N = len(df_g1s_balanced)
 
@@ -182,7 +181,7 @@ for i in tqdm(range(Niter)):
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
 
     #Logistic regression
-    mlr = LogisticRegression(random_state = i,max_iter=1000)
+    mlr = LogisticRegression(penalty='l2',random_state = i,max_iter=1000)
     C_mlr[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
     AUC.at[i,'MLR'] = _AUC
     AP.at[i,'MLR'] = _AP

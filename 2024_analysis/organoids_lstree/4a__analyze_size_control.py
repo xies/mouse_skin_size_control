@@ -143,6 +143,9 @@ print(f'TA v. regen: {P.pvalue:2f}')
 P = ttest_ind(stem['Birth volume'],ta['Birth volume'],equal_var=False)
 print(f'TA v. stem: {P.pvalue:2f}')
 
+P = ttest_ind(regenerative['Birth volume'],stem['Birth volume'],equal_var=False)
+print(f'Stem v. regen: {P.pvalue:2f}')
+
 print('---- G1/S sizes-----')
 regenerative,stem,ta = [x.dropna(subset='G1 volume') for _,x in df.groupby('Cell type')]
 
@@ -151,6 +154,10 @@ print(f'TA v. regen: {P.pvalue:2f}')
 
 P = ttest_ind(stem['G1 volume'],ta['G1 volume'],equal_var=False)
 print(f'TA v. stem: {P.pvalue:2f}')
+
+P = ttest_ind(regenerative['G1 volume'],stem['G1 volume'],equal_var=False)
+print(f'Stem v. regen: {P.pvalue:2f}')
+
 
 #%% Load skin data?
 

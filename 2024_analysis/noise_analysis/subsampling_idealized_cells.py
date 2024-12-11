@@ -51,7 +51,7 @@ def pseudo_oscillator_density(x,wavelength=1/3,dc_magnitude=0.5):
 
 #%%
 
-def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
+def simulate_cells(end_time,sampling_rate,Ncells, log_normal_mu,
                    gamma_sigma=0.3,V0_CV=np.sqrt(0.03), set_size = 100, white_vol_noise={'rel':.1},
                     frame_biases=None,frame_noise=None,visualize=False, behavior ='sizer',synchrony=None):
     
@@ -82,7 +82,7 @@ def simulate_cells(end_time,sampling_rate,Ncells, doubling_time,
         V0 = set_size*random.lognormal(mean=0, sigma = V0_CV)
         
         #Growth rate normal
-        gamma_base = np.log(2)/doubling_time
+        gamma_base = np.log(2)/log_normal_mu
         gamma = gamma_base * (1+random.randn()*gamma_sigma)
         
         # Growth model
@@ -196,9 +196,10 @@ plt.figure(2);plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI
 
 #%% Perfect sizers or adders - explore effect of subsampling in time
 
+
 Ncells = 2000
 end_time = 120
-sampling_rates = [1,2,6,12]
+sampling_rates = [1,2,5,12,24]
 
 noise = 0.01
 size_control_slope = np.zeros(len(sampling_rates))
@@ -208,12 +209,10 @@ size_duration_CI = np.zeros(len(sampling_rates))
 
 for i,sampling_rate in enumerate(sampling_rates):
     
-    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 50,
+    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, log_normal_mu = 50,
                                                           white_vol_noise={'fixed':noise}, visualize=False,
                                                              frame_biases = None,
                                                              behavior = 'adder')
-    
-    # plt.figure(); sb.regplot(cells,x='Birth size',y='Growth');plt.xlim([0,200]);  plt.ylim([0,200])
     
     linreg = sm.OLS(cells.dropna()['Growth'], sm.add_constant(cells.dropna()['Birth size'])).fit()
     # print(f'Slope from cortical volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
@@ -225,8 +224,9 @@ for i,sampling_rate in enumerate(sampling_rates):
     size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
 
 plt.figure(1);plt.errorbar(sampling_rates, size_control_slope,size_control_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - growth');
+plt.legend(['Sizer - 72h c.c.','Adder - 72h','Sizer - 50h','Adder - 50h'])
 
 plt.figure(2);plt.errorbar(sampling_rates, size_duration_slope,size_duration_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - duration')
-
+plt.legend(['Sizer - 72h c.c.','Adder - 72h','Sizer - 50h','Adder - 50h'])
 
 

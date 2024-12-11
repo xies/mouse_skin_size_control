@@ -164,16 +164,22 @@ for i in range(10):
 
 #%%
 
+from basicUtils import plot_bin_means
+
 # ts_all['Specific GR'] = ts_all['Growth rate'] / ts_all['Volume']
 # ts_all['Specific GR normal'] = ts_all['Growth rate normal'] / ts_all['Volume normal']
 # sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box')
-sb.catplot(df_all,hue='Mode',y='Exponential growth rate',x='Region',kind='box')
+# sb.catplot(df_all,hue='Mode',y='Exponential growth rate',x='Region',kind='box')
 
 # sb.catplot(ts_all,x='Mode',y='Specific GR normal',kind='box',hue='Region')
 
+sb.lmplot(df_all,x='Distance to ablated cell',y='Exponential growth rate',
+          fit_reg=False,scatter_kws={'alpha':.1}, hue='Mode')
+plot_bin_means(df_all['Distance to ablated cell'],df_all['Exponential growth rate'],
+               bin_edges=10,color='red',bin_style='percentile')
 
-plt.figure()
-sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1},hue='Mode')
+# plt.figure()
+# sb.lmplot(ts_all,x='Distance to ablated cell',y='Specific GR normal', scatter_kws={'alpha':.1})
 
 D = pd.DataFrame(ts_all.groupby(['CellID','Region','Mode'])['Distance to ablated cell'].mean())
 D = D.reset_index()

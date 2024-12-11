@@ -17,7 +17,7 @@ deci_factor = 30
 filename = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/HMECs/HMEC DFB tracked data/full_trace/individuals_full_trace.xlsx'
 
 df = pd.read_excel(filename,sheet_name='RB', header=None).melt(var_name='cellID',value_name='RB')
-size = pd.read_excel(filename,sheet_name='Size', header=None).melt(var_name='cellID',value_name='size')
+size = pd.read_excel(filename,sheet_name='Volume', header=None).melt(var_name='cellID',value_name='size')
 time_to_g1s = pd.read_excel(filename,sheet_name='Ages_wrt_g1s', header=None).melt(var_name='cellID',value_name='time_to_g1s')
 
 df['Size'] = size['size']
@@ -25,7 +25,7 @@ df['Time to G1S'] = time_to_g1s['time_to_g1s']
 df['RB conc'] = df['RB'] / df['Size']
 df['G1S_logistic'] = df['Time to G1S'] > 0
 
-df = df[df['Size'] < 250000] # 3 outlier points
+# df = df[df['Size'] < 125000] # 3 outlier points
 
 df = df.dropna()
 
@@ -48,10 +48,11 @@ def balance_phase(df):
     
 #%%
 
-Niter = 100
+Niter = 1
 
 from statsmodels.api import Logit
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import scale
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, confusion_matrix, average_precision_score
 
@@ -62,14 +63,15 @@ Cmlr = np.zeros((Niter,2,2))
 for i in range(Niter):
     
     # df_bal = df_decimated
-    df_bal = balance_phase(df_decimated)
+    # df_bal = balance_phase(df)
+    df_bal = df
     
-    X = df_bal['Size'].values.reshape(-1,1)
+    X = scale(df_bal['Size'].values.reshape(-1,1))
     y = df_bal['G1S_logistic'].values
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.1)
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.4)
     
     
-    mlr = LogisticRegression().fit(X_train,y_train)
+    mlr = LogisticRegression('l2').fit(X_train,y_train)
     # mlr = Logit(y_train,X_train).fit()
     
     y_pred = mlr.predict(X_test)
@@ -86,12 +88,14 @@ for i in range(Niter):
     AP.at[i,'random'] = average_precision_score(y_test,y_pred)
 
 plt.figure()
-sb.histplot(AUC,bins=25); plt.xlabel('AUC')
+sb.histplot(AUC,bins=10); plt.xlabel('AUC'); plt.xlim([0.4,1])
+plt.vlines(0.917,ymin=0,ymax=100)
 plt.figure()
-sb.histplot(AP,bins=25); plt.xlabel('AP')
+sb.histplot(AP,bins=10); plt.xlabel('AP'); plt.xlim([0.4,1])
+plt.vlines(0.826,ymin=0,ymax=100)
 plt.figure()
 sb.heatmap(Cmlr.mean(axis=0),annot=True)
-    
+
     
     
     

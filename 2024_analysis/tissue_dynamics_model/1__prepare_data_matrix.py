@@ -52,7 +52,6 @@ df_['G1S_logistic'] = (df_['Phase'] == 'SG2').astype(int)
 
 features_list = { # Cell identity, position
                 'Age':'age'
-                ,'Region':'region'
                 ,'Differentiating':'diff'
                 ,'Y':'y','X':'x'
                 # ,'Z':'z'
@@ -65,12 +64,12 @@ features_list = { # Cell identity, position
                 ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
-                ,'NC ratio (sm)':'nc_ratio'
+                ,'NC ratio':'nc_ratio'
                 # ,'Nuclear surface area':'nuc_sa'
                 # ,'Nuclear axial component':'nuc_axial_moment'
                 ,'Nuclear solidity':'nuc_solid'
                 # ,'Nuclear axial angle':'nuc_angle'
-                # ,'Planar eccentricity':'planar_ecc'
+                ,'Planar eccentricity':'planar_ecc'
                 ,'Axial eccentricity':'axial_ecc'
                 # ,'Nuclear axial eccentricity':'nuc_axial_ecc'
                 # ,'Nuclear planar eccentricity':'nuc_planar_ecc'
@@ -87,7 +86,7 @@ features_list = { # Cell identity, position
                 # ,'Coronal density':'cor_density'
                 ,'Cell alignment to corona':'cell_align_to_coro'
                 ,'Mean curvature':'mean_curve'
-                ,'Collagen fibrousness':'col_fib'
+                # ,'Collagen fibrousness':'col_fib'
                 ,'Collagen alignment':'col_align'
                 ,'Distance to closest macrophage':'macrophage'
                 # ,'Gaussian curvature':'gaussian_curve'
@@ -113,7 +112,7 @@ features_list = { # Cell identity, position
                 
                 # Growth rates and other central cell dynamics
                 ,'Specific GR spl':'sgr'
-                ,'Exponential growth rate':'exp_gr'
+                # ,'Exponential growth rate':'exp_gr'
                 ,'FUCCI bg sub frame-1':'fucci_int_12h'
                 # ,'FUCCI bg sub frame-2':'fucci_int_24h'
                 # ,'Volume frame-1':'vol_12h'

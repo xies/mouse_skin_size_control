@@ -113,6 +113,6 @@ for feature in names:
     
         
 sb.catplot(AUCs,kind='box')
-
+plt.ylabel('Mean AUC')
 
 

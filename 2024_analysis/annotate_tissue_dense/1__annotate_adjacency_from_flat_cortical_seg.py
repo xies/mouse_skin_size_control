@@ -19,7 +19,7 @@ import networkx as nx
 
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, draw_adjmat_on_image_3d, most_likely_label
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 XX = 460
 T = 15
 touching_threshold = 2 #px
