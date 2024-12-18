@@ -17,15 +17,15 @@ deci_factor = 30
 filename = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/HMECs/HMEC DFB tracked data/full_trace/individuals_full_trace.xlsx'
 
 df = pd.read_excel(filename,sheet_name='RB', header=None).melt(var_name='cellID',value_name='RB')
-size = pd.read_excel(filename,sheet_name='Volume', header=None).melt(var_name='cellID',value_name='size')
+size = pd.read_excel(filename,sheet_name='Volume', header=None).melt(var_name='cellID',value_name='Volume')
 time_to_g1s = pd.read_excel(filename,sheet_name='Ages_wrt_g1s', header=None).melt(var_name='cellID',value_name='time_to_g1s')
 
-df['Size'] = size['size']
+df['Size'] = size['Volume']
 df['Time to G1S'] = time_to_g1s['time_to_g1s']
 df['RB conc'] = df['RB'] / df['Size']
 df['G1S_logistic'] = df['Time to G1S'] > 0
 
-# df = df[df['Size'] < 125000] # 3 outlier points
+df = df[df['Size'] < 125000] # 3 outlier points
 
 df = df.dropna()
 
