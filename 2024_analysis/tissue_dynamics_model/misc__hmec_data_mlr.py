@@ -25,7 +25,7 @@ df['Time to G1S'] = time_to_g1s['time_to_g1s']
 df['RB conc'] = df['RB'] / df['Size']
 df['G1S_logistic'] = df['Time to G1S'] > 0
 
-df = df[df['Size'] < 125000] # 3 outlier points
+df = df[df['Size'] < 200000] # 3 outlier points
 
 df = df.dropna()
 
