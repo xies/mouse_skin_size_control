@@ -49,3 +49,39 @@ for t,(h2b,cdt,gem) in enumerate(zip(c00,c01,c02)):
 io.imsave('/Users/xies/Desktop/mip00.tif', stack[0,...])
 io.imsave('/Users/xies/Desktop/mip01.tif', stack[1,...])
 io.imsave('/Users/xies/Desktop/mip02.tif', stack[2,...])
+
+
+#%%ß
+
+from tqdm import tqdm
+
+dirname ='/Volumes/Seagate Backup Plus Drive/20200303_194709_09/14_crop/object_0/'
+
+c00 = natsort.natsorted(glob(path.join(dirname,'FUCCI*.tif')))[:200]
+c01 = natsort.natsorted(glob(path.join(dirname,'Lgr5GFP*.tif')))[:200]
+
+z2slice = 120
+
+stack = np.zeros((2,200,932,1064))
+for t,(h2b,cdt) in tqdm(enumerate(zip(c00,c01))):
+   
+    h2b = io.imread(h2b)
+    cdt = io.imread(cdt)
+    
+    stack[0,t,...] = h2b[z2slice,...]
+    stack[1,t,...] = cdt[z2slice,...]
+    
+io.imsave('/Users/xies/Desktop/ch00.tif', stack[0,...])
+io.imsave('/Users/xies/Desktop/ch01.tif', stack[1,...])
+
+stack = np.zeros((2,200,404,396))
+for t,(h2b,cdt,gem) in enumerate(zip(c00,c01,c02)):
+   
+    h2b = io.imread(h2b)
+    cdt = io.imread(cdt)
+    
+    stack[0,t,...] = h2b.sum(axis=0)
+    stack[1,t,...] = cdt.sum(axis=0)
+    
+io.imsave('/Users/xies/Desktop/mip00.tif', stack[0,...])
+io.imsave('/Users/xies/Desktop/mip01.tif', stack[1,...])

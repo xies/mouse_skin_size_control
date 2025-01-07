@@ -17,10 +17,12 @@ deci_factor = 30
 filename = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/HMECs/HMEC DFB tracked data/full_trace/individuals_full_trace.xlsx'
 
 df = pd.read_excel(filename,sheet_name='RB', header=None).melt(var_name='cellID',value_name='RB')
-size = pd.read_excel(filename,sheet_name='Volume', header=None).melt(var_name='cellID',value_name='Volume')
+vol = pd.read_excel(filename,sheet_name='Volume', header=None).melt(var_name='cellID',value_name='Volume')
+size = pd.read_excel(filename,sheet_name='Size', header=None).melt(var_name='cellID',value_name='Size')
 time_to_g1s = pd.read_excel(filename,sheet_name='Ages_wrt_g1s', header=None).melt(var_name='cellID',value_name='time_to_g1s')
 
-df['Size'] = size['Volume']
+df['Size'] = size['Size']
+df['Volume'] = vol['Volume']
 df['Time to G1S'] = time_to_g1s['time_to_g1s']
 df['RB conc'] = df['RB'] / df['Size']
 df['G1S_logistic'] = df['Time to G1S'] > 0
@@ -48,9 +50,8 @@ def balance_phase(df):
     
 #%%
 
-Niter = 1
+Niter = 1000
 
-from statsmodels.api import Logit
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import scale
 from sklearn.model_selection import train_test_split
@@ -66,7 +67,7 @@ for i in range(Niter):
     # df_bal = balance_phase(df)
     df_bal = df
     
-    X = scale(df_bal['Size'].values.reshape(-1,1))
+    X = scale(df_bal[['Volume','Size']].values)
     y = df_bal['G1S_logistic'].values
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.4)
     
@@ -80,7 +81,7 @@ for i in range(Niter):
     AP.at[i,'data'] = average_precision_score(y_test,y_pred)
     Cmlr[i,...] = confusion_matrix(y_pred,y_test)/len(y_test)
     
-    Xrand = np.random.randn(len(X_train)).reshape(-1,1)
+    Xrand = np.random.randn(len(X_train),2)
     mlr_rand = LogisticRegression().fit(Xrand,y_train)
     y_pred = mlr_rand.predict(X_test)
     
