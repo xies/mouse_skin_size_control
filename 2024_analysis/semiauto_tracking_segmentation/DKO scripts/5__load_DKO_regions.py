@@ -75,6 +75,15 @@ dko = df_all[df_all['Genotype'] == 'DKO']
 
 #%%
 
+from basicUtils import plot_bin_means
+
+sb.lmplot(df_all,x='Birth size',y='G1 length',hue='Genotype')
+plot_bin_means(sko['Birth size'],sko['G1 length'],bin_edges=7,minimum_n=5,color='r')
+
+plot_bin_means(dko['Birth size'],dko['G1 length'],bin_edges=7,minimum_n=3,color='m')
+
+#%%
+
 for t in all_tracks['WT_R1_curated']:
     plt.plot(t.Frame,t.Volume)
 

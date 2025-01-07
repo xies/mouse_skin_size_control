@@ -6,7 +6,6 @@ Created on Mon Jun 10 16:55:35 2024
 @author: xies
 """
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -62,8 +61,8 @@ df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue mod
 
 # df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s_cell = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','nuc_vol_sm'])
-df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','vol_sm'])
+df_g1s_cell = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','nuc_vol_sm','sa'])
+df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','vol_sm','sa_to_vol'])
 
 #%% Logistic for G1/S transition using CELL VOL: skip all non-first SG2 timepoints
 # Random rebalance with 1:1 ratio
@@ -208,7 +207,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 from sklearn import metrics
 
-Niter = 100
+Niter = 10
 auc_scores = pd.DataFrame(index=range(Niter))
 log_loss_scores = pd.DataFrame(index=range(Niter))
 

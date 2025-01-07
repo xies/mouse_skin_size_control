@@ -12,8 +12,13 @@ import pandas as pd
 from os import path
 import pickle as pkl
 from tqdm import tqdm
+import pickle as pkl
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Left ear/Post tam/R1/'
+from mamutUtils import load_mamut_densely, construct_data_frame_dense
+
+
+# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Left ear/Post tam/R1'
 
 filename = path.join(dirname,'master_stack/B_clahe.tif')
 B = io.imread(filename)
@@ -34,15 +39,15 @@ df = df.rename(columns={'centroid-0':'Z',
                         'centroid-1':'Y',
                         'centroid-2':'X',})
 
-cells = {cellID: cell for cellID,cell in df.groupby('label')}
+cells = {cellID:cell for cellID,cell in df.groupby('label')}
 
 #%%
 
-
-XYborder = 50
+XYborder = 200
 Zborder = 15
 
-cellOI = 59
+idx = 0
+cellOI = list(cells.keys())[idx]
 
 cell = cells[cellOI]
 
@@ -65,7 +70,9 @@ for i,t in enumerate(T):
                          X[i]-XYborder:X[i]+XYborder,] == cellOI
     patch[2,i,...] = morphology.dilation(mask) ^ mask
 
-io.imsave('/Users/xies/Desktop/patch.tif',patch)
+io.imsave('/Users/xies/Desktop/patch0.tif',patch[0,...])
+io.imsave('/Users/xies/Desktop/patch1.tif',patch[1,...])
+io.imsave('/Users/xies/Desktop/patch2.tif',patch[2,...])
     
     
     

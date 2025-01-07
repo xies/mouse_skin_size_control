@@ -6,7 +6,7 @@ Created on Mon Nov 18 12:44:03 2024
 @author: xies
 """
 
-from parseZ2 import parse_Z2
+# from parseZ2 import parse_Z2
 from glob import glob
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ for f in filelist:
 for i in range(len(filelist)):
     plt.subplot( 3, int(np.ceil(len(filelist) / 3)), i+1)
     df = sizes[ list(sizes.keys())[i] ]
-    plt.plot(df['Diam'],df['Count'])
+    plt.plot(df['Volume'],df['Count']/df.Count.sum())
     plt.title( list(sizes.keys())[i] )
 
 lower_cutoff = {'RPE_DMSO 1': 11,
@@ -60,7 +60,7 @@ high_cutoff = {'RPE_DMSO 1': 30.5,
 for name,df in sizes.items():
     df = df[ (df['Diam'] > lower_cutoff[name]) & (df['Diam'] < high_cutoff[name]) ]
     sizes[name] = df
-    
+
 def get_mean(df):
     return np.sum(df['Volume']*df['Count']) / df['Count'].sum()
 
@@ -75,6 +75,7 @@ def get_cv(df):
 CVs = {name:get_cv(df) for name,df in sizes.items() }
 CVs = pd.DataFrame(CVs,index=['CV']).T
 CVs['Category'] = '2D culture'
+CVs['Counts'] = counts
 # mean = np.sum(probs * mids)  
 # sd = np.sqrt(np.sum(probs * (mids - mean)**2))
 
@@ -100,8 +101,10 @@ df_R2 = pd.DataFrame(measure.regionprops_table(R2_t9,properties=['area']))
 
 CVs.loc['Skin R1','CV'] = df_R1['area'].std() / df_R1['area'].mean()
 CVs.loc['Skin R1','Category'] = 'In vivo skin'
+CVs.loc['Skin R1','Counts'] = len(df_R1)
 CVs.loc['Skin R2','CV'] = df_R2['area'].std() / df_R2['area'].mean()
 CVs.loc['Skin R2','Category'] = 'In vivo skin'
+CVs.loc['Skin R2','Counts'] = len(df_R2)
 
 # Organoids
 organoid_pos5_t65 = io.imread('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 5_2um/manual_segmentation/man_Channel0-T0065.tif')
@@ -109,18 +112,21 @@ df_pos5_t65 = pd.DataFrame(measure.regionprops_table(organoid_pos5_t65,propertie
 
 CVs.loc['organoid_pos5','CV'] = df_pos5_t65['area'].std() / df_pos5_t65['area'].mean()
 CVs.loc['organoid_pos5','Category'] = 'Organoid nuclear size'
+CVs.loc['organoid_pos5','Counts'] = len(df_pos5_t65)
 
 organoid_pos15_t1 = io.imread('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 15_2um/nuclei_segmentation/h2birfp670-T0001.tif')
 df_pos15_t1 = pd.DataFrame(measure.regionprops_table(organoid_pos15_t1,properties=['area']))
 
 CVs.loc['organoid_pos6','CV'] = df_pos15_t1['area'].std() / df_pos15_t1['area'].mean()
 CVs.loc['organoid_pos6','Category'] = 'Organoid nuclear size'
+CVs.loc['organoid_pos6','Counts'] = len(df_pos15_t1)
 
 organoid_pos8_t40 = io.imread('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/Position 8_2um/manual_segmentation/man_Channel0-T0040.tif')
 df_pos8_t45 = pd.DataFrame(measure.regionprops_table(organoid_pos8_t40,properties=['area']))
 
 CVs.loc['organoid_pos2','CV'] = df_pos8_t45['area'].std() / df_pos8_t45['area'].mean()
 CVs.loc['organoid_pos2','Category'] = 'Organoid nuclear size'
+CVs.loc['organoid_pos2','Counts'] = len(df_pos8_t45)
 
 sb.catplot(CVs,x='Category',y='CV')
 

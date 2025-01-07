@@ -6,7 +6,6 @@ Created on Tue Dec 13 17:05:27 2022
 @author: xies
 """
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -28,16 +27,16 @@ dirnames['WT_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO t
 dirnames['WT_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R1'
 dirnames['WT_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M6 WT/R2'
 
-# dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
-# dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
-# # dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
-# dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
+dirnames['RBKO_R1'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R1'
+dirnames['RBKO_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/09-29-2022 RB-KO pair/RBKO/R2'
+# dirnames['RBKO_R3'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R1'
+dirnames['RBKO_R4'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RB KO time courses/03-26-2023 RB-KO pair/M1 RBKO/R2'
  
 # dirnames['RBKOp107het_R2'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/RBKO p107KO/05-04-2023 RBKO p107het pair/F8 RBKO p107 het/R2'
 
 #%%
 
-from measureSemiauto import recalibrate_pixel_size
+# from measureSemiauto import recalibrate_pixel_size
 
 all_tracks = {}
 all_ts = {}
@@ -47,8 +46,8 @@ for name,dirname in dirnames.items():
         if name == 'WT_R4' and mode == 'manual':
             continue
         
-        with open(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'),'rb') as file:
-            tracks = pkl.load(file)
+        tracks = pd.read_pickle(path.join(dirname,'manual_tracking',f'{name}_complete_cycles_fixed_{mode}.pkl'))
+        
         df = pd.read_csv(path.join(dirname,f'manual_tracking/{name}_dataframe_{mode}.csv'),index_col=0)
         
         for t in tracks:
@@ -88,11 +87,11 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
-sb.lmplot(rbko,x='Birth size',y='G1 growth',col='Genotype')
-plot_bin_means(wt['Birth size'],wt['G1 growth'],6,minimum_n=8)
+sb.regplot(wt,x='Birth size',y='G1 growth')
+plot_bin_means(wt['Birth size'],wt['G1 growth'],bin_edges=6,minimum_n=8)
 
-plt.xlim([150,350])
-plt.ylim([-50,250])
+plt.xlim([50,400])
+plt.ylim([-50,300])
 
 X,Y = nonan_pairs( wt['Birth size'], wt['G1 growth'])
 print(np.polyfit(X,Y,1))
@@ -101,10 +100,9 @@ print(np.polyfit(X,Y,1))
 
 #%%
 
-sb.lmplot(df_all,x='Birth size',y='G1 length',
-          robust=False,col='Genotype',y_jitter=True)
-# plot_bin_means(df_all['Birth size'],df_all['G1 length'],bin_edges=5,minimum_n=5,bin_style='percentile',
-#                color='r')
+sb.regplot(rbko,x='Birth size',y='G1 length',y_jitter=True)
+plot_bin_means(rbko['Birth size'],rbko['G1 length'],bin_edges=9,minimum_n=10,bin_style='equal',
+                color='r',mean='median')
 # plt.xlim([70,150])
 # plt.ylim([0,140])
 # plt.yticks(np.arange(0,140,12))

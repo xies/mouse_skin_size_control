@@ -6,6 +6,7 @@ Created on Fri Jul 22 18:01:35 2022
 @author: xies
 """
 
+import numpy as np
 import pandas as pd
 from os import path
 import xml.etree.ElementTree as ET
@@ -162,6 +163,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         spots['Right'] = None
         spots['Division'] = False
         spots['Terminus'] = False
+        spots['Mother'] = np.nan
         spots = spots.sort_values('Frame')
         
         # For each spot, figure out how many incoming links + outgoing links (i.e. mother/daughters)
@@ -179,11 +181,15 @@ def construct_data_frame_dense(_tracks,_links,_spots):
             elif len(links_from_this_spot) == 0:
                 spots.at[idx,'Terminus'] = True
         
+        tracks_ = []
+        mother = pd.Series()
+        mother['ID'] = np.nan
         spots2trace = [spots.head(1)]
         while len(spots2trace) > 0:
         
             # Pop from list
             spot = spots2trace.pop()
+            spot.iat[0,-1] = mother.ID
             print(f'Tracing from {spot.ID.values}')
             track = [spot]
             while not spot.iloc[0]['Division'] and not spot.iloc[0]['Terminus']:
@@ -191,6 +197,7 @@ def construct_data_frame_dense(_tracks,_links,_spots):
                 next_spot = spots[spots.ID == spot['Left'].iloc[0]]
                 track.append(next_spot)
                 spot = next_spot
+                mother = spot.iloc[0]
             if spot.iloc[0]['Terminus']:
                 # Tracking ended, no further daughters
                 tracks_.append(pd.concat(track))
@@ -201,7 +208,8 @@ def construct_data_frame_dense(_tracks,_links,_spots):
                 daughter_b = spots[spots['ID'] == spot.iloc[0]['Right']]
                 # Append the new daughters into the todo list
                 spots2trace.extend([daughter_a, daughter_b])
-        
+                
+            # print(mother)
         tracks.extend(tracks_)
 
     return tracks

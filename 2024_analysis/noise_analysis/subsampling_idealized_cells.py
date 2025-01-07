@@ -209,7 +209,7 @@ size_duration_CI = np.zeros(len(sampling_rates))
 
 for i,sampling_rate in enumerate(sampling_rates):
     
-    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, log_normal_mu = 50,
+    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, log_normal_mu = 40,
                                                           white_vol_noise={'fixed':noise}, visualize=False,
                                                              frame_biases = None,
                                                              behavior = 'adder')

@@ -72,8 +72,8 @@ summary['SG2 duration'] = (summary['Division time'] - summary['G1S time'])/60
 summary['Total duration'] = (summary['Division time'] - summary['Birth time'])/60
 
 # sb.lmplot(summary,x='Birth volume',y='G1 growth',hue='organoidID')
-sb.regplot(summary,x='Birth volume',y='G1 growth')
-plt.gca().set_aspect('equal', 'box')
+# sb.regplot(summary,x='Birth volume',y='G1 growth')
+# plt.gca().set_aspect('equal', 'box')
 
 summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/size_summary.csv'))
 

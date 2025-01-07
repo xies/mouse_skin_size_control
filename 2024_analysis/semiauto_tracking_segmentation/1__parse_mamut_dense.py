@@ -27,7 +27,8 @@ from mamutUtils import load_mamut_densely, construct_data_frame_dense
 
 dirnames = []
 # dirnames.append('/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1/')
-dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/')
+# dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/')
+dirnames.append('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Left ear/Post tam/R1')
 
 all_tracks = []
 for dirname in dirnames:

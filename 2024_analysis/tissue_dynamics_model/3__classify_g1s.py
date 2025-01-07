@@ -61,7 +61,7 @@ df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue mod
 df_g1s = keep_only_first_sg2(df_g1s)
 
 df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
-df_g1s = df_g1s.drop(columns=['nuc_vol_sm'])
+# df_g1s = df_g1s.drop(columns=['nuc_vol_sm'])
 
 #%% Find how balance changes classification
 
@@ -97,8 +97,8 @@ AP.plot()
 # Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
-Ng1 = 150
-Niter = 50
+Ng1 = 200
+Niter = 100
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -109,7 +109,7 @@ for i in range(Niter):
     
     #% Rebalance class
     df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
-    # df_g1s_balanced = df_g1s_balanced.drop(columns='vol_sm')
+    # df_g1s_balanced = df_g1s
     
     ############### G1S logistic as function of age ###############
     try:
@@ -181,14 +181,19 @@ for i in tqdm(range(Niter)):
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
 
     #Logistic regression
-    mlr = LogisticRegression(penalty='l2',random_state = i,max_iter=1000)
+    mlr = LogisticRegression(penalty=None,random_state = i,max_iter=1000)
     C_mlr[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr)
     AUC.at[i,'MLR'] = _AUC
     AP.at[i,'MLR'] = _AP
+
+    mlr_lasso = LogisticRegression(penalty='l2',random_state = i,max_iter=1000)
+    C_mlr[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,mlr_lasso)    
+    AUC.at[i,'MLR l2'] = _AUC
+    AP.at[i,'MLR l2'] = _AP
     
     #Random data model
     df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
-    random_model = LogisticRegression(random_state = i)
+    random_model = LogisticRegression(penalty='l2',random_state = i)
     C_random[i,:,:],_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
     AUC.at[i,'Random data'] = _AUC
     AP.at[i,'Random data'] = _AP
@@ -197,9 +202,11 @@ hist_weights = np.ones(Niter)/Niter
 plt.figure()
 sb.histplot(AUC.melt(),x='value',hue='variable',element='poly',stat='probability'); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('AUC')
 plt.vlines(AUC['MLR'].mean(),0,0.2,'r')
+plt.vlines(AUC['MLR l2'].mean(),0,0.2,'m')
 plt.figure()
 sb.histplot(AP.melt(),x='value',hue='variable',element='poly',stat='probability'); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
 plt.vlines(AP['MLR'].mean(),0,0.2,'r')
+plt.vlines(AP['MLR l2'].mean(),0,0.2,'m')
 
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
