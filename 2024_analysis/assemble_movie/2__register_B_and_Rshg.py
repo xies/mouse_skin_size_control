@@ -15,21 +15,20 @@ from mathUtils import normxcorr2
 
 from twophotonUtils import parse_unregistered_channels
 
-# dirname = '/Volumes/T7/01-24-2024 12month old mice/M3 DOB 12-27-2022/R1'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Old mice/01-24-2024 12month old mice/F1 DOB 12-18-2022/R1'
+dirname = '/Users/xies/OneDrive - Stanford/M3 DOB 12-27-2022/R2'
 
 filelist = parse_unregistered_channels(dirname,folder_str='*.*')
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {3:24,6:32}
+manual_targetZ = {}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = True
+OVERWRITE = False
 
-for t in tqdm([6]):
+for t in tqdm(filelist.index):
 
     # Check for overwriting
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]

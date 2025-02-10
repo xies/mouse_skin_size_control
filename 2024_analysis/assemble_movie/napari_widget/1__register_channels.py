@@ -244,9 +244,12 @@ def transform_image(
     reference_image: Image,
     image2transform: Image,
     second_channel: Image,
+    delta_x: int=0,
+    delta_y: int=0,
     rotate_theta:float=0.0,
+    rotate_right:bool=True,
     Transform_second_channel:bool=False,
-    ) -> List[napari.layers.Layer]:
+    ) -> Image:
 
     '''
     Perform 3D rigid-body transformations given an input image and manually set transformation parameters
@@ -267,23 +270,30 @@ def transform_image(
     ref_point_name = reference_image.name + '_ref_point'
     if ref_point_name in [l.name for l in viewer.layers]:
         ref_point = viewer.layers[ref_point_name].data[0]
-        #assert(len(ref_point) == 3)
+        assert(len(ref_point) == 3)
     moving_point_name = image2transform.name + '_ref_point'
     if moving_point_name in [l.name for l in viewer.layers]:
         moving_point = viewer.layers[moving_point_name].data[0]
-        #assert(len(moving_point) == 3)
+        assert(len(moving_point) == 3)
 
     reference_z,reference_y,reference_x = ref_point.astype(int)
     moving_z,moving_y,moving_x = moving_point.astype(int)
 
     # xy transformations (do slice by slice)
-    Txy = EuclideanTransform(translation=[moving_x-reference_x,moving_y-reference_y], rotation=rotate_theta)
+    Txy = EuclideanTransform(translation=[moving_x-reference_x+delta_x,moving_y-reference_y+delta_y], rotation=rotate_theta*rotate_right)
     # # Apply to first image
     array = np.zeros_like(image_data)
-    for z,im in enumerate(image_data):
-        array[z,...] = warp(im, Txy)
-    array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-    array = array.astype(np.uint16)
+    if image_data.ndim == 3:
+        for z,im in enumerate(image_data):
+            array[z,...] = warp(im, Txy)
+        array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+        array = array.astype(np.uint16)
+    elif image_data.ndim == 4:
+        for c,stack in enumerate(image_data):
+            for z,im in enumerate(stack):
+                array[c,z,...] = warp(im, Txy)
+            array[c,...] = z_translate_and_pad(reference_image.data[c,...],array[c,...],reference_z,moving_z)
+        array = array.astype(np.uint16)
 
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
     output_list = [transformed_image]
@@ -297,7 +307,8 @@ def transform_image(
         transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
         output_list.append(transformed_second_channel)
 
-    return output_list
+    print(output_list)
+    return transformed_image
 
 
 @magicgui(call_button='Filter image')

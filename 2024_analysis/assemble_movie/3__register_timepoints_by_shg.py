@@ -18,13 +18,14 @@ from mathUtils import normxcorr2
 import matplotlib.pylab as plt
 import pickle as pkl
 
-from twophotonUtils import parse_unaligned_channels
+from twophotonUtils import parse_unaligned_channels, z_translate_and_pad
 
 # dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Right ear/Post Ethanol/R3'
 # dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Old mice/01-24-2024 12month old mice/F1 DOB 12-18-2022/R1'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Old mice/01-24-2024 12month old mice/F1 DOB 12-18-2022/R1'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/Old mice/04-30-2024 16month old mice/M3 DOB 12-27-2022/R1/'
 
-filelist = parse_unaligned_channels(dirname,folder_str='*.*/')
+filelist = parse_unaligned_channels(dirname,folder_str='*. Day*/')
 
 #%%
 
@@ -39,7 +40,7 @@ APPLY_PAD = True
 
 ref_T = 0
 
-manual_Ztarget = {2:31,3:21,5:29,6:22,14:35}
+manual_Ztarget = {}
 
 z_pos_in_original = {}
 XY_matrices = {}
@@ -56,6 +57,7 @@ else:
 
 Z_ref = R_shg_ref.shape[0]
 Imax_ref = R_shg_ref.std(axis=2).std(axis=1).argmax() # Find max contrast slice
+Imax_ref = 33
 ref_img = R_shg_ref[Imax_ref,...]
 print(f'Reference z-slice: {Imax_ref}')
 
@@ -68,8 +70,9 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 OVERWRITE = True
-for t in tqdm( [14] ): # 0-indexed
+for t in tqdm( [2] ): # 0-indexed
 
+    ref_T = 1
     if t == ref_T:
         continue
 
@@ -125,7 +128,7 @@ for t in tqdm( [14] ): # 0-indexed
             # Apply transformation matrix to each stacks
 
             T = transform.SimilarityTransform(T)
-            T = T + transform.SimilarityTransform(translation=[30,75],rotation=np.deg2rad(-7))
+            # T = T + transform.SimilarityTransform(translation=[30,75],rotation=np.deg2rad(-7))
 
             for i, G_slice in enumerate(G):
                 B_transformed[i,...] = transform.warp(B[i,...].astype(float),T)
@@ -140,12 +143,11 @@ for t in tqdm( [14] ): # 0-indexed
 
         print('Padding')
         dz = Imax_ref - Imax_target
-        Tz = transform.EuclideanTransform(translation=[0,-dz])
-        R_padded = transform.warp(R_transformed,Tz)
-        B_padded = transform.warp(B_transformed,Tz)
-        G_padded = transform.warp(G_transformed,Tz)
-        R_shg_padded = transform.warp(R_shg_transformed,Tz)
-
+        # Tz = transform.EuclideanTransform(translation=[0,-dz])
+        R_padded = z_translate_and_pad(R_shg_ref,R_transformed,Imax_ref,Imax_target)
+        B_padded = z_translate_and_pad(R_shg_ref,B_transformed,Imax_ref,Imax_target)
+        G_padded = z_translate_and_pad(R_shg_ref,G_transformed,Imax_ref,Imax_target)
+        R_shg_padded = z_translate_and_pad(R_shg_ref,R_shg_transformed,Imax_ref,Imax_target)
 
         print('Saving')
         output_dir = path.dirname(filelist.loc[t,'G'])
@@ -159,7 +161,7 @@ for t in tqdm( [14] ): # 0-indexed
 with open(path.join(dirname,'alignment_information.pkl'),'wb') as f:
     print('Saving alignment matrices...')
     pkl.dump([z_pos_in_original,XY_matrices,Imax_ref],f)
-i
+
 #%%
 print('DONE')
 

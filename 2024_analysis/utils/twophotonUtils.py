@@ -82,7 +82,6 @@ def parse_unregistered_channels(dirname,folder_str='*. Day*/',sort_func=return_p
 
 
     B = glob(path.join(dirname,folder_str, 'B_reg.tif'))
-
     idx = [return_prefix(f) for f in B]
     filelist = pd.DataFrame(index=idx)
     filelist.loc[idx,'B'] = B

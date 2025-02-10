@@ -9,10 +9,9 @@ Created on Thu Jun 30 12:37:34 2022
 import pandas as pd
 import seaborn as sb
 import pickle as pkl
+import matplotlib.pyplot as plt
 
-with open('/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/tracks.pkl', 'rb') as f:
-    tracks = pkl.load(f)
-
+tracks = pd.read_pickle('/Users/xies/OneDrive - Stanford/Skin/Two photon/Shared/tracks.pkl')
 
 #%% Raw growth curves
 
@@ -39,18 +38,20 @@ def groupby_ttest(df,groupname,y_value):
 def nonans(x):
     return x[~np.isnan(x)]
 
-ts = pd.concat(tracks_not_leaving)
+ts = pd.concat(tracks)
+ts.loc[ts['State'] == 'NA','State'] = 'neither newborn nor predivision'
 division = ts[ts['Division'] == 1]
 birth = ts[ts['Birth'] == 1]
-na = ts[ts['State'] == 'NA']
-not_na = ts[ts['State'] != 'NA']
+na = ts[ts['State'] == 'neither newborn nor predivision']
+not_na = ts[ts['State'] != 'neither newborn nor predivision']
 
 sb.catplot(data = na,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
 
 sb.catplot(data = division,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
 sb.catplot(data = birth,hue='Cell type',y='Volume',kind='strip',split=True,x='Dataset')
 
-sb.catplot(data = ts,x='State',y='Volume',kind='strip',hue='Cell type',split=True)
+sb.catplot(data = ts,x='State',y='Volume',kind='violin',hue='Cell type')
+           ,split=True)
 
 # sb.catplot(data= ts,x='Cell type',y='Specific growth rate (sm)',hue='Dataset',
 #            kind='strip', split=True)
