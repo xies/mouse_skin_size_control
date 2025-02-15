@@ -15,20 +15,20 @@ from mathUtils import normxcorr2
 
 from twophotonUtils import parse_unregistered_channels
 
-dirname = '/Users/xies/OneDrive - Stanford/M3 DOB 12-27-2022/R2'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/Old mice/04-30-2024 16month old mice/M3 DOB 12-27-2022/R1/'
 
-filelist = parse_unregistered_channels(dirname,folder_str='*.*')
+filelist = parse_unregistered_channels(dirname,folder_str='*. Day*')
 filelist = filelist.dropna()
 # Manually set the Z-slice (in R/R_shg)
-manual_targetZ = {}
+manual_targetZ = {3:27}
 
 #%%
 
 XX = 1024
 
-OVERWRITE = False
+OVERWRITE = True
 
-for t in tqdm(filelist.index):
+for t in tqdm([3]):
 
     # Check for overwriting
     output_dir = path.split(path.dirname(filelist.loc[t,'R']))[0]
@@ -47,6 +47,7 @@ for t in tqdm(filelist.index):
 
     # Find the slice with maximum mean value in R_shg channel
     Imax = R_shg.mean(axis=2).mean(axis=1).argmax()
+    Imax = 27
     print(f'R_shg max std at {Imax}')
     R_ref = R_shg[Imax,...]
     R_ref = filters.gaussian(R_ref,sigma=0.5)

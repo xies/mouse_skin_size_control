@@ -70,7 +70,7 @@ z_pos_in_original[ref_T] = Imax_ref
 # Therefore it's easy to identify which z-stack is most useful.
 
 OVERWRITE = True
-for t in tqdm( [2] ): # 0-indexed
+for t in tqdm( [3] ): # 0-indexed
 
     ref_T = 1
     if t == ref_T:

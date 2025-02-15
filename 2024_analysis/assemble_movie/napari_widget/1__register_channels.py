@@ -238,17 +238,45 @@ def auto_register_b_and_rshg():
 
     return widget
 
+def swap_axes_order(im,current_order, new_order):
+    swap_idx = {}
+    swap_idx['X'] = current_order.index('X')
+    swap_idx['Y'] = current_order.index('Y')
+    swap_idx['Z'] = current_order.index('Z')
+    swap_idx['C'] = current_order.index('C')
+
+    im = np.transpose(im,[swap_idx[ new_order[0] ]
+                        ,swap_idx[ new_order[1] ]
+                        ,swap_idx[ new_order[2] ]
+                        ,swap_idx[ new_order[3] ]])
+    return im
+
+def swap_axes_order_ref_point(ref_pt, current_order, new_order):
+    swap_idx = {}
+    swap_idx['X'] = current_order.index('X')
+    swap_idx['Y'] = current_order.index('Y')
+    swap_idx['Z'] = current_order.index('Z')
+    swap_idx['C'] = current_order.index('C')
+    new_ref_pt = ref_pt[ [swap_idx[ new_order[0] ]
+                        ,swap_idx[ new_order[1] ]
+                        ,swap_idx[ new_order[2] ]
+                        ,swap_idx[ new_order[3] ]] ]
+
+    return new_ref_pt
+
+
 # Mouse-selected
 @magicgui(call_button='Transform image')
 def transform_image(
     reference_image: Image,
     image2transform: Image,
-    second_channel: Image,
-    delta_x: int=0,
-    delta_y: int=0,
+    axes_order: str = 'ZYX',
+    delta_x: float=0.0,
+    move_left: bool=False,
+    delta_y: float=0.0,
+    move_up: bool=True,
     rotate_theta:float=0.0,
-    rotate_right:bool=True,
-    Transform_second_channel:bool=False,
+    rotate_left:bool=False,
     ) -> Image:
 
     '''
@@ -263,51 +291,68 @@ def transform_image(
 
     # Grab the image data + convert deg->radians
     image_data = image2transform.data.astype(float)
-    second_image_data = second_channel.data.astype(float)
+    reference_image_data = reference_image.data
     rotate_theta = np.deg2rad(rotate_theta)
+    assert(len(axes_order) == image_data.ndim)
 
     # Grab the reference point layers
     ref_point_name = reference_image.name + '_ref_point'
     if ref_point_name in [l.name for l in viewer.layers]:
         ref_point = viewer.layers[ref_point_name].data[0]
-        assert(len(ref_point) == 3)
+
     moving_point_name = image2transform.name + '_ref_point'
     if moving_point_name in [l.name for l in viewer.layers]:
         moving_point = viewer.layers[moving_point_name].data[0]
+
+    if image_data.ndim == 3:
         assert(len(moving_point) == 3)
+    elif image_data.ndim == 4:
+        # Make CZYX
+        image_data = swap_axes_order(image_data,axes_order,'CZYX')
+        reference_image_data = swap_axes_order(reference_image_data,axes_order,'CZYX')
+        ref_point = swap_axes_order_ref_point(ref_point,axes_order,'CZYX')[1:]
+        moving_point = swap_axes_order_ref_point(moving_point,axes_order,'CZYX')[1:]
 
     reference_z,reference_y,reference_x = ref_point.astype(int)
     moving_z,moving_y,moving_x = moving_point.astype(int)
 
-    # xy transformations (do slice by slice)
-    Txy = EuclideanTransform(translation=[moving_x-reference_x+delta_x,moving_y-reference_y+delta_y], rotation=rotate_theta*rotate_right)
+    # handle the directions
+    if move_left:
+        x_sign = 1
+    else:
+        x_sign = -1
+    if move_up:
+        y_sign = 1
+    else:
+        y_sign = -1
+    if rotate_left:
+        rot_sign = 1
+    else:
+        rot_sign = -1
+
     # # Apply to first image
     array = np.zeros_like(image_data)
     if image_data.ndim == 3:
+        # xy transformations (do slice by slice)
+        Txy = EuclideanTransform(translation=[moving_x-reference_x + y_sign*delta_y,
+                                              moving_y-reference_y + x_sign*delta_x], rotation=rotate_theta*rot_sign)
         for z,im in enumerate(image_data):
             array[z,...] = warp(im, Txy)
-        array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
+        array = z_translate_and_pad(reference_image_data,array,reference_z,moving_z)
         array = array.astype(np.uint16)
     elif image_data.ndim == 4:
+        # xy transformations (do slice by slice)
+        Txy = EuclideanTransform(translation=[moving_y-reference_y + x_sign*delta_x,
+                                              moving_x-reference_x + y_sign*delta_y], rotation=rotate_theta*rot_sign)
         for c,stack in enumerate(image_data):
             for z,im in enumerate(stack):
                 array[c,z,...] = warp(im, Txy)
-            array[c,...] = z_translate_and_pad(reference_image.data[c,...],array[c,...],reference_z,moving_z)
+            array[c,...] = z_translate_and_pad(reference_image_data[c,...],array[c,...],reference_z,moving_z)
         array = array.astype(np.uint16)
+        array = swap_axes_order(array,'CZYX', axes_order)
 
     transformed_image = Image(array, name=image2transform.name+'_transformed', blending='additive', colormap=image2transform.colormap)
-    output_list = [transformed_image]
 
-    if Transform_second_channel:
-        array = np.zeros_like(second_image_data)
-        for z,im in enumerate(second_image_data):
-            array[z,...] = warp(im, Txy)
-        array = z_translate_and_pad(reference_image.data,array,reference_z,moving_z)
-        array = util.img_as_uint(array/array.max())
-        transformed_second_channel = Image(array, name=second_channel.name+'_transformed', blending='additive', colormap=second_channel.colormap)
-        output_list.append(transformed_second_channel)
-
-    print(output_list)
     return transformed_image
 
 
