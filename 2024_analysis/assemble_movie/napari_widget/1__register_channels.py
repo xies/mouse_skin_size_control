@@ -332,18 +332,15 @@ def transform_image(
 
     # # Apply to first image
     array = np.zeros_like(image_data)
+    # xy transformations (do slice by slice)
+    Txy = EuclideanTransform(translation=[moving_x-reference_x + x_sign*delta_x,
+                                          moving_y-reference_y + y_sign*delta_y], rotation=rotate_theta*rot_sign)
     if image_data.ndim == 3:
-        # xy transformations (do slice by slice)
-        Txy = EuclideanTransform(translation=[moving_x-reference_x + y_sign*delta_y,
-                                              moving_y-reference_y + x_sign*delta_x], rotation=rotate_theta*rot_sign)
         for z,im in enumerate(image_data):
             array[z,...] = warp(im, Txy)
         array = z_translate_and_pad(reference_image_data,array,reference_z,moving_z)
         array = array.astype(np.uint16)
     elif image_data.ndim == 4:
-        # xy transformations (do slice by slice)
-        Txy = EuclideanTransform(translation=[moving_y-reference_y + x_sign*delta_x,
-                                              moving_x-reference_x + y_sign*delta_y], rotation=rotate_theta*rot_sign)
         for c,stack in enumerate(image_data):
             for z,im in enumerate(stack):
                 array[c,z,...] = warp(im, Txy)

@@ -92,14 +92,40 @@ def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID):
         
     return all_cells_in_lineage
 
+from xml.etree import ElementTree as et
+from glob import glob
 
-def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
+def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/',ext='xml'):
+    
+    if ext == 'xml':
+        
+        filename = glob(path.join(dirname,'MaMuT/*-mamut.xml'))[0]
+        tree = et.parse(filename)
+        root = tree.getroot()
+        model = root.find('Model')
+        
+        if model is None:
+            print('Model not found.')
+            return None
+            
+        raw_spots = [spot for spot in model.iter('Spot')]
+        raw_tracks = {t.attrib['TRACK_ID']: [e for e in t] for t in model.iter('Track')}
+        
+        # convert to a table
+        raw_spots = pd.DataFrame([pd.Series(s.attrib) for s in raw_spots])
+        raw_tracks = pd.DataFrame([pd.Series(t.attrib) for t in raw_tracks])
+        
+        
+        
+    
+    elif ext == 'csv':
 
-    raw_spots = pd.read_csv(path.join(dirname,subdir_str,'spots.csv'),skiprows=[1,2,3],header=0)
-    raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
-    raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
-    raw_links = pd.read_csv(path.join(dirname,subdir_str,'linkage.csv'),skiprows=[1,2,3],header=0)
-    raw_tracks = pd.read_csv(path.join(dirname,subdir_str,'tracks.csv'),skiprows=[1,2,3],header=0)
+        raw_spots = pd.read_csv(path.join(dirname,subdir_str,'spots.csv'),skiprows=[1,2,3],header=0)
+        raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
+        print(raw_spots['TRACK_ID'])
+        raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
+        raw_links = pd.read_csv(path.join(dirname,subdir_str,'linkage.csv'),skiprows=[1,2,3],header=0)
+        raw_tracks = pd.read_csv(path.join(dirname,subdir_str,'tracks.csv'),skiprows=[1,2,3],header=0)
     
     # Do pre-filtering
     # Filter out tracks with fewer than 2 splits (i.e. no complete cell cycles)
