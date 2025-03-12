@@ -95,37 +95,44 @@ def trace_lineage(lineage_root,_spots,_linkage_table, lineageID, trackID):
 from xml.etree import ElementTree as et
 from glob import glob
 
-def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/',ext='xml'):
+def load_mamut_xml_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
+        
+    filename = glob(path.join(dirname,'MaMuT/*-mamut.xml'))[0]
+    tree = et.parse(filename)
+    root = tree.getroot()
+    model = root.find('Model')
     
-    if ext == 'xml':
+    if model is None:
+        print('Model not found.')
+        return None
         
-        filename = glob(path.join(dirname,'MaMuT/*-mamut.xml'))[0]
-        tree = et.parse(filename)
-        root = tree.getroot()
-        model = root.find('Model')
-        
-        if model is None:
-            print('Model not found.')
-            return None
-            
-        raw_spots = [spot for spot in model.iter('Spot')]
-        raw_tracks = {t.attrib['TRACK_ID']: [e for e in t] for t in model.iter('Track')}
-        
-        # convert to a table
-        raw_spots = pd.DataFrame([pd.Series(s.attrib) for s in raw_spots])
-        raw_tracks = pd.DataFrame([pd.Series(t.attrib) for t in raw_tracks])
-        
-        
-        
+    _spots = [spot for spot in model.iter('Spot')]    
+    # convert to a table
+    _spots = pd.DataFrame([pd.Series(s.attrib) for s in _spots])
+    raw_tracks = {int(t.attrib['TRACK_ID']): pd.DataFrame([e.attrib for e in t]) for t in model.iter('Track')}
+    # Separate spots into a dict of spots (by TRACKID)
+    raw_spots = {}
+    for tID,track in raw_tracks.items():
+        all_spots = np.unique( np.hstack((track['SPOT_SOURCE_ID'],track['SPOT_TARGET_ID']) ) ).astype(int)
+        raw_spots[tID] = _spots.iloc[np.in1d(_spots.ID.astype(int),all_spots)]
     
-    elif ext == 'csv':
+    # Trim for cycling by finding N outgoing links
+    cycling_tracks = {tID:track for 
+                      tID,track in raw_tracks.items()
+                      if np.any(raw_spots[tID]['Spot_N_links_N_outgoing_links'].astype(float) == 2)}
 
-        raw_spots = pd.read_csv(path.join(dirname,subdir_str,'spots.csv'),skiprows=[1,2,3],header=0)
-        raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
-        print(raw_spots['TRACK_ID'])
-        raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
-        raw_links = pd.read_csv(path.join(dirname,subdir_str,'linkage.csv'),skiprows=[1,2,3],header=0)
-        raw_tracks = pd.read_csv(path.join(dirname,subdir_str,'tracks.csv'),skiprows=[1,2,3],header=0)
+    cycling_spots = {k:v for k,v in raw_spots.items() if k in cycling_tracks.keys()}
+    
+    return cycling_tracks,cycling_spots
+    
+def load_mamut_and_prune_for_complete_cycles(dirname,subdir_str='MaMuT/'):
+
+    raw_spots = pd.read_csv(path.join(dirname,subdir_str,'spots.csv'),skiprows=[1,2,3],header=0)
+    raw_spots = raw_spots[raw_spots['TRACK_ID'] != 'None']
+    print(raw_spots['TRACK_ID'])
+    raw_spots['TRACK_ID'] = raw_spots['TRACK_ID'].astype(int)
+    raw_links = pd.read_csv(path.join(dirname,subdir_str,'linkage.csv'),skiprows=[1,2,3],header=0)
+    raw_tracks = pd.read_csv(path.join(dirname,subdir_str,'tracks.csv'),skiprows=[1,2,3],header=0)
     
     # Do pre-filtering
     # Filter out tracks with fewer than 2 splits (i.e. no complete cell cycles)
@@ -164,32 +171,59 @@ def load_mamut_densely(dirname,subdir_str='MaMuT/'):
     return raw_tracks, _links, _spots
 
 
-def construct_data_frame_dense(_tracks,_links,_spots):
+def load_mamut_xml_densely(dirname,subdir_str='MaMuT/'):
+    # Load all MaMuT tracks without any pruning
+
+    filename = glob(path.join(dirname,subdir_str,'*-mamut.xml'))[0]
+    tree = et.parse(filename)
+    root = tree.getroot()
+    model = root.find('Model')
+    
+    if model is None:
+        print('Model not found.')
+        return None
+        
+    _spots = [spot for spot in model.iter('Spot')]    
+    # convert to a table
+    _spots = pd.DataFrame([pd.Series(s.attrib) for s in _spots])
+    raw_tracks = {int(t.attrib['TRACK_ID']): pd.DataFrame([e.attrib for e in t]) for t in model.iter('Track')}
+    # Separate spots into a dict of spots (by TRACKID)
+    raw_spots = {}
+    for tID,track in raw_tracks.items():
+        all_spots = np.unique( np.hstack((track['SPOT_SOURCE_ID'],track['SPOT_TARGET_ID']) ) ).astype(int)
+        raw_spots[tID] = _spots.iloc[np.in1d(_spots.ID.astype(int),all_spots)]
+    
+    return raw_tracks, raw_spots
+
+def construct_data_frame_dense(_tracks,_spots):
     # For each track, extract individual time series into a dataframe and return a list of all tracks
     # @todo: think about how to deal with multiple generations
     # Will return multiple generations if there are any?
     
     tracks = []
     
-    for i in range(len(_tracks)):
+    for i in _tracks.keys():
         
-        link = _links[i]
+        link = _tracks[i]
         spots_ = _spots[i]
         
         spots = pd.DataFrame()
         # Construct a cleaned-up dataframe
-        spots['LABEL'] = spots_['LABEL']
+        # spots['LABEL'] = spots_['LABEL']
         spots['ID'] = spots_['ID']
         spots['X'] = spots_['POSITION_X']
         spots['Y'] = spots_['POSITION_Y']
         spots['Z'] = spots_['POSITION_Z']
         spots['Frame'] = spots_['POSITION_T']
-        spots['TrackID'] = spots_['TRACK_ID']
+        # spots['TrackID'] = spots_['TRACK_ID']
         spots['Left'] = None
         spots['Right'] = None
         spots['Division'] = False
         spots['Terminus'] = False
         spots['Mother'] = np.nan
+        spots['Sister'] = np.nan
+        spots['Daughter a'] = np.nan
+        spots['Daughter b'] = np.nan
         spots = spots.sort_values('Frame')
         
         # For each spot, figure out how many incoming links + outgoing links (i.e. mother/daughters)
@@ -211,12 +245,12 @@ def construct_data_frame_dense(_tracks,_links,_spots):
         mother = pd.Series()
         mother['ID'] = np.nan
         spots2trace = [spots.head(1)]
+    
         while len(spots2trace) > 0:
         
-            # Pop from list
+            # Pop first in the stack to trace
             spot = spots2trace.pop()
-            spot.iat[0,-1] = mother.ID
-            print(f'Tracing from {spot.ID.values}')
+            # print(f'Tracing from {spot.ID.values}')
             track = [spot]
             while not spot.iloc[0]['Division'] and not spot.iloc[0]['Terminus']:
                 # Trace the linkages
@@ -228,30 +262,47 @@ def construct_data_frame_dense(_tracks,_links,_spots):
                 # Tracking ended, no further daughters
                 tracks_.append(pd.concat(track))
             if spot.iloc[0]['Division']:
-                # If we found a division, then this is a complete cell cycle
-                tracks_.append(pd.concat(track))
+                mother = spot
                 daughter_a = spots[spots['ID'] == spot.iloc[0]['Left']]
                 daughter_b = spots[spots['ID'] == spot.iloc[0]['Right']]
+                tracks_.append(pd.concat(track))
                 # Append the new daughters into the todo list
                 spots2trace.extend([daughter_a, daughter_b])
-                
-            # print(mother)
+            
         tracks.extend(tracks_)
+
+    # Clean up
+    track = 0
+    idx_lookup = {t.iloc[0]['ID']:i for i,t in enumerate(tracks)}
+    for trackID,track in enumerate(tracks):
+        track['TrackID'] = trackID+1
+        # track.rename(columns={'Left':'Daughter a','Right':'Daughter b'},inplace=True)
+        if not track.iloc[-1]['Right'] == None:
+            daughterID_a = idx_lookup[track.iloc[-1]['Left']]
+            daughterID_b = idx_lookup[track.iloc[-1]['Right']]
+            track['Daughter a'] = daughterID_a+1
+            track['Daughter b'] = daughterID_b+1
+            
+            # Modify those daughters's mother information
+            tracks[daughterID_a]['Mother'] = trackID+1
+            tracks[daughterID_a]['Sister'] = daughterID_b
+            tracks[daughterID_b]['Mother'] = trackID+1
+            tracks[daughterID_b]['Sister'] = daughterID_a
 
     return tracks
 
 
 
-def construct_data_frame_complete_cycles(cycling_tracks,cycling_links, cycling_spots):
+def construct_data_frame_complete_cycles(cycling_tracks, cycling_spots):
     # Traverse linkage trees to prune out the complete cycles
     #NB: Spots and links are chronologically sorted (descending)
     tracks = []
     
-    for i in range(len(cycling_tracks)):
+    for trackID,track in cycling_tracks.items():
         
-        link = cycling_links[i]
-        spots_ = cycling_spots[i]
-            
+        link = cycling_tracks[trackID]
+        spots_ = cycling_spots[trackID]
+        
         spots = pd.DataFrame()
         # Construct a cleaned-up dataframe
         spots['ID'] = spots_['ID']
@@ -259,12 +310,11 @@ def construct_data_frame_complete_cycles(cycling_tracks,cycling_links, cycling_s
         spots['Y'] = spots_['POSITION_Y']
         spots['Z'] = spots_['POSITION_Z']
         spots['Frame'] = spots_['POSITION_T']
-        spots['TrackID'] = spots_['TRACK_ID']
+        spots['TrackID'] = trackID
         spots['Left'] = None
         spots['Right'] = None
         spots['Division'] = False
         spots['Terminus'] = False
-        
         
         # Build a daughter(s) tree into the spots dataframe
         
@@ -317,4 +367,6 @@ def construct_data_frame_complete_cycles(cycling_tracks,cycling_links, cycling_s
         tracks.extend(tracks_)
 
     return tracks
+
+
 

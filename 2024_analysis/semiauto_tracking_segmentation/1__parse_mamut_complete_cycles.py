@@ -31,8 +31,9 @@ dirnames.append('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two pho
 
 all_tracks = []
 for dirname in dirnames:
-    cycling_tracks, cycling_links, cycling_spots = load_mamut_and_prune_for_complete_cycles(dirname)
-    tracks = construct_data_frame_complete_cycles(cycling_tracks, cycling_links, cycling_spots)
+    cycling_tracks,cycling_spots = load_mamut_xml_prune_for_complete_cycles(dirname)
+    # cycling_tracks, cycling_links, cycling_spots = load_mamut_and_prune_for_complete_cycles(dirname)
+    tracks = construct_data_frame_complete_cycles(cycling_tracks, cycling_spots)
 
     with open(path.join(dirname,'R1-mamut.pkl'),'wb') as file:
         pkl.dump(tracks,file)
@@ -53,8 +54,7 @@ spots = [spot for spot in model.iter('Spot')]
 edges = [edge for edge in model.iter('Edge')]
 tracks = [track for track in model.iter('Track')]
 
-    
-    #%%
+#%%
 
 rbko = all_tracks[0]
 # wt = all_tracks[1]

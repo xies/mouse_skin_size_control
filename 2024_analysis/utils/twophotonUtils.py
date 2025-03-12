@@ -110,7 +110,7 @@ def parse_unaligned_channels(dirname,folder_str='*. Day*/'):
     # filelist['B'] = sorted(glob(path.join(dirname,folder_str, 'B_reg.tif')), key = return_prefix)
     B = glob(path.join(dirname,folder_str, 'B_reg.tif'))
     idx = [return_prefix(f) for f in B]
-    filelist = pd.DataFrame(index=idx)
+    filelist = pd.DataFrame(index=idx,columns=['B','G','R','R_shg'])
     filelist.loc[idx,'B'] = B
 
     # filelist['G'] = sorted(glob(path.join(dirname,folder_str, 'G_reg.tif')), key = return_prefix)

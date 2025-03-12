@@ -44,7 +44,7 @@ for trackID, track in tracks.items():
     summary.loc[trackID,'trackID'] = track.iloc[0]['trackID']
     
     # Birth
-    I = (track['Phase'] == 'Visible birth')
+    I = (track['Phase'] == 'Birth')
     summary.loc[trackID,'Birth volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     
     #first G1S
@@ -86,6 +86,8 @@ CV = pd.DataFrame()
 CV.loc['Birth',['CV','LB','UB']] = cvariation_bootstrap(summary['Birth volume'],Nboot=1000,subsample=80)
 CV.loc['G1S',['CV','LB','UB']] = cvariation_bootstrap(summary['G1 volume'],Nboot=1000,subsample=80)
 CV.loc['Division',['CV','LB','UB']] = cvariation_bootstrap(summary['Division volume'],Nboot=1000,subsample=80)
+
+CV['yerr'] = CV['UB'] - CV['LB']
 
 print(CV)
 

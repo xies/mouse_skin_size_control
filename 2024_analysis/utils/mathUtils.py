@@ -7,14 +7,23 @@ Created on Tue Sep  6 20:22:07 2022
 """
 
 import numpy as np
-from scipy import stats, linalg
+from scipy import stats, linalg, optimize
 from skimage import morphology
-from basicUtils import nonans
+from basicUtils import nonans, nonan_pairs
 from numpy import random
 # from scipy import stats
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
 
+def exponential_growth(t,V0,k):
+    return V0*np.exp(t*k)
+
+def fit_exponential_curve(t,v):
+    t,v = nonan_pairs(t,v)
+    print(v)
+    p0 = [v[0],v[1]/v[0]]
+    params = optimize.curve_fit(exponential_growth,t,v,p0)
+    return params
 
 def get_interpolated_curve(cf,y_field='Volume',x_field='Age',smoothing_factor=1e10):
 

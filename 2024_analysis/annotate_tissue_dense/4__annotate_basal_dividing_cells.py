@@ -20,7 +20,7 @@ from os import path,makedirs
 from tqdm import tqdm
 import pickle as pkl
 
-dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/Desktop/Code/mouse_skin_size_control/2024_analysis/test_dataset/'
 
 print(f'--- Working on {dirname} ---')
@@ -265,7 +265,7 @@ for basalID, df in collated.items():
         df['G1S frame'] = g1_frame
         df['Phase'] = 'G1'
         df.loc[df['Frame'].values >= g1_frame,'Phase'] = 'SG2'
-        df['Time to G1S'] = df['Age'] - df['G1S frame']* 12
+        df['Time to G1S'] = (df['Frame'] - df['G1S frame'])* 12
     else:
         df['G1S frame'] = np.nan
         df['Time to G1s'] = np.nan

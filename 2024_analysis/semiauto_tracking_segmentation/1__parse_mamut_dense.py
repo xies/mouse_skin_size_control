@@ -21,21 +21,18 @@ from os import path
 
 import pickle as pkl
 
-from mamutUtils import load_mamut_densely, construct_data_frame_dense
+from mamutUtils import load_mamut_xml_densely, construct_data_frame_dense
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
 dirnames = []
-# dirnames.append('/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1/')
-# dirnames.append('/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/Left ear/Post tam/R1/')
-dirnames.append('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Left ear/Post tam/R1')
+dirnames.append('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/')
 
 all_tracks = []
 for dirname in dirnames:
-    _tracks, _links, _spots = load_mamut_densely(dirname,subdir_str='MaMuT')
-    tracks = construct_data_frame_dense(_tracks, _links, _spots)
-    tracks = construct_data_frame_dense(_tracks, _links, _spots)
-
+    _tracks, _spots = load_mamut_xml_densely(dirname,subdir_str='Mastodon')
+    tracks = construct_data_frame_dense(_tracks, _spots)
+    
     with open(path.join(dirname,'dense_tracks.pkl'),'wb') as file:
         pkl.dump(tracks,file)
 
