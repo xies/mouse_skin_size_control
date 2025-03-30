@@ -171,10 +171,9 @@ def load_mamut_densely(dirname,subdir_str='MaMuT/'):
     return raw_tracks, _links, _spots
 
 
-def load_mamut_xml_densely(dirname,subdir_str='MaMuT/'):
+def load_mamut_xml_densely(filename):
     # Load all MaMuT tracks without any pruning
 
-    filename = glob(path.join(dirname,subdir_str,'*-mamut.xml'))[0]
     tree = et.parse(filename)
     root = tree.getroot()
     model = root.find('Model')

@@ -22,7 +22,7 @@ from os import path
 
 import pickle as pkl
 
-from mamutUtils import load_mamut_and_prune_for_complete_cycles, construct_data_frame_complete_cycles
+from mamutUtils import load_mamut_xml_prune_for_complete_cycles, construct_data_frame_complete_cycles
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
