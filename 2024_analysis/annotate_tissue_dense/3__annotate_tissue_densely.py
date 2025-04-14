@@ -339,13 +339,44 @@ for t in tqdm(range(15)):
     df_dense['Border'] = False
     df_dense.loc[ np.in1d(df_dense['CellposeID'],border_nuclei), 'Border'] = True
     
+    # DEPRECATED
     #----- 3D cell mesh for geometry -----
     # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
     mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
-    # mesh_sm = trimesh.smoothing.filter_laplacian(mesh,lamb=0.01)
-    mean_curve = discrete_mean_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
-    gaussian_curve = discrete_gaussian_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
+    mean_curve_coords = discrete_mean_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
+    gaussian_curve_coords = discrete_gaussian_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
+    df_dense['Mean curvature - cell coords'] = mean_curve_coords
+    df_dense['Gaussian curvature - cell coords'] = gaussian_curve_coords
+    
+    # ---- Get 3D mesh from the BM image ---
+    import pyvista as pv
+    from scipy import interpolate
+    from trimesh import smoothing
+    bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
+    mask = (bm_height_image[...,0] > 0)
+    Z,Y,X = np.where(mask)
+    X = X[1:]; Y = Y[1:]; Z = Z[1:]
+    X = X*dx; Y = Y*dx; Z = Z*dz
+    
+    # Decimate the grid to avoid artefacts
+    X_ = X[::30]; Y_ = Y[::30]; Z_ = Z[::30]
+    grid = pv.PolyData(np.stack((X_,Y_,Z_)).T)
+    mesh = grid.delaunay_2d()
+    faces = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
+    mesh = Trimesh(mesh.points,faces)
+    mesh = smoothing.filter_humphrey(mesh,alpha=1)
+
+    
+    closest_mesh_to_cell,_,_ = mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
+    # pl =pv.Plotter()
+    # pl.add_mesh(pv.wrap(mesh))
+    # pl.add_points(dense_coords_3d_um,color='r')
+    # pl.add_points(closest_mesh_to_cell,color='b')
+    # pl.show()
+    
+    mean_curve = discrete_mean_curvature_measure(mesh, closest_mesh_to_cell, 2)/sphere_ball_intersection(1, 2)
+    gaussian_curve = discrete_gaussian_curvature_measure(mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
     df_dense['Mean curvature'] = mean_curve
     df_dense['Gaussian curvature'] = gaussian_curve
     

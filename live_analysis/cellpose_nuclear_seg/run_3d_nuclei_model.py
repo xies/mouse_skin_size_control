@@ -20,9 +20,9 @@ from tqdm import tqdm
 
 model = models.Cellpose(model_type='nuclei')
 
-dirname = '/Users/xies/Desktop/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Drosophila/Gut unwrap/2021-05-14_starved_1-172_slider'
 
-diameter = 26 #27 OK for 1.5x BE basal cells at 1.4 zoomin
+diameter = 20 #27 OK for 1.5x BE basal cells at 1.4 zoomin
 anisotropy = 1.0
 cellprob_threshold = -0.1
 
@@ -33,39 +33,30 @@ cellprob_threshold = -0.1
 
 OVERWRITE = False
 
-f = path.join(dirname,'fly_gut_snapshot.tif')
-im = io.imread(f)[...,3]
+f = path.join(dirname,'h2b.tif')
+stack = io.imread(f)
+TT = stack.shape[0]
 
-#for t,im in tqdm(enumerate(G)):
+for t in tqdm(range(TT)):
+    
+    im = stack[t,...]
 
-#f = path.join(dirname,f'cellpose_G_clahe_blur/t{t}.tif')
-d = path.dirname(f)
+    tic = time()
+    print(f'Predicting on {t}')
+    
+    # 3D gaussian blur the image
+    im = ndimage.gaussian_filter(im,sigma=1)
+    
+    masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True,
+    				cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
+    io.masks_flows_to_seg(im, masks,flows,diams,f)
+    # annoyingly, need to manually move
+    #move(path.join(d, basename + '_seg.npy'), path.join(output_dir,basename + '_seg.npy'))
+    
+    # Also resave the mask as standalone .tif for convenience
+    io.imsave(path.join(dirname, f'nuc_masks/t{t}_masks.tif'),masks)
+    
+    toc = time()
+    print(f'Processed frame={t} in {toc- tic:0.4f} seconds')
 
-basename = path.splitext(path.basename(f))[0] # i.e. 't9'
-output_dir = path.join(d,basename + '_3d_nuc')
-# if path.exists( output_dir ) and not OVERWRITE:
-#     print(f'Skipping {f}')
-#     continue
-# else:
-#     mkdir(output_dir)
 
-tic = time()
-# print(f'Predicting on {t}')
-# 	im = io.imread(f)
-# 	im = im[:,1,...]
-
-# 3D gaussian blur the image
-im = ndimage.gaussian_filter(im,sigma=1)
-
-masks,flows,styles,diams = model.eval(im,diameter=None, do_3D=True,
-				cellprob_threshold=cellprob_threshold, anisotropy=anisotropy)
-io.masks_flows_to_seg(im, masks,flows,diams,f)
-# annoyingly, need to manually move
-#move(path.join(d, basename + '_seg.npy'), path.join(output_dir,basename + '_seg.npy'))
-
-# Also resave the mask as standalone .tif for convenience
-io.imsave(path.join(output_dir, basename + '_masks.tif'),masks)
-
-toc = time()
-print(f'Saved to {output_dir}')
-print(f'Processed in {toc- tic:0.4f} seconds')

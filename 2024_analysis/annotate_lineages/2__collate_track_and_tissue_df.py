@@ -139,7 +139,7 @@ cells['Birth volume'] = [
     for _,t in df.groupby('TrackID')]
 cells['Birth apical area'] = [ t.iloc[0]['Apical area'] for _,t in df.groupby('TrackID')]
 cells['Birth basal area'] = [ t.iloc[0]['Basal area'] for _,t in df.groupby('TrackID')]
-cells['Birth tissue curvature'] = [ t.iloc[0]['Mean curvature'] for _,t in df.groupby('TrackID')]
+cells['Birth mean curvature'] = [ t.iloc[0]['Mean curvature'] for _,t in df.groupby('TrackID')]
 
 cells['Mother growth rate'] = [
     get_mother_track(df,t).iloc[-1]['Exponential growth rate']
@@ -151,8 +151,15 @@ cells['Mother division volume'] = [
     if len(get_mother_track(df,t)) > 0
     else np.nan
     for _,t in df.groupby('TrackID')]
-cells['Mother division curvature'] = [
+
+cells['Mother division mean curvature'] = [
     get_mother_track(df,t).iloc[-1]['Mean curvature']
+    if len(get_mother_track(df,t)) > 0
+    else np.nan
+    for _,t in df.groupby('TrackID')]
+
+cells['Mother division gauss curvature'] = [
+    get_mother_track(df,t).iloc[-1]['Gaussian curvature']
     if len(get_mother_track(df,t)) > 0
     else np.nan
     for _,t in df.groupby('TrackID')]
@@ -164,12 +171,43 @@ cells['Sister birth size difference'] = [
     for _,t in df.groupby('TrackID')]
 
 
-
 sb.catplot(cells,x='Differentiated',y='Birth volume',kind='box')
-sb.catplot(cells,x='Differentiated',y='Birth tissue curvature',kind='box')
-sb.catplot(cells,x='Differentiated',y='Mother division curvature',kind='box')
+sb.catplot(cells,x='Differentiated',y='Birth mean curvature',kind='box')
+sb.catplot(cells,x='Differentiated',y='Mother division mean curvature',kind='box')
 sb.catplot(cells,x='Differentiated',y='Mother growth rate',kind='box')
 sb.catplot(cells,x='Differentiated',y='Sister birth size difference',kind='box')
+
+
+#%%
+
+from sklearn.ensemble import RandomForestClassifier as RFClass
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+_df = df.copy()
+fields2drop = ['CellposeID','Differentiating','Complete cycle','basalID','CytoID',
+               'FUCCI thresholded',
+               'Time to G1S','Time to division','Age','Time to delamination','Planar component ',
+               'Phase','SpotID','TrackID','Daughter a','Daughter b','Mother']
+_df = _df.drop(columns=fields2drop)
+_df.dropna()
+
+X = _df.drop(columns='Differentiated')
+y = _df['Differentiated'].astype(int)
+
+X_train,X_test,y_train,y_test = train_test_split(X,y)
+
+forest = RFClass()
+forest.fit(X_train,y_train)
+y_pred = forest.predict(X_test)
+
+C = confusion_matrix(y_test,y_pred)
+
+imps = pd.DataFrame(forest.feature_importances_,index=X.columns,columns=['Imp'])
+imps = imps.sort_values(by='Imp',ascending=False)
+
+imps.plot.bar()
+plt.tight_layout()
 
 
 

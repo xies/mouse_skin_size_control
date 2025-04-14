@@ -12,6 +12,7 @@ import pandas as pd
 
 from basicUtils import nonan_pairs
 
+from imageUtils import draw_labels_on_image, draw_adjmat_on_image, most_likely_label, colorize_segmentation
 import matplotlib.pylab as plt
 import seaborn as sb
 
@@ -25,7 +26,7 @@ Z_SHIFT = 10
 # Differentiating thresholds
 centroid_height_cutoff = 3.5 #microns above BM
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1'
 
 df = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'),index_col=0)
 
@@ -57,17 +58,23 @@ plt.subplot(2,1,2)
 sb.histplot(df,x='Cell volume',y='Frame',bins=[15,15])
 
 #%% Colorize + visualze some other features on cell-by-cell basis
- 
-    # Colorize nuclei based on mean curvature (for inspection)
-    # mean_colors = (mean-mean.min())/mean.max()
-    # colorized = colorize_segmentation(nuc_dense_seg,{k:v for k ,v in zip(df_dense['label'].values, mean)})
- 
 
-    #% Compute local curvature
-    # Visualize mesh
-    # from mpl_toolkits.mplot3d import Axes3D as ax3d
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection='3d')
-    # ax.plot_trisurf(dense_coords_3d[:,1],dense_coords_3d[:,2],Z,cmap=plt.cm.viridis)
-    # ax.scatter(dense_coords_3d[:,1],dense_coords_3d[:,2],local_neighborhood,color='k')
+t= 5
+# Colorize nuclei based on mean curvature (for inspection)
+_df = df[df['Frame'] == t]
+mean = _df['Mean curvature - cell coords']
+nuc_dense_seg = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+# mean_colors = (mean-mean.min())/mean.max()
+colorized = colorize_segmentation(nuc_dense_seg,{k:v for k ,v in zip(_df['CellposeID'].values, mean)},dtype=float)
+
+io.imsave(f'/Users/xies/Desktop/t{t}.tif',colorized)
+
+
+#% Compute local curvature
+# Visualize mesh
+# from mpl_toolkits.mplot3d import Axes3D as ax3d
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+# ax.plot_trisurf(dense_coords_3d[:,1],dense_coords_3d[:,2],Z,cmap=plt.cm.viridis)
+# ax.scatter(dense_coords_3d[:,1],dense_coords_3d[:,2],local_neighborhood,color='k')
     

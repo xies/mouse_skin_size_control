@@ -59,8 +59,7 @@ for track in tracks:
         track.loc[idx,'Cell type'] = _spot['Cell type'].values
         if _spot['Reviewed_Mimi'].values == 1:
             track.loc[idx,'Reviewed'] = True
-        
-        
+                
 #%%
 
 border = 4 #micron from edge
@@ -89,7 +88,6 @@ for track in tracks:
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'wb') as file:
     pkl.dump(tracks,file)
-
 
 #%%
 
