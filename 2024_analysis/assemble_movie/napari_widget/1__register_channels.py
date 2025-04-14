@@ -206,7 +206,7 @@ def auto_register_b_and_rshg():
             R_ref = filters.gaussian(R_ref,sigma=0.5)
             z_moving = find_most_likely_z_slice_using_CC(R_ref,G)
             print(f'Cross correlation done and target Z-slice set at: {z_ref}')
-            target = filters.gaussian([z_ref,...],sigma=0.5)
+            target = filters.gaussian(R_shg[z_ref,...],sigma=0.5)
 
             #NB: Here, move the R channel wrt the B channel
             print('StackReg + transform')
