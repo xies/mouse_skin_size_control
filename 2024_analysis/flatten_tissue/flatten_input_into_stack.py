@@ -26,20 +26,20 @@ def sort_by_timestamp(filename):
 BOTTOM_OFFSET = 5
 TOP_OFFSET = -20
 
-imstack = io.imread(path.join(dirname,'Cropped_images/G.tif'))
+imstack = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
 T,Z,XX,_ = imstack.shape
 
 # imstack = imstack[...,1] # flatten green channel
 
 for t in range(15):
     
-    im = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+    # im = io.imread(path.join(dirname,f'3d_cyto_seg/3d_cyto_manual/t{t}_cleaned.tif'))
+    im = imstack[t,...]
     Z,XX,_ = im.shape
-    # im = imstack[t,...]
     
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     
-    output_dir = path.join(dirname,f'Image flattening/flat_3d_cyto_seg')
+    output_dir = path.join(dirname,f'Image flattening/flat_tracked_cyto')
     
     flat = np.zeros((BOTTOM_OFFSET-TOP_OFFSET,XX,XX))
     Iz_top = heightmap + TOP_OFFSET

@@ -20,7 +20,7 @@ from mamutUtils import load_mamut_xml_densely, construct_data_frame_dense
 
 dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
 
-track_seg = io.imread(path.join(dirname,'Mastodon/tracked_seg.tif'))
+track_seg = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
 
 #%%
 
@@ -29,7 +29,8 @@ all_labels = np.unique(track_seg)[1:]
 tracks = []
 
 for t in tqdm(range(15)):
-    props = pd.DataFrame(measure.regionprops_table(track_seg[t,:],properties=['area','label']))
+    labels = segmentation.clear_border(track_seg[t,:])
+    props = pd.DataFrame(measure.regionprops_table(labels,properties=['area','label']))
     props['Frame'] = t
     
     tracks.append(props)
@@ -40,9 +41,13 @@ tracks = [t for _,t in tracks.groupby('label')]
 #%%
 
 plt.close('all')
-trackID = 120
+trackID = 140
 
-for t in tracks[trackID:trackID+100]:
-    plt.plot(t.Frame,t['area'])
-
+for t in tracks[trackID:trackID+10]:
+    
+    plt.plot(t.Frame - t.iloc[0]['Frame'],t['area'])
     plt.show()
+    
+    
+    
+    
