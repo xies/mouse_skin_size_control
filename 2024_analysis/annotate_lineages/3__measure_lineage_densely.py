@@ -31,6 +31,7 @@ from tqdm import tqdm
 from os import path,makedirs
 from basicUtils import nonans
 from functools import reduce
+import pickle as pkl
 
 dx = 0.25
 dz = 1
@@ -280,6 +281,14 @@ LMAX = 10 # Number of spherical harmonics components to calculate
 
 all_df = []
 
+# Load manual tracking
+with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
+    tracks = pkl.load(file)
+manual = pd.concat(tracks,ignore_index=True)
+manual['Frame'] = manual['Frame'].astype(float)
+manual = manual.set_index(['Frame','TrackID'])
+manual = manual.drop(columns=['ID','X','Y','Z','Border'])
+
 # Load segmentations
 tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
 tracked_cyto = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
@@ -299,6 +308,7 @@ for t in tqdm(range(15)):
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
     df = df_cyto.join(df_nuc)
+    df['Frame'] = t
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
     intensity_df = measure_cyto_intensity(cyto_seg,int_images)
     df = df.join(intensity_df)
@@ -423,6 +433,10 @@ for t in tqdm(range(15)):
     # Load basal masks for current frame
     frame_basal_mask = io.imread(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'))
 
+    # Merge with manual annotations
+    df = df.reset_index()
+    df.set_index(['Frame','TrackID'])
+    
     # Save the DF
     all_df.append(df)
     
@@ -432,9 +446,11 @@ for t in tqdm(range(15)):
     # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
     
 all_df = pd.concat(all_df,ignore_index=False)
+all_df = all_df.set_index(['Frame','TrackID'])
+all_df = all_df.join(manual)
+
 
 if SAVE:
-    
     all_df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
     print(f'Saved to: {dirname}')
 

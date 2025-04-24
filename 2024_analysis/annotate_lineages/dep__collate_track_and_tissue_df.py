@@ -177,7 +177,6 @@ sb.catplot(cells,x='Differentiated',y='Mother division mean curvature',kind='box
 sb.catplot(cells,x='Differentiated',y='Mother growth rate',kind='box')
 sb.catplot(cells,x='Differentiated',y='Sister birth size difference',kind='box')
 
-
 #%%
 
 from sklearn.ensemble import RandomForestClassifier as RFClass
