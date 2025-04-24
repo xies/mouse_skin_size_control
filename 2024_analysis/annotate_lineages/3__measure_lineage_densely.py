@@ -24,11 +24,13 @@ from imageUtils import draw_labels_on_image, draw_adjmat_on_image, \
     most_likely_label, colorize_segmentation
 from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, \
     argsort_counter_clockwise
+import pyvista as pv
 
 # General utils
 from tqdm import tqdm
 from os import path,makedirs
 from basicUtils import nonans
+from functools import reduce
 
 dx = 0.25
 dz = 1
@@ -87,9 +89,10 @@ def measure_nuclear_geometry_from_regionprops(nuc_labels, spacing = [1,1,1]):
 
 def measure_cyto_geometry_from_regionprops(cyto_dense_seg, spacing= [1,1,1]):
     # Measurements from cortical segmentation
+
     df = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,
                                                       properties=['label','area','centroid'],
-                                                      spacing=[dz,dx,dx],
+                                                      spacing=spacing,
                                                       ))
     df = df.rename(columns={'area':'Cell volume',
                                       'label':'TrackID',
@@ -98,7 +101,7 @@ def measure_cyto_geometry_from_regionprops(cyto_dense_seg, spacing= [1,1,1]):
                                       'centroid-2':'X'},
                              )
     df = df.set_index('TrackID')
-    for p in measure.regionprops(cyto_dense_seg, spacing=[dz,dx,dx]):
+    for p in measure.regionprops(cyto_dense_seg, spacing=spacing):
         i = p['label']
         I = p['inertia_tensor']
         Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
@@ -110,6 +113,23 @@ def measure_cyto_geometry_from_regionprops(cyto_dense_seg, spacing= [1,1,1]):
     
     return df
 
+def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = [1,1,1]):
+    
+    df = []
+    for chan_name,im in intensity_image_dict.items():
+        _df = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=im,
+                                                      properties=['label','area','mean_intensity']))
+        _df = _df.rename(columns={'mean_intensity':f'Mean {chan_name} intensity',
+                                  'label':'TrackID'})
+        _df[f'Total {chan_name} intensity'] = _df['area'] * _df[f'Mean {chan_name} intensity']
+        _df = _df.drop(labels=['area'], axis='columns')
+        _df = _df.set_index('TrackID')
+        df.append(_df)
+        
+    df = reduce(lambda x,y: pd.merge(x,y,on='TrackID'), df)
+    
+    return df
+    
 
 def get_mask_slices(prop, border = 0, max_dims = None):
     
@@ -165,8 +185,6 @@ def estimate_sh_coefficients(cyto_seg, lmax, spacing = [dz,dx,dx]):
         sh_coefficients.append(coeffs)
         
     sh_coefficients = pd.DataFrame(sh_coefficients)
-    sh_coefficients['Frame'] = t
-    sh_coefficients = sh_coefficients.set_index(['Frame','TrackID'])
     
     return sh_coefficients
 
@@ -201,7 +219,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
         Z_top = bbox[0]
         Z_bottom = bbox[3]
         
-        mask = im == i
+        mask = flat_cyto == i
         
         # Apical area (3 top slices)
         apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
@@ -262,8 +280,13 @@ LMAX = 10 # Number of spherical harmonics components to calculate
 
 all_df = []
 
+# Load segmentations
 tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
 tracked_cyto = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
+
+# Load channels
+h2b = io.imread(path.join(dirname,'Cropped_images/B.tif'))
+fucci_g1 = io.imread(path.join(dirname,'Cropped_images/R.tif'))
 
 for t in tqdm(range(15)):
     
@@ -276,17 +299,19 @@ for t in tqdm(range(15)):
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
     df = df_cyto.join(df_nuc)
-    df['Frame'] = t
-    df = df.reset_index()
-    df = df.set_index(['Frame','TrackID'])
+    int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
+    intensity_df = measure_cyto_intensity(cyto_seg,int_images)
+    df = df.join(intensity_df)
     
     # --- 2. Mesh-based cell geometry measurements ---
     
     # 2a: Estimate cell and nuclear mesh using spherical harmonics
     sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])
+    sh_coefficients = sh_coefficients.set_index('TrackID')
     sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
     df = df.join(sh_coefficients)
     sh_coefficients = estimate_sh_coefficients(nuc_seg, LMAX, spacing = [dz,dx,dx])
+    sh_coefficients = sh_coefficients.set_index('TrackID')
     sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
     df = df.join(sh_coefficients)
     
@@ -302,9 +327,7 @@ for t in tqdm(range(15)):
     Jyy = Gy*Gy
     
     df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
-        im, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
-    df_flat['Frame'] = 0
-    df_flat = df_flat.reset_index().set_index(['Frame','TrackID'])
+        flat_cyto, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
     df = df.join(df_flat)
     
     if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
@@ -345,7 +368,6 @@ for t in tqdm(range(15)):
     df['Border'] = False
     df.loc[ border_nuclei, 'Border'] = True
     
-    # DEPRECATED
     #----- 3D cell mesh for geometry -----
     # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
@@ -356,7 +378,7 @@ for t in tqdm(range(15)):
     df['Gaussian curvature - cell coords'] = gaussian_curve_coords
     
     # ---- 5. Get 3D mesh from the BM image ---
-    from scipy import interpolate
+    # from scipy import interpolate
     from trimesh import smoothing
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
     mask = (bm_height_image[...,0] > 0)

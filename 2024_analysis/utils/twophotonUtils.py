@@ -142,7 +142,7 @@ def plot_cell_volume(track,x='Frame',y='Volume'):
 
 
 def parse_XML_timestamps(region_dir,subdir_str='*. Day*/',beginning=0):
-    
+
     T = len(glob(path.join(region_dir,subdir_str)))
     timestamps = OrderedDict()
 
@@ -189,7 +189,7 @@ def parse_voxel_resolution_from_XML(region_dir):
 
     return float(dx),float(dz)
 
-def find_most_likely_z_slice_using_CC(ref_slice,stack):
+def find_most_likely_z_slice_using_CC(ref_slice:int,stack) -> int:
     '''
 
     Parameters
@@ -217,12 +217,12 @@ def find_most_likely_z_slice_using_CC(ref_slice,stack):
     [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
     return Iz
 
-def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving):
+def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving,):
     '''
     Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
     being the same index in the translated image. Will also truncate/pad im_moving
     to be the same size as im_ref
-    
+
     '''
     XX = im_moving.shape[1]
 
@@ -254,26 +254,26 @@ def z_align_ragged_timecourse(ragged_stack_list,same_Zs):
     Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
     being the same index in the translated image. Will also truncate/pad im_moving
     to be the same size as im_ref
-    
+
     '''
     same_Zs = same_Zs.astype(int)
     original_stack_sizes = np.array([x.shape[0] for x in ragged_stack_list])
     top_size = (original_stack_sizes - same_Zs)
-    
+
     ragged_bottom_Z = same_Zs.max() - same_Zs
-    
+
     TT = len(ragged_stack_list)
     XX = ragged_stack_list[0].shape[1]
-    
+
     aligned_stack_timecourse = np.zeros((TT,int(same_Zs.max()+top_size.max()),XX,XX))
 
     for t in tqdm(range(TT)):
-        
+
         # Take the 'bottom' portion of original stack
         aligned_stack_timecourse[t, ragged_bottom_Z[t]:same_Zs.max() ,:,:] \
             = ragged_stack_list[t][0:same_Zs[t],:,:]
         # Take the 'top' portion of the original stack
         aligned_stack_timecourse[t,same_Zs.max():same_Zs.max()+top_size[t],:,:] \
             = ragged_stack_list[t][same_Zs[t]:,:,:]
-        
+
     return aligned_stack_timecourse

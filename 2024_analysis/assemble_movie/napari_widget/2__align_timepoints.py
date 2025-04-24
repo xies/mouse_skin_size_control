@@ -106,7 +106,7 @@ def auto_align_timecourse():
         ragged_G_stacks = []
         ragged_R_stacks = []
         ragged_R_shg_stacks = []
-        
+
         for t in progress(timepoints_to_register):
 
             # Check for overwriting
@@ -132,6 +132,8 @@ def auto_align_timecourse():
 
             target_img = B_target[z_target]
             output_imgs.append(Image(target_img,name=f'{t}_before'))
+
+            # Save z-target
 
             # 2. Calculate XY transforms
             print('StackReg + transform')
@@ -166,13 +168,13 @@ def auto_align_timecourse():
             # R_padded = z_translate_and_pad(B_ref,R_transformed,z_ref,z_target).astype(np.uint)
             # R_shg_padded = z_translate_and_pad(B_ref,R_shg_transformed,z_ref,z_target).astype(np.uint)
 
-        
-        
-        B_aligned_ZXY = z_align_ragged_timecourse(ragged_B_stacks, z_pos_in_original)
-        G_aligned_ZXY = z_align_ragged_timecourse(ragged_G_stacks, z_pos_in_original)
-        R_aligned_ZXY = z_align_ragged_timecourse(ragged_R_stacks, z_pos_in_original)
-        R_shg_aligned_ZXY = z_align_ragged_timecourse(ragged_R_shg_stacks, z_pos_in_original)
-        
+
+
+        B_aligned_ZXY = z_align_ragged_timecourse(ragged_B_stacks, np.array(z_pos_in_original.values()))
+        G_aligned_ZXY = z_align_ragged_timecourse(ragged_G_stacks, np.array(z_pos_in_original.values()))
+        R_aligned_ZXY = z_align_ragged_timecourse(ragged_R_stacks, np.array(z_pos_in_original.values()))
+        R_shg_aligned_ZXY = z_align_ragged_timecourse(ragged_R_shg_stacks, np.array(z_pos_in_original.values()))
+
         for t in timepoints_to_register:
 
             output_dir = path.dirname(filelist.loc[t,'R'])
@@ -187,7 +189,7 @@ def auto_align_timecourse():
             io.imsave(path.join(output_dir,'R_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
             im = R_shg_aligned_ZXY[t,...]
             io.imsave(path.join(output_dir,'R_shg_align.tif'),util.img_as_uint(im/im.max()),check_contrast=False)
-    
+
             output_imgs.append(Image(im[z_target],name=f'{t}_after'))
 
         return output_imgs
