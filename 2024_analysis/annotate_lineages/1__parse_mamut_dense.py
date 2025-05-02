@@ -33,7 +33,6 @@ all_tracks.append(tracks)
 #%% Annotations
 
 # Merge with manual tags using Spot.csv files
-
 spot_table = pd.read_csv(path.join(dirname,'Mastodon/W-R1.h5-Spot.csv'),
                          header=[0,1,2],index_col=0)
 
@@ -74,7 +73,7 @@ def is_on_border(track,border,maxXY):
     return np.any(Ix | Iy)
 
 for track in tracks:
-
+    
     # Annotate border
     track['Border'] = is_on_border(track,border,maxXY)
     # Annotate terminal (ends at T = 14)

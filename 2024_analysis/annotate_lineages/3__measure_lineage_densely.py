@@ -12,6 +12,7 @@ from skimage import io, measure, draw, util, morphology, transform, img_as_bool
 from scipy.spatial import distance, Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
+import seaborn as sb
 
 # 3D mesh stuff
 from aicsshparam import shtools, shparam
@@ -33,6 +34,7 @@ from basicUtils import nonans
 from functools import reduce
 import pickle as pkl
 
+dt = 12 #hrs
 dx = 0.25
 dz = 1
 Z_SHIFT = 10
@@ -47,7 +49,7 @@ footprint = morphology.cube(3)
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
-#%%
+#%% Calculation functions
 
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):
@@ -176,7 +178,7 @@ def estimate_sh_coefficients(cyto_seg, lmax, spacing = [dz,dx,dx]):
         M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
         mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
         coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
-        coeffs['shcoeffs_volume'] = pv.wrap(mesh).volume
+        # coeffs['shcoeffs_volume'] = pv.wrap(mesh).volume # This is just L0M0
         
         # verts,faces,_,_ = measure.marching_cubes(mask)
         # mesh_mc = Trimesh(verts,faces)
@@ -186,6 +188,8 @@ def estimate_sh_coefficients(cyto_seg, lmax, spacing = [dz,dx,dx]):
         sh_coefficients.append(coeffs)
         
     sh_coefficients = pd.DataFrame(sh_coefficients)
+    # Drop all 0s
+    # sh_coefficients = sh_coefficients.loc[:,~np.all(sh_coefficients==0, axis=0)]
     
     return sh_coefficients
 
@@ -273,7 +277,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
         
     return df,basal_masks_2save
 
-#%%
+#%% 
 
 SAVE = False
 VISUALIZE = False
@@ -309,21 +313,10 @@ for t in tqdm(range(15)):
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
     df = df_cyto.join(df_nuc)
     df['Frame'] = t
+    df['Time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
     intensity_df = measure_cyto_intensity(cyto_seg,int_images)
     df = df.join(intensity_df)
-    
-    # --- 2. Mesh-based cell geometry measurements ---
-    
-    # 2a: Estimate cell and nuclear mesh using spherical harmonics
-    sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])
-    sh_coefficients = sh_coefficients.set_index('TrackID')
-    sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
-    df = df.join(sh_coefficients)
-    sh_coefficients = estimate_sh_coefficients(nuc_seg, LMAX, spacing = [dz,dx,dx])
-    sh_coefficients = sh_coefficients.set_index('TrackID')
-    sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
-    df = df.join(sh_coefficients)
     
     # ----- 3. Use flattened 3d cortical segmentation and measure geometry and collagen
     # from cell-centric coordinates ----
@@ -421,6 +414,21 @@ for t in tqdm(range(15)):
     A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     D = distance.squareform(distance.pdist(dense_coords_3d_um))
     
+    
+    
+    # --- 2. 3D shape decomposition ---
+    
+    # 2a: Estimate cell and nuclear mesh using spherical harmonics
+    sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])
+    sh_coefficients = sh_coefficients.set_index('TrackID')
+    sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
+    df = df.join(sh_coefficients)
+    sh_coefficients = estimate_sh_coefficients(nuc_seg, LMAX, spacing = [dz,dx,dx])
+    sh_coefficients = sh_coefficients.set_index('TrackID')
+    sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
+    df = df.join(sh_coefficients)
+    
+    
     #----- Use macrophage annotations to find distance to them -----
     #NB: the macrophage coords are in um
     macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
@@ -448,9 +456,49 @@ for t in tqdm(range(15)):
 all_df = pd.concat(all_df,ignore_index=False)
 all_df = all_df.set_index(['Frame','TrackID'])
 all_df = all_df.join(manual)
+all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+    
+
+#%% Dimensionality reduce the SPH coefficients
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
+df = all_df
+
+# Nuclear first
+nuc_columns = df.columns[df.columns.str.startswith('nuc_')]
+# nuc_columns = nuc_columns[df[nuc_columns].sum() > 0]
+# Drop NaN columns (these are often late mitotic figures)
+Ivalid = np.any(df[nuc_columns].notna(),axis=1) & ~df.Border
+scaler = StandardScaler()
+nuc_sph = np.array( scaler.fit_transform(df.loc[Ivalid,nuc_columns]) )
+pca = PCA()
+nuc_sph_PCA = pca.fit_transform(nuc_sph)
+
+loading_matrix = pd.DataFrame(pca.components_, columns=nuc_columns)
+
+#%% Visualize the different PCA dimensions
+
+pl = pv.Plotter()
+
+for comp in range(0,10):
+    
+    new_dict = dict(zip(loading_matrix.columns.str.split('nuc_',expand=True).get_level_values(1),loading_matrix.loc[comp]))
+    M = shtools.convert_coeffs_dict_to_matrix(new_dict,lmax=10)
+    mesh,_ = shtools.get_even_reconstruction_from_coeffs(M,npoints=1024)
+    
+    
+    pl.add_mesh(pv.wrap(mesh), opacity=0.5)
+
+pl.show_axes()
+pl.show()
+
+# pl.save_graphic(path.join(dirname,f'shape_mode_analysis/nuc_modes/comp_{comp}.pdf'))
 
 
-if SAVE:
-    all_df.to_csv(path.join(dirname,'tissue_dataframe.csv'))
-    print(f'Saved to: {dirname}')
+
+
+
 
