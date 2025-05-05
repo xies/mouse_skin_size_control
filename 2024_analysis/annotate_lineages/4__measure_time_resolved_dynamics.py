@@ -34,7 +34,6 @@ dz = 1
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
-all_df = pd.read_csv(path.join(dirname,'tissue_dataframe.csv'))
 
 def get_interpolated_growth_curve(cf,field='Cell volume',smoothing_factor=1e10):
 
@@ -140,6 +139,7 @@ def get_exponential_growth_rate(cf,field='Cell volume', time_field='Time'):
     
     return cf
 
+
 #%%
 
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
@@ -152,6 +152,13 @@ for i,track in enumerate(tracks):
     track = get_interpolated_growth_curve(track, field='Nuclear volume')
     track = get_instantaneous_growth_rate(track, field='Nuclear volume')
     track = get_exponential_growth_rate(track, field='Nuclear volume')
+    
+    track = get_interpolated_growth_curve(track, field='Cell volume')
+    track = get_instantaneous_growth_rate(track, field='Cell volume')
+    track = get_exponential_growth_rate(track, field='Cell volume')
+    
+    track = get_interpolated_growth_curve(track, field='Mean FUCCI intensity')
+    track = get_interpolated_growth_curve(track, field='Total H2B intensity')
     
     tracks[i] = track
 

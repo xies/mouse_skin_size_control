@@ -31,12 +31,20 @@ TOP_OFFSET = 30
 BOTTOM_OFFSET = -10
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 filenames = natsorted(glob(path.join(dirname,'*.*/G_reg.tif')))
 T = len(filenames)
 
 XY_mats = np.load(path.join(dirname,'alignments/2D_affine_matrices.npy'))
 
+=======
+filenames = natsorted(glob(path.join(dirname,'*.*/G_reg.tif')))
+T = len(filenames)
+
+XY_mats = np.load(path.join(dirname,'alignments/2D_affine_matrices.npy'))
+
+>>>>>>> Stashed changes
 =======
 filenames = natsorted(glob(path.join(dirname,'*.*/G_reg.tif')))
 T = len(filenames)
