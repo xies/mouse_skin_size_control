@@ -23,7 +23,7 @@ model = models.Cellpose(model_type='nuclei')
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Drosophila/Gut unwrap/2021-05-14_starved_1-172_slider'
 
 diameter = 20 #27 OK for 1.5x BE basal cells at 1.4 zoomin
-anisotropy = 1.0
+anisotropy = 4.0
 cellprob_threshold = -0.1
 
 # Load the raw image (RGB,Z,X,Y)

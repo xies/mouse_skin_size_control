@@ -13,34 +13,26 @@ from scipy.spatial import distance, Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-
-# 3D mesh stuff
-from aicsshparam import shtools, shparam
-from trimesh import Trimesh
-from trimesh.curvature import discrete_gaussian_curvature_measure, \
-    discrete_mean_curvature_measure, sphere_ball_intersection
+from aicsshparam import shtools
 
 # Specific utils
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, \
     most_likely_label, colorize_segmentation
-from mathUtils import get_neighbor_idx, surface_area, parse_3D_inertial_tensor, \
-    argsort_counter_clockwise
+from trimesh import Trimesh
+from trimesh.curvature import discrete_gaussian_curvature_measure, \
+    discrete_mean_curvature_measure, sphere_ball_intersection
 import pyvista as pv
 
 # General utils
 from tqdm import tqdm
 from os import path,makedirs
 from basicUtils import nonans
-from functools import reduce
 import pickle as pkl
 
 dt = 12 #hrs
 dx = 0.25
 dz = 1
 Z_SHIFT = 10
-
-# Differentiating thresholds
-centroid_height_cutoff = 3.5 #microns above BM
 
 # for expansion
 footprint = morphology.cube(3)
@@ -49,237 +41,13 @@ footprint = morphology.cube(3)
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
-#%% Calculation functions
-
-# convert trianglulation to adjacency matrix (for easy editing)
-def tri_to_adjmat(tri):
-    num_verts = max(map(max,tri.simplices)) + 1
-    A = np.zeros((num_verts,num_verts),dtype=bool)
-    for idx in range(num_verts):
-        neighbor_idx = get_neighbor_idx(tri,idx)
-        A[idx,neighbor_idx] = True
-    return A
-
-# Find distance to nearest manually annotated point in points-list
-def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d):
-    distances = np.zeros(len(dense_3d_coords))
-
-    for i,row in dense_3d_coords.iterrows():
-        dx = row['X'] - annotation_coords_3d['X']
-        dy = row['Y'] - annotation_coords_3d['Y']
-        dz = row['Z'] - annotation_coords_3d['Z']
-        D = np.sqrt(dx**2 + dy**2 + dz**2)
-        
-        distances[i] = D.min()
-            
-    return distances
-
-def measure_nuclear_geometry_from_regionprops(nuc_labels, spacing = [1,1,1]):
-    df = pd.DataFrame( measure.regionprops_table(nuc_labels,
-                                                 properties=['label','area','solidity','bbox'],
-                                                 spacing = [dz,dx,dx],
-                                                 ))
-    df = df.rename(columns={
-                            'label':'TrackID',
-                            'area':'Nuclear volume',
-                            'bbox-0':'Nuclear bbox top',
-                            'bbox-3':'Nuclear bbox bottom',
-                            'solidity':'Nuclear solidity'},
-                   )
-    df = df.set_index('TrackID')
-    
-    return df
-
-def measure_cyto_geometry_from_regionprops(cyto_dense_seg, spacing= [1,1,1]):
-    # Measurements from cortical segmentation
-
-    df = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,
-                                                      properties=['label','area','centroid'],
-                                                      spacing=spacing,
-                                                      ))
-    df = df.rename(columns={'area':'Cell volume',
-                                      'label':'TrackID',
-                                      'centroid-0':'Z',
-                                      'centroid-1':'Y',
-                                      'centroid-2':'X'},
-                             )
-    df = df.set_index('TrackID')
-    for p in measure.regionprops(cyto_dense_seg, spacing=spacing):
-        i = p['label']
-        I = p['inertia_tensor']
-        Iaxial, phi, Ia, Ib, theta = parse_3D_inertial_tensor(I)
-        df.loc[i,'Axial component'] = Iaxial
-        df.loc[i,'Planar component 1'] = Ia
-        df.loc[i,'Planar component 2'] = Ib
-        df.loc[i,'Axial angle'] = phi
-        df.loc[i,'Planar angle'] = theta
-    
-    return df
-
-def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = [1,1,1]):
-    
-    df = []
-    for chan_name,im in intensity_image_dict.items():
-        _df = pd.DataFrame( measure.regionprops_table(cyto_dense_seg,intensity_image=im,
-                                                      properties=['label','area','mean_intensity']))
-        _df = _df.rename(columns={'mean_intensity':f'Mean {chan_name} intensity',
-                                  'label':'TrackID'})
-        _df[f'Total {chan_name} intensity'] = _df['area'] * _df[f'Mean {chan_name} intensity']
-        _df = _df.drop(labels=['area'], axis='columns')
-        _df = _df.set_index('TrackID')
-        df.append(_df)
-        
-    df = reduce(lambda x,y: pd.merge(x,y,on='TrackID'), df)
-    
-    return df
-    
-
-def get_mask_slices(prop, border = 0, max_dims = None):
-    
-    zmin,ymin,xmin,zmax,ymax,xmax = prop['bbox']
-    zmin = max(0,zmin - border)
-    ymin = max(0,ymin - border)
-    xmin = max(0,xmin - border)
-    
-    (ZZ,YY,XX) = max_dims
-    zmax = min(ZZ,zmax + border)
-    ymax = min(YY,ymax + border)
-    xmax = min(XX,xmax + border)
-    
-    slc = [slice(None)] * 3
-    
-    slc[0] = slice( int(zmin),int(zmax))
-    slc[1] = slice(int(ymin),int(ymax))
-    slc[2] = slice(int(xmin),int(xmax))
-    
-    return slc
-
-def estimate_sh_coefficients(cyto_seg, lmax, spacing = [dz,dx,dx]):
-    
-    ZZ,YY,XX = cyto_seg.shape
-    slices = {p['label']: get_mask_slices(p, border=1, max_dims=(ZZ,YY,XX))
-              for p in measure.regionprops(cyto_seg)}
-    cyto_masks = {label: (cyto_seg == label)[tuple(_s)] for label,_s in slices.items()}
-    cyto_masks = {label: img_as_bool(
-                transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
-                  for label, mask in cyto_masks.items()}
-    
-    # @todo: currently, does not align 'z' axis because original AICS project was
-    # for in vitro cells. Should extend codebase to align fully in 3d later
-    # Currently, there is small amount of z-tilt, so probably OK to stay in lab frame
-    aligned_masks = {label: np.squeeze(shtools.align_image_2d(m)[0])
-                     for label,m in cyto_masks.items()}
-    
-    # Parametrize with SH coefficients and record
-    sh_coefficients = []
-    for label,mask in aligned_masks.items():
-        (coeffs,_),_ = shparam.get_shcoeffs(image=mask, lmax=lmax)
-        coeffs['TrackID'] = label
-        M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
-        mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
-        coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
-        # coeffs['shcoeffs_volume'] = pv.wrap(mesh).volume # This is just L0M0
-        
-        # verts,faces,_,_ = measure.marching_cubes(mask)
-        # mesh_mc = Trimesh(verts,faces)
-        # coeffs['mc_surface_area'] = pv.wrap(mesh_mc).area
-        # coeffs['mc_volume'] = pv.wrap(mesh_mc).volume
-        
-        sh_coefficients.append(coeffs)
-        
-    sh_coefficients = pd.DataFrame(sh_coefficients)
-    # Drop all 0s
-    # sh_coefficients = sh_coefficients.loc[:,~np.all(sh_coefficients==0, axis=0)]
-    
-    return sh_coefficients
-
-
-def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
-    '''
-    
-    PARAMETERS
-    
-    flat_cyto: flattened cytoplasmic segmentation
-    jacobian: jacobian matrix of the gradient image of collagen signal
-    spacing: default = [1,1,1] pixel sizes in microns
-    
-    '''
-    
-    
-    # Measurements from cortical segmentation
-    
-    df = pd.DataFrame( measure.regionprops_table(flat_cyto,
-                                                properties=['label'],
-                                                spacing=[dz,dx,dx],
-                                                ))
-    df = df.rename(columns={'label':'TrackID'})
-    df = df.set_index('TrackID')
-    
-    _,YY,XX = flat_cyto.shape
-    basal_masks_2save = np.zeros((YY,XX))
-    
-    for p in measure.regionprops(flat_cyto, spacing=[dz,dx,dx]):
-        i = p['label']
-        bbox = p['bbox']
-        Z_top = bbox[0]
-        Z_bottom = bbox[3]
-        
-        mask = flat_cyto == i
-        
-        # Apical area (3 top slices)
-        apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
-        apical_area = apical_area.sum()
-        
-        # mid-level area
-        mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
-        
-        # Apical area (3 bottom slices)
-        basal_mask = mask[Z_bottom-4:Z_bottom,...]
-        basal_mask = basal_mask.max(axis=0)
-        basal_area = basal_mask.sum()
-    
-        basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
-        basal_eccentricity = measure.regionprops(basal_mask.astype(int))[0]['eccentricity']
-        
-        df.at[i,'Apical area'] = apical_area * dx**2
-        df.at[i,'Basal area'] = basal_area * dx**2
-        df.at[i,'Basal orientation'] = basal_orientation
-        df.at[i,'Basal eccentricity'] = basal_eccentricity
-        df.at[i,'Middle area'] = mid_area * dx**2
-        df.at[i,'Height'] = (Z_bottom-Z_top)*dz
-        
-        basal_masks_2save[basal_mask] = i
-        
-        # Characteristic matrix of collagen signal
-        Jxx = jacobian[0]
-        Jyy = jacobian[1]
-        Jxy = jacobian[2]
-        
-        J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],
-                        [Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
-        
-        l,D = np.linalg.eig(J) # NB: not sorted
-        order = np.argsort(l)[::-1] # Ascending order
-        l = l[order]
-        D = D[:,order]
-        
-        # Orientation
-        theta = np.rad2deg(np.arctan(D[1,0]/D[0,0]))
-        fibrousness = (l[0] - l[1]) / l.sum()
-        
-        # theta = np.rad2deg( -np.arctan( 2*Jxy[basal_mask].sum() / (Jyy[basal_mask].sum()-Jxx[basal_mask].sum()) )/2 )
-        # # Fibrousness
-        # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
-        #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
-        df.at[i,'Collagen orientation'] = theta
-        df.at[i,'Collagen fibrousness'] = fibrousness
-        df.at[i,'Collagen alignment'] = np.abs(np.cos(theta - basal_orientation))
-        
-    return df,basal_masks_2save
-
 #%% 
 
-SAVE = False
+from measurements import measure_nuclear_geometry_from_regionprops, \
+        measure_cyto_geometry_from_regionprops, measure_cyto_intensity, measure_flat_cyto_from_regionprops, \
+        estimate_sh_coefficients, find_distance_to_closest_point
+
+SAVE = True
 VISUALIZE = False
 LMAX = 10 # Number of spherical harmonics components to calculate
 
@@ -311,7 +79,7 @@ for t in tqdm(range(15)):
     # --- 1. Voxel-based cell geometry measurements ---
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
-    df = df_cyto.join(df_nuc)
+    df = df_nuc.join(df_cyto)
     df['Frame'] = t
     df['Time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
@@ -411,10 +179,8 @@ for t in tqdm(range(15)):
     
     #----- 6. Use manual 3D topology to compute neighborhoods -----
     # Load the actual neighborhood topology
-    A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
-    D = distance.squareform(distance.pdist(dense_coords_3d_um))
-    
-    
+    # A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
+    # D = distance.squareform(distance.pdist(dense_coords_3d_um))
     
     # --- 2. 3D shape decomposition ---
     
@@ -435,8 +201,7 @@ for t in tqdm(range(15)):
     macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
     macrophage_xyz['X'] = macrophage_xyz['X'] * dx
     macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
-    df['Distance to closest macrophage'] = \
-        find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
+    df['Distance to closest macrophage'] = find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
     
     # Load basal masks for current frame
     frame_basal_mask = io.imread(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'))
@@ -457,43 +222,42 @@ all_df = pd.concat(all_df,ignore_index=False)
 all_df = all_df.set_index(['Frame','TrackID'])
 all_df = all_df.join(manual)
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
-    
 
 #%% Dimensionality reduce the SPH coefficients
 
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+# from sklearn.decomposition import PCA
+# from sklearn.preprocessing import StandardScaler
 
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
-df = all_df
+# all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
+# df = all_df
 
-# Nuclear first
-nuc_columns = df.columns[df.columns.str.startswith('nuc_')]
-# nuc_columns = nuc_columns[df[nuc_columns].sum() > 0]
-# Drop NaN columns (these are often late mitotic figures)
-Ivalid = np.any(df[nuc_columns].notna(),axis=1) & ~df.Border
-scaler = StandardScaler()
-nuc_sph = np.array( scaler.fit_transform(df.loc[Ivalid,nuc_columns]) )
-pca = PCA()
-nuc_sph_PCA = pca.fit_transform(nuc_sph)
+# # Nuclear first
+# nuc_columns = df.columns[df.columns.str.startswith('nuc_')]
+# # nuc_columns = nuc_columns[df[nuc_columns].sum() > 0]
+# # Drop NaN columns (these are often late mitotic figures)
+# Ivalid = np.any(df[nuc_columns].notna(),axis=1) & ~df.Border
+# scaler = StandardScaler()
+# nuc_sph = np.array( scaler.fit_transform(df.loc[Ivalid,nuc_columns]) )
+# pca = PCA()
+# nuc_sph_PCA = pca.fit_transform(nuc_sph)
 
-loading_matrix = pd.DataFrame(pca.components_, columns=nuc_columns)
+# loading_matrix = pd.DataFrame(pca.components_, columns=nuc_columns)
 
 #%% Visualize the different PCA dimensions
 
-pl = pv.Plotter()
+# pl = pv.Plotter()
 
-for comp in range(0,10):
+# for comp in range(0,10):
     
-    new_dict = dict(zip(loading_matrix.columns.str.split('nuc_',expand=True).get_level_values(1),loading_matrix.loc[comp]))
-    M = shtools.convert_coeffs_dict_to_matrix(new_dict,lmax=10)
-    mesh,_ = shtools.get_even_reconstruction_from_coeffs(M,npoints=1024)
+#     new_dict = dict(zip(loading_matrix.columns.str.split('nuc_',expand=True).get_level_values(1),loading_matrix.loc[comp]))
+#     M = shtools.convert_coeffs_dict_to_matrix(new_dict,lmax=10)
+#     mesh,_ = shtools.get_even_reconstruction_from_coeffs(M,npoints=1024)
     
     
-    pl.add_mesh(pv.wrap(mesh), opacity=0.5)
+#     pl.add_mesh(pv.wrap(mesh), opacity=0.5)
 
-pl.show_axes()
-pl.show()
+# pl.show_axes()
+# pl.show()
 
 # pl.save_graphic(path.join(dirname,f'shape_mode_analysis/nuc_modes/comp_{comp}.pdf'))
 

@@ -87,6 +87,9 @@ rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 
 #%%
 
+import statsmodels.api as sm
+from statsmodels.tools import add_constant
+
 sb.regplot(wt,x='Birth size',y='G1 growth')
 plot_bin_means(wt['Birth size'],wt['G1 growth'],bin_edges=6,minimum_n=8)
 
@@ -95,6 +98,8 @@ plt.ylim([-50,300])
 
 X,Y = nonan_pairs( wt['Birth size'], wt['G1 growth'])
 print(np.polyfit(X,Y,1))
+sm.OLS(X,add_constant(Y)).fit().summary()
+
 X,Y = nonan_pairs( rbko['Birth size'], rbko['G1 growth'])
 print(np.polyfit(X,Y,1))
 

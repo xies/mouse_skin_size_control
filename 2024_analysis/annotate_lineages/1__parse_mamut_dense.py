@@ -25,15 +25,12 @@ all_tracks = []
 _tracks, _spots = load_mamut_xml_densely(path.join(dirname,'Mastodon/W-R1.h5-mamut.xml'))
 tracks = construct_data_frame_dense(_tracks, _spots)
 
-with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'wb') as file:
-    pkl.dump(tracks,file)
-
 all_tracks.append(tracks)
 
 #%% Annotations
 
 # Merge with manual tags using Spot.csv files
-spot_table = pd.read_csv(path.join(dirname,'Mastodon/W-R1.h5-Spot.csv'),
+spot_table = pd.read_csv(path.join(dirname,'Mastodon/W-R1.h5-Spot-Spot.csv'),
                          header=[0,1,2],index_col=0)
 
 # Only select the labels that matter:
@@ -42,7 +39,7 @@ spot_table.columns = spot_table.columns.droplevel(2)
 spot_table.columns = spot_table.columns.map('_'.join)
 spot_table = spot_table.rename(columns={'ID_Unnamed: 1_level_1':'ID'})
 
-# Reverse hot encoding
+# Reverse hot-1 encoding
 spot_table['Cell type'] = ''
 for col in spot_table.columns[spot_table.columns.str.startswith('Supra')]:
     spot_table.loc[spot_table[col] == 1, 'Cell type'] = col.split('_')[1]
@@ -81,8 +78,6 @@ for track in tracks:
     # Annotate complete cell cycle
     track['Complete cycle'] = ~np.isnan(float(track.iloc[0]['Daughter a'])) \
         & ~np.isnan(float(track.iloc[0]['Mother']))
-    # Annotate differentiated
-    track['Differentiated'] = track.iloc[-1]['Terminus'] & ~track.iloc[-1]['Cutoff']
 
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'wb') as file:
