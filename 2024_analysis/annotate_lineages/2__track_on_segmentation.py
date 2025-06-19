@@ -8,18 +8,18 @@ Created on Sat Mar 29 19:09:05 2025
 
 import numpy as np
 import pandas as pd
-import matplotlib.pylab as plt
+# import matplotlib.pylab as plt
 from skimage import io, measure
 import tifffile
 
-import seaborn as sb
+# import seaborn as sb
 from os import path
 from glob import glob
 from natsort import natsorted
 from imageUtils import most_likely_label
 
 import pickle as pkl
-from tqdm import tqdm
+# from tqdm import tqdm
 
 #%% Load segmentations
 
@@ -64,13 +64,14 @@ tracked_nuc = np.zeros_like(basal_segs)
 tracked_cyto = np.zeros_like(cyto_segs)
 
 for track in tracks:
-
+    
     for idx,spot in track.iterrows():
         
         frame = int(float(spot['Frame']))
         Z,Y,X = spot[['Z','Y','X']].astype(float)
         Z = int(Z);
         Y = int(Y/dx); X = int(X/dx)
+        # print(f'{frame}, {spot.TrackID}')
         
         if spot['Cell type'] == 'Basal':
             label = basal_segs[frame,Z,Y,X]
@@ -97,10 +98,15 @@ for track in tracks:
             if label > 0:
                 tracked_nuc[frame,suprabasal_segs[frame,...] == label] = spot['TrackID']
             else:
-                print(f'\n Nuc: {frame}, {spot.TrackID}')
-                sli = get_cube_fill_as_slice(tracked_nuc[frame,...].shape,
-                                             np.array([Z,Y,X]))
-                tracked_nuc[frame,sli[0],sli[1],sli[2]] = spot['TrackID']
+                label = basal_segs[frame,Z,Y,X]
+                if label > 0:
+                    print(f'\n Nuc: {frame}, Suprabasal is in Basal: {spot.TrackID}')
+                    tracked_nuc[frame,basal_segs[frame,...] == label] = spot['TrackID']
+                else:
+                    print(f'\n Nuc: {frame}, {spot.TrackID}')
+                    sli = get_cube_fill_as_slice(tracked_nuc[frame,...].shape,
+                                                 np.array([Z,Y,X]))
+                    tracked_nuc[frame,sli[0],sli[1],sli[2]] = spot['TrackID']
                 
             # These will currently break the cyto
             # label = cyto_supra[frame,Z,Y,X]

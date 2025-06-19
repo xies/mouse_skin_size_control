@@ -55,16 +55,23 @@ for i,track in tqdm(enumerate(tracks)):
         track['Born'] = True
     else:
         track['Born'] = False
-        
-    if len(track['Daughter a'].dropna()) > 0:
-        track['Divided'] = True
-    else:
-        track['Divided'] = False
     
-    track['Differentiated'] = ~(track['Cell type'] == 'Basal')
+    if len(track['Daughter a'].dropna()) > 0:
+        track['Will divide'] = True
+        track['Divide next frame'] = False
+        track.loc[track.Frame.argmax(),'Divide next frame'] = True
+    else:
+        track['Will divide'] = False
+        track['Divide next frame'] = False
+    
+    track['Differentiated'] = (track['Cell type'] == 'Suprabasal') | (track['Cell type'] == 'Right before cornified')
     track['Will differentiate'] = False
-    if np.any(track['Differentiated']):
+    track['Delaminate next frame'] = False
+    if np.any(track['Differentiated']) and np.any(track['Cell type'] == 'Basal'):
         track['Will differentiate'] = True
+        track.loc[track[track['Cell type'] == 'Basal'].index[-1],
+                  'Delaminate next frame'] = True
+        
         diff_frame = np.where(track['Differentiated'])[0][0]
         diff_idx = track.iloc[diff_frame].name
         track['Time to differentiation'] = track['Age'] - track.iloc[diff_frame]['Age']
@@ -84,10 +91,15 @@ for i,track in tqdm(enumerate(tracks)):
     track = get_interpolated_curve(track, field='Mean FUCCI intensity')
     track = get_interpolated_curve(track, field='Total H2B intensity')
     
+    track = get_interpolated_curve(track, field='Basal area')
+    track = get_interpolated_curve(track, field='Apical area')
+    
     tracks[i] = track
     # new_tracks.append(track)
 
 all_df = pd.concat(tracks,ignore_index=True).set_index(['Frame','TrackID'])
+
+all_df['Fate known'] = all_df['Will differentiate'] | all_df['Will divide']
 
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics.csv'))
 

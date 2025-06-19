@@ -49,7 +49,7 @@ from measurements import measure_nuclear_geometry_from_regionprops, \
 
 SAVE = True
 VISUALIZE = False
-LMAX = 10 # Number of spherical harmonics components to calculate
+LMAX = 5 # Number of spherical harmonics components to calculate
 
 all_df = []
 
@@ -143,8 +143,8 @@ for t in tqdm(range(15)):
     # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
     mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
-    mean_curve_coords = discrete_mean_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
-    gaussian_curve_coords = discrete_gaussian_curvature_measure(mesh, mesh.vertices, 2)/sphere_ball_intersection(1, 2)
+    mean_curve_coords = discrete_mean_curvature_measure(mesh, mesh.vertices, 5)/sphere_ball_intersection(1, 5)
+    gaussian_curve_coords = discrete_gaussian_curvature_measure(mesh, mesh.vertices, 5)/sphere_ball_intersection(1, 5)
     df['Mean curvature - cell coords'] = mean_curve_coords
     df['Gaussian curvature - cell coords'] = gaussian_curve_coords
     
@@ -152,7 +152,7 @@ for t in tqdm(range(15)):
     # from scipy import interpolate
     from trimesh import smoothing
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
-    mask = (bm_height_image[...,0] > 0)
+    mask = (bm_height_image > 0)
     Z,Y,X = np.where(mask)
     X = X[1:]; Y = Y[1:]; Z = Z[1:]
     X = X*dx; Y = Y*dx; Z = Z*dz
@@ -172,12 +172,15 @@ for t in tqdm(range(15)):
     # pl.add_points(closest_mesh_to_cell,color='b')
     # pl.show()
     
-    mean_curve = discrete_mean_curvature_measure(mesh, closest_mesh_to_cell, 2)/sphere_ball_intersection(1, 2)
-    gaussian_curve = discrete_gaussian_curvature_measure(mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
+    mean_curve = discrete_mean_curvature_measure(
+        mesh, closest_mesh_to_cell, 5)/sphere_ball_intersection(1, 5)
+    gaussian_curve = discrete_gaussian_curvature_measure(
+        mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
     df['Mean curvature'] = mean_curve
     df['Gaussian curvature'] = gaussian_curve
     
-    #----- 6. Use manual 3D topology to compute neighborhoods -----
+    
+    #----- 6. Use manual 3D topology to compute neighborhoods lei-----
     # Load the actual neighborhood topology
     # A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
     # D = distance.squareform(distance.pdist(dense_coords_3d_um))

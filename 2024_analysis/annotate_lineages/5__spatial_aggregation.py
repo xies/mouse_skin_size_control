@@ -74,7 +74,7 @@ seg2d = [io.imread(path.join(dirname,f'Image flattening/flat_cyto_seg_manual/t{t
          for t in range(15)]
 
 # Load basal 3D nuclei
-nuc = [io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+nuc = [io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}_basal.tif'))
        for t in range(15)]
 
 # Load all basal + suprabasal tracked cells
@@ -84,7 +84,7 @@ adjDicts = [get_adjdict_from_2d_segmentation(seg) for seg in seg2d]
 #%% Connect the (frame, adjID) into TrackID
 # Map adjID -> NucID (dense basal nuc 3d) -> TrackID (all tracked from t=0)
 
-label_transfers = []
+label_transfers = [] # adjID -> TrackID
 for t in range(15):
     
     this_transfer = pd.DataFrame(measure.regionprops_table(nuc[t].max(axis=0), intensity_image=seg2d[t],
@@ -103,18 +103,21 @@ for t in range(15):
 label_transfers = pd.concat(label_transfers)
 label_transfers = label_transfers.set_index(['Frame','NucID'])
 
-# Input manually
-label_transfers.loc[(0,41),'adjID'] = 352
+# Input manually NucID is indexed
 label_transfers.loc[(0,217),'adjID'] = 334
 label_transfers.loc[(1,361),'adjID'] = 335
+label_transfers.loc[(1,441),'adjID'] = 263
+label_transfers.loc[(1,448),'adjID'] = 358
 label_transfers.loc[(2,109),'adjID'] = 358
+label_transfers.loc[(2,318),'adjID'] = 243
 label_transfers.loc[(4,776),'adjID'] = 132
 label_transfers.loc[(4,916),'adjID'] = 139
 label_transfers.loc[(4,1106),'adjID'] = 8
 label_transfers.loc[(5,834),'adjID'] = 262
 label_transfers.loc[(5,3285),'adjID'] = 107
-label_transfers.loc[(5,3285),'adjID'] = 107
+label_transfers.loc[(5,845),'adjID'] = 367
 label_transfers.loc[(6,769),'adjID'] = 367
+label_transfers.loc[(6,1131),'adjID'] = 225
 label_transfers.loc[(7,602),'adjID'] = 376
 label_transfers.loc[(7,603),'adjID'] = 358
 label_transfers.loc[(7,604),'adjID'] = 13
@@ -159,10 +162,10 @@ for t in tqdm(range(15)):
         if not k in missingIDs[t]:
             new_key = label_transfers.loc[(t,k), 'TrackID'].item()
             new_values = np.array(
-                [label_transfers.loc[(t,v),'TrackID'] for v in val if v not in missingIDs[t]])
+                [label_transfers.loc[(t,v),'TrackID'].item() for v in val if v not in missingIDs[t]])
             this_frame_adj[new_key] = new_values
     adjacent_tracks.append(this_frame_adj)
-    np.save(path.join(dirname,f'Mastodon/basal_connectivity_3d/adjacenct_trackIDs_t{t}.pkl'),this_frame_adj)
+    np.save(path.join(dirname,f'Mastodon/basal_connectivity_3d/adjacenct_trackIDs_t{t}.npy'),this_frame_adj)
 
 #%% Draw trackID
 
@@ -211,7 +214,7 @@ aggregators = {'Mean':np.nanmean,
                'Std':np.nanstd}
 
 #@todo: load list of fields
-fields2aggregate = ['Nuclear volume','Height to BM']
+fields2aggregate = ['Nuclear volume','Height to BM','Cell volume','Basal area','Apical area']
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics.csv'),index_col=['Frame','TrackID'])
 
 aggregated_fields = []
