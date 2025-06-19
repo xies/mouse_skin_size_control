@@ -19,11 +19,11 @@ from os import path
 from glob import glob
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # imfiles = glob(path.join(dirname,'Image flattening/flat_z_shift_2/t*.tif'))
 
 XX = 460
-Z = 70
+Z = 72
 T = 1
 
 #%%

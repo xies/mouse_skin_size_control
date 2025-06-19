@@ -177,12 +177,13 @@ def estimate_sh_coefficients(cyto_seg, lmax, spacing = [1,1,1]):
     return sh_coefficients
 
 
-def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
+def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spacing= [1,1,1]):
     '''
     
     PARAMETERS
     
     flat_cyto: flattened cytoplasmic segmentation
+    collagen_image: flattened Max int projection of collagen image
     jacobian: jacobian matrix of the gradient image of collagen signal
     spacing: default = [1,1,1] pixel sizes in microns
     
@@ -222,7 +223,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
         basal_mask = basal_mask.max(axis=0)
         basal_area = basal_mask.sum()
     
-        basal_orientation = measure.regionprops(basal_mask.astype(int))[0]['orientation']
+        basal_orientation = np.rad2deg(measure.regionprops(basal_mask.astype(int))[0]['orientation'])
         basal_eccentricity = measure.regionprops(basal_mask.astype(int))[0]['eccentricity']
         
         df.at[i,'Apical area'] = apical_area * dx**2
@@ -248,16 +249,19 @@ def measure_flat_cyto_from_regionprops(flat_cyto, jacobian, spacing= [1,1,1]):
         D = D[:,order]
         
         # Orientation
-        theta = np.rad2deg(np.arctan(D[1,0]/D[0,0]))
-        fibrousness = (l[0] - l[1]) / l.sum()
+        theta = np.rad2deg(np.arctan(D[1,0]/D[0,0])) # in degrees
+        mag_diff = (l[0] - l[1]) / l.sum()
         
         # theta = np.rad2deg( -np.arctan( 2*Jxy[basal_mask].sum() / (Jyy[basal_mask].sum()-Jxx[basal_mask].sum()) )/2 )
         # # Fibrousness
         # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
         #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
         df.at[i,'Collagen orientation'] = theta
-        df.at[i,'Collagen fibrousness'] = fibrousness
-        df.at[i,'Collagen alignment'] = np.abs(np.cos(theta - basal_orientation))
+        df.at[i,'Collagen coherence'] = mag_diff
+        df.at[i,'Basal alignment'] = np.abs(np.cos(theta - basal_orientation))
+        
+        # Also include collagen intensity
+        df.at[i,'Collagen intensity'] = np.mean(collagen_image[basal_mask])
         
     return df,basal_masks_2save
 
