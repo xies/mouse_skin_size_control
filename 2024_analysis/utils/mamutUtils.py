@@ -195,13 +195,34 @@ def load_mamut_xml_densely(filename):
     return raw_tracks, raw_spots
 
 def construct_data_frame_dense(_tracks,_spots):
-    # For each track, extract individual time series into a dataframe and return a list of all tracks
-    # @todo: think about how to deal with multiple generations
-    # Will return multiple generations if there are any?
+    '''
+    
+    Extracts from a Mastodon/MaMuT/TrackMate style spots/link table
+    For each track, extract individual time series into a dataframe and return a list of all tracks
+    
+    Will return multiple generations if there are any
+    -> Keeps track of each independent lineage using 'lineageID' and 'generation #'
+    
+    Parameters
+    ----------
+    _tracks : TYPE
+        DESCRIPTION.
+    _spots : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    tracks : TYPE
+        DESCRIPTION.
+
+    '''
     
     tracks = []
     
-    for i in _tracks.keys():
+    # Assumes each lineage is uniquely labeled
+    # all_lineageIDs = set(_spots['TRACK_ID'])
+    
+    for lineageID,i in enumerate(_tracks.keys()):
         
         link = _tracks[i]
         spots_ = _spots[i]
@@ -214,7 +235,7 @@ def construct_data_frame_dense(_tracks,_spots):
         spots['Y'] = spots_['POSITION_Y']
         spots['Z'] = spots_['POSITION_Z']
         spots['Frame'] = spots_['POSITION_T']
-        # spots['TrackID'] = spots_['TRACK_ID']
+        spots['LineageID'] = lineageID +1
         spots['Left'] = None
         spots['Right'] = None
         spots['Division'] = False
