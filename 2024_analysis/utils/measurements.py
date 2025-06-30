@@ -34,6 +34,7 @@ def tri_to_adjmat(tri):
     for idx in range(num_verts):
         neighbor_idx = get_neighbor_idx(tri,idx)
         A[idx,neighbor_idx] = True
+        
     return A
 
 # Find distance to nearest manually annotated point in points-list
@@ -113,7 +114,6 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
     df = reduce(lambda x,y: pd.merge(x,y,on='TrackID'), df)
     
     return df
-    
 
 def get_mask_slices(prop, border = 0, max_dims = None):
     
@@ -269,11 +269,13 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
 def detect_missing_frame_and_fill(cf):
     
     cf = cf.reset_index(drop=True)
-    frames = cf['Frame'].values
-    cf = cf.set_index('Frame')
+    frames = cf[('Frame')].values
+    cf = cf.set_index(('Frame'))
     t = np.arange(frames[0],frames[-1]+1)
     missing_frames = set(t) - set(frames)
-
+    if len(missing_frames) == 0:
+        return cf.reset_index()
+    
     fill = pd.DataFrame(np.nan, columns=cf.columns, index=list(missing_frames))
     fill.index.name = 'Frame'
     #clean up object types
@@ -283,6 +285,7 @@ def detect_missing_frame_and_fill(cf):
         fill[col] = 'NA'
     for col in bool_cols:
         fill[col] = False
+        
     fill['TrackID'] = cf.iloc[0]['TrackID']
     cf_filled = pd.concat((cf,fill))
     cf_filled = cf_filled.sort_index()
@@ -380,7 +383,7 @@ def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
 #     return cf
 
 exp_model = lambda x,p1,p2 : p1 * np.exp(p2 * x)
-def get_exponential_growth_rate(cf,field='Cell volume', time_field='Time'):
+def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
     
     cell_types = cf['Cell type'].astype(str).unique()
     for celltype in cell_types:
@@ -406,10 +409,14 @@ def get_exponential_growth_rate(cf,field='Cell volume', time_field='Time'):
     return cf
 
 
-def plot_track(cf,field='Nuyclear volume',time='Time',celltypefield='Cell type',
-               linestyle: dict={'Basal':'-','Suprabasal':'--'},color='b',alpha=1):
+def plot_track(cf,field=('Nuclear volume','Measurement'),
+               time=('Time','Measurement'),
+               celltypefield=('Cell type','Meta'),
+               linestyle: dict={'Basal':'-','Suprabasal':'--'},
+               color='b',alpha=1):
+    
     cf = cf.reset_index()
-    cell_types = cf[celltypefield].astype(str).unique()
+    cell_types = cf[celltypefield].astype(str)
 
     prev_type = None
     for celltype in cell_types:
@@ -427,7 +434,7 @@ def plot_track(cf,field='Nuyclear volume',time='Time',celltypefield='Cell type',
 
         if prev_type is not None:
             #grab last time point and connect
-            Ilast = np.where(cf['Cell type'] == prev_type)[0][-1]
+            Ilast = np.where(cf[celltypefield] == prev_type)[0][-1]
             t = np.insert(t, 0, cf.iloc[Ilast][time])
             v = np.insert(v, 0, cf.iloc[Ilast][field])
             

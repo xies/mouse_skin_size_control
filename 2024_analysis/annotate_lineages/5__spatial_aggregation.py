@@ -104,18 +104,15 @@ label_transfers = pd.concat(label_transfers)
 label_transfers = label_transfers.set_index(['Frame','NucID'])
 
 # Input manually NucID is indexed
-label_transfers.loc[(0,217),'adjID'] = 334
 label_transfers.loc[(1,361),'adjID'] = 335
-label_transfers.loc[(1,441),'adjID'] = 263
-label_transfers.loc[(1,448),'adjID'] = 358
-label_transfers.loc[(2,109),'adjID'] = 358
-label_transfers.loc[(2,318),'adjID'] = 243
+label_transfers.loc[(2,2119),'adjID'] = 354
+label_transfers.loc[(2,2119),'adjID'] = 394
 label_transfers.loc[(4,776),'adjID'] = 132
 label_transfers.loc[(4,916),'adjID'] = 139
 label_transfers.loc[(4,1106),'adjID'] = 8
 label_transfers.loc[(5,834),'adjID'] = 262
-label_transfers.loc[(5,3285),'adjID'] = 107
 label_transfers.loc[(5,845),'adjID'] = 367
+label_transfers.loc[(5,3285),'adjID'] = 107
 label_transfers.loc[(6,769),'adjID'] = 367
 label_transfers.loc[(6,1131),'adjID'] = 225
 label_transfers.loc[(7,602),'adjID'] = 376
@@ -126,12 +123,12 @@ label_transfers.loc[(8,666),'adjID'] = 319
 label_transfers.loc[(8,814),'adjID'] = 316
 label_transfers.loc[(10,651),'adjID'] = 286
 label_transfers.loc[(11,614),'adjID'] = 364
-label_transfers.loc[(11,636),'adjID'] = 378
+# label_transfers.loc[(11,636),'adjID'] = 378
 label_transfers.loc[(12,742),'adjID'] = 355
-label_transfers.loc[(14,835),'adjID'] = 197
+label_transfers.loc[(12,791),'adjID'] = 356
 label_transfers.loc[(12,992),'adjID'] = 377
-label_transfers.loc[(12,791),'adjID'] = 356
-label_transfers.loc[(12,791),'adjID'] = 356
+label_transfers.loc[(14,927),'adjID'] = 373
+label_transfers.loc[(14,835),'adjID'] = 197
 
 # Detect NucID that has no AdjID (unmapped)
 print( ' --- Missing from basal adj graph ---')
@@ -145,13 +142,14 @@ label_transfers = label_transfers.set_index(['Frame','NucID'])
 
 # Detect missing AdjID 
 missingIDs = []
-print( ' --- Missing from label transfers ---')
+print( ' --- Missing: AdjIDs without NucID ---')
 for t in range(15):
     missingIDs.append( list(set(list(adjDicts[t].keys())) - 
                             set(label_transfers.xs(t,level='Frame')['adjID'].values)) )
 print( missingIDs )
 
-label_transfers = label_transfers.reset_index().set_index(['Frame','adjID']).astype(int)
+label_transfers = label_transfers.reset_index().set_index(['Frame','adjID'])
+label_transfers['TrackID'] = label_transfers['TrackID'].astype(int)
 
 # Go through the AdjDict and swap adjID for trackID
 # Drop the missing adjIDs
@@ -189,23 +187,29 @@ tifffile.imwrite(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connect
 from collections.abc import Callable
 def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
                        df = pd.DataFrame, fields2aggregate=list[str]):
-    df_aggregated = pd.DataFrame()
+    
+    df_aggregated = pd.DataFrame(
+        columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
+        index=df.index)
 
-    for agg_name in aggregators.keys():
-        for field in fields2aggregate:
-            df_aggregated[f'{agg_name} adjac {field}'] = np.nan
-            
+    # for agg_name in aggregators.keys():
+    #     for field in fields2aggregate:
+    #         df_aggregated[f'{agg_name} adjac {field}'] = np.nan
+        
     for centerID,neighborIDs in adj.items():
         neighbors = df.loc[neighborIDs]
         if len(neighbors) > 0:
             for agg_name, agg_func in aggregators.items():
                 for field in fields2aggregate:
-                    df_aggregated.loc[ (centerID,f'{agg_name} adjac {field}') ] = \
-                        agg_func(neighbors[field].values)
-                        
+                    if not np.all(np.isnan(neighbors[field].values)):
+                        df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                            agg_func(neighbors[field].values)
+    
     df_aggregated.index.name = 'TrackID'
     
     return df_aggregated.reset_index()
+
+all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 
 aggregators = {'Mean':np.nanmean,
                'Median':np.nanmedian,
@@ -213,9 +217,12 @@ aggregators = {'Mean':np.nanmean,
                'Min':np.nanmin,
                'Std':np.nanstd}
 
-#@todo: load list of fields
-fields2aggregate = ['Nuclear volume','Height to BM','Cell volume','Basal area','Apical area']
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics.csv'),index_col=['Frame','TrackID'])
+# fields2aggregate = ['Nuclear volume','Height to BM','Cell volume','Basal area','Apical area',
+#                     'Collagen coherence','Collagen intensity',
+#                     'Basal alignment','Height']
+
+# Aggregate every non-metadata field
+fields2aggregate = all_df.xs('Measurement',axis=1,level=1).columns
 
 aggregated_fields = []
 for t in tqdm(range(15)):
@@ -223,34 +230,54 @@ for t in tqdm(range(15)):
     adj = adjacent_tracks[t]
     df_agg = aggregate_over_adj(adj, aggregators, all_df.xs(t,level='Frame'), fields2aggregate)
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
+    # df_agg['Mean distance to basal neighbors']
     df_agg['Frame'] = t
     aggregated_fields.append(df_agg)
     
-    
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)
 aggregated_fields = aggregated_fields.set_index(['Frame','TrackID'])
+new_cols = pd.DataFrame()
+new_cols['Name'] = aggregated_fields.columns
+new_cols['Metadata'] = 'Measurement'
+aggregated_fields.columns = pd.MultiIndex.from_frame(new_cols)
+
 all_df = all_df.join(aggregated_fields)
 
-all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.csv'))
+all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
 #%% Lookbacks
 
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.csv'),
-                     index_col=['Frame','TrackID']).sort_index()
+all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 
 from functools import reduce
 
-tracks = [t for _,t in all_df.groupby('TrackID')]
+tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
+
 def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_lookback:str=1):
     df_lookback = []
 
-    for track in tracks:
+    for _,track in tqdm(tracks.items()):
         _track = pd.DataFrame(index=track.index,
                               columns = [f'{field} at {num_frames_lookback} frame prior' 
                                          for field in fields2lookback])
         for field in fields2lookback:
             v = track[field].values
-            v = np.insert(v,0,np.nan)
+            if track.iloc[0]['Born','Meta']:            
+                # If the cell was born, then go and grab the mother cell's division frame for iloc[0]
+                motherID = int(track.iloc[0]['Mother'])
+                assert(not np.isnan(motherID))
+                mother_div_frame = int(track.reset_index().iloc[0]['Frame'] - 1)
+                # Check that this frame exists in mother dataframe
+                if mother_div_frame in tracks[motherID].index:
+                    mother_value = tracks[motherID].loc[mother_div_frame,motherID][field].values
+                else:
+                    mother_value = np.nan
+                v = np.insert(v,0,mother_value)
+                
+            else:
+                # Pad with nan otherwise
+                v = np.insert(v,0,np.nan)
+                
             v = v[:len(v)-1]
             
             _track[f'{field} at {num_frames_lookback} frame prior'] = v
@@ -260,13 +287,20 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
     return pd.concat(df_lookback)
 
 # Grab all fields that has match
-fields2lookback = set(reduce(list.__add__, [all_df.columns[all_df.columns.str.contains(query)].tolist()
-    for query in ['Nuclear volume','Height to BM','adjac']] ))
+measurement_fields = all_df.xs('Measurement',axis=1,level=1).columns
+fields2lookback = set(reduce(list.__add__, [measurement_fields[measurement_fields.str.contains(query)].tolist()
+    for query in ['Nuclear volume','Height to BM','adjac','Cell volume','Num basal neighbors']] ))
 
 df_lookback = lookback(tracks,fields2lookback)
+
+new_cols = pd.DataFrame()
+new_cols['Name'] = df_lookback.columns
+new_cols['Metadata'] = 'Measurement'
+df_lookback.columns = pd.MultiIndex.from_frame(new_cols)
+
 all_df = all_df.join(df_lookback)
 
-all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.csv'))
+all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 
 
 

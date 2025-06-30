@@ -125,8 +125,6 @@ tifffile.imwrite(path.join(dirname,'Mastodon/tracked_cyto.tif'),tracked_cyto
 
 #%% Put back in all the basal nuc segs that don't have tracks
 
-from imageUtils import most_likely_label
-
 maxID = tracks[-1].TrackID.iloc[0]
 for t in range(15):
     

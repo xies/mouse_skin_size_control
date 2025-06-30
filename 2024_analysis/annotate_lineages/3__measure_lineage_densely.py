@@ -8,16 +8,14 @@ Created on Fri Apr 18 16:48:47 2025
 
 # Core libraries
 import numpy as np
-from skimage import io, measure, draw, util, morphology, transform, img_as_bool
-from scipy.spatial import distance, Voronoi, Delaunay
+from skimage import io, measure, draw, util, morphology, exposure
+from scipy.spatial import Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sb
-from aicsshparam import shtools
 
 # Specific utils
-from imageUtils import draw_labels_on_image, draw_adjmat_on_image, \
-    most_likely_label, colorize_segmentation
+from imageUtils import draw_labels_on_image, colorize_segmentation
 from trimesh import Trimesh
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
@@ -26,7 +24,6 @@ import pyvista as pv
 # General utils
 from tqdm import tqdm
 from os import path,makedirs
-from basicUtils import nonans
 import pickle as pkl
 
 dt = 12 #hrs
@@ -57,7 +54,7 @@ all_df = []
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 manual = pd.concat(tracks,ignore_index=True)
-manual['Frame'] = manual['Frame'].astype(float)
+manual['Frame'] = manual['Frame'].astype(float).astype(int)
 manual = manual.set_index(['Frame','TrackID'])
 manual = manual.drop(columns=['ID','X','Y','Z','Border'])
 
@@ -79,17 +76,18 @@ for t in tqdm(range(15)):
     # --- 1. Voxel-based cell geometry measurements ---
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
-    df = df_nuc.join(df_cyto)
+    df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
     df['Frame'] = t
     df['Time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
     intensity_df = measure_cyto_intensity(cyto_seg,int_images)
-    df = df.join(intensity_df)
+    df = pd.merge(left=df,right=intensity_df,left_on='TrackID',right_on='TrackID',how='left')
     
     # ----- 3. Use flattened 3d cortical segmentation and measure geometry and collagen
     # from cell-centric coordinates ----
     f = path.join(dirname,f'Image flattening/flat_tracked_cyto/t{t}.tif')
     flat_cyto = io.imread(f)
+    collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_z_shift_2/t{t}.tif'))[...,2]
     # Load the structuring matrix elements for collagen
     f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
     [Gx,Gy] = np.load(f)
@@ -98,8 +96,9 @@ for t in tqdm(range(15)):
     Jyy = Gy*Gy
     
     df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
-        flat_cyto, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
-    df = df.join(df_flat)
+        flat_cyto, collagen_image, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
+    df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
+    
     
     if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
         makedirs(path.join(dirname,'Image flattening/basal_masks'))
@@ -139,12 +138,14 @@ for t in tqdm(range(15)):
     df['Border'] = False
     df.loc[ border_nuclei, 'Border'] = True
     
-    #----- 3D cell mesh for geometry -----
+    #----- Cell coordinates mesh for geometry -----
     # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
     Z,Y,X = dense_coords_3d_um.T
-    mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
-    mean_curve_coords = discrete_mean_curvature_measure(mesh, mesh.vertices, 5)/sphere_ball_intersection(1, 5)
-    gaussian_curve_coords = discrete_gaussian_curvature_measure(mesh, mesh.vertices, 5)/sphere_ball_intersection(1, 5)
+    cell_coords_mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
+    mean_curve_coords = -discrete_mean_curvature_measure(
+        cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
+    gaussian_curve_coords = -discrete_gaussian_curvature_measure(
+        cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
     df['Mean curvature - cell coords'] = mean_curve_coords
     df['Gaussian curvature - cell coords'] = gaussian_curve_coords
     
@@ -179,11 +180,11 @@ for t in tqdm(range(15)):
     df['Mean curvature'] = mean_curve
     df['Gaussian curvature'] = gaussian_curve
     
-    
-    #----- 6. Use manual 3D topology to compute neighborhoods lei-----
+    #----- 6. Use manual 3D topology to compute neighborhoods lengths -----
     # Load the actual neighborhood topology
-    # A = np.load(path.join(dirname,f'Image flattening/flat_adj/adjmat_t{t}.npy'))
+    # A = np.load(path.join(dirname,f'Image flatteniowng/flat_adj_dict/adjdict_t{t}.npy'),allow_pickle=True).item()
     # D = distance.squareform(distance.pdist(dense_coords_3d_um))
+    
     
     # --- 2. 3D shape decomposition ---
     
@@ -191,12 +192,11 @@ for t in tqdm(range(15)):
     sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])
     sh_coefficients = sh_coefficients.set_index('TrackID')
     sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
-    df = df.join(sh_coefficients)
+    df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
     sh_coefficients = estimate_sh_coefficients(nuc_seg, LMAX, spacing = [dz,dx,dx])
     sh_coefficients = sh_coefficients.set_index('TrackID')
     sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
-    df = df.join(sh_coefficients)
-    
+    df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
     
     #----- Use macrophage annotations to find distance to them -----
     #NB: the macrophage coords are in um
@@ -211,7 +211,7 @@ for t in tqdm(range(15)):
 
     # Merge with manual annotations
     df = df.reset_index()
-    df.set_index(['Frame','TrackID'])
+    # df = df.set_index(['Frame','TrackID'])
     
     # Save the DF
     all_df.append(df)
@@ -223,8 +223,24 @@ for t in tqdm(range(15)):
     
 all_df = pd.concat(all_df,ignore_index=False)
 all_df = all_df.set_index(['Frame','TrackID'])
-all_df = all_df.join(manual)
+all_df = pd.merge(all_df,manual,left_on=['Frame','TrackID'],right_on=['Frame','TrackID'],how='left')
+
+# Sanitize field dtypes that are NaN from the merge with manual
+all_df['Cell type'] = all_df['Cell type'].astype(str)
+all_df['Terminus'] = (all_df['Terminus'].astype(float) == 1)
+all_df['Cutoff'] = (all_df['Cutoff'].astype(float) == 1)
+all_df['Reviewed'] = (all_df['Reviewed'].astype(float) == 1)
+all_df['Complete cycle'] = (all_df['Complete cycle'].astype(float) == 1)
+
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+
+#%% Find missing cyto segs
+
+non_border_basals = all_df[(all_df['Cell type'] =='Basal') & (~all_df['Border'])]
+non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
+missing_cytos = non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
+
+print(missing_cytos[:50])
 
 #%% Dimensionality reduce the SPH coefficients
 
@@ -263,6 +279,43 @@ all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 # pl.show()
 
 # pl.save_graphic(path.join(dirname,f'shape_mode_analysis/nuc_modes/comp_{comp}.pdf'))
+
+
+#%% Colorize cell with measurement for visualization
+
+t = 0
+
+measurement = all_df.loc[t,:]['Mean curvature - cell coords']
+measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+colorized = colorize_segmentation(tracked_nuc[t,...],
+                      measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/cell_coords.tif',
+          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+
+
+measurement = all_df.loc[t,:]['Mean curvature']
+measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+colorized = colorize_segmentation(tracked_nuc[t,...],
+                      measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/bm.tif',
+          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+
+
+measurement = all_df.loc[t,:]['Collagen intensity']
+measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+colorized = colorize_segmentation(tracked_nuc[t,...],
+                      measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/collagen_intensity.tif',
+          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+
+
+measurement = all_df.loc[t,:]['Collagen coherence']
+measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+colorized = colorize_segmentation(tracked_nuc[t,...],
+                      measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/collagen_coherence.tif',
+          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+
 
 
 
