@@ -27,8 +27,8 @@ def sort_by_timestamp(filename):
 
 #%% Load a heightmap and flatten the given z-stack
 
-TOP_OFFSET = 25
-BOTTOM_OFFSET = -15
+TOP_OFFSET = -30 #NB: top -> more apical but lower z-index
+BOTTOM_OFFSET = 10
 
 # filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual/t*cleaned.tif')))
 # T = len(filenames)
@@ -50,19 +50,19 @@ for t in tqdm(range(T)):
     
     output_dir = path.join(dirname,'Image flattening/flat_tracked_cyto')
     
-    flat = np.zeros((TOP_OFFSET-BOTTOM_OFFSET,XX,XX))
+    flat = np.zeros((-TOP_OFFSET+BOTTOM_OFFSET,XX,XX))
     Iz_top = heightmap + TOP_OFFSET
     Iz_bottom = heightmap + BOTTOM_OFFSET
     
     for x in range(XX):
         for y in range(XX):
             
-            flat_indices = np.arange(0,TOP_OFFSET-BOTTOM_OFFSET)
-                
-            z_coords = np.arange(Iz_bottom[y,x],Iz_top[y,x])
+            flat_indices = np.arange(0,-TOP_OFFSET+BOTTOM_OFFSET)
+            
+            z_coords = np.arange(Iz_top[y,x],Iz_bottom[y,x])
             # sanitize for out-of-bounds
-            # z_coords[z_coords < 0] = 0
-            # z_coords[z_coords >= Z] = Z-1
+            z_coords[z_coords < 0] = 0
+            z_coords[z_coords >= Z] = Z-1
             I = (z_coords > 0) & (z_coords < Z)
             
             flat[flat_indices[I],y,x] = im[z_coords[I],y,x]

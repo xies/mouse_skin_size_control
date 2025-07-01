@@ -10,13 +10,14 @@ Optimized for Mesa et al organization
 
 import numpy as np
 import pandas as pd
-from skimage import io, util
+from skimage import io, util, measure
 from os import path
 from glob import glob
 from natsort import natsorted
 
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
+from scipy import interpolate
 
 #%%
 
@@ -31,8 +32,20 @@ SIGN = -1
 
 #%%
 
-XY_sigma = 15
-Z_sigma = 5
+def make_image_from_heightmap(heightmap,maxZ):
+    # Reconstruct flattened movie
+    heightmap[heightmap >=maxZ] = maxZ-1
+    YY,XX = heightmap.shape
+    # Iz[Iz >= ZZ] = ZZ-1
+    # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
+    height_image = np.zeros((maxZ,YY,XX),dtype=np.uint16)
+    for x in range(XX):
+        for y in range(XX):
+            height_image[heightmap[y,x],y,x] = 1
+    return height_image
+
+XY_sigma = 8
+Z_sigma = 2
 
 # Z-range in which to consider the max np.diff
 TOP_Z_BOUND = 30
@@ -42,11 +55,8 @@ z_shift = 15
 
 OVERWRITE = True
 
-# for t,f in tqdm(enumerate(filenames)):
+for t in tqdm(range(15)):
 
-    # if t < 3:
-for t in range(15):
-        # continue
     # f = filenames[t]
     # im = io.imread(f)
     im = imstack[t,...]
@@ -67,25 +77,27 @@ for t in range(15):
     _tmp[np.isnan(_tmp)] = 0
     _tmp_diff = SIGN * np.diff(_tmp,axis=0)
     heightmap = _tmp_diff[TOP_Z_BOUND:BOTTOM_Z_BOUND].argmax(axis=0) + z_shift
-    # heightmap[heightmap > BOTTOM_Z_BOUND] = BOTTOM_Z_BOUND
-    # heightmap[heightmap < TOP_Z_BOUND] = TOP_Z_BOUND
-    
-    # Reconstruct flattened movie
     Iz = np.round(heightmap + z_shift).astype(int)
     Iz[Iz >= ZZ] = ZZ-1
+    height_image = make_image_from_heightmap(Iz,ZZ)
     
-    # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
-    flat = np.zeros((XX,XX))
-    height_image = np.zeros_like(im)
-    for x in range(XX):
-        for y in range(XX):
-            flat[y,x] = im[Iz[y,x],y,x]
-            height_image[Iz[y,x],y,x] = 1
-            
+    # Find the single connected region with the largest area, from which to 
+    # reconstruct the basal surface
+    L = measure.label(height_image,connectivity=2)
+    df = pd.DataFrame(measure.regionprops_table(L,properties=['label','area'])).sort_values('area')
+    surf_region = df.iloc[-1]['label']
+    # interpolate the 'missing' regions
+    Z,Y,X = np.where(L == surf_region)
+    grid_y,grid_x = np.meshgrid(range(YY),range(XX))
+    fixed_heightmap = np.round(interpolate.griddata(np.array([Y,X]).T,Z,(grid_y,grid_x), method='linear')).astype(int).T
+    # Remake the height image
+    height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
+    
     io.imsave(path.join(dirname,f'Image flattening/xyz_blur/t{t}.tif'), util.img_as_int(im_z_blur),check_contrast=False)
-    io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), heightmap.astype(np.uint16),check_contrast=False)
-    # io.imsave(path.join(dirname,f'Image flattening/flat_z_shift_{z_shift}/t{t}.tif'), flat.astype(np.uint16),check_contrast=False)
+    io.imsave(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'), fixed_heightmap.astype(np.uint16),check_contrast=False)
     io.imsave(path.join(dirname,f'Image flattening/height_image/t{t}.tif'), height_image.astype(np.uint16),check_contrast=False)
+    
+    # io.imsave(f'/Users/xies/Desktop/t{t}.tif',height_image.astype(np.uint16),check_contrast=False)
     
     # pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
     #           'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
