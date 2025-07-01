@@ -8,7 +8,7 @@ Created on Fri Apr 18 16:48:47 2025
 
 # Core libraries
 import numpy as np
-from skimage import io, measure, draw, util, morphology, exposure
+from skimage import io, util, morphology, exposure
 from scipy.spatial import Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
@@ -42,7 +42,8 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 
 from measurements import measure_nuclear_geometry_from_regionprops, \
         measure_cyto_geometry_from_regionprops, measure_cyto_intensity, measure_flat_cyto_from_regionprops, \
-        estimate_sh_coefficients, find_distance_to_closest_point
+        estimate_sh_coefficients, find_distance_to_closest_point, \
+        measure_collagen_structure
 
 SAVE = True
 VISUALIZE = False
@@ -87,18 +88,14 @@ for t in tqdm(range(15)):
     # from cell-centric coordinates ----
     f = path.join(dirname,f'Image flattening/flat_tracked_cyto/t{t}.tif')
     flat_cyto = io.imread(f)
-    collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_z_shift_2/t{t}.tif'))[...,2]
-    # Load the structuring matrix elements for collagen
-    f = path.join(dirname,f'Image flattening/collagen_orientation/t{t}.npy')
-    [Gx,Gy] = np.load(f)
-    Jxx = Gx*Gx
-    Jxy = Gx*Gy
-    Jyy = Gy*Gy
+    
+    # Calculate collagen structuring matrix
+    collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_collagen/t{t}.tif'))
+    (Jxx,Jxy,Jyy) = measure_collagen_structure(collagen_image,blur_sigma=3)
     
     df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
         flat_cyto, collagen_image, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
     df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
-    
     
     if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
         makedirs(path.join(dirname,'Image flattening/basal_masks'))

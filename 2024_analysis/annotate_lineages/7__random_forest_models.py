@@ -25,6 +25,22 @@ all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_a
 all_df = all_df.drop_duplicates().sort_index()
 all_tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID')}
 
+#%%
+
+def get_balanced_df_by_category(df,logical):
+    assert(logical.dtype == bool)
+    
+    trues = df[logical]
+    falses = df[~logical]
+    if len(trues) > len(falses):
+        output = pd.concat((df[~logical], df[logical].sample(len(falses))),ignore_index=True)
+    elif len(trues) < len(falses):
+        output = pd.concat((df[logical], df[~logical].sample(len(trues))),ignore_index=True)
+    else:
+        output = df
+        
+    return output
+
 #%% Filter + separate the bookkeeping columns
 
 df = all_df[all_df['Fate known','Meta']]
@@ -50,23 +66,7 @@ features =features.set_index('name')
 features['Num NA'] = measurements.isna().sum(axis=0)
 # features = features.drop(features.loc[features.index.str.startswith('cyto_')].index)
 
-#%%
-
-def get_balanced_df_by_category(df,logical):
-    assert(logical.dtype == bool)
-    
-    trues = df[logical]
-    falses = df[~logical]
-    if len(trues) > len(falses):
-        output = pd.concat((df[~logical], df[logical].sample(len(falses))),ignore_index=True)
-    elif len(trues) < len(falses):
-        output = pd.concat((df[logical], df[~logical].sample(len(trues))),ignore_index=True)
-    else:
-        output = df
-        
-    return output
-
-#%% Categorize cell from birth frame
+#% Categorize cell from birth frame
 
 Niter = 100
 birth = df[df['Birth frame','Meta']]
@@ -96,7 +96,7 @@ print(importances.mean().sort_values().tail(20))
 
 #%% Categorize cell from mother division frame
 
-Niter = 100
+Niter = 25
 
 df = all_df[all_df['Fate known','Meta']]
 df = df[ ~df['Border','Meta']]
@@ -125,7 +125,7 @@ for i in tqdm(range(Niter)):
     y = _tmp['At least one differentiated daughter'] > 0
     X = preprocessing.scale(_tmp.drop(columns='At least one differentiated daughter'))
     
-    X_train,X_test,y_train,y_test = model_selection.train_test_split(X,y)all_df[]
+    X_train,X_test,y_train,y_test = model_selection.train_test_split(X,y)
     
     forest = ensemble.RandomForestClassifier().fit(X_train,y_train)
     

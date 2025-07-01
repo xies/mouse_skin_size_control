@@ -7,16 +7,16 @@ Created on Thu May  8 22:51:08 2025
 """
 
 import numpy as np
-from skimage import measure, img_as_bool, transform
+from skimage import measure, img_as_bool, transform, util, filters, exposure
 import pandas as pd
 from functools import reduce
 
 from mathUtils import get_neighbor_idx, parse_3D_inertial_tensor, argsort_counter_clockwise
 # 3D mesh stuff
 from aicsshparam import shtools, shparam
-from trimesh import Trimesh
-from trimesh.curvature import discrete_gaussian_curvature_measure, \
-    discrete_mean_curvature_measure, sphere_ball_intersection
+# from trimesh import Trimesh
+# from trimesh.curvature import discrete_gaussian_curvature_measure, \
+#     discrete_mean_curvature_measure, sphere_ball_intersection
 import pyvista as pv
 
 # from toeplitzDifference import backward_difference, forward_difference, central_difference
@@ -261,10 +261,28 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
         df.at[i,'Basal alignment'] = np.abs(np.cos(theta - basal_orientation))
         
         # Also include collagen intensity
+        # Normalize collagen
+        collagen_image = exposure.equalize_hist(collagen_image)
         df.at[i,'Collagen intensity'] = np.mean(collagen_image[basal_mask])
         
     return df,basal_masks_2save
 
+def measure_collagen_structure(collagen_image,blur_sigma=3):
+    
+    #https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0131814#acks
+    
+    im = util.img_as_float(collagen_image)
+    
+    im_blur = filters.gaussian(im,blur_sigma)
+    Gx = filters.sobel_h(im_blur)
+    Gy = filters.sobel_v(im_blur)
+    
+    Jxx = Gx*Gx
+    Jxy = Gx*Gy
+    Jyy = Gy*Gy
+    
+    return (Jxx,Jxy,Jyy)
+    
 
 def detect_missing_frame_and_fill(cf):
     
