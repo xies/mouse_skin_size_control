@@ -8,7 +8,7 @@ Created on Wed Aug 31 12:30:54 2022
 
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
-from skimage import draw, filters, measure
+from skimage import draw, filters, measure, exposure
 
 
 def fill_in_cube(img,coordinates,label,size=5):
@@ -127,4 +127,34 @@ def colorize_segmentation(seg,value_dict,dtype=int):
     for k,v in value_dict.items():
         colorized[seg == k] = v
     return colorized
+
+def normalize_exposure_by_axis(im_stack:np.array, axis:int=0):
+    '''
+    Uses histogram normalization to re-normalize the intensity of an image stack
+    along the given axis. Image stack has to be >3D.
+
+    Parameters
+    ----------
+    im_stack : np.array
+        input >3D image stack.
+    axis : int, optional
+        axis of normalization. The default is 0.
+
+    Returns
+    -------
+    normalized_stack : np.array
+
+    '''
+    
+    assert(im_stack.ndim > 2)
+    # Move the axis to the 0th
+    im_stack = np.moveaxis(im_stack,axis,0)
+    
+    normalized_stack = np.zeros_like(im_stack)
+    for i,im in im_stack:
+        normalized_stack[i,...] = exposure.equalize_hist(im)
+    
+    normalized_stack = np.moveaxis(normalized_stack,0,axis)
+    return normalized_stack
+    
 

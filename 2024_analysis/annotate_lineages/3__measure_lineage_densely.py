@@ -15,7 +15,7 @@ import matplotlib.pylab as plt
 import seaborn as sb
 
 # Specific utils
-from imageUtils import draw_labels_on_image, colorize_segmentation
+from imageUtils import draw_labels_on_image, colorize_segmentation, normalize_exposure_by_axis
 from trimesh import Trimesh
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
@@ -65,7 +65,9 @@ tracked_cyto = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
 
 # Load channels
 h2b = io.imread(path.join(dirname,'Cropped_images/B.tif'))
+h2b = normalize_exposure_by_axis(h2b,axis=0)
 fucci_g1 = io.imread(path.join(dirname,'Cropped_images/R.tif'))
+fucci_g1 = normalize_exposure_by_axis(fucci_g1,axis=0)
 
 for t in tqdm(range(15)):
     

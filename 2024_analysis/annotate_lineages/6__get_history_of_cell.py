@@ -133,6 +133,7 @@ for trackID,cf in tqdm(tracks.items()):
                 continue
             
             if (all_df.loc[t-1,trackID2look]['Cell type','Meta'] == 'Basal'):
+                
                 prev_neighbors = adjacent_tracks[t-1][trackID2look]
                 prev_neighbors = all_df.loc[list(zip([t-1]*len(prev_neighbors),prev_neighbors))]
                 num_prev_neighbor_divided = prev_neighbors['Divide next frame','Meta'].sum()
@@ -163,9 +164,9 @@ for trackID,cf in tqdm(tracks.items()):
 
 tracks = pd.concat(tracks,ignore_index=True).set_index(['Frame','TrackID']).drop_duplicates()
 Idaughter_fate_known = ~np.isnan(tracks['Num daughter differentiated','Meta'])
-tracks.loc[Idaughter_fate_known,('At least one differentiated daughter','Meta')] = \
+tracks.loc[Idaughter_fate_known,('At least one daughter differentiated','Meta')] = \
     tracks.loc[Idaughter_fate_known,('Num daughter differentiated','Meta')] > 0
-tracks.loc[Idaughter_fate_known,('Both differentiated daughters','Meta')] = \
+tracks.loc[Idaughter_fate_known,('Both daughters differentiated','Meta')] = \
     tracks.loc[Idaughter_fate_known,('Num daughter differentiated','Meta')] == 2
 
 #%% Save to pickle

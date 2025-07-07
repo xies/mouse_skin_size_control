@@ -313,27 +313,27 @@ def detect_missing_frame_and_fill(cf):
 
 def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
 
-    cell_types = cf['Cell type'].unique()
+    # cell_types = cf['Cell type'].unique()
         
-    for celltype in cell_types:
-        I = cf['Cell type'] == celltype
-        I = I & ~cf[field].isna() & ~cf['Border']
+    # for celltype in cell_types:
+    # I = cf['Cell type'] == celltype
+    I = ~cf[field].isna() & ~cf['Border'] & ~(cf['Cell cycle phase'] == 'Mitosis')
+    
+    this_type = cf.loc[I]
+    if len(this_type) < 4:
+        yhat = this_type[field].values
+        dydt = np.ones(len(this_type)) * np.nan        
+    else:
+        t = np.array(range(0,len(this_type))) * 12
+        v = this_type[field].values
+        # Spline smooth
+        spl = UnivariateSpline(t, v, k=2, s=smoothing_factor)
+        yhat = spl(t)
+        dydt = spl.derivative(n=1)(t)
         
-        this_type = cf.loc[I]
-        if len(this_type) < 4:
-            yhat = this_type[field].values
-            dydt = np.ones(len(this_type)) * np.nan        
-        else:
-            t = np.array(range(0,len(this_type))) * 12
-            v = this_type[field].values
-            # Spline smooth
-            spl = UnivariateSpline(t, v, k=2, s=smoothing_factor)
-            yhat = spl(t)
-            dydt = spl.derivative(n=1)(t)
-            
-        cf.loc[I,f'{field} smoothed'] = yhat
-        cf.loc[I,f'{field} smoothed growth rate'] = dydt
-
+    cf.loc[I,f'{field} smoothed'] = yhat
+    cf.loc[I,f'{field} smoothed growth rate'] = dydt
+    
     return cf
 
 # def get_instantaneous_growth_rate(cf,field='Cell volume',time_field='Time'):
@@ -406,18 +406,22 @@ def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
     cell_types = cf['Cell type'].astype(str).unique()
     for celltype in cell_types:
         I = cf['Cell type'] == celltype
-        I = I & ~cf[field].isna() & ~cf['Border']
+        I = I & ~cf[field].isna() & ~cf['Border'] & ~(cf['Cell cycle phase'] == 'Mitosis')
+        
+        # if np.any(cf['Cell cycle phase'] == 'Mitosis'):
+        #     mitotic_idx = cf[cf['Cell cycle phase'] == 'Mitosis'].iloc[0].index
+        # else:
+        #     mitotic_idx = None
         
         if len(cf.loc[I]) < 4:
             cf.loc[I,f'{field} exponential growth rate'] = np.nan
         else:
-            
             t = cf.loc[I][time_field].values
             y = cf.loc[I][field].values
             
             try:
                 p,_ = curve_fit(exp_model,t,y,p0=[y[0],1],
-                                     bounds = [ [0,0],
+                                     bounds = [ [0,-np.inf],
                                        [y.max(),np.inf]])
                 V0,gamma = p
                 cf.loc[I,f'{field} exponential growth rate'] = gamma
@@ -426,9 +430,34 @@ def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
     
     return cf
 
+def get_prev_or_next_frame(df,this_frame,direction='next'):
+    
+    if direction == 'next':
+        increment = +1
+    if direction == 'prev':
+        increment = -1
+    
+    assert(type(this_frame) == pd.Series)
+    df = df.reset_index().set_index(['TrackID','Frame'])
+    track = df.loc[this_frame.name,:].reset_index()
+    if this_frame['Frame',''] + increment in track['Frame'].values:
+        retrieved_frame = track.set_index('Frame').loc[this_frame['Frame',''] + increment]
+        return retrieved_frame
+    else:
+        return None
 
-def plot_track(cf,field=('Nuclear volume','Measurement'),
-               time=('Time','Measurement'),
+def map_tzyx_to_labels(coords, tracks:np.array ):
+    
+    coords['label'] = np.nan
+    assert(tracks.ndim == 4)
+    for idx,row in coords.iterrows():
+        T,Z,Y,X = row[['T','Z','Y','X']].astype(int)
+        label = tracks[T,Z,Y,X]
+        coords.loc[idx,'label'] = label
+    return coords
+
+def plot_track(cf,y=('Nuclear volume','Measurement'),
+               x=('Time','Measurement'),
                celltypefield=('Cell type','Meta'),
                linestyle: dict={'Basal':'-','Suprabasal':'--'},
                color='b',alpha=1):
@@ -447,14 +476,14 @@ def plot_track(cf,field=('Nuclear volume','Measurement'),
             label = None
             
         I = cf[celltypefield] == celltype
-        t = cf.loc[I,time].values
-        v = cf.loc[I,field].values
+        t = cf.loc[I,x].values
+        v = cf.loc[I,y].values
 
         if prev_type is not None:
             #grab last time point and connect
             Ilast = np.where(cf[celltypefield] == prev_type)[0][-1]
-            t = np.insert(t, 0, cf.iloc[Ilast][time])
-            v = np.insert(v, 0, cf.iloc[Ilast][field])
+            t = np.insert(t, 0, cf.iloc[Ilast][x])
+            v = np.insert(v, 0, cf.iloc[Ilast][y])
             
         plt.plot(t,v,linestyle=linestyle[celltype],alpha=alpha,
                  label=label, color=color)

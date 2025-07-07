@@ -59,7 +59,6 @@ filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg_supra/3d_cyto_supra_ra
 cyto_supra = np.stack( list(map(io.imread,filenames) ) )
 
 #% Track Mastodon onto segmentation
-
 tracked_nuc = np.zeros_like(basal_segs)
 tracked_cyto = np.zeros_like(cyto_segs)
 

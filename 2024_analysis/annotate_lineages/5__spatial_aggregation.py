@@ -123,7 +123,6 @@ label_transfers.loc[(8,666),'adjID'] = 319
 label_transfers.loc[(8,814),'adjID'] = 316
 label_transfers.loc[(10,651),'adjID'] = 286
 label_transfers.loc[(11,614),'adjID'] = 364
-# label_transfers.loc[(11,636),'adjID'] = 378
 label_transfers.loc[(12,742),'adjID'] = 355
 label_transfers.loc[(12,791),'adjID'] = 356
 label_transfers.loc[(12,992),'adjID'] = 377
@@ -201,7 +200,11 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
         if len(neighbors) > 0:
             for agg_name, agg_func in aggregators.items():
                 for field in fields2aggregate:
-                    if not np.all(np.isnan(neighbors[field].values)):
+                    if neighbors[field].values.dtype == float:
+                        if not np.all(np.isnan(neighbors[field].values)):
+                            df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                                agg_func(neighbors[field].values)
+                    else:
                         df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
                             agg_func(neighbors[field].values)
     
@@ -211,15 +214,20 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 
+def frac_sphase(v):
+    has_cell_cycle = v[v != 'NA']
+    if len(has_cell_cycle) > 0:
+        frac = (has_cell_cycle == 'SG2').sum() / len(has_cell_cycle)
+    else:
+        frac = np.nan
+    return frac
+    
+
 aggregators = {'Mean':np.nanmean,
                'Median':np.nanmedian,
                'Max':np.nanmax,
                'Min':np.nanmin,
                'Std':np.nanstd}
-
-# fields2aggregate = ['Nuclear volume','Height to BM','Cell volume','Basal area','Apical area',
-#                     'Collagen coherence','Collagen intensity',
-#                     'Basal alignment','Height']
 
 # Aggregate every non-metadata field
 fields2aggregate = all_df.xs('Measurement',axis=1,level=1).columns
@@ -228,9 +236,15 @@ aggregated_fields = []
 for t in tqdm(range(15)):
     
     adj = adjacent_tracks[t]
+
     df_agg = aggregate_over_adj(adj, aggregators, all_df.xs(t,level='Frame'), fields2aggregate)
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
-    # df_agg['Mean distance to basal neighbors']
+    # @todo: dist to neighbors df_agg['Mean distance to basal neighbors']
+    df_agg['Frac of neighbors in S phase'] = aggregate_over_adj(adj,
+                                                                {'Frac':frac_sphase},
+                                                                all_df.xs(t,level='Frame'),
+                                                                ['Cell cycle phase']).drop(columns='TrackID')
+    
     df_agg['Frame'] = t
     aggregated_fields.append(df_agg)
     
@@ -245,7 +259,7 @@ all_df = all_df.join(aggregated_fields)
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
-#%% Lookbacks
+ #%% Lookbacks
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 
