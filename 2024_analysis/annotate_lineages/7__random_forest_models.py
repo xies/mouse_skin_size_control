@@ -34,7 +34,7 @@ def get_balanced_df_by_category(df,category):
     categories = {cat:mem for cat, mem in df.groupby(category)}
     num_per_category = np.array([len(mem) for mem in categories.values()])
     smallest_category = list(categories.keys())[num_per_category.argmin()]
-
+    
     output = []
     for cat, member in categories.items():
         if cat == smallest_category:
@@ -54,6 +54,8 @@ df = df[ ~df['Border','Meta']]
 df = df[ df['Cell type','Meta'] == 'Basal']
 
 births = df[df['Birth frame','Meta']]
+births[('Relative basal area','Measurement')] = \
+    births['Basal area','Measurement'] / births['Mean adjac Basal area','Measurement']
 features2drop = [f for f in births.columns.get_level_values(0) if 'Time to differentiation' in f]
 # Censor height information
 features2drop = features2drop + ['Z','Mean curvature - cell coords','Z-cyto','Height to BM',

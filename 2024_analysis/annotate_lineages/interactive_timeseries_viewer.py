@@ -97,6 +97,7 @@ def cycle_active_axis(viewer):
 # Load the images
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
 
+R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
 B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
 segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
@@ -161,15 +162,16 @@ def shrink_cell(seg:Labels):
     seg.data[mask] = 0
     seg.data[exp_mask] = selected_label
 
-dx = .25
+dx = 1
 
 viewer = napari.Viewer()
+viewer.add_image(R,scale = [1,dx,dx], blending='additive', colormap='red',rendering='attenuated_mip')
 viewer.add_image(B,scale = [1,dx,dx], blending='additive', colormap='gray',rendering='attenuated_mip')
 viewer.add_image(G,scale = [1,dx,dx], blending='additive', colormap='gray',visible=False,rendering='attenuated_mip')
-viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
+# viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
 # viewer.add_labels(connectivity,scale = [1,dx,dx])
 viewer.add_labels(segmentation,scale = [1,dx,dx])
 viewer.add_tracks(tracks.values,scale = [1,dx,dx])
-viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
-viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
-viewer.window.add_dock_widget(plot_measurement, name="Plot Measurement")
+# viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
+# viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
+# viewer.window.add_dock_widget(plot_measurement, name="Plot Measurement")
