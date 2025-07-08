@@ -305,9 +305,9 @@ def construct_data_frame_dense(_tracks,_spots):
             
             # Modify those daughters's mother information
             tracks[daughterID_a]['Mother'] = trackID+1
-            tracks[daughterID_a]['Sister'] = daughterID_b
+            tracks[daughterID_a]['Sister'] = daughterID_b+1
             tracks[daughterID_b]['Mother'] = trackID+1
-            tracks[daughterID_b]['Sister'] = daughterID_a
+            tracks[daughterID_b]['Sister'] = daughterID_a+1
 
     return tracks
 
