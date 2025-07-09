@@ -13,7 +13,7 @@ from os import path
 
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -22,7 +22,7 @@ T = 15
 _tmp = []
 for t in tqdm(range(T)):
     
-    im = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}.tif'))
+    im = io.imread(path.join(dirname,f'3d_nuc_seg/cellpose_cleaned_manual/t{t}_basal.tif'))
     
     df = pd.DataFrame(measure.regionprops_table(im,properties=['label','centroid']))
     df['T'] = t

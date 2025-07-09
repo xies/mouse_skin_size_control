@@ -95,7 +95,7 @@ def cycle_active_axis(viewer):
     viewer.dims.last_used = (current_axis + 1) % viewer.dims.ndisplay
 
 # Load the images
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
 R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
 B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
