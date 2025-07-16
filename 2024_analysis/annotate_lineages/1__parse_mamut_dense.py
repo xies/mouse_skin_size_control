@@ -19,10 +19,10 @@ from mamutUtils import load_mamut_xml_densely, construct_data_frame_dense
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
 
-dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
 all_tracks = []
-_tracks, _spots = load_mamut_xml_densely(path.join(dirname,'Mastodon/W-R1.h5-mamut.xml'))
+_tracks, _spots = load_mamut_xml_densely(path.join(dirname,'Mastodon/R2-mamut.xml'))
 tracks = construct_data_frame_dense(_tracks, _spots)
 
 all_tracks.append(tracks)
@@ -30,30 +30,32 @@ all_tracks.append(tracks)
 #%% Annotations
 
 # Merge with manual tags using Spot.csv files
-spot_table = pd.read_csv(path.join(dirname,'Mastodon/W-R1.h5-Spot-Spot.csv'),
+spot_table = pd.read_csv(path.join(dirname,'Mastodon/R2-spots-Spot.csv'),
                          header=[0,1,2],index_col=0)
 
 # Only select the labels that matter:
-spot_table = spot_table.loc[:,['Suprabasal','Reviewed','ID']].convert_dtypes(float)
+spot_table = spot_table.loc[:,['Cell type','Reviewed by','ID']].convert_dtypes(float)
 spot_table.columns = spot_table.columns.droplevel(2)
 spot_table.columns = spot_table.columns.map('_'.join)
 spot_table = spot_table.rename(columns={'ID_Unnamed: 1_level_1':'ID'})
 
 # Reverse hot-1 encoding
-spot_table['Cell type'] = ''
-for col in spot_table.columns[spot_table.columns.str.startswith('Supra')]:
-    spot_table.loc[spot_table[col] == 1, 'Cell type'] = col.split('_')[1]
+spot_table['Type'] = ''
+for col in spot_table.columns[spot_table.columns.str.startswith('Cell type')]:
+    spot_table.loc[spot_table[col] == 1, 'Type'] = col.split('_')[1]
+
+spot_table = spot_table.rename(columns={'Type':'Cell type'})
 
 #%%
 
 for track in tracks:
     track['Cell type'] = 'NA'
-    track['Reviewed'] = False
+    track['Reviewed by'] = False
     
     for idx,spot in track.iterrows():
         _spot = spot_table[spot_table['ID'] == float(spot.ID)]
         track.loc[idx,'Cell type'] = _spot['Cell type'].values
-        if _spot['Reviewed_Mimi'].values == 1:
+        if _spot['Reviewed by_Mimi'].values == 1:
             track.loc[idx,'Reviewed'] = True
                 
 #%%
@@ -78,7 +80,6 @@ for track in tracks:
     # Annotate complete cell cycle
     track['Complete cycle'] = ~np.isnan(float(track.iloc[0]['Daughter a'])) \
         & ~np.isnan(float(track.iloc[0]['Mother']))
-
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'wb') as file:
     pkl.dump(tracks,file)

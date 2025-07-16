@@ -35,8 +35,8 @@ Z_SHIFT = 10
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%% 
 
@@ -85,6 +85,7 @@ for t in tqdm(range(15)):
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
     intensity_df = measure_cyto_intensity(cyto_seg,int_images)
     df = pd.merge(left=df,right=intensity_df,left_on='TrackID',right_on='TrackID',how='left')
+    df['Nuclear bbox top'] = df['Nuclear bbox top']
     
     # ----- 3. Use flattened 3d cortical segmentation and measure geometry and collagen
     # from cell-centric coordinates ----

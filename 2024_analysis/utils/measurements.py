@@ -53,9 +53,11 @@ def find_distance_to_closest_point(dense_3d_coords,annotation_coords_3d,spacing=
     return distances
 
 def measure_nuclear_geometry_from_regionprops(nuc_labels, spacing = [1,1,1]):
+    
     dz,dx,_ = spacing
     df = pd.DataFrame( measure.regionprops_table(nuc_labels,
-                                                 properties=['label','area','solidity','bbox','centroid'],
+                                                 properties=['label','area','solidity',
+                                                             'bbox','centroid'],
                                                  spacing = [dz,dx,dx],
                                                  ))
     df = df.rename(columns={
@@ -68,7 +70,10 @@ def measure_nuclear_geometry_from_regionprops(nuc_labels, spacing = [1,1,1]):
                             'centroid-1':'Y',
                             'centroid-2':'X',
                             })
+    
     df = df.set_index('TrackID')
+    df['Nuclear height'] = df['Nuclear bbox top'] - df['Nuclear bbox bottom']
+    df.drop(columns=['Nuclear bbox top','Nuclear bbox bottom'])
     
     return df
 
@@ -231,7 +236,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
         df.at[i,'Basal orientation'] = basal_orientation
         df.at[i,'Basal eccentricity'] = basal_eccentricity
         df.at[i,'Middle area'] = mid_area * dx**2
-        df.at[i,'Height'] = (Z_bottom-Z_top)*dz
+        df.at[i,'Cell height'] = (Z_bottom-Z_top)*dz
         
         basal_masks_2save[basal_mask] = i
         

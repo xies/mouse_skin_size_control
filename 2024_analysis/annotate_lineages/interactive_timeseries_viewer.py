@@ -101,17 +101,17 @@ R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
 B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
 segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
-df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
-measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
-connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
+# df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+# measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
+# connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
 
-filelist = glob(path.join(dirname,'Image flattening/height_image/t*.tif'))
-basement_mem = np.stack([io.imread(f) for f in filelist])
+# filelist = glob(path.join(dirname,'Image flattening/height_image/t*.tif'))
+# basement_mem = np.stack([io.imread(f) for f in filelist])
 
 # Load the manual tracks
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
+# all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
 # Tracks axes are: ID,T,(Z),Y,X
-tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
+# tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
 # dx = .25
 # with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
 #     tracks = pkl.load(file)
@@ -121,28 +121,28 @@ tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-p
 # # The default output is in microns -> convert
 # tracks['Y'] = tracks['Y'] / dx
 # tracks['X'] = tracks['X'] / dx
-
-@magicgui(
-    measurement2plot=dict(widget_type="Select", choices=measurement_list, label="Dataset"),
-    call_button="Plot cells",)
-def plot_measurement(seg:Labels, measurement2plot):
-    if len(measurement2plot) == 0:
-        print('Select a measurement to plot.')
-        return
-
-    trackID = seg.selected_label
-
-    this_cell = df[df['TrackID'] == trackID]
-    this_cell = this_cell.sort_values('Frame')
-
-    plt.figure(1)
-    plt.clf()
-
-    plt.plot(this_cell['Frame'],this_cell[measurement2plot], marker='o', linestyle='-', color='b')
-    plt.title(f"{measurement2plot} for TrackID {trackID}")
-    plt.xlabel('Frame')
-    plt.ylabel(measurement2plot)
-    plt.show()
+#
+# @magicgui(
+#     measurement2plot=dict(widget_type="Select", choices=measurement_list, label="Dataset"),
+#     call_button="Plot cells",)
+# def plot_measurement(seg:Labels, measurement2plot):
+#     if len(measurement2plot) == 0:
+#         print('Select a measurement to plot.')
+#         return
+#
+#     trackID = seg.selected_label
+#
+#     this_cell = df[df['TrackID'] == trackID]
+#     this_cell = this_cell.sort_values('Frame')
+#
+#     plt.figure(1)
+#     plt.clf()
+#
+#     plt.plot(this_cell['Frame'],this_cell[measurement2plot], marker='o', linestyle='-', color='b')
+#     plt.title(f"{measurement2plot} for TrackID {trackID}")
+#     plt.xlabel('Frame')
+#     plt.ylabel(measurement2plot)
+#     plt.show()
 
 from skimage import morphology
 @magicgui(call_button='Inflate by 1px')
@@ -150,8 +150,11 @@ def inflate_cell(seg:Labels):
     seg_data = seg.data
     selected_label = seg.selected_label
     mask = seg_data == selected_label
-    exp_mask = morphology.binary_dilation(mask)
-    seg.data[exp_mask] = selected_label
+    mask_new = np.zeros_like(mask)
+    for z,im in enumerate(mask):
+        mask_new[z,...] = morphology.binary_dilation(im)
+    # exp_mask = morphology.binary_dilation(mask)
+    seg.data[mask_new] = selected_label
 
 @magicgui(call_button='Shrink by 1px')
 def shrink_cell(seg:Labels):
@@ -171,7 +174,7 @@ viewer.add_image(G,scale = [1,dx,dx], blending='additive', colormap='gray',visib
 # viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
 # viewer.add_labels(connectivity,scale = [1,dx,dx])
 viewer.add_labels(segmentation,scale = [1,dx,dx])
-viewer.add_tracks(tracks.values,scale = [1,dx,dx])
-# viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
-# viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
+# viewer.add_tracks(tracks.values,scale = [1,dx,dx])
+viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
+viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
 # viewer.window.add_dock_widget(plot_measurement, name="Plot Measurement")
