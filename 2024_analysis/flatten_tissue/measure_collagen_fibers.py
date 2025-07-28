@@ -19,13 +19,13 @@ from os import path
 from glob import glob
 from tqdm import tqdm
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 # imfiles = glob(path.join(dirname,'Image flattening/flat_z_shift_2/t*.tif'))
 
 imstack = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 
 XX = 460
-Z = 72
+Z = 70
 T = 15
 
 #%%

@@ -16,8 +16,8 @@ import seaborn as sb
 from tqdm import tqdm
 from os import path
 
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_dynamics.csv'),
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),
                      index_col=['Frame','TrackID'])
 all_tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID')}
 

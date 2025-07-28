@@ -8,6 +8,7 @@ from os import path
 import pickle as pkl
 import numpy as np
 from glob import glob
+from natsort import natsorted
 
 import sched, time
 
@@ -97,17 +98,8 @@ def cycle_active_axis(viewer):
 # Load the images
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
-R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
-B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
-G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
-segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
 # df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 # measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
-# connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
-
-# filelist = glob(path.join(dirname,'Image flattening/height_image/t*.tif'))
-# basement_mem = np.stack([io.imread(f) for f in filelist])
-
 # Load the manual tracks
 # all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
 # Tracks axes are: ID,T,(Z),Y,X
@@ -166,14 +158,25 @@ def shrink_cell(seg:Labels):
     seg.data[exp_mask] = selected_label
 
 dx = 1
+R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
+B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
+G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
+segmentation = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
+nuc_segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
+# connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
+
+filelist = natsorted(glob(path.join(dirname,'Image flattening/height_image/t*.tif')))
+basement_mem = np.stack([io.imread(f) for f in filelist])
 
 viewer = napari.Viewer()
 viewer.add_image(R,scale = [1,dx,dx], blending='additive', colormap='red',rendering='attenuated_mip')
 viewer.add_image(B,scale = [1,dx,dx], blending='additive', colormap='gray',rendering='attenuated_mip')
 viewer.add_image(G,scale = [1,dx,dx], blending='additive', colormap='gray',visible=False,rendering='attenuated_mip')
-# viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
+viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
 # viewer.add_labels(connectivity,scale = [1,dx,dx])
 viewer.add_labels(segmentation,scale = [1,dx,dx])
+viewer.add_labels(nuc_segmentation,scale = [1,dx,dx])
+
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
 viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
 viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')

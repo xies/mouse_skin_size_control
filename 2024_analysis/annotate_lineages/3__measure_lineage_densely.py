@@ -217,7 +217,7 @@ for t in tqdm(range(15)):
     all_df.append(df)
     
     #Save a bunch of intermediates
-    # Save segmentation with text labels @ centroid
+    # Save segmentation with text labels @ centroid 
     # im_cellposeID = draw_labels_on_image(dense_coords,df_dense['basalID'],[XX,XX],font_size=12)
     # im_cellposeID.save(path.join(dirname,f'3d_nuc_seg/cellposeIDs/t{t}.tif'))
     

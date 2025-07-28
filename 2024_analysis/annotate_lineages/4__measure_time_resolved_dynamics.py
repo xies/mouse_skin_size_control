@@ -21,8 +21,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=[0,1]).reset_index()
 
@@ -67,14 +67,14 @@ all_df.loc[(14,579),'Cell cycle transition'] = 'Mitosis'
 
 from measurements import map_tzyx_to_labels
 
-sg2_points = pd.read_csv(path.join(dirname,'Mastodon/SG2.csv'),index_col=0)
-sg2_points = sg2_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
+# sg2_points = pd.read_csv(path.join(dirname,'Mastodon/SG2.csv'),index_col=0)
+# sg2_points = sg2_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
 tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
-sg2_points = map_tzyx_to_labels(sg2_points, tracked_nuc)
+# sg2_points = map_tzyx_to_labels(sg2_points, tracked_nuc)
 
 all_df['Cell cycle phase'] = 'G1' # or G1
-for _,row in sg2_points.iterrows():
-    all_df.loc[(row['T'],row['label']),'Cell cycle phase'] = 'SG2'
+# for _,row in sg2_points.iterrows():
+#     all_df.loc[(row['T'],row['label']),'Cell cycle phase'] = 'SG2'
 
 #%% Annotate growth rate / mother / daughter
 
@@ -143,9 +143,12 @@ for i,track in tqdm(enumerate(tracks)):
     except UserWarning:
         breakpoint()
     track = get_exponential_growth_rate(track, field='Nuclear volume')
+    Ig1 = track['Cell cycle phase'] == 'G1'
+    track = get_exponential_growth_rate(track, field='Nuclear volume', filtered={'G1 only':Ig1})
     
     track = get_interpolated_curve(track, field='Cell volume')
     track = get_exponential_growth_rate(track, field='Cell volume')
+    track = get_exponential_growth_rate(track, field='Cell volume', filtered={'G1 only':Ig1})
     
     track = get_interpolated_curve(track, field='Mean FUCCI intensity')
     track = get_interpolated_curve(track, field='Total H2B intensity')

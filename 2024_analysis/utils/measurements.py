@@ -12,9 +12,10 @@ import pandas as pd
 from functools import reduce
 
 from mathUtils import get_neighbor_idx, parse_3D_inertial_tensor, argsort_counter_clockwise
+from imageUtils import get_mask_slices
 # 3D mesh stuff
 from aicsshparam import shtools, shparam
-# from trimesh import Trimesh
+from trimesh import Trimesh
 # from trimesh.curvature import discrete_gaussian_curvature_measure, \
 #     discrete_mean_curvature_measure, sphere_ball_intersection
 import pyvista as pv
@@ -26,6 +27,7 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 #%% Calculation functions
+
 
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):
@@ -120,26 +122,6 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
     
     return df
 
-def get_mask_slices(prop, border = 0, max_dims = None):
-    
-    zmin,ymin,xmin,zmax,ymax,xmax = prop['bbox']
-    zmin = max(0,zmin - border)
-    ymin = max(0,ymin - border)
-    xmin = max(0,xmin - border)
-    
-    (ZZ,YY,XX) = max_dims
-    zmax = min(ZZ,zmax + border)
-    ymax = min(YY,ymax + border)
-    xmax = min(XX,xmax + border)
-    
-    slc = [slice(None)] * 3
-    
-    slc[0] = slice( int(zmin),int(zmax))
-    slc[1] = slice(int(ymin),int(ymax))
-    slc[2] = slice(int(xmin),int(xmax))
-    
-    return slc
-
 def estimate_sh_coefficients(cyto_seg, lmax, spacing = [1,1,1]):
     
     ZZ,YY,XX = cyto_seg.shape
@@ -181,10 +163,110 @@ def estimate_sh_coefficients(cyto_seg, lmax, spacing = [1,1,1]):
     
     return sh_coefficients
 
+from meshUtils import mask2mesh, mesh2mask, rotate_mesh
+
+def get_rotated_cell_image(mask,normal):
+    
+    mesh = mask2mesh(mask)
+    
+    normal = normal / np.dot(normal,normal)
+    # calculate the angle between the z-axis and the surface normal
+    dot_product = normal[0,...]
+    phi = np.arccos(dot_product) # radians
+    
+    mesh = rotate_mesh(mesh,phi)
+    
+    mask = mesh2mask(mesh,pixel_size=1)
+    
+    return mask
+
+      
+# def measure_flat_cyto_from_regionprops(cyto, mesh, collagen_image, jacobian, spacing= [1,1,1]):
+#     '''
+    
+#     PARAMETERS
+    
+#     flat_cyto: flattened cytoplasmic segmentation
+#     collagen_image: flattened Max int projection of collagen image
+#     jacobian: jacobian matrix of the gradient image of collagen signal
+#     spacing: default = [1,1,1] pixel sizes in microns
+    
+#     '''
+    
+#     # Measurements from cortical segmentation
+#     dz,dx,dx = spacing
+    
+#     df = pd.DataFrame( measure.regionprops_table(cyto,
+#                                                 properties=['label'],
+#                                                 spacing=[dz,dx,dx],
+#                                                 ))
+#     df = df.rename(columns={'label':'TrackID'})
+#     df = df.set_index('TrackID')
+    
+#     # _,YY,XX = flat_cyto.shape
+    
+#     # basal_masks_2save = np.zeros((YY,XX))
+    
+#     for p in measure.regionprops(cyto, spacing=[dz,dx,dx]):
+        
+#         i = p['label']
+#         bbox = p['bbox']
+#         Z_top = bbox[0]
+#         Z_bottom = bbox[3]
+#         centroid = np.expand_dims(np.array(p['centroid']),0) * spacing
+        
+#         # mask = flat_cyto == i
+#         mask = get_rotated_cell_image
+        
+#         # Apical area (3 bottom slices)
+#         basal_mask = mask[Z_bottom-4:Z_bottom,...]
+#          = basal_mask.max(axis=0)
+#         basal_area = basal_mask.sum()
+        
+        
+        
+#         # Find the 'normal vector'
+#         (closest_points, distances, triangle_id) = mesh.nearest.on_surface(centroid)
+        
+    
+        # basal_orientation = np.rad2deg(measure.regionprops(basal_mask.astype(int))[0]['orientation'])
+        # basal_eccentricity = measure.re
+    #     basal_masks_2save[basal_mask] = i
+        
+    #     # Characteristic matrix of collagen signal
+    #     Jxx = jacobian[0]
+    #     Jyy = jacobian[1]
+    #     Jxy = jacobian[2]
+        
+    #     J = np.matrix( [[Jxx[basal_mask].sum(),Jxy[basal_mask].sum()],
+    #                     [Jxy[basal_mask].sum(),Jyy[basal_mask].sum()]] )
+        
+    #     l,D = np.linalg.eig(J) # NB: not sorted
+    #     order = np.argsort(l)[::-1] # Ascending order
+    #     l = l[order]
+    #     D = D[:,order]
+        
+    #     # Orientation
+    #     theta = np.rad2deg(np.arctan(D[1,0]/D[0,0])) # in degrees
+    #     mag_diff = (l[0] - l[1]) / l.sum()
+        
+    #     # theta = np.rad2deg( -np.arctan( 2*Jxy[basal_mask].sum() / (Jyy[basal_mask].sum()-Jxx[basal_mask].sum()) )/2 )
+    #     # # Fibrousness
+    #     # fib = np.sqrt((Jyy[basal_mask].sum() - Jxx[basal_mask].sum())**2 + 4 * Jxy[basal_mask].sum()) / \
+    #     #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
+    #     df.at[i,'Collagen orientation'] = theta
+    #     df.at[i,'Collagen coherence'] = mag_diff
+    #     df.at[i,'Basal alignment'] = np.abs(np.cos(theta - basal_orientation))
+        
+    #     # Also include collagen intensity
+    #     # Normalize collagen
+    #     collagen_image = exposure.equalize_hist(collagen_image)
+    #     df.at[i,'Collagen intensity'] = np.mean(collagen_image[basal_mask])
+        
+    # return df,basal_masks_2save
 
 def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spacing= [1,1,1]):
     '''
-    
     PARAMETERS
     
     flat_cyto: flattened cytoplasmic segmentation
@@ -193,7 +275,6 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
     spacing: default = [1,1,1] pixel sizes in microns
     
     '''
-    
     
     # Measurements from cortical segmentation
     dz,dx,dx = spacing
@@ -206,9 +287,11 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
     df = df.set_index('TrackID')
     
     _,YY,XX = flat_cyto.shape
+    
     basal_masks_2save = np.zeros((YY,XX))
     
     for p in measure.regionprops(flat_cyto, spacing=[dz,dx,dx]):
+        
         i = p['label']
         bbox = p['bbox']
         Z_top = bbox[0]
@@ -406,12 +489,45 @@ def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
 #     return cf
 
 exp_model = lambda x,p1,p2 : p1 * np.exp(p2 * x)
-def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
+def get_exponential_growth_rate(cf:pd.DataFrame,field:str = 'Cell volume',time_field:str='Time', filtered:dict={}):
+    ''' 
     
+    Populate a cell track with exponential growth rates estimated from y = field and x = time_field
+    
+    exp_rate = log(y) / t
+
+    Parameters
+    ----------
+    cf : pd.DataFrame
+        Single pd.Dataframe containing a cell track.
+    field : str, optional
+        y axis data name. The default is 'Cell volume'.
+    time_field : str, optional
+        x axis data name. The default is 'Time'.
+    filtered : dict, optional
+        A single element dictionary mapping a filter name and a logical index for the subset
+        of data to exstimate on. The default is {}.
+            e.g. {'G1 only': I_g1}
+
+    Returns
+    -------
+    cf : pd.DataFrame
+        Cell track with exponential growth rate populated.
+
+    '''
     cell_types = cf['Cell type'].astype(str).unique()
     for celltype in cell_types:
         I = cf['Cell type'] == celltype
         I = I & ~cf[field].isna() & ~cf['Border'] & ~(cf['Cell cycle phase'] == 'Mitosis')
+        
+        if len(filtered) > 0:
+            assert(len(filtered) == 1)
+            filter_name = list(filtered.keys())[0]
+            Ifilter = filtered[filter_name]
+            I = I & Ifilter
+            new_field_name = f'{field} (filter_name) exponential growth rate'
+        else:
+            new_field_name = f'{field} exponential growth rate'
         
         # if np.any(cf['Cell cycle phase'] == 'Mitosis'):
         #     mitotic_idx = cf[cf['Cell cycle phase'] == 'Mitosis'].iloc[0].index
@@ -419,7 +535,7 @@ def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
         #     mitotic_idx = None
         
         if len(cf.loc[I]) < 4:
-            cf.loc[I,f'{field} exponential growth rate'] = np.nan
+            cf.loc[I,new_field_name] = np.nan
         else:
             t = cf.loc[I][time_field].values
             y = cf.loc[I][field].values
@@ -429,9 +545,9 @@ def get_exponential_growth_rate(cf,field='Cell volume',time_field='Time'):
                                      bounds = [ [0,-np.inf],
                                        [y.max(),np.inf]])
                 V0,gamma = p
-                cf.loc[I,f'{field} exponential growth rate'] = gamma
+                cf.loc[I,new_field_name] = gamma
             except:
-                cf.loc[I,f'{field} exponential growth rate'] = np.nan
+                cf.loc[I,new_field_name] = np.nan
     
     return cf
 
