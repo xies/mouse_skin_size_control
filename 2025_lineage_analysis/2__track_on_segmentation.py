@@ -16,10 +16,10 @@ import tifffile
 from os import path
 from glob import glob
 from natsort import natsorted
-from imageUtils import most_likely_label
+from imageUtils import most_likely_label, filter_seg_by_largest_object
 
 import pickle as pkl
-# from tqdm import tqdm
+from tqdm import tqdm
 
 #%% Load segmentations
 
@@ -63,7 +63,7 @@ cyto_segs = np.stack( list(map(io.imread,filenames) ) )
 tracked_nuc = np.zeros_like(basal_segs)
 tracked_cyto = np.zeros_like(cyto_segs)
 
-for track in tracks:
+for track in tqdm(tracks):
     
     for idx,spot in track.iterrows():
         
@@ -76,12 +76,15 @@ for track in tracks:
         if spot['Cell type'] == 'Basal':
             label = basal_segs[frame,Z,Y,X]
             if label > 0:
-                tracked_nuc[frame,basal_segs[frame,...] == label] = spot['TrackID']
+                mask = basal_segs[frame,...] == label
+                mask = filter_seg_by_largest_object(mask)
+                tracked_nuc[frame,mask] = spot['TrackID']
             else:
                 label = suprabasal_segs[frame,Z,Y,X]
                 if label > 0:
                     print(f'\n Nuc: {frame}, Basal is in Suprabasal: {spot.TrackID}')
                     tracked_nuc[frame,suprabasal_segs[frame,...] == label] = spot['TrackID']
+                    
                 else:
                     print(f'\n Nuc: {frame}, {spot.TrackID}')
                     sli = get_cube_fill_as_slice(tracked_nuc[frame,...].shape,
@@ -90,7 +93,9 @@ for track in tracks:
                     
             label = cyto_segs[frame,Z,Y,X]
             if label > 0:
-                tracked_cyto[frame,cyto_segs[frame,...] == label] = spot['TrackID']
+                mask = cyto_segs[frame,...] == label
+                mask = filter_seg_by_largest_object(mask)
+                tracked_cyto[frame,mask] = spot['TrackID']
                 
         # elif spot['Cell type'] == 'Suprabasal':
 
