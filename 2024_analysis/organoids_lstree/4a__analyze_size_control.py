@@ -44,14 +44,14 @@ for trackID, track in tracks.items():
     summary.loc[trackID,'trackID'] = track.iloc[0]['trackID']
     
     # Birth
-    I = (track['Phase'] == 'Birth')
+    I = (track['Phase'] == 'Visible birth')
     summary.loc[trackID,'Birth volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     
     #first G1S
     I = track['Phase'] == 'G1S'
     summary.loc[trackID,'G1 volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     # Div
-    I = track['Phase'] == 'Visible division'
+    I = track['Phase'] == 'Division'
     summary.loc[trackID,'Division volume'] = track.iloc[np.where(I)[0][:2]]['Nuclear volume (sm)'].mean()
     
     # Find lengths
@@ -79,17 +79,17 @@ summary.to_csv(path.join('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In 
 
 #%% Print CV by cell cycle phase
 
-from mathUtils import cvariation_bootstrap, cv_difference_pvalue
+# from mathUtils import cvariation_bootstrap, cv_difference_pvalue
 
-CV = pd.DataFrame()
+# CV = pd.DataFrame()
 
-CV.loc['Birth',['CV','LB','UB']] = cvariation_bootstrap(summary['Birth volume'],Nboot=1000,subsample=80)
-CV.loc['G1S',['CV','LB','UB']] = cvariation_bootstrap(summary['G1 volume'],Nboot=1000,subsample=80)
-CV.loc['Division',['CV','LB','UB']] = cvariation_bootstrap(summary['Division volume'],Nboot=1000,subsample=80)
+# CV.loc['Birth',['CV','LB','UB']] = cvariation_bootstrap(summary['Birth volume'],Nboot=1000,subsample=80)
+# CV.loc['G1S',['CV','LB','UB']] = cvariation_bootstrap(summary['G1 volume'],Nboot=1000,subsample=80)
+# CV.loc['Division',['CV','LB','UB']] = cvariation_bootstrap(summary['Division volume'],Nboot=1000,subsample=80)
 
-CV['yerr'] = CV['UB'] - CV['LB']
+# CV['yerr'] = CV['UB'] - CV['LB']
 
-print(CV)
+# print(CV)
 
 #%% load old organoid data
 

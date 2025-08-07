@@ -18,7 +18,7 @@ from matplotlib.path import Path
 from SelectFromCollection import SelectFromCollection
 
 
-dirname = '/Volumes/T7/11-07-2023 DKO/M3 p107homo Rbfl/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl'
 
 dx = 0.2920097
 
@@ -161,7 +161,7 @@ df = pd.concat((tam,dmso),ignore_index=True)
 
 plt.figure()
 
-pts = plt.scatter(df['area'],df['H2b'],alpha=0.1)
+pts = plt.scatter(df['H2b'],df['area'],alpha=0.01)
 
 selector = SelectFromCollection(plt.gca(), pts)
 
@@ -194,6 +194,7 @@ CV = CV.rename(columns={'area':'CV'})
 CV = CV.reset_index()
 
 sb.pointplot(CV,x='Time',y='CV',hue='Region',dodge=True)
+CV.to_excel(path.join(dirname,'CV_before_after.xlsx'))
 
 #%% T-test for the fold change in CV
 
@@ -204,3 +205,4 @@ dmso_ratio = CV[('DMSO',1)] - CV[('DMSO',0)]
 
 from scipy.stats import ttest_ind
 ttest_ind(tam_ratio.values, dmso_ratio.values)
+

@@ -184,6 +184,8 @@ df = pd.concat(df)
 df.to_pickle(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.pkl'))
 df.to_csv(path.join(dirname,'birth_to_g1s_tracking/size_control_summary.csv'))
 
+df.to_excel(path.join(dirname,))
+
 #%%
 
 import seaborn as sb
@@ -198,8 +200,11 @@ g1_duration = df.groupby('label').min()['G1 frame'] - df.groupby('label').min()[
 
 size_control = pd.DataFrame()
 size_control['Birth volume'] = mean_bsize * dx**2 * dz
+size_control['Birth time'] = df.groupby('label').min()['G1 frame'].dt.total_seconds()
 size_control['G1 growth'] = mean_g1growth
 size_control['G1 duration'] = g1_duration.dt.total_seconds()/3600
+
+size_control.to_excel(path.join(dirname,'birth_to_g1s_tracking/size_control.xlsx'))
 
 plt.figure()
 sb.regplot(size_control,x='Birth volume',y='G1 duration')

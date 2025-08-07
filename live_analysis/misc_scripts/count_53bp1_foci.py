@@ -48,6 +48,8 @@ df_jittered = df.copy()
 df_jittered['53BP1 foci'] = df['53BP1 foci'] + np.random.randn(len(df)) * .1
 sb.stripplot(df_jittered,x='Genotype',y='53BP1 foci')
 
+
+
 # import seaborn.objects as so
 # (
 #     so.Plot(df, "Genotype", "53BP1 foci")
