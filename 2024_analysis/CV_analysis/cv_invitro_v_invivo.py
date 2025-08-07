@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from os import path
 import matplotlib.pyplot as plt
+from z2Parser import parse_Z2
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/Shuyuan Coulter counter data/'
 
@@ -75,10 +76,11 @@ def get_cv(df):
 CVs = {name:get_cv(df) for name,df in sizes.items() }
 CVs = pd.DataFrame(CVs,index=['CV']).T
 CVs['Category'] = '2D culture'
-CVs['Counts'] = counts
+# CVs['Counts'] = counts
 # mean = np.sum(probs * mids)  
 # sd = np.sqrt(np.sum(probs * (mids - mean)**2))
 
+CVs.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/CV from snapshot/cv_invivo_v_invitro.xlsx')
 
 # for i in range(len(filelist)):
 #     plt.subplot( 3, len(filelist)//3, i+1)

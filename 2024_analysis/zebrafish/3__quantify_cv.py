@@ -8,6 +8,7 @@ Created on Mon Sep  9 12:26:12 2024
 
 import numpy as np
 import pandas as pd
+import seaborn as sb
 from os import path
 from skimage import io, measure
 from tqdm import tqdm
@@ -42,8 +43,9 @@ g1s = quantify_volume(path.join(dirname,'Position001_Mastodon/g1s/g1s_manual.tif
 g1s['Phase'] = 'G1S'
 div = quantify_volume(path.join(dirname,'Position001_Mastodon/division/div_manual.tif'))
 div['Phase'] = 'Division'
-df['Time'] = df['Frame'] / 3
+
 df = pd.concat((birth,g1s,div),ignore_index=True)
+df['Time'] = df['Frame'] / 3
 df.to_csv(path.join(dirname,'cell_size_by_cellcycle_position.csv'))
 
 #%%

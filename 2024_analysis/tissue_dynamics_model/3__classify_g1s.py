@@ -56,11 +56,11 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
     return C, AUC, AP
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
-df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s_final.csv',index_col=0)
 
 df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
+df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','fucci_int_12h'])
 # df_g1s = df_g1s.drop(columns=['nuc_vol_sm'])
 
 #%% Find how balance changes classification
@@ -97,8 +97,8 @@ AP.plot()
 # Random rebalance with 1:1 ratio
 # No cross-validation, in-model estimates only
 
-Ng1 = 200
-Niter = 100
+Ng1 = 150
+Niter = 1000 
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -157,6 +157,9 @@ params['err'] = params['ui'] - params['coef']
 params['effect size'] = params['coef']
 
 order = np.argsort( np.abs(params['coef']) )[::-1][0:5]
+
+params.to_excel('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/parameter_importances.xlsx')
+
 params = params.iloc[order]
 
 plt.figure()
@@ -176,7 +179,7 @@ C_random = np.zeros((Niter,2,2))
 
 for i in tqdm(range(Niter)):
     
-    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    df_g1s_balanced = rebalance_g1(df_g1s,150)
     y_balanced = df_g1s_balanced['G1S_logistic']
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
 
@@ -210,6 +213,56 @@ plt.vlines(AP['MLR l2'].mean(),0,0.2,'m')
 
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
+
+#%% Single features; MLR
+
+Niter = 100
+
+features2drop = X.columns
+df_g1s['Intercept'] = 1
+
+AUC = pd.DataFrame()
+AP = pd.DataFrame()
+
+for i in tqdm(range(Niter)):
+    
+    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    y_balanced = df_g1s_balanced['G1S_logistic']
+    df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
+    
+    forest = LogisticRegression(max_iter=1000, random_state=42)
+    _, _AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,forest)
+    AUC.at[i,'Full'] = _AUC; AP.at[i,'Full'] = _AP
+    
+    forest_no_vol = LogisticRegression(max_iter=1000)
+    _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['vol_sm','Intercept']],y_balanced,frac_withheld,forest_no_vol)
+    AUC.at[i,'Only vol'] = _AUC; AP.at[i,'Only vol'] = _AP
+    
+    df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
+    random_model = LogisticRegression(max_iter=1000, random_state=42)
+    _,_AUC,_AP = run_cross_validation(df_random,y_balanced,frac_withheld,random_model)
+    AUC.at[i,'Random'] = _AUC; AP.at[i,'Random'] = _AP
+    
+    for j in range(len(features2drop)):
+        forest = LogisticRegression(max_iter=1000, random_state=42)
+        _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['Intercept',features2drop[j]]],y_balanced,frac_withheld,forest)
+        AUC.at[i,f'Only {features2drop[j]}'] = _AUC; AP.at[i,f'Only {features2drop[j]}'] = _AP
+        
+I = AUC.mean().sort_values().index
+sb.barplot(AUC[I])
+plt.ylim([0.4,1]);plt.ylabel('Mean AUC');
+plt.hlines(AUC.mean()['Full'],0,40)
+plt.xticks(rotation=90);plt.tight_layout();
+
+AUC_ = pd.melt(AUC)
+AUC_['Category'] = AUC_['variable']
+AUC_.loc[(AUC_['variable']!= 'Full')&(AUC_['variable']!= 'Only vol')&(AUC_['variable']!= 'Random'),'Category'] = 'Other'
+
+plt.figure()
+sb.histplot(AUC_,bins=20,x='value',hue='Category',stat='probability',element='poly',common_norm=False,fill=False)
+plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
+
+AUC.mean().sort_values().to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Tissue model/single_feature_AUCs.xlsx')
 
 #%%  Permutation importance for MLR
 

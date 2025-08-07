@@ -93,7 +93,7 @@ sb.stripplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',dodge=True)
 sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='violin')
 sb.stripplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',dodge=True)
 
-plt.ylim([50,200])
+# plt.ylim([50,200])
 # plt.ylim([0,2])
 
 #%%

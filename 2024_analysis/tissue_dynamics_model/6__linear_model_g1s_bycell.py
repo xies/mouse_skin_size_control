@@ -26,7 +26,7 @@ from tqdm import tqdm
 #%%
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
+with open(path.join(dirname,'Misc/basal_no_daughters.pkl'),'rb') as f:
     c1 = pkl.load(f)
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 with open(path.join(dirname,'basal_no_daughters.pkl'),'rb') as f:
@@ -81,6 +81,12 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlabel('Measured cell cycle duration')
 plt.ylabel('Predicted cell cycle duration')
 plt.title(f'Linear regression using: {var_names_str}; R2={R2:.2f}; maxR2=0.88')
+
+total_cycle = pd.DataFrame()
+total_cycle['Measured'] = y
+total_cycle['Predicted'] = y
+
+total_cycle.to_excel('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/total_cycle_regression.xlsx')
 
 #%% Renormalize R2 given sampling rate of empirical data
 

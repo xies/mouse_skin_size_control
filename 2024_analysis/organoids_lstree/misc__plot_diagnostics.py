@@ -46,20 +46,18 @@ tracks = {trackID:t for trackID,t in df.groupby('organoidID_trackID')}
 #%% Single variables
 
 trackIDs = list(tracks.keys())
-trackOI = trackIDs[65]
+trackOI = trackIDs[45]
 print(f'TrackID = {trackOI}')
 # trackOI = 46
 t = tracks[ trackOI ]
 
-plt.plot(t.Frame,t['Nuclear volume'])
-
-#%%
+# plt.plot(t.Frame,t['Nuclear volume'])
 
 
 g1 = t[t['Phase'] != 'Visible birth']
-sg2 = t[t['Phase'] == 'Visible birth']
+sg2 = t[t['Phase'] == 'SG2']
 
-plt.subplot(2,1,1)
+# plt.subplot(2,1,1)
 plt.plot(g1['Frame'],g1['Normalized Cdt1 intensity'])
 plt.plot(sg2['Frame'],sg2['Normalized Cdt1 intensity'])
 

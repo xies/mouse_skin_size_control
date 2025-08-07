@@ -60,11 +60,10 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
     return C, AUC, AP
 
 df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_.csv',index_col=0)
-df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s_final.csv',index_col=0)
 
-df_g1s = keep_only_first_sg2(df_g1s)
 
-df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','nuc_vol_sm'])
+df_g1s = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff'])
 
 Ng1 = 150
 
@@ -161,7 +160,7 @@ plt.vlines(AUC_.groupby('Category').mean(),0,0.25)
 
 #%% Single features; MLR
 
-Niter = 100
+Niter = 10
 
 features2drop = logit_importances.index[1:]
 df_g1s['Intercept'] = 1
@@ -179,7 +178,7 @@ for i in tqdm(range(Niter)):
     _, _AUC,_AP = run_cross_validation(df_g1s_balanced,y_balanced,frac_withheld,forest)
     AUC.at[i,'Full'] = _AUC; AP.at[i,'Full'] = _AP
     
-    forest_no_vol = LogisticRegression(max_iter=1000, random_state=42)
+    forest_no_vol = LogisticRegression(max_iter=1000)
     _, _AUC,_AP = run_cross_validation(df_g1s_balanced[['vol_sm','Intercept']],y_balanced,frac_withheld,forest_no_vol)
     AUC.at[i,'Only vol'] = _AUC; AP.at[i,'Only vol'] = _AP
     

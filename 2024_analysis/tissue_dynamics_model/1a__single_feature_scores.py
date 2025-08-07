@@ -21,7 +21,9 @@ def z_standardize(x):
     return (x - np.nanmean(x))/np.std(x)
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-df1 = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+df1 = pd.read_csv(path.join(dirname,'2024 MLR model/ts_features.csv'),index_col=0)
+df1['Volume'] /= .25**2
+df1['Volume (sm)'] /= .25**2
 df1['Region'] = 1
 df1_ = df1[df1['Phase'] != '?']
 
@@ -51,7 +53,7 @@ features_list = {
                 'Volume':'vol'
                 ,'Volume (sm)':'vol_sm'
                 ,'Nuclear volume':'nuc_vol'
-                ,'Nuclear volume (sm)':'nuc_vol_sm'
+                # ,'Nuclear volume (sm)':'nuc_vol_sm'
                 ,'Surface area':'sa'
                 ,'Basal area':'basal'
                 ,'Apical area':'apical'

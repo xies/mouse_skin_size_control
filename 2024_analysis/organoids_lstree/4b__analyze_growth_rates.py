@@ -46,7 +46,7 @@ regen_g1 = regen[ (regen['Phase'] == 'G1') | (regen['Phase'] == 'G1S') ]
 
 fields2concat = ['Cell type','Nuclear volume','Specific GR (sm)']
 df = pd.concat((regen_g1[fields2concat],homeo[fields2concat]),ignore_index=True)
-
+df.to_excel('/Users/xies/OneDrive - Stanford/In vitro/mIOs/Light sheet movies/growth_rate_summary.xlsx')
 # sb.lmplot(df,x='Nuclear volume',y='Specific GR (sm)',hue='Cell type')
 
 
@@ -68,3 +68,4 @@ plt.legend(names)
 
 plt.figure()
 sb.catplot(df,x='Cell type',y='Specific GR (sm)', kind='box')
+
