@@ -13,6 +13,8 @@ Shicong Xie, Shuyuan Zhang, Gustavo de Medeiros, Prisca Liberali, Jan M. Skothei
 ----
 **./2024_analysis**
 
+Moved to: https://github.com/skotheimlab/xie_etal_2024_autonomous_cell_size_control
+
 Tested on Python 3.9 on MacOS. More detailed instructions are in ./2024_analysis/instructions.txt. Requirements are listed in ./2024_analysis/requirements.txt
 
 
