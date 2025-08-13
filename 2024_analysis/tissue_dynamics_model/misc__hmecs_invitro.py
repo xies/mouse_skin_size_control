@@ -9,17 +9,19 @@ Created on Fri Nov 22 21:13:02 2024
 import numpy as np
 import pandas as pd
 from os import path
+import seaborn as sb
+import matplotlib.pyplot as plt
 
 dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/HMECs/HMEC DFB tracked data/'
 
 time_to_g1s = pd.read_excel(path.join(dirname,'full_trace/individuals_full_trace.xlsx'),
                     sheet_name='Ages_wrt_g1s', header=None)
 size = pd.read_excel(path.join(dirname,'full_trace/individuals_full_trace.xlsx'),
-                     sheet_name='Size', header=None)
+                     sheet_name='Volume', header=None)
 rb = pd.read_excel(path.join(dirname,'full_trace/individuals_full_trace.xlsx'),
                      sheet_name='RB', header=None)
 
-cellIDs = age.columns
+cellIDs = time_to_g1s.columns
 
 df = []
 for ID in cellIDs:
@@ -37,10 +39,17 @@ df['G1S_logistic'] = df['Time to G1S'] > 0
 df['RB conc'] = df['RB'] / df['Size']
 df = df.dropna()
 
-sb.regplot(df,x='Size',y='G1S_logistic',logistic=True,y_jitter=0.1)
-sb.regplot(df,x='RB conc',y='G1S_logistic',logistic=True,y_jitter=0.1)
+# sb.regplot(df,x='Size',y='G1S_logistic',logistic=True,y_jitter=0.1)
+# sb.regplot(df,x='RB conc',y='G1S_logistic',logistic=True,y_jitter=0.1)
 
 #%%
+
+def balance_phase(df):
+    (_,g1),(_,sg2) = df.groupby('G1S_logistic')
+    L = min(len(g1),len(sg2))
+    sg2 = sg2.sample(L)
+    g1 = g1.sample(L)
+    return pd.concat((g1,sg2),ignore_index=True)
 
 def subsample_from_each_cell(df):
     cells = [c for _,c in df.groupby('CellID')]
@@ -59,14 +68,17 @@ from sklearn.preprocessing import scale
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, roc_auc_score,average_precision_score
 
-sampled = subsample_from_each_cell(df)
+#%%
 
 Niter = 100
 
 M = np.zeros((Niter,2,2))
 AUC = pd.DataFrame()
 AP = pd.DataFrame()
+
 for i in range(Niter):
+    
+    sampled = subsample_from_each_cell(df)
     
     X = scale(sampled[['Size']]).reshape(-1,1)
     y = sampled['G1S_logistic']
@@ -95,6 +107,8 @@ for i in range(Niter):
     
     AUC.at[i,'Random model'] = roc_auc_score(y_test,y_pred)
     AP.at[i,'Random model'] = average_precision_score(y_test,y_pred)
+
+#%
 
 plt.figure()
 plt.hist(AUC['Real model'])

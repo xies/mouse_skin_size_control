@@ -73,7 +73,7 @@ def run_cross_validation(X,y,split_ratio,model,random_state=42):
     return C, AUC, AP
 
 
-df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
+df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s_final.csv',index_col=0)
 df_g1s = keep_only_first_sg2(df_g1s)
 
 df_g1s = df_g1s.drop(columns=['time_g1s','cellID','diff','fucci_int_12h'])
@@ -89,6 +89,8 @@ plt.figure()
 plt.bar(np.arange(1,Ncomp+1),pca.explained_variance_ratio_); plt.ylabel('% variance explained');plt.xlabel('Components')
 plt.figure()
 plt.bar(np.arange(1,Ncomp+1),np.cumsum(pca.explained_variance_ratio_)); plt.ylabel('Cumulative % variance explained');plt.xlabel('Components')
+
+
 
 plot_principle_component(loadings,0)
 plot_principle_component(loadings,1)
@@ -139,6 +141,7 @@ for i in range(Niter):
 
 sb.histplot(AUC.melt(),x='value',hue='variable',element='poly',bins=15,stat='probability')
 plt.xlabel('AUC')
+AUC.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Tissue model/PCA/Classify G1S single SG2 logistic/AUCs.xlsx')
  
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
@@ -156,6 +159,10 @@ mlr = LogisticRegression(random_state=42)
 mlr.fit(X_train,y_train)
 result = permutation_importance(mlr,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+
+imps = pd.DataFrame(forest_importances)
+imps['std'] = result.importances_std
+imps.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Tissue model/PCA/Classify G1S single SG2 logistic/importances.xlsx')
 
 top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
 top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]

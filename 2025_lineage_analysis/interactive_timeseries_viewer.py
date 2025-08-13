@@ -178,6 +178,6 @@ viewer.add_labels(segmentation,scale = [1,dx,dx])
 viewer.add_labels(nuc_segmentation,scale = [1,dx,dx])
 
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
-viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
-viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
+# viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
+# viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
 # viewer.window.add_dock_widget(plot_measurement, name="Plot Measurement")

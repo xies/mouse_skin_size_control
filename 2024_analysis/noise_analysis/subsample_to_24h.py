@@ -46,7 +46,8 @@ df_has_daughter = df[~np.isnan(df['Division volume interpolated'])]
 
 # Concatenate all collated cells into dfc
 dfc = pd.concat(collated_filtered)
-cells = [c for _,c in dfc.groupby('CellID')]
+dfc['UniqueID'] = dfc['Region'] + dfc['CellID'].astype(str)
+cells = [c for _,c in dfc.groupby('UniqueID')]
 
 #%%
 
@@ -65,12 +66,18 @@ for i,c in enumerate(subsampled):
 
 g1growth = g1size - bsize
 
-df24 = pd.DataFrame()
-df24['Birth vol 24h'] = bsize
-df24['G1 grown 24h'] = g1growth
+# df24 = pd.DataFrame()
+df['Birth vol 24h'] = bsize
+df['G1 grown 24h'] = g1growth
 
 sb.regplot(df,x='Birth volume',y='G1 grown')
-sb.regplot(df24,x='Birth vol 24h',y='G1 grown 24h')
+sb.regplot(df,x='Birth vol 24h',y='G1 grown 24h')
+
+df[['Birth volume','G1 grown','Birth vol 24h','G1 grown 24h']].to_excel(
+    '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Noise analysis/subsample24h.xlsx')
+
+#%%
+
 
 
         

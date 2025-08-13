@@ -85,13 +85,20 @@ rbko_curated = rbko[rbko['Mode'] == 'curated']
 rbkop107het = df_all[df_all['Genotype'] == 'RBKOp107het']
 # rbko_manual = rbko[rbko['Mode'] == 'manual']
 
+wt[['Birth size','G1 growth','G1 length']].dropna().to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RB KO size control figures/size_control_wt.xlsx')
+rbko[['Birth size','G1 growth','G1 length']].dropna().to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RB KO size control figures/size_control_rbko.xlsx')
+
 #%%
 
 import statsmodels.api as sm
 from statsmodels.tools import add_constant
 
+plt.subplot(2,1,1)
 sb.regplot(wt,x='Birth size',y='G1 growth')
 plot_bin_means(wt['Birth size'],wt['G1 growth'],bin_edges=6,minimum_n=8)
+plt.subplot(2,1,2)
+sb.regplot(rbko,x='Birth size',y='G1 growth')
+plot_bin_means(rbko['Birth size'],rbko['G1 growth'],bin_edges=6,minimum_n=8)
 
 plt.xlim([50,400])
 plt.ylim([-50,300])

@@ -116,7 +116,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score, confusion_matrix
 from statsmodels.api import OLS
-from scipy import stats
+# from scipy import stats
 
 Niter = 1000
 
@@ -177,6 +177,15 @@ AUC.plot.hist(); plt.xlabel('AUC');plt.vlines(0.917,ymin=0,ymax=100)
 
 plt.figure()
 sb.heatmap(Cmlr.mean(axis=0),annot=True)
+
+params = pd.DataFrame(coeffs.mean())
+params['std'] = coeffs.std()
+params['log_pval'] = np.mean( -np.log10(pvals.values.astype(float)), axis = 0)
+params['log_pval_std'] = np.std( -np.log10(pvals.values.astype(float)), axis = 0)
+params.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/MLR results/paramters.xlsx')
+
+AUC.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/MLR results/AUC.xlsx')
+AP.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/organoids_LSTree/MLR results/AP.xlsx')
 
 #%%
 

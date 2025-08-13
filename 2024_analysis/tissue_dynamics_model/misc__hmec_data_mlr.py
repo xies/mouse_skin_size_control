@@ -50,7 +50,7 @@ def balance_phase(df):
     
 #%%
 
-Niter = 1000
+Niter = 100
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import scale
@@ -64,15 +64,15 @@ Cmlr = np.zeros((Niter,2,2))
 for i in range(Niter):
     
     # df_bal = df_decimated
-    # df_bal = balance_phase(df)
-    df_bal = df
+    df_bal = balance_phase(df)
+    # df_bal = df
     
-    X = scale(df_bal[['Volume','Size']].values)
+    X = scale(df_bal[['Size']].values)
     y = df_bal['G1S_logistic'].values
-    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.4)
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.1)
     
     
-    mlr = LogisticRegression('l2').fit(X_train,y_train)
+    mlr = LogisticRegression().fit(X_train,y_train)
     # mlr = Logit(y_train,X_train).fit()
     
     y_pred = mlr.predict(X_test)
@@ -81,7 +81,7 @@ for i in range(Niter):
     AP.at[i,'data'] = average_precision_score(y_test,y_pred)
     Cmlr[i,...] = confusion_matrix(y_pred,y_test)/len(y_test)
     
-    Xrand = np.random.randn(len(X_train),2)
+    Xrand = np.random.randn(len(X_train),1)
     mlr_rand = LogisticRegression().fit(Xrand,y_train)
     y_pred = mlr_rand.predict(X_test)
     

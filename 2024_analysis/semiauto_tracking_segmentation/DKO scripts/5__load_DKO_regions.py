@@ -73,6 +73,12 @@ all_ts = pd.concat(all_ts,ignore_index=True)
 sko = df_all[df_all['Genotype'] == 'WT']
 dko = df_all[df_all['Genotype'] == 'DKO']
 
+# Export to spreadsheets
+all_tracks['WT_R1_curated'][-9][['Age','FUCCI mean']].to_excel(
+    '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/Example cells/cell30/time_series.xlsx')
+all_tracks['WT_R1_curated'][-9][['Age','FUCCI mean']].to_excel(
+    '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/RBKO p107KO/M3 DOB 08-20-2023/11-07-2023 DKO ear (DOB 08-20-23, tam)/M3 p107homo Rbfl/Right ear/Post Ethanol/R1/Example cells/cell30/time_series.xlsx')
+
 #%%
 
 from basicUtils import plot_bin_means

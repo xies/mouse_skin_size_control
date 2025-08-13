@@ -15,7 +15,7 @@ from glob import glob
 from os import path
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-df = pd.read_csv(path.join(dirname,'MLR model/ts_features.csv'),index_col=0)
+df = pd.read_csv(path.join(dirname,'2024 MLR model/ts_features.csv'),index_col=0)
 
 #%%
 
@@ -49,3 +49,5 @@ for i,y in enumerate(y2plot):
     plt.plot(cell2plot[x],cell2plot[y])
     plt.xlabel(x); plt.ylabel(y)
     
+cell2plot[y2plot].to_excel(
+    '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/Examples for figures/Microenvironment movies/374/microenvironment.xlsx')

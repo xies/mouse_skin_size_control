@@ -98,7 +98,7 @@ AP.plot()
 # No cross-validation, in-model estimates only
 
 Ng1 = 150
-Niter = 1000 
+Niter = 1000
 
 coefficients = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 li = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
@@ -108,7 +108,7 @@ pvalues = np.ones((Niter,df_g1s.shape[1]-1)) * np.nan
 for i in range(Niter):
     
     #% Rebalance class
-    df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+    df_g1s_balanced = rebalance_g1(df_,Ng1)
     # df_g1s_balanced = df_g1s
     
     ############### G1S logistic as function of age ###############
@@ -168,7 +168,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 #%% Cross-validation for MLR
 
-Niter = 100
+Niter = 1000
 frac_withheld = 0.1
 N = len(df_g1s_balanced)
 
@@ -179,7 +179,7 @@ C_random = np.zeros((Niter,2,2))
 
 for i in tqdm(range(Niter)):
     
-    df_g1s_balanced = rebalance_g1(df_g1s,150)
+    df_g1s_balanced = rebalance_g1(df_,150)
     y_balanced = df_g1s_balanced['G1S_logistic']
     df_g1s_balanced = df_g1s_balanced.drop(columns='G1S_logistic')
 
@@ -210,6 +210,9 @@ plt.figure()
 sb.histplot(AP.melt(),x='value',hue='variable',element='poly',stat='probability'); plt.title(f'MLR classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
 plt.vlines(AP['MLR'].mean(),0,0.2,'r')
 plt.vlines(AP['MLR l2'].mean(),0,0.2,'m')
+
+AUC.to_excel('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/Classify G1S only first SG2 with MLR model/AUC.xlsx')
+AP.to_excel('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/Classify G1S only first SG2 with MLR model/AP.xlsx')
 
 plt.figure();sb.heatmap(np.mean(C_mlr,axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'MLR Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
@@ -269,7 +272,7 @@ AUC.mean().sort_values().to_excel('/Users/xies/Library/CloudStorage/OneDrive-Sta
 from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
 
-df_g1s_balanced = rebalance_g1(df_g1s,Ng1)
+df_g1s_balanced = rebalance_g1(df_,Ng1)
 y_balanced = df_g1s_balanced['G1S_logistic']
 
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
@@ -309,6 +312,12 @@ for i in tqdm(range(Niter)):
     AUC.at[i,'RF'] = _AUC
     AP.at[i,'RF'] = _AP
     
+    # Random forest
+    forest = RandomForestClassifier(n_estimators=100, random_state=i)
+    C_rf[i,:,:],_AUC,_AP = run_cross_validation(df_g1s_balanced[['vol_sm']],y_balanced,frac_withheld,forest)
+    AUC.at[i,'Cell volume'] = _AUC
+    AP.at[i,'Cell volume'] = _AP
+    
     # Random data model
     df_random = pd.DataFrame(random.randn(*df_g1s_balanced.shape))
     random_model = RandomForestClassifier(random_state = i)
@@ -322,6 +331,8 @@ plt.vlines(AUC['RF'].mean(),0,0.25,'r')
 AP.plot.hist(bins=25,weights=hist_weights); plt.title(f'RF classification cross-validation, {frac_withheld*100}% withheld');plt.xlabel('Average precision')
 plt.vlines(AP['RF'].mean(),0,0.8,'r')
 
+AUC.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Tissue model/Classify G1S with random forest/AUC.xlsx')
+
 plt.figure();sb.heatmap(np.mean(C_rf[:390,...],axis=0),xticklabels=['G1','SG2M'],yticklabels=['G1','SG2M'],annot=True)
 plt.title(f'RF Confusion matrix, {frac_withheld*100}% withheld, average over {Niter} iterations')
 
@@ -334,8 +345,11 @@ forest = RandomForestClassifier(n_estimators=100, random_state=i)
 X = df_g1s_balanced.drop(columns='G1S_logistic'); y = df_g1s_balanced['G1S_logistic']
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=frac_withheld,random_state=42)
 forest.fit(X_train,y_train)
-result = permutation_importance(forest,X_test,y_test,n_repeats=1000,random_state=42,n_jobs=2)
+result = permutation_importance(forest,X_test,y_test,n_repeats=100,random_state=42,n_jobs=2)
 forest_importances = pd.Series(result.importances_mean, index=X_train.columns)
+imps = pd.DataFrame(forest_importances)
+imps['std'] = result.importances_std
+imps.to_excel('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Tissue model/Classify G1S with random forest/importances.xlsx')
 
 top_forest_imp = forest_importances.iloc[forest_importances.argsort()][-10:][::-1]
 top_forest_imp_std = result.importances_std[forest_importances.argsort()][-10:][::-1]

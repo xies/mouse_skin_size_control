@@ -25,6 +25,8 @@ def z_standardize(x):
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 df1 = pd.read_csv(path.join(dirname,'2024 MLR model/ts_features.csv'),index_col=0)
 df1['Region'] = 1
+df1['Volume (sm)'] /= .25**2
+df1['NC ratio'] =  df1['Nuclear volume']/df1['Volume']
 df1_ = df1[df1['Phase'] != '?']
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
@@ -59,7 +61,7 @@ features_list = { # Cell identity, position
                 
                 # Cell geometry
                 ,'Volume':'vol_sm'
-                # ,'Nuclear volume':'nuc_vol_sm'
+                ,'Nuclear volume':'nuc_vol_sm'
                 ,'SA to vol':'sa_to_vol'
                 # ,'Axial component':'axial_moment'
                 # ,'Nuclear volume':'nuc_vol'
@@ -173,7 +175,7 @@ Inan = df_g1s.isnull().any(axis=1).values
 df_ = df_[~Inan]
 df_g1s = df_g1s[~Inan]
 
-df2plot = df_g1s.drop(columns=['cellID','G1S_logistic','diff','time_g1s'])
+df2plot = df_g1s.drop(columns=['G1S_logistic','cellID'])
 
 C = MinCovDet().fit(df2plot)
 plt.figure()

@@ -160,40 +160,6 @@ good_cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rat
                                                          ,behavior = 'adder')
 plt.plot(t,field_avg,'k--')
 
-
-#%% Perfect sizers or adders - explore effect of fixed segmentation noise
-
-Ncells = 2000
-end_time = 7
-sampling_rate = 0.5
-
-fixed_noise_mag = np.linspace(.05,.4,7)
-size_control_slope = np.zeros(len(fixed_noise_mag))
-size_control_CI = np.zeros(len(fixed_noise_mag))
-size_duration_slope = np.zeros(len(fixed_noise_mag))
-size_duration_CI = np.zeros(len(fixed_noise_mag))
-
-for i,noise in enumerate(fixed_noise_mag):
-    
-    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, 3,
-                                                          white_vol_noise={'fixed':noise}, visualize=False,
-                                                             frame_biases = None,
-                                                             behavior = 'adder')
-    
-    # plt.figure(); sb.regplot(cells,x='Birth size',y='Growth');plt.xlim([0,200]);  plt.ylim([0,200])
-    
-    linreg = sm.OLS(cells.dropna()['Growth'], sm.add_constant(cells.dropna()['Birth size'])).fit()
-    # print(f'Slope from cortical volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
-    size_control_slope[i] = linreg.params.values[1]
-    size_control_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
-    
-    linreg = sm.OLS(cells.dropna()['Duration'], sm.add_constant(cells.dropna()['Birth size'])).fit()
-    size_duration_slope[i] = linreg.params.values[1]
-    size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
-
-plt.figure(1);plt.errorbar(fixed_noise_mag, size_control_slope,size_control_CI);plt.xlabel('Additive noise magnitude'); plt.ylabel('Size control slope - growth'); plt.tight_layout()
-plt.figure(2);plt.errorbar(fixed_noise_mag, size_duration_slope,size_duration_CI);plt.xlabel('Avg length of cell cycle (days)'); plt.ylabel('Size control slope - duration'); plt.tight_layout()
-
 #%% Perfect sizers or adders - explore effect of subsampling in time
 
 
@@ -201,32 +167,49 @@ Ncells = 2000
 end_time = 120
 sampling_rates = [1,2,5,12,24]
 
-noise = 0.01
+noise = 0.00
 size_control_slope = np.zeros(len(sampling_rates))
 size_control_CI = np.zeros(len(sampling_rates))
 size_duration_slope = np.zeros(len(sampling_rates))
 size_duration_CI = np.zeros(len(sampling_rates))
 
-for i,sampling_rate in enumerate(sampling_rates):
-    
-    cells,field_avg,num_cells_in_tissue = simulate_cells(end_time, sampling_rate, Ncells, log_normal_mu = 40,
-                                                          white_vol_noise={'fixed':noise}, visualize=False,
-                                                             frame_biases = None,
-                                                             behavior = 'adder')
-    
-    linreg = sm.OLS(cells.dropna()['Growth'], sm.add_constant(cells.dropna()['Birth size'])).fit()
-    # print(f'Slope from cortical volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
-    size_control_slope[i] = linreg.params.values[1]
-    size_control_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
-    
-    linreg = sm.OLS(cells.dropna()['Duration'], sm.add_constant(cells.dropna()['Birth size'])).fit()
-    size_duration_slope[i] = linreg.params.values[1]
-    size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
+df = pd.DataFrame()
+index = 0
+for behavior in ['sizer','adder']:
+    for log_n_mu in [50,100]:
+        for i,sampling_rate in enumerate(sampling_rates):
+            index += 1
+            cells,field_avg,num_cells_in_tissue = simulate_cells(
+                end_time,
+                sampling_rate,
+                Ncells,
+                log_normal_mu = log_n_mu, # 100 -> 52h, 50 -> 30h
+                white_vol_noise={'fixed':noise}, visualize=False,
+                frame_biases = None,
+                behavior = behavior)
+            
+            linreg = sm.OLS(cells.dropna()['Growth'], sm.add_constant(cells.dropna()['Birth size'])).fit()
+            # print(f'Slope from cortical volume = {linreg.params.values[1]} ({linreg.conf_int().values[1,:]})')
+            size_control_slope[i] = linreg.params.values[1]
+            size_control_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
+            
+            linreg = sm.OLS(cells.dropna()['Duration'], sm.add_constant(cells.dropna()['Birth size'])).fit()
+            size_duration_slope[i] = linreg.params.values[1]
+            size_duration_CI[i] = (linreg.conf_int().values[1,:] - linreg.params.values[1])[1]
+            df.loc[index,'Behavior'] = behavior
+            df.loc[index,'Sampling rate'] = sampling_rate
+            df.loc[index,'Average length'] = log_n_mu
+            df.loc[index,'Growth slope'] = size_control_slope[i]
+            df.loc[index,'Duration slope'] = size_duration_slope[i]
+            df.loc[index,'Growth CI'] = size_control_CI[i]
+            df.loc[index,'Duration CI'] = size_duration_CI[i]
 
-plt.figure(1);plt.errorbar(sampling_rates, size_control_slope,size_control_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - growth');
-plt.legend(['Sizer - 72h c.c.','Adder - 72h','Sizer - 50h','Adder - 50h'])
+    plt.figure(1);plt.errorbar(sampling_rates, size_control_slope,size_control_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - growth');
+    plt.legend(['Sizer - 52h c.c.','Adder - 52h','Sizer - 30h','Adder - 30h'])
+    
+    plt.figure(2);plt.errorbar(sampling_rates, size_duration_slope,size_duration_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - duration')
+    plt.legend(['Sizer - 52h c.c.','Adder - 52h','Sizer - 30h','Adder - 30h'])
 
-plt.figure(2);plt.errorbar(sampling_rates, size_duration_slope,size_duration_CI);plt.xlabel('Sampling rate (h)'); plt.ylabel('Size control slope - duration')
-plt.legend(['Sizer - 72h c.c.','Adder - 72h','Sizer - 50h','Adder - 50h'])
+df.to_excel('//Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Noise analysis/size_control_subsample.xlsx')
 
 

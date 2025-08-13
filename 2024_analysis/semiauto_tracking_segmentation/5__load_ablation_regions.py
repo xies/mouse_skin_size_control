@@ -32,8 +32,8 @@ dirnames['Ablation_R13'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/
 dirnames['Ablation_R14'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M5 white R26 RBfl DOB 04-25-2023/09-27-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 dirnames['Ablation_R16'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M5 white R26 RBfl DOB 04-25-2023/10-04-2023 R26CreER Rb-fl no tam ablation M5/M5 white DOB 4-25-23/R1'
 
-dirnames['Ablation_R18'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
-dirnames['Ablation_R20'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
+dirnames['Ablation_R18'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black unclipped less leaky DOB 06-30-2023/R2/'
+dirnames['Ablation_R20'] = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 
 all_tracks = {}
 ts_regions = {}
@@ -57,12 +57,15 @@ for name,dirname in dirnames.items():
         print('--- Save the pre-ablation size as special field ---')
         init_vol = np.ones(len(df))* np.nan
         init_vol_norm = np.ones(len(df)) * np.nan
+        dist = np.ones(len(df)) * np.nan
         for i,t in enumerate(tracks):
             if len(t[t['Frame'] == 0]['Volume'].values) > 0:
+                dist[i] = t[t['Frame'] == 0]['Distance to ablated cell'] * t.iloc[0].um_per_px
                 init_vol[i] = t[t['Frame'] == 0]['Volume'].values
                 init_vol_norm[i] = t[t['Frame'] == 0]['Volume normal'].values
         df['Initial volume'] = init_vol
         df['Initial volume normal'] = init_vol_norm
+        df['Distance to ablated cell'] = dist
         
         regions[name+'_'+mode] = df
         
@@ -89,16 +92,20 @@ sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='violin'
 sb.stripplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',dodge=True)
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='Exponential growth rate',kind='box')
 # sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size normal',kind='box')
+sb.catplot(df_all,x='Mouse',hue='Mode',y='Initial volume',kind='box')
 
 sb.catplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',kind='violin')
 sb.stripplot(df_all,x='Mouse',hue='Mode',y='S phase entry size',dodge=True)
+
+df[['Mouse','S phase entry size','Exponential growth rate']].to_excel(
+    '')
 
 # plt.ylim([50,200])
 # plt.ylim([0,2])
 
 #%%
 
-pairs = zip(range(1),range(1,2))
+pairs = zip(range(1),range(1,5))
 colors = {'Ablation':'r','Nonablation':'b'}
 
 R = []
@@ -121,29 +128,31 @@ R = np.squeeze(np.array(R))
 
 #%%
 
-name = 'Ablation_R20'
+name = 'Ablation_R1'
 field2plot = 'Volume'
-YMIN = 0
-YMAX = 300
+YMIN = 200
+YMAX = 400
 tracks = [v for k,v in ts_all[(ts_all['Mode'] == 'Nonablation') & (ts_all['Region'] == name)].groupby(['Region','CellID'])]
 
-plt.subplot(1,2,1)
-for t in tracks:
-    plt.plot(t.Age, t[field2plot],'b-',alpha=0.3)
-plt.xlabel('Time since ablation (h)')
-plt.ylabel('Volume (px)')
-plt.ylim([YMIN,YMAX])
-plt.title('Non neighbors')
+# plt.subplot(1,2,1)
+# for t in tracks:
+#     plt.plot(t.Age, t[field2plot]*dV,'b-',alpha=0.3)
+# plt.xlabel('Time since ablation (h)')
+# plt.ylabel('Volume (px)')
+# # plt.ylim([YMIN,YMAX])
+# plt.title('Non neighbors')
 
 tracks = [v for k,v in ts_all[(ts_all['Mode'] == 'Ablation') & (ts_all['Region'] == name)].groupby(['Region','CellID'])]
 
 plt.subplot(1,2,2)
-for t in tracks:
+for t in tracks[:]:
     plt.plot(t.Age, t[field2plot],'r-',alpha=0.3)
 plt.xlabel('Time since ablation (h)')
 plt.ylabel('Volume (px)')
-plt.ylim([YMIN,YMAX])
+# plt.ylim([YMIN,YMAX])
 plt.title('Neighbors')
+
+#%%
 
 #%% Bin by initial size
 
@@ -184,7 +193,7 @@ plot_bin_means(df_all['Distance to ablated cell'],df_all['Exponential growth rat
 D = pd.DataFrame(ts_all.groupby(['CellID','Region','Mode'])['Distance to ablated cell'].mean())
 D = D.reset_index()
 sb.histplot(D,x='Distance to ablated cell',hue='Mode',bins=50,element='poly')
-df_all = pd.merge(df_all,D,on=['Region','Mode','CellID'])
+# df_all = pd.merge(df_all,D,on=['Region','Mode','CellID'])
 
 #%%
 

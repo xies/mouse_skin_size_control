@@ -23,7 +23,7 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/In vitro/mIOs/orga
 df31 = pd.read_csv(path.join(dirname,'manual_cellcycle_annotations/cell_features.csv'),index_col=0)
 df31['organoidID'] = 31
 
-df = pd.concat((df5,df2,df31),ignore_index=True)
+df = pd.concat((df5,df2),ignore_index=True)
 # df = df31
 df['organoidID_trackID'] = df['organoidID'].astype(str) + '_' + df['trackID'].astype(str)
 regen = df
@@ -123,14 +123,15 @@ regen = df[df['Cell type'] == 'Regenerative']
 stem = df[df['Cell type'] == 'Stem cell']
 ta = df[df['Cell type'] == 'TA cell']
 
+
 import statsmodels.api as sm
-_df = stem
+_df = regen
 X = _df.dropna(subset=['Birth volume','G1 growth'])['Birth volume']
 X = sm.add_constant(X)
 y = _df.dropna(subset=['Birth volume','G1 growth'])['G1 growth']
 
 model = sm.OLS(y,X).fit()
-print(model.conf_int())
+print(model.summary())
 
 #%% Ttests
 

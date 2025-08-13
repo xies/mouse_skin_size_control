@@ -29,7 +29,7 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NM
  
 #%%
 
-T = 1
+T = 7
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
@@ -58,6 +58,7 @@ for t in tqdm(range(T)):
 # ts = ax.scatter(grid_x, grid_y)
 
 df = pd.concat(_tmp)
+df.to_excel(path.join(dirname,'pre_gated.xlsx'))
 # df = pd.concat([wt_table,rbko_table])
 
 plt.figure()

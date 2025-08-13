@@ -60,9 +60,11 @@ df_ = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/
 df_g1s = pd.read_csv('/Users/xies/OneDrive - Stanford/Skin/Mesa et al/Tissue model/df_g1s.csv',index_col=0)
 
 # df_g1s = keep_only_first_sg2(df_g1s)
+# df_g1s['nuc_vol_sm'] = nvol
+# df_g1s['nuc_vol_sm'] = standardize(df_g1s['nuc_vol_sm'])
 
-df_g1s_cell = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','nuc_vol_sm','sa'])
-df_g1s_nuc = df_g1s.drop(columns=['time_g1s','fucci_int_12h','cellID','diff','region','vol_sm','sa_to_vol'])
+df_g1s_cell = df_g1s.drop(columns=['time_g1s','cellID','diff','region','nuc_vol_sm',])
+df_g1s_nuc = df_g1s.drop(columns=['time_g1s','cellID','diff','region','vol_sm'])
 
 #%% Logistic for G1/S transition using CELL VOL: skip all non-first SG2 timepoints
 # Random rebalance with 1:1 ratio
@@ -145,7 +147,7 @@ li = np.ones((Niter,df_g1s_nuc.shape[1]-1)) * np.nan
 ui = np.ones((Niter,df_g1s_nuc.shape[1]-1)) * np.nan
 pvalues = np.ones((Niter,df_g1s_nuc.shape[1]-1)) * np.nan
 
-for i in range(Niter):
+for i in tqdm(range(Niter)):
     
     #% Rebalance class
     df_g1s_balanced = rebalance_g1(df_g1s_nuc,Ng1)
@@ -193,10 +195,10 @@ params['li'] = li.mean(axis=0).values
 params['ui'] = ui.mean(axis=0).values
 
 params['err'] = params['ui'] - params['coef']
-params['effect size'] = params['coef']
+params['effect size'] = params['coef'].abs()
 
-order = np.argsort( np.abs(params['coef']) )[::-1][0:5]
-params = params.iloc[order]
+# order = np.argsort( np.abs(params['coef']) )[::-1][0:5]
+# params = params.iloc[order]
 
 plt.figure()
 plt.bar(range(len(params)),params['coef'],yerr=params['err'])
@@ -207,7 +209,7 @@ plt.xticks(range(5),params['var'],rotation=30)
 
 from sklearn import metrics
 
-Niter = 10
+Niter = 1000
 auc_scores = pd.DataFrame(index=range(Niter))
 log_loss_scores = pd.DataFrame(index=range(Niter))
 
