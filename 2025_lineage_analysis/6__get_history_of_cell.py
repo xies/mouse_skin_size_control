@@ -25,8 +25,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 all_trackIDs = all_df.reset_index()
@@ -146,8 +146,8 @@ for trackID,cf in tqdm(tracks.items()):
                 
     tracks[trackID] = cf.reset_index()
 
-#%% Go forward in time -- put daughter info
- 
+#%% Go forward in time -- put daughter info into mother cell
+
 for trackID,cf in tqdm(tracks.items()):
     
     cf = cf.set_index('Frame',drop=True)
@@ -155,8 +155,8 @@ for trackID,cf in tqdm(tracks.items()):
     daughterID_A = cf.iloc[0]['Daughter a','Meta']
     daughterID_B = cf.iloc[0]['Daughter b','Meta']
     if not np.isnan(daughterID_A):
-        daughterA = tracks[daughterID_A]
-        daughterB = tracks[daughterID_B]
+        daughterA = tracks[int(daughterID_A)]
+        daughterB = tracks[int(daughterID_B)]
         if daughterA.iloc[0]['Fate known','Meta'] and daughterB.iloc[0]['Fate known','Meta']:
             cf['Num daughter differentiated','Meta'] = int(daughterA.iloc[0]['Will differentiate','Meta']) \
                 + int(daughterB.iloc[0]['Will differentiate','Meta'])

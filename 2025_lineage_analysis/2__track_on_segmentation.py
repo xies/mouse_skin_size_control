@@ -12,7 +12,7 @@ import pandas as pd
 from skimage import io, measure
 import tifffile
 
-# import seaborn as sb
+# import seaborn as sb 
 from os import path
 from glob import glob
 from natsort import natsorted
@@ -36,7 +36,7 @@ def get_cube_fill_as_slice(im_shape,centroid,side_length=3):
     upper_bounds = centroid + side_length
     
     lower_bounds = np.fmax(lower_bounds,np.zeros(len(centroid)))
-    upper_bounds = np.fmin(upper_bounds,im_shape)
+    upper_bounds = np.fmin(upper_bou`nds,im_shape)
     
     slice_tuple = (slice(int(lower_bounds[0]),int(upper_bounds[0])),
                    slice(int(lower_bounds[1]),int(upper_bounds[1])),
@@ -48,9 +48,9 @@ def get_cube_fill_as_slice(im_shape,centroid,side_length=3):
 filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t*_basal.tif')))
 basal_segs = np.stack( list(map(io.imread, filenames) ) )
 
-filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t*_supra.tif')))
-# suprabasal_segs = np.stack( list(map(io.imread, filenames)) )
-suprabasal_segs = np.zeros_like(basal_segs)
+filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_suprabasal/t*_suprabasal.tif')))
+suprabasal_segs = np.stack( list(map(io.imread, filenames)) )
+# suprabasal_segs = np.zeros_like(basal_segs)
 
 #% Load cyto segs - basal only
 filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual_combined/t*.tif')))
@@ -97,21 +97,21 @@ for track in tqdm(tracks):
                 mask = filter_seg_by_largest_object(mask)
                 tracked_cyto[frame,mask] = spot['TrackID']
                 
-        # elif spot['Cell type'] == 'Suprabasal':
+        elif spot['Cell type'] == 'Suprabasal':
 
-        #     label = suprabasal_segs[frame,Z,Y,X]
-        #     if label > 0:
-        #         tracked_nuc[frame,suprabasal_segs[frame,...] == label] = spot['TrackID']
-        #     else:
-        #         label = basal_segs[frame,Z,Y,X]
-        #         if label > 0:
-        #             print(f'\n Nuc: {frame}, Suprabasal is in Basal: {spot.TrackID}')
-        #             tracked_nuc[frame,basal_segs[frame,...] == label] = spot['TrackID']
-        #         else:
-        #             print(f'\n Nuc: {frame}, {spot.TrackID}')
-        #             sli = get_cube_fill_as_slice(tracked_nuc[frame,...].shape,
-        #                                          np.array([Z,Y,X]))
-        #             tracked_nuc[frame,sli[0],sli[1],sli[2]] = spot['TrackID']
+            label = suprabasal_segs[frame,Z,Y,X]
+            if label > 0:
+                tracked_nuc[frame,suprabasal_segs[frame,...] == label] = spot['TrackID']
+            else:
+                label = basal_segs[frame,Z,Y,X]
+                if label > 0:
+                    print(f'\n Nuc: {frame}, Suprabasal is in Basal: {spot.TrackID}')
+                    tracked_nuc[frame,basal_segs[frame,...] == label] = spot['TrackID']
+                else:
+                    print(f'\n Nuc: {frame}, {spot.TrackID}')
+                    sli = get_cube_fill_as_slice(tracked_nuc[frame,...].shape,
+                                                 np.array([Z,Y,X]))
+                    tracked_nuc[frame,sli[0],sli[1],sli[2]] = spot['TrackID']
                 
             # These will currently break the cyto
             # label = cyto_supra[frame,Z,Y,X]
@@ -130,21 +130,21 @@ tifffile.imwrite(path.join(dirname,'Mastodon/tracked_cyto.tif'),tracked_cyto
 
 #% Put back in all the basal nuc segs that don't have tracks
 
-maxID = tracks[-1].TrackID.iloc[0]
-for t in range(15):
+# maxID = tracks[-1].TrackID.iloc[0]
+# for t in range(15):
     
-    df = pd.DataFrame( measure.regionprops_table(basal_segs[t], properties=['label','centroid']) )
-    df = df.rename(columns={'label':'NucID',
-                            'centroid-0':'Z',
-                            'centroid-1':'Y',
-                            'centroid-2':'X'}).round().astype(int)
-    df['TrackID'] = corresponding_trackIDs = np.array(
-        [tracked_nuc[t,x[0],x[1],x[2]] for x in df[['Z','Y','X']].values])
-    df = df[df['TrackID'] == 0]
+#     df = pd.DataFrame( measure.regionprops_table(basal_segs[t], properties=['label','centroid']) )
+#     df = df.rename(columns={'label':'NucID',
+#                             'centroid-0':'Z',
+#                             'centroid-1':'Y',
+#                             'centroid-2':'X'}).round().astype(int)
+#     df['TrackID'] = corresponding_trackIDs = np.array(
+#         [tracked_nuc[t,x[0],x[1],x[2]] for x in df[['Z','Y','X']].values])
+#     df = df[df['TrackID'] == 0]
     
-    for _,row in df.iterrows():
-        tracked_nuc[t, basal_segs[t] == row.NucID] = maxID
-        maxID += 1
+#     for _,row in df.iterrows():
+#         tracked_nuc[t, basal_segs[t] == row.NucID] = maxID
+#         maxID += 1
     
 tifffile.imwrite(path.join(dirname,'Mastodon/tracked_nuc.tif'),tracked_nuc,
                  compression='zlib')

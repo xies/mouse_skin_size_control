@@ -20,13 +20,17 @@ from imageUtils import most_likely_label
 # General utils
 from tqdm import tqdm
 from os import path
+import pickle as pkl
 
 dx = 0.25
 dz = 1
 
-# Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# Filenames??
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
+    tracks = pkl.load(file)
+
 
 def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
     this_mask = labels == centerID
@@ -38,7 +42,7 @@ def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
     touchingIDs = touchingIDs[touchingIDs != centerID] # nonself
     
     return touchingIDs
-    
+
 
 #% Reconstruct adj network from cytolabels that touch
 def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2):
@@ -87,12 +91,14 @@ adjDicts = [get_adjdict_from_2d_segmentation(seg) for seg in seg2d]
 label_transfers = [] # adjID -> TrackID
 for t in range(15):
     
-    this_transfer = pd.DataFrame(measure.regionprops_table(nuc[t].max(axis=0), intensity_image=seg2d[t],
+    this_transfer = pd.DataFrame(measure.regionprops_table(nuc[t].max(axis=0),
+                                                           intensity_image=seg2d[t],
                               properties = ['label'],extra_properties=[most_likely_label] ))
     this_transfer = this_transfer.rename(columns={'label':'NucID',
                                                       'most_likely_label':'adjID'})
     
-    _this_transfer = pd.DataFrame(measure.regionprops_table(nuc[t], intensity_image=tracked_nuc[t,...],
+    _this_transfer = pd.DataFrame(measure.regionprops_table(nuc[t],
+                                                            intensity_image=tracked_nuc[t,...],
                               properties = ['label'],extra_properties=[most_likely_label] ))
     _this_transfer = _this_transfer.rename(columns={'label':'NucID',
                                                       'most_likely_label':'TrackID'})
@@ -102,50 +108,147 @@ for t in range(15):
     
 label_transfers = pd.concat(label_transfers)
 label_transfers = label_transfers.set_index(['Frame','NucID'])
+label_transfers = label_transfers[(label_transfers['TrackID'] <= len(tracks) + 1)
+                                  & (label_transfers['TrackID'] >0)]
 
 # Input manually NucID is indexed
-label_transfers.loc[(1,361),'adjID'] = 335
-label_transfers.loc[(2,2119),'adjID'] = 354
-label_transfers.loc[(2,2119),'adjID'] = 394
-label_transfers.loc[(4,776),'adjID'] = 132
-label_transfers.loc[(4,916),'adjID'] = 139
-label_transfers.loc[(4,1106),'adjID'] = 8
-label_transfers.loc[(5,834),'adjID'] = 262
-label_transfers.loc[(5,845),'adjID'] = 367
-label_transfers.loc[(5,3285),'adjID'] = 107
-label_transfers.loc[(6,769),'adjID'] = 367
-label_transfers.loc[(6,1131),'adjID'] = 225
-label_transfers.loc[(7,602),'adjID'] = 376
-label_transfers.loc[(7,603),'adjID'] = 358
-label_transfers.loc[(7,604),'adjID'] = 13
-label_transfers.loc[(7,735),'adjID'] = 271
-label_transfers.loc[(8,666),'adjID'] = 319
-label_transfers.loc[(8,814),'adjID'] = 316
-label_transfers.loc[(10,651),'adjID'] = 286
-label_transfers.loc[(11,614),'adjID'] = 364
-label_transfers.loc[(12,742),'adjID'] = 355
-label_transfers.loc[(12,791),'adjID'] = 356
-label_transfers.loc[(12,992),'adjID'] = 377
-label_transfers.loc[(14,927),'adjID'] = 373
-label_transfers.loc[(14,835),'adjID'] = 197
+if dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/':
+    label_transfers.loc[(1,361),'adjID'] = 335
+    label_transfers.loc[(2,2119),'adjID'] = 354
+    label_transfers.loc[(2,2119),'adjID'] = 394
+    label_transfers.loc[(4,776),'adjID'] = 132
+    label_transfers.loc[(4,916),'adjID'] = 139
+    label_transfers.loc[(4,1106),'adjID'] = 8
+    label_transfers.loc[(5,834),'adjID'] = 262
+    label_transfers.loc[(5,845),'adjID'] = 367
+    label_transfers.loc[(5,3285),'adjID'] = 107
+    label_transfers.loc[(6,769),'adjID'] = 367
+    label_transfers.loc[(6,1131),'adjID'] = 225
+    label_transfers.loc[(7,602),'adjID'] = 376
+    label_transfers.loc[(7,603),'adjID'] = 358
+    label_transfers.loc[(7,604),'adjID'] = 13
+    label_transfers.loc[(7,735),'adjID'] = 271
+    label_transfers.loc[(8,666),'adjID'] = 319
+    label_transfers.loc[(8,814),'adjID'] = 316
+    label_transfers.loc[(10,651),'adjID'] = 286
+    label_transfers.loc[(11,614),'adjID'] = 364
+    label_transfers.loc[(12,742),'adjID'] = 355
+    label_transfers.loc[(12,791),'adjID'] = 356
+    label_transfers.loc[(12,992),'adjID'] = 377
+    label_transfers.loc[(14,927),'adjID'] = 373
+    label_transfers.loc[(14,835),'adjID'] = 197
+    
+elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
+    #W-R2
+    label_transfers.loc[(0,897),'adjID'] = 197
+    label_transfers.loc[(0,1175),'adjID'] = 368
+    label_transfers.loc[(0,1004),'adjID'] = 164
+    label_transfers.loc[(0,1162),'adjID'] = 364
+    label_transfers.loc[(0,1035),'adjID'] = 341
+    label_transfers.loc[(0,1205),'adjID'] = 362
+    
+    label_transfers.loc[(1,903),'adjID'] = 15
+    label_transfers.loc[(1,1038),'adjID'] = 351
+    label_transfers.loc[(1,1033),'adjID'] = 232
+    label_transfers.loc[(1,991),'adjID'] = 238
+    
+    label_transfers.loc[(2,707),'adjID'] = 257
+    label_transfers.loc[(2,1119),'adjID'] = 380
+    label_transfers.loc[(2,1117),'adjID'] = 378
+    label_transfers.loc[(2,807),'adjID'] = 323
+    label_transfers.loc[(2,810),'adjID'] = 346
+    label_transfers.loc[(2,846),'adjID'] = 358
+    label_transfers.loc[(2,890),'adjID'] = 11
+    label_transfers.loc[(2,984),'adjID'] = 363
+    
+    label_transfers.loc[(3,1046),'adjID'] = 265
+    label_transfers.loc[(3,997),'adjID'] = 82
+    
+    label_transfers.loc[(4,633),'adjID'] = 313
+    label_transfers.loc[(4,731),'adjID'] = 94
+    label_transfers.loc[(4,751),'adjID'] = 388
+    label_transfers.loc[(4,771),'adjID'] = 358
+    label_transfers.loc[(4,819),'adjID'] = 367
+    label_transfers.loc[(4,823),'adjID'] = 16
+    label_transfers.loc[(4,979),'adjID'] = 36
+    
+    label_transfers.loc[(5,550),'adjID'] = 284
+    label_transfers.loc[(5,606),'adjID'] = 272
+    label_transfers.loc[(5,704),'adjID'] = 334
+    label_transfers.loc[(5,877),'adjID'] = 6
+    label_transfers.loc[(5,881),'adjID'] = 30
+    
+    label_transfers.loc[(6,597),'adjID'] = 271
+    label_transfers.loc[(6,952),'adjID'] = 336
+    label_transfers.loc[(6,627),'adjID'] = 329
+    label_transfers.loc[(6,932),'adjID'] = 54
+    label_transfers.loc[(6,993),'adjID'] = 974
+    label_transfers.loc[(6,992),'adjID'] = 975
+    label_transfers.loc[(6,995),'adjID'] = 976
+    label_transfers.loc[(6,963),'adjID'] = 102
+    label_transfers.loc[(6,710),'adjID'] = 326
+    label_transfers.loc[(6,844),'adjID'] = 328
+    label_transfers.loc[(6,951),'adjID'] = 288
+    
+    label_transfers.loc[(9,900),'adjID'] = 326
+    label_transfers.loc[(9,902),'adjID'] = 327
+    label_transfers.loc[(11,725),'adjID'] = 393
+    label_transfers.loc[(11,940),'adjID'] = 346
+    label_transfers.loc[(11,1003),'adjID'] = 179
+    label_transfers.loc[(11,1068),'adjID'] = 125
+    label_transfers.loc[(11,1154),'adjID'] = 404
+    label_transfers.loc[(11,1119),'adjID'] = 333
+    label_transfers.loc[(11,725),'adjID'] = 261
+    label_transfers.loc[(11,1152),'adjID'] = 407
+    label_transfers.loc[(11,1153),'adjID'] = 408
+    
+    label_transfers.loc[(12,906),'adjID'] = 277
+    label_transfers.loc[(12,1010),'adjID'] = 279
+    label_transfers.loc[(12,1082),'adjID'] = 146
+    label_transfers.loc[(12,1122),'adjID'] = 290
+    label_transfers.loc[(12,1166),'adjID'] = 381
+    label_transfers.loc[(12,1179),'adjID'] = 385
+    label_transfers.loc[(12,1180),'adjID'] = 386
+    
+    label_transfers.loc[(13,742),'adjID'] = 239
+    label_transfers.loc[(13,775),'adjID'] = 283
+    label_transfers.loc[(13,1057),'adjID'] = 381
+    label_transfers.loc[(13,872),'adjID'] = 305
+    label_transfers.loc[(13,1047),'adjID'] = 381
+    label_transfers.loc[(13,1060),'adjID'] = 383
+    label_transfers.loc[(13,1065),'adjID'] = 290
+    label_transfers.loc[(13,1057),'adjID'] = 384
+    
+    label_transfers.loc[(14,967),'adjID'] = 368
+    label_transfers.loc[(14,816),'adjID'] = 355
+    label_transfers.loc[(14,962),'adjID'] = 272
+    label_transfers.loc[(14,964),'adjID'] = 124
+    label_transfers.loc[(14,964),'adjID'] = 372
+    label_transfers.loc[(14,944),'adjID'] = 309
+    label_transfers.loc[(14,935),'adjID'] = 373
 
+label_transfers = label_transfers.dropna(subset='TrackID')
 # Detect NucID that has no AdjID (unmapped)
+# Go through these, some are borders but some are actually missing
 print( ' --- Missing from basal adj graph ---')
 print( label_transfers.loc[np.isnan(label_transfers['adjID'])] )
 
 # Detect duplicated AdjID (degeneracy)
 print( ' --- Duplicated in basal adj graph ---')
 label_transfers = label_transfers.reset_index()
+dups = label_transfers[label_transfers.duplicated(subset=['Frame','adjID'])].set_index('Frame')
 print( label_transfers[label_transfers.duplicated(subset=['Frame','adjID'])] )
 label_transfers = label_transfers.set_index(['Frame','NucID'])
 
-# Detect missing AdjID 
+# Detect missing AdjID  -> These are usually border cells and we can tolerate these
 missingIDs = []
 print( ' --- Missing: AdjIDs without NucID ---')
 for t in range(15):
     missingIDs.append( list(set(list(adjDicts[t].keys())) - 
                             set(label_transfers.xs(t,level='Frame')['adjID'].values)) )
 print( missingIDs )
+
+#%%
 
 label_transfers = label_transfers.reset_index().set_index(['Frame','adjID'])
 label_transfers['TrackID'] = label_transfers['TrackID'].astype(int)
@@ -168,7 +271,7 @@ for t in tqdm(range(15)):
 
 from imageUtils import draw_adjmat_on_image_3d, adjdict_to_mat
 
-for t in range(15):
+for t in tqdm(range(15)):
     
     coords_3d = pd.DataFrame(measure.regionprops_table(tracked_nuc[t,...], properties=['label','centroid']))
     coords_3d = coords_3d.rename(columns={'label':'TrackID','centroid-0':'Z','centroid-1':'Y','centroid-2':'X',}).set_index('TrackID')
@@ -212,8 +315,6 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
     
     return df_aggregated.reset_index()
 
-all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
-
 def frac_sphase(v):
     has_cell_cycle = v[v != 'NA']
     if len(has_cell_cycle) > 0:
@@ -221,7 +322,9 @@ def frac_sphase(v):
     else:
         frac = np.nan
     return frac
-    
+
+all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
+tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
 
 aggregators = {'Mean':np.nanmean,
                'Median':np.nanmedian,
@@ -262,10 +365,10 @@ all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregat
  #%% Lookbacks
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
+tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
+all_df_with_supra = all_df.copy()
 
 from functools import reduce
-
-tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
 
 def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_lookback:str=1):
     df_lookback = []
@@ -312,7 +415,7 @@ new_cols['Name'] = df_lookback.columns
 new_cols['Metadata'] = 'Measurement'
 df_lookback.columns = pd.MultiIndex.from_frame(new_cols)
 
-all_df = all_df.join(df_lookback)
+all_df = all_df.join(df_lookback,how='outer')
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 
