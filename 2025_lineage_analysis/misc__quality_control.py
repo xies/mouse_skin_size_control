@@ -17,13 +17,13 @@ from tqdm import tqdm
 from os import path
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),
-                     index_col=['Frame','TrackID'])
+all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 all_tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID')}
 
 all_df = all_df[ ~all_df['Border']]
-all_df = all_df[ all_df['Fate known']]
-tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID') if np.all(~t.Border)}
+# all_df = all_df[ all_df['Fate known']]
+tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID')
+          if np.all(~t['Border','Meta'])}
 
 #%%
 
@@ -33,7 +33,7 @@ cc = ['r','g','b','k','c','m','y','orange','brown','gray']
 c = {True:'b',False:'r'}
 
 keys = list(tracks.keys())
-# keys = [431]
+keys = [431]
 
 div_count = 0; delam_count = 0
 plt.figure()
