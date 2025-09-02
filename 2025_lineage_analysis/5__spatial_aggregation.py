@@ -16,6 +16,7 @@ import tifffile
 
 # Specific utils
 from imageUtils import most_likely_label
+from basicUtils import sort_by_timestamp
 
 # General utils
 from tqdm import tqdm
@@ -26,8 +27,8 @@ dx = 0.25
 dz = 1
 
 # Filenames??
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
@@ -70,7 +71,45 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
     
     return A
 
-#%% Build basal adj graph
+#%% Flatten segmentation from the heightmap
+
+
+TOP_OFFSET = -30 #NB: top -> more apical but lower z-index
+BOTTOM_OFFSET = 10
+
+imstack = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
+T = imstack.shape[0]
+
+for t in tqdm(range(T)):
+    
+    im = imstack[t,...]
+    Z,XX,_ = im.shape
+    
+    heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
+    
+    output_dir = path.join(dirname,'Image flattening/flat_tracked_cyto')
+    
+    flat = np.zeros((-TOP_OFFSET+BOTTOM_OFFSET,XX,XX))
+    Iz_top = heightmap + TOP_OFFSET
+    Iz_bottom = heightmap + BOTTOM_OFFSET
+    
+    for x in range(XX):
+        for y in range(XX):
+            
+            flat_indices = np.arange(0,-TOP_OFFSET+BOTTOM_OFFSET)
+            
+            z_coords = np.arange(Iz_top[y,x],Iz_bottom[y,x])
+            # sanitize for out-of-bounds
+            z_coords[z_coords < 0] = 0
+            z_coords[z_coords >= Z] = Z-1
+            I = (z_coords > 0) & (z_coords < Z)
+            
+            flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
+    
+    io.imsave( path.join(output_dir,f't{t}.tif'), flat.astype(np.uint16),check_contrast=False)
+
+
+#%% Build basal adj graph from flattened segmentation
 # @todo: suprabasal adj could also be annotated but probably use delauney3D instead?
 
 # Load flat 2D adj image (omits suprabasal cells)
@@ -208,7 +247,6 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(12,1122),'adjID'] = 290
     label_transfers.loc[(12,1166),'adjID'] = 381
     label_transfers.loc[(12,1179),'adjID'] = 385
-    label_transfers.loc[(12,1180),'adjID'] = 386
     
     label_transfers.loc[(13,742),'adjID'] = 239
     label_transfers.loc[(13,775),'adjID'] = 283
@@ -339,10 +377,14 @@ aggregated_fields = []
 for t in tqdm(range(15)):
     
     adj = adjacent_tracks[t]
-
-    df_agg = aggregate_over_adj(adj, aggregators, all_df.xs(t,level='Frame'), fields2aggregate)
+    this_frame = all_df.xs(t,level='Frame')
+    df_agg = aggregate_over_adj(adj, aggregators, this_frame, fields2aggregate)
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
-    # @todo: dist to neighbors df_agg['Mean distance to basal neighbors']
+    # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
+    # @todo: relative-to-mean
+    for field in fields2aggregate:
+        df_agg[f'Relative {field}'] = this_frame[field,'Measurement'].values / df_agg[f'Mean adjac {field}'].values
+    
     df_agg['Frac of neighbors in S phase'] = aggregate_over_adj(adj,
                                                                 {'Frac':frac_sphase},
                                                                 all_df.xs(t,level='Frame'),

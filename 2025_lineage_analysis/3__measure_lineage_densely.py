@@ -35,8 +35,8 @@ Z_SHIFT = 10
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%% 
 
@@ -165,7 +165,12 @@ for t in tqdm(range(15)):
     faces = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
     mesh = Trimesh(mesh.points,faces)
     mesh = smoothing.filter_humphrey(mesh,alpha=1)
-
+    # Check the face normals (if mostly aligned with +z, then keep sign if not, then invert sign)
+    if ((mesh.facets_normal[:,2] > 0).sum() / len(mesh.facets_normal)) > 0.5:
+        curvature_sign = 1
+    else:
+        curvature_sign = -1
+    
     closest_mesh_to_cell,_,_ = mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
     # pl =pv.Plotter()
     # pl.add_mesh(pv.wrap(mesh))
@@ -177,7 +182,7 @@ for t in tqdm(range(15)):
         mesh, closest_mesh_to_cell, 5)/sphere_ball_intersection(1, 5)
     gaussian_curve = discrete_gaussian_curvature_measure(
         mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
-    df['Mean curvature'] = mean_curve
+    df['Mean curvature'] = curvature_sign * mean_curve
     df['Gaussian curvature'] = gaussian_curve
     
     #----- 6. Use manual 3D topology to compute neighborhoods lengths -----
@@ -283,38 +288,38 @@ print(missing_cytos[:50])
 
 #%% Colorize cell with measurement for visualization
 
-t = 0
+# t = 0
 
-measurement = all_df.loc[t,:]['Mean curvature - cell coords']
-measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-colorized = colorize_segmentation(tracked_nuc[t,...],
-                      measurement.to_dict(),dtype=float)
-io.imsave('/Users/xies/Desktop/cell_coords.tif',
-          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
-
-
-measurement = all_df.loc[t,:]['Mean curvature']
-measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-colorized = colorize_segmentation(tracked_nuc[t,...],
-                      measurement.to_dict(),dtype=float)
-io.imsave('/Users/xies/Desktop/bm.tif',
-          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+# measurement = all_df.loc[t,:]['Mean curvature - cell coords']
+# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+# colorized = colorize_segmentation(tracked_nuc[t,...],
+#                       measurement.to_dict(),dtype=float)
+# io.imsave('/Users/xies/Desktop/cell_coords.tif',
+#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
 
 
-measurement = all_df.loc[t,:]['Collagen intensity']
-measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-colorized = colorize_segmentation(tracked_nuc[t,...],
-                      measurement.to_dict(),dtype=float)
-io.imsave('/Users/xies/Desktop/collagen_intensity.tif',
-          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+# measurement = all_df.loc[t,:]['Mean curvature']
+# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+# colorized = colorize_segmentation(tracked_nuc[t,...],
+#                       measurement.to_dict(),dtype=float)
+# io.imsave('/Users/xies/Desktop/bm.tif',
+#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
 
 
-measurement = all_df.loc[t,:]['Collagen coherence']
-measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-colorized = colorize_segmentation(tracked_nuc[t,...],
-                      measurement.to_dict(),dtype=float)
-io.imsave('/Users/xies/Desktop/collagen_coherence.tif',
-          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+# measurement = all_df.loc[t,:]['Collagen intensity']
+# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+# colorized = colorize_segmentation(tracked_nuc[t,...],
+#                       measurement.to_dict(),dtype=float)
+# io.imsave('/Users/xies/Desktop/collagen_intensity.tif',
+#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+
+
+# measurement = all_df.loc[t,:]['Collagen coherence']
+# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+# colorized = colorize_segmentation(tracked_nuc[t,...],
+#                       measurement.to_dict(),dtype=float)
+# io.imsave('/Users/xies/Desktop/collagen_coherence.tif',
+#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
 
 
 

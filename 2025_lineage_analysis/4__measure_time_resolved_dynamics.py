@@ -15,6 +15,7 @@ import matplotlib.pylab as plt
 # General utils
 from tqdm import tqdm
 from os import path
+import os
 # from basicUtils import nonans
 
 dx = 0.25
@@ -43,47 +44,74 @@ all_df = pd.concat(df_by_frame,ignore_index=True).set_index(['Frame','TrackID'])
 # Visible mitosis -- exclude from volume measurements
 all_df['Cell cycle transition'] = 'NA'
 
-
 #W-R1
-# all_df.loc[(1,47),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(3,251),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(3,902),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(5,1206),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(6,278),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(6,989),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(6,623),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(8,703),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(9,210),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(9,453),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(9,841),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(10,402),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(10,40),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(10,1005),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(11,867),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(11,908),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(11,676),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(12,892),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(12,523),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(13,916),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(13,449),'Cell cycle transition'] = 'Mitosis'
-# all_df.loc[(14,579),'Cell cycle transition'] = 'Mitosis'
+if dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/':
+    all_df.loc[(1,47),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(3,251),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(3,902),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(5,1206),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(6,278),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(6,989),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(6,623),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(8,703),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(9,210),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(9,453),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(9,841),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,402),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,40),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,1005),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(11,867),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(11,908),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(11,676),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(12,892),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(12,523),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(13,916),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(13,449),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(14,579),'Cell cycle transition'] = 'Mitosis'
+
+#W-R2
+elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
+    all_df.loc[(0,1159),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(1,734),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(3,1080),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(2,307),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(2,208),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(3,404),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(4,888),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(4,94),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(5,356),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(6,326),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(7,941),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(7,845),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(8,676),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,827),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,870),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,693),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,966),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,805),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(10,870),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(11,1154),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(12,487),'Cell cycle transition'] = 'Mitosis'
+    all_df.loc[(12,419),'Cell cycle transition'] = 'Mitosis'
 
 from measurements import map_tzyx_to_labels
 
-tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
-na_points = pd.read_csv(path.join(dirname,'Mastodon/NA.csv'),index_col=0)
-na_points = na_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
-na_points = map_tzyx_to_labels(na_points, tracked_nuc)
+all_df['Cell cycle phase'] = 'G1' # or G1
+all_df = all_df.reset_index().set_index('TrackID')
 
+tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
+filename = path.join(dirname,'Mastodon/NA.csv')
+if path.exists(filename):
+    na_points = pd.read_csv(filename,index_col=0)
+    na_points = na_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
+    na_points = map_tzyx_to_labels(na_points, tracked_nuc)
+    for _,row in na_points.iterrows():
+        all_df.loc[row['label'],'Cell cycle phase'] = 'NA'
+    
 sg2_points = pd.read_csv(path.join(dirname,'Mastodon/SG2.csv'),index_col=0)
 sg2_points = sg2_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
 sg2_points = map_tzyx_to_labels(sg2_points, tracked_nuc)
 
-all_df['Cell cycle phase'] = 'G1' # or G1
-all_df = all_df.reset_index().set_index('TrackID')
-for _,row in na_points.iterrows():
-    all_df.loc[row['label'],'Cell cycle phase'] = 'NA'
-    
 all_df = all_df.reset_index().set_index(['Frame','TrackID'])
 for _,row in sg2_points.iterrows():
     all_df.loc[(row['T'],row['label']),'Cell cycle phase'] = 'SG2'

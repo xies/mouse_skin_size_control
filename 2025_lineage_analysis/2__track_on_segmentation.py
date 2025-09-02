@@ -21,9 +21,10 @@ from imageUtils import most_likely_label, filter_seg_by_largest_object
 import pickle as pkl
 from tqdm import tqdm
 
-#%% Load segmentations
+dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+# dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
-dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
+#%% Load segmentations
 
 dz = 1; dx = 0.25
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
@@ -36,7 +37,7 @@ def get_cube_fill_as_slice(im_shape,centroid,side_length=3):
     upper_bounds = centroid + side_length
     
     lower_bounds = np.fmax(lower_bounds,np.zeros(len(centroid)))
-    upper_bounds = np.fmin(upper_bou`nds,im_shape)
+    upper_bounds = np.fmin(upper_bounds,im_shape)
     
     slice_tuple = (slice(int(lower_bounds[0]),int(upper_bounds[0])),
                    slice(int(lower_bounds[1]),int(upper_bounds[1])),
@@ -48,12 +49,12 @@ def get_cube_fill_as_slice(im_shape,centroid,side_length=3):
 filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t*_basal.tif')))
 basal_segs = np.stack( list(map(io.imread, filenames) ) )
 
-filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_suprabasal/t*_suprabasal.tif')))
+filenames = natsorted(glob(path.join(dirname,'3d_nuc_seg/cellpose_cleaned_manual/t*_suprabasal.tif')))
 suprabasal_segs = np.stack( list(map(io.imread, filenames)) )
 # suprabasal_segs = np.zeros_like(basal_segs)
 
 #% Load cyto segs - basal only
-filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual_combined/t*.tif')))
+filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg/3d_cyto_manual/t*_cleaned.tif')))
 cyto_segs = np.stack( list(map(io.imread,filenames) ) )
 
 # filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg_supra/3d_cyto_supra_raw/t*.tif')))
@@ -96,7 +97,6 @@ for track in tqdm(tracks):
                 mask = cyto_segs[frame,...] == label
                 mask = filter_seg_by_largest_object(mask)
                 tracked_cyto[frame,mask] = spot['TrackID']
-                
         elif spot['Cell type'] == 'Suprabasal':
 
             label = suprabasal_segs[frame,Z,Y,X]
