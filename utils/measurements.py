@@ -405,7 +405,7 @@ def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
         
     # for celltype in cell_types:
     # I = cf['Cell type'] == celltype
-    I = ~cf[field].isna() & ~cf['Border'] & ~(cf['Cell cycle phase'] == 'Mitosis')
+    I = ~cf[field].isna() & ~cf['Border'].astype(bool) & ~(cf['Cell cycle phase'] == 'Mitosis')
     
     this_type = cf.loc[I]
     if len(this_type) < 4:
@@ -518,7 +518,8 @@ def get_exponential_growth_rate(cf:pd.DataFrame,field:str = 'Cell volume',time_f
     cell_types = cf['Cell type'].astype(str).unique()
     for celltype in cell_types:
         I = cf['Cell type'] == celltype
-        I = I & ~cf[field].isna() & ~cf['Border'] & ~(cf['Cell cycle phase'] == 'Mitosis')
+        I = I & ~cf[field].isna() & ~cf['Border'].astype(bool) \
+            & ~(cf['Cell cycle phase'] == 'Mitosis')
         
         if len(filtered) > 0:
             assert(len(filtered) == 1)

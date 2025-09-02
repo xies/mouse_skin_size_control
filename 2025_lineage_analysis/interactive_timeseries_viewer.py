@@ -101,19 +101,20 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-
 # df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 # measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
 # Load the manual tracks
-# all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
+all_df = all_df[all_df['Cell type'] == 'Basal']
 # Tracks axes are: ID,T,(Z),Y,X
-# tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
-# dx = .25
-# with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
-#     tracks = pkl.load(file)
-# tracks = pd.concat(tracks,ignore_index=True).sort_values(['LineageID','Frame'])
-# # Sanitize dtype
-# tracks = tracks[['LineageID','Frame','Z','Y','X']].astype(float)
-# # The default output is in microns -> convert
-# tracks['Y'] = tracks['Y'] / dx
-# tracks['X'] = tracks['X'] / dx
-#
+tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
+dx = .25
+with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
+    tracks = pkl.load(file)
+tracks = pd.concat(tracks,ignore_index=True).sort_values(['LineageID','Frame'])
+# Sanitize dtype
+tracks = tracks[['LineageID','Frame','Z','Y','X']].astype(float)
+# The default output is in microns -> convert
+tracks['Y'] = tracks['Y'] / dx
+tracks['X'] = tracks['X'] / dx
+
 # @magicgui(
 #     measurement2plot=dict(widget_type="Select", choices=measurement_list, label="Dataset"),
 #     call_button="Plot cells",)
@@ -135,6 +136,16 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-
 #     plt.xlabel('Frame')
 #     plt.ylabel(measurement2plot)
 #     plt.show()
+
+@magicgui(call_button = 'Transfer current label')
+def transfer_label(source:Labels,
+                   destination:Labels):
+    source = input.data == input.selected_label
+    new_label_name = destination.data.max() + 1
+    # Add to new label at max ID
+    destination.data[mask] = new_label_name
+    # Delete current label
+    input.data[mask] = 0
 
 from skimage import morphology
 @magicgui(call_button='Inflate by 1px')
@@ -163,21 +174,22 @@ B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
 segmentation = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
 nuc_segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
-# connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
+connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
 
 filelist = natsorted(glob(path.join(dirname,'Image flattening/height_image/t*.tif')))
 basement_mem = np.stack([io.imread(f) for f in filelist])
 
 viewer = napari.Viewer()
 viewer.add_image(R,scale = [1,dx,dx], blending='additive', colormap='red',rendering='attenuated_mip')
-viewer.add_image(B,scale = [1,dx,dx], blending='additive', colormap='gray',rendering='attenuated_mip')
-viewer.add_image(G,scale = [1,dx,dx], blending='additive', colormap='gray',visible=False,rendering='attenuated_mip')
+viewer.add_image(B,scale = [1,dx,dx], blending='additive', colormap='blue',rendering='attenuated_mip')
+viewer.add_image(G,scale = [1,dx,dx], blending='additive', colormap='gray',visible=True,rendering='attenuated_mip')
 viewer.add_image(basement_mem,scale=[1,dx,dx],blending='additive',colormap='gray',visible=True)
-# viewer.add_labels(connectivity,scale = [1,dx,dx])
+viewer.add_labels(connectivity,scale = [1,dx,dx])
 viewer.add_labels(segmentation,scale = [1,dx,dx])
 viewer.add_labels(nuc_segmentation,scale = [1,dx,dx])
 
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
-# viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
-# viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
+viewer.window.add_dock_widget(transfer_label,name='Transfer label')
+viewer.window.add_dock_widget(inflate_cell,name='Inflate cell')
+viewer.window.add_dock_widget(shrink_cell,name='Shrink cell')
 # viewer.window.add_dock_widget(plot_measurement, name="Plot Measurement")
