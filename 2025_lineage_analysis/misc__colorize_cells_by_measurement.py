@@ -38,7 +38,7 @@ io.imsave(path.join(dirname,'colorized/will_differentiate.tif'),
 
 #%% Curvature
 
-basals = all_df[ ~np.isnan(all_df['Mean curvature','Measurement'])]
+basals = all_df[ all_df['Cell type','Meta'] == 'Basal']
 norm_factor = max(basals['Mean curvature','Measurement'].max(),
                   np.abs(basals['Mean curvature','Measurement'].min()))
                   
