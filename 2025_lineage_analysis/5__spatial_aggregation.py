@@ -27,8 +27,8 @@ dx = 0.25
 dz = 1
 
 # Filenames??
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
@@ -73,6 +73,7 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
 
 #%% Flatten segmentation from the heightmap
 
+print('Flattening cytoplasmic segmentation map into ')
 
 TOP_OFFSET = -30 #NB: top -> more apical but lower z-index
 BOTTOM_OFFSET = 10
@@ -107,7 +108,6 @@ for t in tqdm(range(T)):
             flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
     
     io.imsave( path.join(output_dir,f't{t}.tif'), flat.astype(np.uint16),check_contrast=False)
-
 
 #%% Build basal adj graph from flattened segmentation
 # @todo: suprabasal adj could also be annotated but probably use delauney3D instead?
@@ -372,6 +372,9 @@ aggregators = {'Mean':np.nanmean,
 
 # Aggregate every non-metadata field
 fields2aggregate = all_df.xs('Measurement',axis=1,level=1).columns
+# Drop Age, XYZ
+fields2aggregate = fields2aggregate.drop(['X','Y','Z','Z-cyto','Y-cyto','X-cyto',
+                                          'Age','X-pixels','Y-pixels'])
 
 aggregated_fields = []
 for t in tqdm(range(15)):
@@ -382,8 +385,10 @@ for t in tqdm(range(15)):
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
     # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
     # @todo: relative-to-mean
+    df_relative = pd.DataFrame(index=df_agg.index,
+                               columns=[f'Relative {field}' for field in fields2aggregate])
     for field in fields2aggregate:
-        df_agg[f'Relative {field}'] = this_frame[field,'Measurement'].values / df_agg[f'Mean adjac {field}'].values
+        df_relative[f'Relative {field}'] = this_frame[field,'Measurement'].values / df_agg[f'Mean adjac {field}'].values
     
     df_agg['Frac of neighbors in S phase'] = aggregate_over_adj(adj,
                                                                 {'Frac':frac_sphase},
@@ -391,6 +396,7 @@ for t in tqdm(range(15)):
                                                                 ['Cell cycle phase']).drop(columns='TrackID')
     
     df_agg['Frame'] = t
+    df_agg = pd.concat((df_agg,df_relative),axis=1)
     aggregated_fields.append(df_agg)
     
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)
