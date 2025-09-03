@@ -50,7 +50,7 @@ spot_table = spot_table.rename(columns={'Type':'Cell type'})
 
 for track in tracks:
     track['Cell type'] = 'NA'
-    track['Reviewed by'] = False
+    track['Reviewed'] = False
     
     for idx,spot in track.iterrows():
         _spot = spot_table[spot_table['ID'] == float(spot.ID)]
