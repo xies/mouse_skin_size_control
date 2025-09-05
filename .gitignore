@@ -17,3 +17,4 @@ live_analysis/denoise_3d/runs/Apr30_20-02-50_Helicase.local/events.out.tfevents.
 live_analysis/denoise_3d/runs/May01_14-38-00_DN0a25a911.SUNet/events.out.tfevents.1746135480.DN0a25a911.SUNet.58937.0
 /differentiation_gnn
 /.ipynb_checkpoints
+/2025_lineage_analysis/.ipynb_checkpoints
