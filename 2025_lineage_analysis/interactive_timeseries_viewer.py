@@ -96,7 +96,7 @@ def cycle_active_axis(viewer):
     viewer.dims.last_used = (current_axis + 1) % viewer.dims.ndisplay
 
 # Load the images
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
 
 # df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 # measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
