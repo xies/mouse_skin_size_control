@@ -29,6 +29,7 @@ dz = 1
 # Filenames??
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
 
@@ -264,6 +265,8 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(14,964),'adjID'] = 372
     label_transfers.loc[(14,944),'adjID'] = 309
     label_transfers.loc[(14,935),'adjID'] = 373
+else:
+    error
 
 label_transfers = label_transfers.dropna(subset='TrackID')
 # Detect NucID that has no AdjID (unmapped)
@@ -330,7 +333,7 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
     
     df_aggregated = pd.DataFrame(
         columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
-        index=df.index)
+        index=df.index, dtype=float)
 
     # for agg_name in aggregators.keys():
     #     for field in fields2aggregate:
@@ -373,8 +376,9 @@ aggregators = {'Mean':np.nanmean,
 # Aggregate every non-metadata field
 fields2aggregate = all_df.xs('Measurement',axis=1,level=1).columns
 # Drop Age, XYZ
-fields2aggregate = fields2aggregate.drop(['X','Y','Z','Z-cyto','Y-cyto','X-cyto',
-                                          'Age','X-pixels','Y-pixels'])
+fields2aggregate = fields2aggregate.drop(['X','Y','Z','Z-cyto','Y-cyto','X-cyto','Time',
+                                          'Age','X-pixels','Y-pixels'] +
+                                         [f for f in fields2aggregate if 'smoothed' in f])
 
 aggregated_fields = []
 for t in tqdm(range(15)):
