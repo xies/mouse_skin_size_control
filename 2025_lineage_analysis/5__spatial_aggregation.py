@@ -27,8 +27,8 @@ dx = 0.25
 dz = 1
 
 # Filenames??
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
@@ -44,7 +44,6 @@ def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
     touchingIDs = touchingIDs[touchingIDs != centerID] # nonself
     
     return touchingIDs
-
 
 #% Reconstruct adj network from cytolabels that touch
 def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2):
@@ -154,6 +153,7 @@ label_transfers = label_transfers[(label_transfers['TrackID'] <= len(tracks) + 1
 # Input manually NucID is indexed
 if dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/':
     label_transfers.loc[(1,361),'adjID'] = 335
+    label_transfers.loc[(1,453),'adjID'] = 364
     label_transfers.loc[(2,2119),'adjID'] = 354
     label_transfers.loc[(2,2119),'adjID'] = 394
     label_transfers.loc[(4,776),'adjID'] = 132
@@ -356,6 +356,10 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
     
     return df_aggregated.reset_index()
 
+def frac_neighbors_are_border(v):
+    frac = v.sum() / len(v)
+    return frac
+
 def frac_sphase(v):
     has_cell_cycle = v[v != 'NA']
     if len(has_cell_cycle) > 0:
@@ -389,6 +393,10 @@ for t in tqdm(range(15)):
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
     # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
     # @todo: relative-to-mean
+    df_agg['Frac of neighbors are border'] = aggregate_over_adj(adj,
+                                                               {'Frac':frac_neighbors_are_border},
+                                                               all_df.xs(t,level='Frame'),
+                                                               ['Border']).drop(columns='TrackID')
     df_relative = pd.DataFrame(index=df_agg.index,
                                columns=[f'Relative {field}' for field in fields2aggregate])
     for field in fields2aggregate:
@@ -398,12 +406,15 @@ for t in tqdm(range(15)):
                                                                 {'Frac':frac_sphase},
                                                                 all_df.xs(t,level='Frame'),
                                                                 ['Cell cycle phase']).drop(columns='TrackID')
-    
+   
+
     df_agg['Frame'] = t
     df_agg = pd.concat((df_agg,df_relative),axis=1)
     aggregated_fields.append(df_agg)
-    
+
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)
+x = aggregated_fields['Frac of neighbors are border']
+aggregated_fields = aggregated_fields.drop(columns=['Frac of neighbors are border'])
 aggregated_fields = aggregated_fields.set_index(['Frame','TrackID'])
 new_cols = pd.DataFrame()
 new_cols['Name'] = aggregated_fields.columns
@@ -411,6 +422,7 @@ new_cols['Metadata'] = 'Measurement'
 aggregated_fields.columns = pd.MultiIndex.from_frame(new_cols)
 
 all_df = all_df.join(aggregated_fields)
+all_df['Frac of neighbors are border','Meta'] = x.values
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
