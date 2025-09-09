@@ -96,7 +96,7 @@ def cycle_active_axis(viewer):
     viewer.dims.last_used = (current_axis + 1) % viewer.dims.ndisplay
 
 # Load the images
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
 # df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 # measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
@@ -140,12 +140,12 @@ tracks['X'] = tracks['X'] / dx
 @magicgui(call_button = 'Transfer current label')
 def transfer_label(source:Labels,
                    destination:Labels):
-    source = input.data == input.selected_label
+    mask = source.data == source.selected_label
     new_label_name = destination.data.max() + 1
     # Add to new label at max ID
     destination.data[mask] = new_label_name
     # Delete current label
-    input.data[mask] = 0
+    source.data[mask] = 0
 
 from skimage import morphology
 @magicgui(call_button='Inflate by 1px')
