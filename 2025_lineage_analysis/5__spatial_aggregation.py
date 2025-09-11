@@ -27,8 +27,8 @@ dx = 0.25
 dz = 1
 
 # Filenames??
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
@@ -229,6 +229,7 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(6,710),'adjID'] = 326
     label_transfers.loc[(6,844),'adjID'] = 328
     label_transfers.loc[(6,951),'adjID'] = 288
+    label_transfers.loc[(7,879),'adjID'] = 323
     
     label_transfers.loc[(9,900),'adjID'] = 326
     label_transfers.loc[(9,902),'adjID'] = 327
@@ -289,7 +290,7 @@ for t in range(15):
                             set(label_transfers.xs(t,level='Frame')['adjID'].values)) )
 print( missingIDs )
 
-#%%
+#%% Save the adjDicts
 
 label_transfers = label_transfers.reset_index().set_index(['Frame','adjID'])
 label_transfers['TrackID'] = label_transfers['TrackID'].astype(int)
