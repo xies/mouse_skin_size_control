@@ -38,6 +38,25 @@ for name,dirname in dirnames.items():
 all_df = pd.concat(all_df)
 all_tracks = {trackID:t for trackID,t in all_df.reset_index().groupby('TrackID')}
 
+#%% Annotate the cell cycle times in cells where information is available
+
+all_df['Cell cycle duration','Measurement'] = np.nan
+all_df['G1 duration','Measurement'] = np.nan
+all_df['SG2 duration','Measurement'] = np.nan
+for trackID,track in all_tracks.items():
+    if track.iloc[0]['Complete cycle','Meta']:
+        all_df.loc[zip(track['Frame'].values,track['TrackID'].values),
+                   ('Cell cycle duration','Measurement')] = len(track)*12
+    if np.any(track['Cell cycle phase','Meta'] == 'SG2'):
+        all_df.loc[zip(track['Frame'].values,track['TrackID'].values),
+                   ('G1 duration','Measurement')] = (track['Cell cycle phase','Meta'] == 'G1').sum()*12
+        if track.iloc[0]['Complete cycle','Meta']:
+            all_df.loc[zip(track['Frame'].values,track['TrackID'].values),
+                       ('SG2 duration','Measurement')] = (track['Cell cycle phase','Meta'] == 'SG2').sum()*12
+        # track['G1 duration'] = (track['Cell cycle phase','Meta'] == 'G1').sum()*12
+        # track['SG2 duration'] = (track['Cell cycle phase','Meta'] == 'SG2').sum()*12
+        
+
 #%% Isolate time points of interest. Don't need to know the fate for now for the PCA part.
 
 print(f'Number of total time points: {len(all_df)}')
