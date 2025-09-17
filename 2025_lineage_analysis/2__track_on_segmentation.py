@@ -21,8 +21,8 @@ from imageUtils import most_likely_label, filter_seg_by_largest_object
 import pickle as pkl
 from tqdm import tqdm
 
-dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
-# dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
+# dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/'
 
 #%% Load segmentations
 

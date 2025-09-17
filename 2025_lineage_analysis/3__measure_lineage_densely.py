@@ -35,8 +35,8 @@ Z_SHIFT = 10
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Ski?n/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -161,7 +161,7 @@ for t in tqdm(range(15)):
     X_ = X[::30]; Y_ = Y[::30]; Z_ = Z[::30]
     grid = pv.PolyData(np.stack((X_,Y_,Z_)).T)
     mesh = grid.delaunay_2d()
-    faces = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
+    faces = mesh.faces.reshape((mesh.n_cells, 4))[:, 1:]
     mesh = Trimesh(mesh.points,faces)
     mesh = smoothing.filter_humphrey(mesh,alpha=1)
     # Check the face normals (if mostly aligned with +z, then keep sign if not, then invert sign)
