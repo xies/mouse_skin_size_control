@@ -30,6 +30,7 @@ dt = 12 #hrs
 dx = 0.25
 dz = 1
 Z_SHIFT = 10
+KAPPA = 5 # microns
 
 # for expansion
 footprint = morphology.cube(3)
@@ -43,7 +44,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 from measurements import measure_nuclear_geometry_from_regionprops, \
         measure_cyto_geometry_from_regionprops, measure_cyto_intensity, measure_flat_cyto_from_regionprops, \
         estimate_sh_coefficients, find_distance_to_closest_point, \
-        measure_collagen_structure
+        measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures
 
 SAVE = True
 VISUALIZE = False
@@ -149,48 +150,16 @@ for t in tqdm(range(15)):
     df['Gaussian curvature - cell coords'] = gaussian_curve_coords
 
     # ---- 5. Get 3D mesh from the BM image ---
-    # from scipy import interpolate
-    from trimesh import smoothing
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
-    mask = (bm_height_image > 0)
-    Z,Y,X = np.where(mask)
-    X = X[1:]; Y = Y[1:]; Z = Z[1:]
-    X = X*dx; Y = Y*dx; Z = Z*dz
+    bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
+    closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
+    mean_curve, gaussian_curve = get_tissue_curvatures(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
 
-    # Decimate the grid to avoid artefacts
-    X_ = X[::30]; Y_ = Y[::30]; Z_ = Z[::30]
-    grid = pv.PolyData(np.stack((X_,Y_,Z_)).T)
-    mesh = grid.delaunay_2d()
-    faces = mesh.faces.reshape((mesh.n_cells, 4))[:, 1:]
-    mesh = Trimesh(mesh.points,faces)
-    mesh = smoothing.filter_humphrey(mesh,alpha=1)
-    # Check the face normals (if mostly aligned with +z, then keep sign if not, then invert sign)
-    if ((mesh.facets_normal[:,2] > 0).sum() / len(mesh.facets_normal)) > 0.5:
-        curvature_sign = 1
-    else:
-        curvature_sign = -1
-
-    closest_mesh_to_cell,_,_ = mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
-    # pl =pv.Plotter()
-    # pl.add_mesh(pv.wrap(mesh))
-    # pl.add_points(dense_coords_3d_um,color='r')
-    # pl.add_points(closest_mesh_to_cell,color='b')
-    # pl.show()
-
-    mean_curve = discrete_mean_curvature_measure(
-        mesh, closest_mesh_to_cell, 5)/sphere_ball_intersection(1, 5)
-    gaussian_curve = discrete_gaussian_curvature_measure(
-        mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
-    df['Mean curvature'] = curvature_sign * mean_curve
+    df['Mean curvature'] = mean_curve
     df['Gaussian curvature'] = gaussian_curve
 
-    #----- 6. Use manual 3D topology to compute neighborhoods lengths -----
-    # Load the actual neighborhood topology
-    # A = np.load(path.join(dirname,f'Image flatteniowng/flat_adj_dict/adjdict_t{t}.npy'),allow_pickle=True).item()
-    # D = distance.squareform(distance.pdist(dense_coords_3d_um))
 
-
-    # --- 2. 3D shape decomposition ---
+    # --- 6. 3D shape decomposition ---
 
     # 2a: Estimate cell and nuclear mesh using spherical harmonics
     sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])

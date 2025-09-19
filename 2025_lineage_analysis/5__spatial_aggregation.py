@@ -16,12 +16,13 @@ import tifffile
 
 # Specific utils
 from imageUtils import most_likely_label
-from basicUtils import sort_by_timestamp
+from scipy.spatial import distance
 
 # General utils
 from tqdm import tqdm
 from os import path
 import pickle as pkl
+from basicUtils import sort_by_timestamp
 
 dx = 0.25
 dz = 1
@@ -186,6 +187,7 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(0,1162),'adjID'] = 364
     label_transfers.loc[(0,1035),'adjID'] = 341
     label_transfers.loc[(0,1205),'adjID'] = 362
+    label_transfers.loc[(0,1208),'adjID'] = 369
     
     label_transfers.loc[(1,903),'adjID'] = 15
     label_transfers.loc[(1,1038),'adjID'] = 351
@@ -193,6 +195,7 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(1,991),'adjID'] = 238
     
     label_transfers.loc[(2,707),'adjID'] = 257
+    label_transfers.loc[(2,1111),'adjID'] = 362
     label_transfers.loc[(2,1119),'adjID'] = 380
     label_transfers.loc[(2,1117),'adjID'] = 378
     label_transfers.loc[(2,807),'adjID'] = 323
@@ -200,6 +203,7 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(2,846),'adjID'] = 358
     label_transfers.loc[(2,890),'adjID'] = 11
     label_transfers.loc[(2,984),'adjID'] = 363
+    label_transfers.loc[(2,1058),'adjID'] = 373
     
     label_transfers.loc[(3,1046),'adjID'] = 265
     label_transfers.loc[(3,997),'adjID'] = 82
@@ -217,6 +221,7 @@ elif dirname == '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/':
     label_transfers.loc[(5,704),'adjID'] = 334
     label_transfers.loc[(5,877),'adjID'] = 6
     label_transfers.loc[(5,881),'adjID'] = 30
+    label_transfers.loc[(5,897),'adjID'] = 253
     
     label_transfers.loc[(6,597),'adjID'] = 271
     label_transfers.loc[(6,952),'adjID'] = 336
@@ -357,6 +362,21 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
     
     return df_aggregated.reset_index()
 
+def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
+    D = distance.squareform(distance.pdist(df[['Z','Y','X']]))
+    D = pd.DataFrame(data=D,index=this_frame.index,columns=this_frame.index)
+    
+    distances = pd.DataFrame(index=adjDict.keys(),
+                             columns = [f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()])
+    
+    distances.index.name = 'TrackID'
+    for cellID,neighborIDs in adjDict.items():
+        for agg_name, agg_func in aggregators.items():
+            distances.loc[cellID,f'{agg_name} distance to neighbors'] = agg_func( D.loc[cellID,neighborIDs].values )
+    
+    return distances.sort_index().reset_index()
+    
+
 def frac_neighbors_are_border(v):
     frac = v.sum() / len(v)
     return frac
@@ -389,10 +409,13 @@ aggregated_fields = []
 for t in tqdm(range(15)):
     
     adj = adjacent_tracks[t]
+    A = adjdict_to_mat(adj)
     this_frame = all_df.xs(t,level='Frame')
     df_agg = aggregate_over_adj(adj, aggregators, this_frame, fields2aggregate)
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
     # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
+    df_dist = get_aggregated_3D_distances(this_frame, adj, aggregators)
+    
     # @todo: relative-to-mean
     df_agg['Frac of neighbors are border'] = aggregate_over_adj(adj,
                                                                {'Frac':frac_neighbors_are_border},
@@ -410,7 +433,7 @@ for t in tqdm(range(15)):
    
 
     df_agg['Frame'] = t
-    df_agg = pd.concat((df_agg,df_relative),axis=1)
+    df_agg = pd.concat((df_agg,df_relative,df_dist),axis=1)
     aggregated_fields.append(df_agg)
 
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)

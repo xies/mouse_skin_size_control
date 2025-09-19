@@ -66,7 +66,7 @@ def get_display_of_average_nuc_cyto_micro(ncm_list,largest_size=None):
 
 #%%
 
-PC = 98
+PC = 2
 n_exmaples = 20
 
 # Pull out 3 examplar 'PC0' cells

@@ -16,7 +16,7 @@ from imageUtils import get_mask_slices
 # 3D mesh stuff
 from scipy.spatial import Voronoi, Delaunay
 from aicsshparam import shtools, shparam
-from trimesh import Trimesh
+from trimesh import Trimesh, smoothing
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
 import pyvista as pv
@@ -25,11 +25,61 @@ from os import path, makedirs
 # from toeplitzDifference import backward_difference, forward_difference, central_difference
 from scipy.interpolate import make_smoothing_spline
 from scipy.optimize import curve_fit
+from sklearn import preprocessing
 
 import matplotlib.pyplot as plt
 
-#%% Calculation functions
 
+# Suppress batch effects
+def scale_by_region(df):
+
+    scaled = []
+    for region,_df in df.groupby('Region'):
+        meas = _df.xs('Measurement',level=1,axis=1)
+        _X = meas.values
+        _X[np.isinf(_X)] = np.nan
+
+        _X = preprocessing.StandardScaler().fit_transform(_X)
+        _df = pd.DataFrame(index=_df.index,columns=meas.columns,
+                           data=_X)
+        _df['Region'] = region
+        scaled.append(_df)
+
+    return pd.concat(scaled)
+
+
+def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
+
+    dz,dx,dx = spacing
+    mask = (bm_height_image > 0)
+    Z,Y,X = np.where(mask)
+    X = X[1:]; Y = Y[1:]; Z = Z[1:]
+    X = X*dx; Y = Y*dx; Z = Z*dz
+
+    # Decimate the grid to avoid pixel artefacts
+    X_ = X[::decimation_factor]; Y_ = Y[::decimation_factor]; Z_ = Z[::decimation_factor]
+    grid = pv.PolyData(np.stack((X_,Y_,Z_)).T)
+    mesh = grid.delaunay_2d()
+    faces = mesh.faces.reshape((mesh.n_cells, 4))[:, 1:]
+    mesh = Trimesh(mesh.points,faces)
+    mesh = smoothing.filter_humphrey(mesh,alpha=1)
+
+    # Check the face normals (if mostly aligned with +z, then keep sign if not, then invert sign)
+    if ((mesh.facets_normal[:,2] > 0).sum() / len(mesh.facets_normal)) < 0.5:
+        mesh.invert()
+
+    return mesh
+
+def get_tissue_curvatures(mesh,kappa:float=5,query_pts=None):
+    if query_pts is None:
+        query_pts = mesh.vertices
+
+    mean_curve = discrete_mean_curvature_measure(
+        mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
+    gaussian_curve = discrete_gaussian_curvature_measure(
+        mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
+
+    return mean_curve, gaussian_curve
 
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):

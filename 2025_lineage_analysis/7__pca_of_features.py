@@ -13,12 +13,14 @@ import matplotlib.pylab as plt
 import seaborn as sb
 
 # General utils
+from tqdm import tqdm
 from os import path
+
+
 import ipyvolume as ipv
 from sklearn import preprocessing, decomposition
 from ppca import PPCA   
-
-from measurements import get_prev_or_next_frame
+from measurements import get_prev_or_next_frame, scale_by_region
 
 dx = 0.25
 dz = 1
@@ -124,6 +126,7 @@ prev4_div_frame.to_pickle(path.join(dataset_dir,'divisions_48h.pkl'))
 
 #%% PPCA different time points
 
+
 features2drop_from_pca = ['X','Y','Z','X-pixels','Y-pixels','X-cyto','Y-cyto','Z-cyto']
 def get_ppca_component_transform(dataset:pd.DataFrame,
                                  n_comp:int=100,
@@ -131,16 +134,15 @@ def get_ppca_component_transform(dataset:pd.DataFrame,
                                  name:str=''):
     
     dataset = dataset.drop(columns=features2drop)
-    feature_names_with_nan = dataset.columns
     
-    X = dataset.values
-    X[np.isinf(X)] = np.nan
-    X = preprocessing.scale(X)
+    X = scale_by_region(df)
+    feature_names_with_nan = X.drop(columns='Region').columns
+    X = X.drop(columns='Region')
     nonan_idx = np.where(~np.isnan(X).all(axis=0))[0]
     feature_names = feature_names_with_nan[nonan_idx]
     
     ppca = PPCA()
-    ppca.fit(X, d=n_comp, verbose=False) #NB: silently drops all NaN columns
+    ppca.fit(X.values, d=n_comp, verbose=False) #NB: will silently drop np.all NaN columns
     
     components = pd.DataFrame(ppca.C, index=feature_names)
     X_transformed = pd.DataFrame(ppca.transform(),index=df.index)
@@ -150,13 +152,12 @@ def get_ppca_component_transform(dataset:pd.DataFrame,
     return ppca, components, X_transformed
     
 
-
 time_points = {'all_df':all_df,'births':births,'basals':basals,
                'divisions':divisions,'divisions_12h':prev_div_frame,
                'divisions_24h':prev2_div_frame,
                'divisions_36h':prev3_div_frame,'divisions_48h':prev4_div_frame,}
 
-for name,df in time_points.items():
+for name,df in tqdm(time_points.items()):
     
     _df = df.xs('Measurement',axis=1,level=1)
     pca, components, transformed = get_ppca_component_transform(_df,
@@ -165,8 +166,9 @@ for name,df in time_points.items():
     
     pca.save(path.join(model_dir,f'Probabilistic PCA/pca_{name}'))
     components.to_pickle(path.join(model_dir,f'Probabilistic PCA/{name}/components.pkl'))
-    # Join PCA components with the metadata    
+    # Join PCA components with the metadata
     metadata = df.xs('Meta',axis=1,level=1)
+    metadata['Region'] = df['Region']
     metadata.columns = pd.MultiIndex.from_tuples([(c,'Meta') for c in metadata.columns])
     df_transformed = pd.concat((transformed,metadata),axis=1)
 
