@@ -66,7 +66,7 @@ def get_display_of_average_nuc_cyto_micro(ncm_list,largest_size=None):
 
 #%%
 
-PC = 2
+PC = 3
 n_exmaples = 20
 
 # Pull out 3 examplar 'PC0' cells
@@ -84,4 +84,3 @@ pc0_mean = get_display_of_average_nuc_cyto_micro(pc0_masks,standard_size)
 io.imsave(path.join(model_dir,f'Probabilistic PCA/{name}/pc{PC}_example.tif'),pc0_mean)
 pc0_antimean = get_display_of_average_nuc_cyto_micro(pc0_antimasks,standard_size)
 io.imsave(path.join(model_dir,f'Probabilistic PCA/{name}/pc{PC}_antiexample.tif'),pc0_antimean)
-
