@@ -27,15 +27,15 @@ from SelectFromCollection import SelectFromCollection
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-# filenames = glob(path.join(dirname,'Cropped_images/20161127_Fucci_1F_0-168hr_R2.tif'))
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Confocal/08-26-2022/10month 2week induce/Paw H2B-CFP FUCCI2 Phall647/WT1'
-fname = 'WT1'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R1/'
+
+fname = 'Cropped/R'
 filenames = glob(path.join(dirname,'{fname}.tif'))
 
 #%%
 
 # pred_name = 'cyto_masks'
-pred_name = 'nuc_masks'
+pred_name = 'cp_masks'
 
 # Some pruning parameters
 # MIN_SIZE_IN_PX = 2000
@@ -43,14 +43,14 @@ pred_name = 'nuc_masks'
 _tmp = []
 
 predictions = io.imread(path.join(dirname,f'{fname}_{pred_name}.tif'))
-heightmaps = io.imread(path.join(dirname,f'Image flattening/heightmaps/{fname}.tif'))
+heightmaps = io.imread(path.join(dirname,f'Image flattening/heightmap.tif'))
 table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid','bbox'}))
 
 # Look at each XY coord and look up heightmap
 Z = heightmaps[ table['centroid-1'].round().astype(int), table['centroid-1'].round().astype(int) ]
 table['Corrected Z'] = table['bbox-0'] - Z
 
-table['Time'] = t
+# table['Time'] = t
 _tmp.append(table)
     
 #%%%
@@ -88,7 +88,7 @@ df_ = df[I]
 # OUT_NAME = '_cyto_seg_cleaned'
 OUT_NAME = '_nuc_seg_cleaned'
 
-this_cellIDs = df_[df_['Time'] == t]['label']
+this_cellIDs = df_['label']
 
 filtered_pred = predictions.flatten()
 I = np.in1d(predictions.flatten(), this_cellIDs)
