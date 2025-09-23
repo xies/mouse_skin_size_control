@@ -27,7 +27,7 @@ from SelectFromCollection import SelectFromCollection
 
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Two photon/NMS/09-29-2022 RB-KO pair/RBKO/R1'
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R1/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R2/'
 
 fname = 'Cropped/R'
 filenames = glob(path.join(dirname,'{fname}.tif'))
@@ -85,8 +85,8 @@ df_ = df[I]
 
 #%% # Reconstruct the filtered segmentation predictions
 
-# OUT_NAME = '_cyto_seg_cleaned'
-OUT_NAME = '_nuc_seg_cleaned'
+OUT_NAME = '_cyto_seg_cleaned'
+# OUT_NAME = '_nuc_seg_cleaned'
 
 this_cellIDs = df_['label']
 

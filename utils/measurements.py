@@ -30,6 +30,31 @@ from sklearn import preprocessing
 import matplotlib.pyplot as plt
 
 
+def reslice_by_heightmap(im,heightmap,top_border,bottom_border):
+
+    ZZ,YY,XX = im.shape
+    
+    flat = np.zeros((-top_border + bottom_border,XX,XX))
+
+    Iz_top = heightmap + top_border
+    Iz_bottom = heightmap + bottom_border
+    
+    for x in range(XX):
+        for y in range(YY):
+            
+            flat_indices = np.arange(0,-top_border+bottom_border)
+            
+            z_coords = np.arange(Iz_top[y,x],Iz_bottom[y,x])
+            # sanitize for out-of-bounds
+            z_coords[z_coords < 0] = 0
+            z_coords[z_coords >= ZZ] = ZZ-1
+            I = (z_coords > 0) & (z_coords < ZZ)
+            
+            flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
+            flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
+            
+    return flat
+
 # Suppress batch effects
 def scale_by_region(df):
 

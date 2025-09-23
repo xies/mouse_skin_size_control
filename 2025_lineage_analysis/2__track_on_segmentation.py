@@ -16,7 +16,7 @@ import tifffile
 from os import path
 from glob import glob
 from natsort import natsorted
-from imageUtils import most_likely_label, filter_seg_by_largest_object
+from imageUtils import most_likely_label, filter_mask_by_largest_object
 
 import pickle as pkl
 from tqdm import tqdm
@@ -78,7 +78,7 @@ for track in tqdm(tracks):
             label = basal_segs[frame,Z,Y,X]
             if label > 0:
                 mask = basal_segs[frame,...] == label
-                mask = filter_seg_by_largest_object(mask)
+                mask = filter_mask_by_largest_object(mask)
                 tracked_nuc[frame,mask] = spot['TrackID']
             else:
                 label = suprabasal_segs[frame,Z,Y,X]
@@ -95,7 +95,7 @@ for track in tqdm(tracks):
             label = cyto_segs[frame,Z,Y,X]
             if label > 0:
                 mask = cyto_segs[frame,...] == label
-                mask = filter_seg_by_largest_object(mask)
+                mask = filter_mask_by_largest_object(mask)
                 tracked_cyto[frame,mask] = spot['TrackID']
         elif spot['Cell type'] == 'Suprabasal':
 
