@@ -7,14 +7,14 @@ Created on Thu May  8 22:51:08 2025
 """
 
 import numpy as np
-from skimage import measure, img_as_bool, transform, util, filters, exposure, io
+from skimage import measure, img_as_bool, transform, util, filters, exposure, io, morphology
 import pandas as pd
 from functools import reduce
 
 from mathUtils import get_neighbor_idx, parse_3D_inertial_tensor, argsort_counter_clockwise
 from imageUtils import get_mask_slices
 # 3D mesh stuff
-from scipy.spatial import Voronoi, Delaunay
+from scipy.spatial import Voronoi, Delaunay, distance
 from aicsshparam import shtools, shparam
 from trimesh import Trimesh, smoothing
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
@@ -29,12 +29,104 @@ from sklearn import preprocessing
 
 import matplotlib.pyplot as plt
 
+from collections.abc import Callable
+def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
+                       df = pd.DataFrame, fields2aggregate=list[str]):
+    
+    df_aggregated = pd.DataFrame(
+        columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
+        index=df.index, dtype=float)
+
+    # for agg_name in aggregators.keys():
+    #     for field in fields2aggregate:
+    #         df_aggregated[f'{agg_name} adjac {field}'] = np.nan
+        
+    for centerID,neighborIDs in adj.items():
+        neighbors = df.loc[neighborIDs]
+        if len(neighbors) > 0:
+            for agg_name, agg_func in aggregators.items():
+                for field in fields2aggregate:
+                    if neighbors[field].values.dtype == float:
+                        if not np.all(np.isnan(neighbors[field].values)):
+                            df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                                agg_func(neighbors[field].values)
+                    else:
+                        df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                            agg_func(neighbors[field].values)
+    
+    df_aggregated.index.name = 'TrackID'
+    
+    return df_aggregated.reset_index()
+
+def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
+    D = distance.squareform(distance.pdist(df[['Z','Y','X']]))
+    D = pd.DataFrame(data=D,index=df.index,columns=df.index)
+    
+    distances = pd.DataFrame(index=adjDict.keys(),
+                             columns = [f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()])
+    
+    distances.index.name = 'TrackID'
+    for cellID,neighborIDs in adjDict.items():
+        for agg_name, agg_func in aggregators.items():
+            distances.loc[cellID,f'{agg_name} distance to neighbors'] = agg_func( D.loc[cellID,neighborIDs].values )
+    
+    return distances.sort_index().reset_index()
+    
+def frac_neighbors_are_border(v):
+    frac = v.sum() / len(v)
+    return frac
+
+def frac_sphase(v):
+    has_cell_cycle = v[v != 'NA']
+    if len(has_cell_cycle) > 0:
+        frac = (has_cell_cycle == 'SG2').sum() / len(has_cell_cycle)
+    else:
+        frac = np.nan
+    return frac
+
+def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
+    this_mask = labels == centerID
+    this_mask_dil = morphology.binary_dilation(this_mask,selem)
+    touchingIDs,counts = np.unique(labels[this_mask_dil],return_counts=True)
+    touchingIDs[counts > threshold] # should get rid of 'conrner touching'
+
+    touchingIDs = touchingIDs[touchingIDs > 2] # Could touch background pxs
+    touchingIDs = touchingIDs[touchingIDs != centerID] # nonself
+    
+    return touchingIDs
+
+
+#% Reconstruct adj network from cytolabels that touch
+def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2):
+    '''
+
+    Parameters
+    ----------
+    seg2d : np.array
+        2D cytoplasmic segmentation on which to determine adjacency
+    touching_threshold : int, optional
+        Minimum number of overlap pixels. The default is 2.
+
+    Returns
+    -------
+    A : dict
+        Dictionary of adjacent labels:
+            {centerID : neighborIDs }
+
+    '''
+    #@todo: OK for 3D segmentation? currently no...
+    assert(seg2d.ndim == 2) # only works with 2D images for now
+    
+    A = {centerID:find_touching_labels(seg2d, centerID, touching_threshold)
+         for centerID in np.unique(seg2d)[1:]}
+    
+    return A
 
 def reslice_by_heightmap(im,heightmap,top_border,bottom_border):
 
     ZZ,YY,XX = im.shape
     
-    flat = np.zeros((-top_border + bottom_border,XX,XX))
+    flat = np.zeros((-top_border + bottom_border,XX,XX),dtype=im.dtype)
 
     Iz_top = heightmap + top_border
     Iz_bottom = heightmap + bottom_border
@@ -93,7 +185,7 @@ def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_fact
     if ((mesh.facets_normal[:,2] > 0).sum() / len(mesh.facets_normal)) < 0.5:
         mesh.invert()
 
-    return mesh
+    return mesh.copy()
 
 def get_tissue_curvatures(mesh,kappa:float=5,query_pts=None):
     if query_pts is None:
@@ -257,7 +349,8 @@ def get_rotated_cell_image(mask,normal):
 
     return mask
 
-def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spacing= [1,1,1]):
+def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spacing= [1,1,1],
+                                       slicees_to_average:int = 3):
     '''
     PARAMETERS
 
@@ -265,6 +358,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
     collagen_image: flattened Max int projection of collagen image
     jacobian: jacobian matrix of the gradient image of collagen signal
     spacing: default = [1,1,1] pixel sizes in microns
+    slicees_to_average: default = 3 z-slices to sum
 
     '''
 
@@ -291,15 +385,15 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
 
         mask = flat_cyto == i
 
-        # Apical area (3 top slices)
-        apical_area = mask[Z_top:Z_top+3,...].max(axis=0)
+        # Apical area (3 top slices default)
+        apical_area = mask[Z_top:Z_top+slicees_to_average,...].max(axis=0)
         apical_area = apical_area.sum()
 
         # mid-level area
         mid_area = mask[np.round((Z_top+Z_bottom)/2).astype(int),...].sum()
 
-        # Apical area (3 bottom slices)
-        basal_mask = mask[Z_bottom-4:Z_bottom,...]
+        # Apical area (3 bottom slices default)
+        basal_mask = mask[Z_bottom-slicees_to_average-1:Z_bottom,...]
         basal_mask = basal_mask.max(axis=0)
         basal_area = basal_mask.sum()
 
@@ -338,12 +432,12 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
         #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
         df.at[i,'Collagen orientation'] = theta
         df.at[i,'Collagen coherence'] = mag_diff
-        df.at[i,'Basal alignment'] = np.abs(np.cos(theta - basal_orientation))
+        df.at[i,'Basal alignment to basal footprint'] = np.abs(np.cos(theta - basal_orientation))
 
         # Also include collagen intensity
         # Normalize collagen
         collagen_image = exposure.equalize_hist(collagen_image)
-        df.at[i,'Collagen intensity'] = np.mean(collagen_image[basal_mask])
+        df.at[i,'Subbasal collagen intensity'] = np.mean(collagen_image[basal_mask])
 
     return df,basal_masks_2save
 
@@ -616,169 +710,7 @@ def plot_track(cf,y=('Nuclear volume','Measurement'),
     plt.title(f'Track {cf.iloc[0].TrackID}, Border: {np.any(cf.Border)}')
     plt.ylabel(f'{y}')
 
-def measure_all_this_frame(dirname : str,
-                           tracked_nuc: np.array,
-                           tracked_cyto : np.array,
-                           intensity_images : dict,
-                           spacing=[1,1,1], dt=12,
-                           z_shift : int=10,
-                           save_flag : bool=False,
-                           lmax : int=5):
 
-    assert(tracked_nuc.ndim == 4) # 4D images
-    assert(tracked_cyto.ndim == 4)
-
-    dz,_,dx = spacing
-    T,Z,Y,X = tracked_cyto.shape
-
-    all_df = []
-    for t in range(15):
-
-        #----- read segmentation files -----
-        nuc_seg = tracked_nuc[t,...]
-        cyto_seg = tracked_cyto[t,...]
-        ZZ,YY,XX = nuc_seg.shape
-
-        # --- 1. Voxel-based cell geometry measurements ---
-        df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
-        df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
-        df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
-        df['Frame'] = t
-        df['Time'] = t * dt
-
-        intensity_df = measure_cyto_intensity(cyto_seg,intensity_images)
-        df = pd.merge(left=df,right=intensity_df,left_on='TrackID',right_on='TrackID',how='left')
-        df['Nuclear bbox top'] = df['Nuclear bbox top']
-
-        # ----- 3. Use flattened 3d cortical segmentation and measure geometry and collagen
-        # from cell-centric coordinates ----
-        f = path.join(dirname,f'Image flattening/flat_tracked_cyto/t{t}.tif')
-        flat_cyto = io.imread(f)
-
-        # Calculate collagen structuring matrix
-        collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_collagen/t{t}.tif'))
-        (Jxx,Jxy,Jyy) = measure_collagen_structure(collagen_image,blur_sigma=3)
-
-        df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
-            flat_cyto, collagen_image, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
-        df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
-
-        if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
-            makedirs(path.join(dirname,'Image flattening/basal_masks'))
-        if save_flag:
-            io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
-
-        # Book-keeping
-        df = df.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
-        df['X-pixels'] = df['X'] / dx
-        df['Y-pixels'] = df['Y'] / dx
-
-        # Derive NC ratio
-        df['NC ratio'] = df['Nuclear volume'] / df['Cell volume']
-
-        dense_coords = np.array([df['Y-pixels'],df['X-pixels']]).T
-        dense_coords_3d_um = np.array([df['Z'],df['Y'],df['X']]).T
-
-        #----- 4. Nuc-to-BM heights -----
-        # Load heightmap and calculate adjusted height
-        heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
-        heightmap_shifted = heightmap + z_shift
-        df['Height to BM'] = heightmap_shifted[
-            np.round(df['Y']).astype(int),np.round(df['X']).astype(int)] - df['Z']
-
-        #----- Find border cells -----
-        # Generate a dense mesh based sole only 2D/3D nuclear locations
-        #% Use Delaunay triangulation in 2D to approximate the basal layer topology
-        tri_dense = Delaunay(dense_coords)
-        # Use the dual Voronoi to get rid of the border/infinity cells
-        vor = Voronoi(dense_coords)
-        # Find the voronoi regions that touch the image border
-        vertices_outside = np.where(np.any((vor.vertices < 0) | (vor.vertices > XX),axis=1))
-        regions_outside = np.where([ np.any(np.in1d(np.array(r), vertices_outside)) for r in vor.regions])
-        regions_outside = np.hstack([regions_outside, np.where([-1 in r for r in vor.regions])])
-        Iborder = np.in1d(vor.point_region, regions_outside)
-        border_nuclei = df.loc[Iborder].index
-        df['Border'] = False
-        df.loc[ border_nuclei, 'Border'] = True
-
-        #----- Cell coordinates mesh for geometry -----
-        # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
-        Z,Y,X = dense_coords_3d_um.T
-        cell_coords_mesh = Trimesh(vertices = np.array([X,Y,Z]).T, faces=tri_dense.simplices)
-        mean_curve_coords = -discrete_mean_curvature_measure(
-            cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
-        gaussian_curve_coords = -discrete_gaussian_curvature_measure(
-            cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
-        df['Mean curvature - cell coords'] = mean_curve_coords
-        df['Gaussian curvature - cell coords'] = gaussian_curve_coords
-
-        # ---- 5. Get 3D mesh from the BM image ---
-        # from scipy import interpolate
-        from trimesh import smoothing
-        bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
-        mask = (bm_height_image > 0)
-        Z,Y,X = np.where(mask)
-        X = X[1:]; Y = Y[1:]; Z = Z[1:]
-        X = X*dx; Y = Y*dx; Z = Z*dz
-
-        # Decimate the grid to avoid artefacts
-        X_ = X[::30]; Y_ = Y[::30]; Z_ = Z[::30]
-        grid = pv.PolyData(np.stack((X_,Y_,Z_)).T)
-        mesh = grid.delaunay_2d()
-        faces = mesh.faces.reshape((mesh.n_faces, 4))[:, 1:]
-        mesh = Trimesh(mesh.points,faces)
-        mesh = smoothing.filter_humphrey(mesh,alpha=1)
-        # Check the face normals (if mostly aligned with +z, then keep sign if not, then invert sign)
-        if ((mesh.facets_normal[:,2] > 0).sum() / len(mesh.facets_normal)) > 0.5:
-            curvature_sign = 1
-        else:
-            curvature_sign = -1
-
-        closest_mesh_to_cell,_,_ = mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
-
-        mean_curve = discrete_mean_curvature_measure(
-            mesh, closest_mesh_to_cell, 5)/sphere_ball_intersection(1, 5)
-        gaussian_curve = discrete_gaussian_curvature_measure(
-            mesh, dense_coords_3d_um, 5)/sphere_ball_intersection(1, 5)
-        df['Mean curvature'] = curvature_sign * mean_curve
-        df['Gaussian curvature'] = gaussian_curve
-
-        #----- 6. Use manual 3D topology to compute neighborhoods lengths -----
-        # Load the actual neighborhood topology
-        # A = np.load(path.join(dirname,f'Image flatteniowng/flat_adj_dict/adjdict_t{t}.npy'),allow_pickle=True).item()
-        # D = distance.squareform(distance.pdist(dense_coords_3d_um))
-
-
-        # --- 2. 3D shape decomposition ---
-
-        # 2a: Estimate cell and nuclear mesh using spherical harmonics
-        sh_coefficients = estimate_sh_coefficients(cyto_seg, lmax, spacing = [dz,dx,dx])
-        sh_coefficients = sh_coefficients.set_index('TrackID')
-        sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
-        df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
-        sh_coefficients = estimate_sh_coefficients(nuc_seg, lmax, spacing = [dz,dx,dx])
-        sh_coefficients = sh_coefficients.set_index('TrackID')
-        sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
-        df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
-
-        #----- Use macrophage annotations to find distance to them -----
-        #NB: the macrophage coords are in um
-        macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
-        macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
-        macrophage_xyz['X'] = macrophage_xyz['X'] * dx
-        macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
-        df['Distance to closest macrophage'] = find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
-
-        # Merge with manual annotations
-        df = df.reset_index()
-
-        # Append the DF
-        all_df.append(df)
-
-    all_df = pd.concat(all_df,ignore_index=False)
-    all_df = all_df.set_index(['Frame','TrackID'])
-
-    return all_df
 
 #--- Bookkeepers ---
 from imageUtils import trim_multimasks_to_shared_bounding_box

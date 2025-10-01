@@ -23,7 +23,7 @@ from scipy import interpolate
 
 # dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/YAP-KO ablation/04-07-2-25 YAP-KO ablation/F1 YT-fl K14Cre DOB 02-10-2025/Left ear 4OHT day 3/R1 near distal edge/'
 # dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R2/'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R1/'
 
 # filenames = natsorted(glob(path.join(dirname,'*.*/G_reg.tif')))
 # imstack = list(map(io.imread, filenames))
@@ -46,14 +46,14 @@ def make_image_from_heightmap(heightmap,maxZ):
             height_image[heightmap[y,x],y,x] = 1
     return height_image
 
-XY_sigma = 8
-Z_sigma = 4
+XY_sigma = 10
+Z_sigma = 3
 
 # Z-range in which to consider the max np.diff
 TOP_Z_BOUND = 30
-BOTTOM_Z_BOUND = 72
+BOTTOM_Z_BOUND = 85
 
-z_shift = 15
+z_shift = 5
 
 OVERWRITE = True
 
@@ -79,7 +79,16 @@ _tmp = im_z_blur.copy().astype(float)
 # Derivative of R_sgh wrt Z -> Take the max dI/dz for each (x,y) position
 _tmp[np.isnan(_tmp)] = 0
 _tmp_diff = SIGN * np.diff(_tmp,axis=0)
-heightmap = _tmp_diff[TOP_Z_BOUND:BOTTOM_Z_BOUND].argmax(axis=0) + z_shift
+# heightmap = _tmp_diff[TOP_Z_BOUND:BOTTOM_Z_BOUND].argmax(axis=0) + z_shift
+idx = np.zeros((YY,XX))
+for x in range(XX):
+    for y in range(YY):
+        hits = np.where(_tmp_diff[:,y,x] > 10)[0]
+        if len(hits)>0:
+            idx[y,x] = hits[0]
+heightmap = idx
+# heightmap = _tmp_diff[_tmp_diff]
+
 Iz = np.round(heightmap + z_shift).astype(int)
 Iz[Iz >= ZZ] = ZZ-1
 height_image = make_image_from_heightmap(Iz,ZZ)
@@ -92,7 +101,8 @@ surf_region = df.iloc[-1]['label']
 # interpolate the 'missing' regions
 Z,Y,X = np.where(L == surf_region)
 grid_y,grid_x = np.meshgrid(range(YY),range(XX))
-fixed_heightmap = np.round(interpolate.griddata(np.array([Y,X]).T,Z,(grid_y,grid_x), method='linear')).astype(int).T
+fixed_heightmap = np.round(
+    interpolate.griddata(np.array([Y,X]).T,Z,(grid_y,grid_x), method='linear')).astype(int).T
 # Remake the height image
 height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
 

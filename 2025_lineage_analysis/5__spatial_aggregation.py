@@ -18,6 +18,8 @@ import tifffile
 from imageUtils import most_likely_label
 from scipy.spatial import distance
 
+from measurements import get_adjdict_from_2d_segmentation
+
 # General utils
 from tqdm import tqdm
 from os import path
@@ -33,44 +35,6 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
-
-
-def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
-    this_mask = labels == centerID
-    this_mask_dil = morphology.binary_dilation(this_mask,selem)
-    touchingIDs,counts = np.unique(labels[this_mask_dil],return_counts=True)
-    touchingIDs[counts > threshold] # should get rid of 'conrner touching'
-
-    touchingIDs = touchingIDs[touchingIDs > 2] # Could touch background pxs
-    touchingIDs = touchingIDs[touchingIDs != centerID] # nonself
-    
-    return touchingIDs
-
-#% Reconstruct adj network from cytolabels that touch
-def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2):
-    '''
-
-    Parameters
-    ----------
-    seg2d : np.array
-        2D cytoplasmic segmentation on which to determine adjacency
-    touching_threshold : int, optional
-        Minimum number of overlap pixels. The default is 2.
-
-    Returns
-    -------
-    A : dict
-        Dictionary of adjacent labels:
-            {centerID : neighborIDs }
-
-    '''
-    #@todo: OK for 3D segmentation? currently no...
-    assert(seg2d.ndim == 2) # only works with 2D images for now
-    
-    A = {centerID:find_touching_labels(seg2d, centerID, touching_threshold)
-         for centerID in np.unique(seg2d)[1:]}
-    
-    return A
 
 #%% Flatten segmentation from the heightmap
 
@@ -333,61 +297,8 @@ tifffile.imwrite(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connect
 
 #%% Aggregate over adjacency network
 
-from collections.abc import Callable
-def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
-                       df = pd.DataFrame, fields2aggregate=list[str]):
-    
-    df_aggregated = pd.DataFrame(
-        columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
-        index=df.index, dtype=float)
-
-    # for agg_name in aggregators.keys():
-    #     for field in fields2aggregate:
-    #         df_aggregated[f'{agg_name} adjac {field}'] = np.nan
-        
-    for centerID,neighborIDs in adj.items():
-        neighbors = df.loc[neighborIDs]
-        if len(neighbors) > 0:
-            for agg_name, agg_func in aggregators.items():
-                for field in fields2aggregate:
-                    if neighbors[field].values.dtype == float:
-                        if not np.all(np.isnan(neighbors[field].values)):
-                            df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
-                                agg_func(neighbors[field].values)
-                    else:
-                        df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
-                            agg_func(neighbors[field].values)
-    
-    df_aggregated.index.name = 'TrackID'
-    
-    return df_aggregated.reset_index()
-
-def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
-    D = distance.squareform(distance.pdist(df[['Z','Y','X']]))
-    D = pd.DataFrame(data=D,index=this_frame.index,columns=this_frame.index)
-    
-    distances = pd.DataFrame(index=adjDict.keys(),
-                             columns = [f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()])
-    
-    distances.index.name = 'TrackID'
-    for cellID,neighborIDs in adjDict.items():
-        for agg_name, agg_func in aggregators.items():
-            distances.loc[cellID,f'{agg_name} distance to neighbors'] = agg_func( D.loc[cellID,neighborIDs].values )
-    
-    return distances.sort_index().reset_index()
-    
-
-def frac_neighbors_are_border(v):
-    frac = v.sum() / len(v)
-    return frac
-
-def frac_sphase(v):
-    has_cell_cycle = v[v != 'NA']
-    if len(has_cell_cycle) > 0:
-        frac = (has_cell_cycle == 'SG2').sum() / len(has_cell_cycle)
-    else:
-        frac = np.nan
-    return frac
+from measurements import aggregate_over_adj, get_aggregated_3D_distances,\
+    frac_neighbors_are_border, frac_sphase
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
