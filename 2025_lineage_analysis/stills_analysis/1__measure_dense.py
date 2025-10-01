@@ -8,7 +8,7 @@ Created on Fri Apr 18 16:48:47 2025
 
 # Core libraries
 import numpy as np
-from skimage import io, util, morphology, exposure
+from skimage import io, util, morphology, exposure, filters, measure
 from scipy.spatial import Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
@@ -22,12 +22,12 @@ from trimesh.curvature import discrete_gaussian_curvature_measure, \
 import pyvista as pv
 
 # General utils
-from tqdm import tqdm
-from os import path,makedirs
+from os import path
 import pickle as pkl
+from tqdm import tqdm
 
-dx = 0.4
-dz = 1
+dx = 0.3
+dz = 0.5
 Z_SHIFT = 10
 KAPPA = 5 # microns
 
@@ -42,7 +42,7 @@ dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Sh
 
 
 # Load segmentations
-cyto_seg = io.imread(path.join(dirname,'Cropped/R_cp_cleaned.tif'))
+cyto_seg = io.imread(path.join(dirname,'Cropped/R_cp_cleaned_by_largest.tif'))
 
 # Load raw channels
 collagen = io.imread(path.join(dirname,'Cropped/B.tif'))
@@ -54,18 +54,21 @@ membrane = normalize_exposure_by_axis(membrane,axis=0)
 
 ZZ,YY,XX = cyto_seg.shape
 
+k10_bg_sub = k10 - filters.threshold_otsu(k10)
+k10_bg_sub[k10_bg_sub<0] = 0
+
 #%%
 
 from measurements import measure_cyto_geometry_from_regionprops, measure_cyto_intensity, \
             measure_flat_cyto_from_regionprops, reslice_by_heightmap, \
             estimate_sh_coefficients, find_distance_to_closest_point, \
             measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures
-from imageUtils import colorize_segmentation, filter_seg_by_largest_object
+from imageUtils import colorize_segmentation, filter_seg_by_largest_object, adjdict_to_mat
 
 VISUALIZE = False
 
-flat_collagen_top_margin = 2
-flat_collagen_bottom_margin = 8
+flat_collagen_top_margin = 5
+flat_collagen_bottom_margin = 10
 
 flat_cyto_top_margin = -60 #NB: top -> more apical but lower z-index
 flat_cyto_bottom_margin = 5
@@ -79,7 +82,7 @@ io.imsave(path.join(dirname,'Cropped/R_cp_cleaned_by_largest.tif'),cyto_seg)
 # --- 2. Voxel-based cell geometry measurements ---
 df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
 df_cyto = df_cyto.rename(columns={'X-cyto':'X','Y-cyto':'Y','Z-cyto':'Z'})
-int_images = {'K10':k10,'Collagen':collagen,'Membrane':membrane}
+int_images = {'K10':k10,'K10 sub':k10_bg_sub}
 intensity_df = measure_cyto_intensity(cyto_seg,int_images)
 df = pd.merge(left=df_cyto,right=intensity_df,left_on='TrackID',right_on='TrackID',how='left')
 
@@ -90,18 +93,19 @@ heightmap = io.imread(path.join(dirname,'Image flattening/heightmap.tif'))
 flat_cyto = reslice_by_heightmap( cyto_seg, heightmap,
                             top_border=flat_cyto_top_margin, bottom_border=flat_cyto_bottom_margin)
 flat_cyto = flat_cyto.astype(np.int16)
-flat_collagen = reslice_by_heightmap( cyto_seg, heightmap,
+flat_collagen = reslice_by_heightmap( collagen, heightmap,
                             top_border=flat_collagen_top_margin, bottom_border=flat_collagen_bottom_margin)
 flat_collagen = flat_collagen.mean(axis=0)
 
 io.imsave(path.join(dirname,'Image flattening/flat_cyto.tif'), flat_cyto.astype(np.uint16),check_contrast=False)
-io.imsave(path.join(dirname,'Image flattening/flat_collagen.tif'), flat_collagen.astype(np.uint16),check_contrast=False)
+io.imsave(path.join(dirname,'Image flattening/flat_collagen.tif'),
+          util.img_as_uint(flat_collagen),check_contrast=False)
 
 # Calculate collagen structuring matrix
 (Jxx,Jxy,Jyy) = measure_collagen_structure(flat_collagen,blur_sigma=3)
 
 df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
-    flat_cyto, flat_collagen, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
+    flat_cyto, flat_collagen, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx], slicees_to_average=6)
 df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
 
 io.imsave(path.join(dirname,'Image flattening/basal_masks.tif'),basal_masks_2save)
@@ -109,6 +113,7 @@ io.imsave(path.join(dirname,'Image flattening/basal_masks.tif'),basal_masks_2sav
 # Book-keeping
 df['X-pixels'] = df['X'] / dx
 df['Y-pixels'] = df['Y'] / dx
+df['Z-pixels'] = df['Z'] / dz
 
 dense_coords = np.array([df['Y-pixels'],df['X-pixels']]).T
 dense_coords_3d_um = np.array([df['Z'],df['Y'],df['X']]).T
@@ -162,16 +167,63 @@ sh_coefficients = sh_coefficients.set_index('TrackID')
 sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
 df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
 
-# Merge with manual annotations
-# df = df.reset_index()
-# df = df.set_index(['Frame','TrackID'])
+non_borders = df[~df.Border]
 
 #%% Colorize cell with measurement for visualization
 
-measurement = df['Mean curvature']
-measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-colorized = colorize_segmentation(cyto_seg,measurement.to_dict(),dtype=float)
-io.imsave('/Users/xies/Desktop/curvature.tif',
-          util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+# measurement = df['Mean curvature']
+# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+# colorized = colorize_segmentation(cyto_seg,measurement.to_dict(),dtype=float)
+# io.imsave('/Users/xies/Desktop/curvature.tif',
+#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
 
+#%% Neighborhood -> adjacDict
 
+import tifffile
+from measurements import get_adjdict_from_2d_segmentation, aggregate_over_adj, \
+    get_aggregated_3D_distances, frac_sphase
+
+basal_masks = io.imread(path.join(dirname,'Image flattening/basal_masks.tif'))
+
+adjDict = get_adjdict_from_2d_segmentation(basal_masks, touching_threshold=2)
+
+if VISUALIZE:
+    from imageUtils import draw_adjmat_on_image_3d, adjdict_to_mat
+    
+    coords_3d = pd.DataFrame(measure.regionprops_table(cyto_seg, properties=['label','centroid']))
+    coords_3d = coords_3d.rename(columns={'label':'TrackID','centroid-0':'Z','centroid-1':'Y','centroid-2':'X',}).set_index('TrackID')
+    A = adjdict_to_mat(adjDict)
+    im = draw_adjmat_on_image_3d(A, coords_3d, im_shape = cyto_seg.shape, line_width=2, colorize=True)
+    tifffile.imwrite(path.join(dirname,f'Image flattening/basal_connectivity_3d.tif'),im,
+                     compression='zlib')
+
+aggregators = {'Mean':np.nanmean,
+               'Median':np.nanmedian,
+               'Max':np.nanmax,
+               'Min':np.nanmin,
+               'Std':np.nanstd}
+
+fields2aggregate = df.columns
+fields2aggregate = fields2aggregate.drop(['X','Y','Z','Z-pixels','Y-pixels','X-pixels',
+                                          'Border'])
+
+A = adjdict_to_mat(adjDict)
+df_agg = aggregate_over_adj(adjDict, aggregators, df, fields2aggregate)
+df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adjDict.items()})
+df_dist = get_aggregated_3D_distances(df, adjDict, aggregators)
+
+df_relative = pd.DataFrame(index=df_agg.index,
+                           columns=[f'Relative {field}' for field in fields2aggregate])
+df_relative['TrackID'] = df_agg['TrackID']
+for field in fields2aggregate:
+    df_relative[f'Relative {field}'] = df[field].values / df_agg[f'Mean adjac {field}'].values
+
+df_agg = df_agg.set_index('TrackID')
+df_relative = df_relative.set_index('TrackID')
+df_dist = df_dist.set_index('TrackID')
+
+df_agg = pd.merge(df_agg,df_relative,on='TrackID' )
+df_agg = pd.merge(df_agg,df_dist,on='TrackID').astype(float)
+df = pd.merge(df,df_agg,on='TrackID')
+
+df.to_pickle(path.join(dirname,'Cropped/data_frame_aggregated.pkl'))
