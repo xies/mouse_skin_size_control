@@ -13,8 +13,7 @@ from os import path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from skimage import filters
-from mathUtils import normxcorr2
+
 from tqdm import tqdm
 
 import xml.etree.ElementTree as ET
@@ -188,66 +187,6 @@ def parse_voxel_resolution_from_XML(region_dir):
             dz = child.attrib['value']
 
     return float(dx),float(dz)
-
-def find_most_likely_z_slice_using_CC(ref_slice:int,stack) -> int:
-    '''
-
-    Parameters
-    ----------
-    ref_slice : YxX array
-        Single slice of reference image
-    stack : 3xYxX array
-        A z-stack image to find the slice correspoinding to ref_slice.
-
-    Returns
-    -------
-    Iz : int
-        index in stack of the corresponding ref_slice.
-
-    '''
-    assert(ref_slice.ndim == 2)
-    assert(stack.ndim == 3)
-    XX = stack.shape[1]
-    CC = np.zeros((stack.shape[0],XX * 2 - 1,XX * 2 -1))
-
-    print('Cross correlation started')
-    for i,B_slice in enumerate(stack):
-        B_slice = filters.gaussian(B_slice,sigma=0.5)
-        CC[i,...] = normxcorr2(ref_slice,B_slice,mode='full')
-    [Iz,y_shift,x_shift] = np.unravel_index(CC.argmax(),CC.shape) # Iz refers to B channel
-    return Iz
-
-def z_translate_and_pad(im_ref,im_moving,z_ref,z_moving,):
-    '''
-    Takes two z-stacks and translate the im_moving so that z_ref and z_moving will end up
-    being the same index in the translated image. Will also truncate/pad im_moving
-    to be the same size as im_ref
-
-    '''
-    XX = im_moving.shape[1]
-
-    # Bottom padding
-    bottom_padding = z_ref - z_moving
-    if bottom_padding > 0: # the needs padding
-        im_padded = np.concatenate( (np.zeros((bottom_padding,XX,XX)),im_moving), axis= 0)
-    elif bottom_padding < 0: # then needs trimming
-        im_padded = im_moving[-bottom_padding:,...]
-    elif bottom_padding == 0:
-        im_padded = im_moving
-
-    top_padding = im_ref.shape[0] - im_padded.shape[0]
-    if top_padding > 0: # the needs padding
-        im_padded = np.concatenate( (im_padded.astype(float), np.zeros((top_padding,XX,XX))), axis= 0)
-    elif top_padding < 0: # then needs trimming
-        im_padded = im_padded[0:top_padding,...]
-
-    # Cut down the z-stack shape
-    Zref = im_ref.shape[0]
-    im_padded = im_padded[:Zref,...]
-
-    assert(np.all(im_ref.shape == im_padded.shape))
-
-    return im_padded
 
 def z_align_ragged_timecourse(ragged_stack_list,same_Zs):
     '''
