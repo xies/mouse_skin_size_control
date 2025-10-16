@@ -19,6 +19,7 @@ from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 from scipy import interpolate
 
+
 #%%
 
 # dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/YAP-KO ablation/04-07-2-25 YAP-KO ablation/F1 YT-fl K14Cre DOB 02-10-2025/Left ear 4OHT day 3/R1 near distal edge/'
@@ -106,13 +107,8 @@ fixed_heightmap = np.round(
 # Remake the height image
 height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
 
-io.imsave(path.join(dirname,f'Image flattening/xyz_blur.tif'), util.img_as_int(im_z_blur),check_contrast=False)
+# io.imsave(path.join(dirname,f'Image flattening/xyz_blur.tif'), util.img_as_int(im_z_blur),check_contrast=False)
 io.imsave(path.join(dirname,f'Image flattening/heightmap.tif'), fixed_heightmap.astype(np.uint16),check_contrast=False)
 io.imsave(path.join(dirname,f'Image flattening/height_image.tif'), height_image.astype(np.uint16),check_contrast=False)
 
-# io.imsave(f'/Users/xies/Desktop/height_image.tif',height_image.astype(np.uint16),check_contrast=False)
-# io.imsave(f'/Users/xies/Desktop/xyz_blur.tif',util.img_as_uint(im_z_blur),check_contrast=False)
-
-    # pd.Series({'XY_sigma':XY_sigma,'Z_sigma':Z_sigma,'TOP_Z_BOUND':TOP_Z_BOUND,'BOTTOM_Z_BOUND':BOTTOM_Z_BOUND,
-    #           'z_shift':z_shift}).to_csv(path.join(dirname,f'Image flattening/params/t{t}.csv'))
 

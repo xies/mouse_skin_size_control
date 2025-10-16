@@ -30,9 +30,12 @@ from sklearn import preprocessing
 import matplotlib.pyplot as plt
 
 from collections.abc import Callable
+
+
+
 def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
                        df = pd.DataFrame, fields2aggregate=list[str]):
-    
+
     df_aggregated = pd.DataFrame(
         columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
         index=df.index, dtype=float)
@@ -40,7 +43,7 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
     # for agg_name in aggregators.keys():
     #     for field in fields2aggregate:
     #         df_aggregated[f'{agg_name} adjac {field}'] = np.nan
-        
+
     for centerID,neighborIDs in adj.items():
         neighbors = df.loc[neighborIDs]
         if len(neighbors) > 0:
@@ -53,25 +56,25 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
                     else:
                         df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
                             agg_func(neighbors[field].values)
-    
+
     df_aggregated.index.name = 'TrackID'
-    
+
     return df_aggregated.reset_index()
 
 def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
     D = distance.squareform(distance.pdist(df[['Z','Y','X']]))
     D = pd.DataFrame(data=D,index=df.index,columns=df.index)
-    
+
     distances = pd.DataFrame(index=adjDict.keys(),
                              columns = [f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()])
-    
+
     distances.index.name = 'TrackID'
     for cellID,neighborIDs in adjDict.items():
         for agg_name, agg_func in aggregators.items():
             distances.loc[cellID,f'{agg_name} distance to neighbors'] = agg_func( D.loc[cellID,neighborIDs].values )
-    
+
     return distances.sort_index().reset_index()
-    
+
 def frac_neighbors_are_border(v):
     frac = v.sum() / len(v)
     return frac
@@ -92,7 +95,7 @@ def find_touching_labels(labels, centerID, threshold, selem=morphology.disk(3)):
 
     touchingIDs = touchingIDs[touchingIDs > 2] # Could touch background pxs
     touchingIDs = touchingIDs[touchingIDs != centerID] # nonself
-    
+
     return touchingIDs
 
 
@@ -116,35 +119,35 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
     '''
     #@todo: OK for 3D segmentation? currently no...
     assert(seg2d.ndim == 2) # only works with 2D images for now
-    
+
     A = {centerID:find_touching_labels(seg2d, centerID, touching_threshold)
          for centerID in np.unique(seg2d)[1:]}
-    
+
     return A
 
 def reslice_by_heightmap(im,heightmap,top_border,bottom_border):
 
     ZZ,YY,XX = im.shape
-    
+
     flat = np.zeros((-top_border + bottom_border,XX,XX),dtype=im.dtype)
 
     Iz_top = heightmap + top_border
     Iz_bottom = heightmap + bottom_border
-    
+
     for x in range(XX):
         for y in range(YY):
-            
+
             flat_indices = np.arange(0,-top_border+bottom_border)
-            
+
             z_coords = np.arange(Iz_top[y,x],Iz_bottom[y,x])
             # sanitize for out-of-bounds
             z_coords[z_coords < 0] = 0
             z_coords[z_coords >= ZZ] = ZZ-1
             I = (z_coords > 0) & (z_coords < ZZ)
-            
+
             flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
             flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
-            
+
     return flat
 
 # Suppress batch effects
