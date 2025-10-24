@@ -49,7 +49,7 @@ df = pd.concat(df)
 
 non_borders = df[~df.Border]
 
-#%%
+#%% RandomForest
 
 Niter = 100
 
@@ -80,8 +80,17 @@ for i in tqdm(range(Niter)):
 
     forest_scores.loc[i,'R2_score'] = metrics.r2_score(y_test,y_pred)
     
-forest_imps.mean().sort_values().tail(20).plot.bar()
+
+
+ax1 = plt.subplot(221)
+ax2 = plt.subplot(223)
+ax3 = plt.subplot(122)
+
+ax1.scatter(y_test,y_pred,alpha=0.5)
+ax2.hist(forest_scores)
+forest_imps.mean().sort_values().tail(20).plot.bar(ax3)
 plt.tight_layout()
+
 
 #%% XGboost
 
@@ -171,10 +180,10 @@ plt.tight_layout()
 from basicUtils import plot_bin_means
 
 x='Subbasal collagen intensity'
-y='Mean K10 intensity'
-x='Basal area'
+y='Mean K10 sub intensity'
+x='Mean curvature'
 
-sb.regplot(non_borders,x=x,y=y,robust=True)
+sb.regplot(non_borders,x=x,y=y,robust=True,scatter_kws={'alpha':0.1})
 
 plot_bin_means(non_borders[x],non_borders[y],10)
 
