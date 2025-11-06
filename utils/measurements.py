@@ -46,16 +46,16 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
 
     for centerID,neighborIDs in adj.items():
         neighbors = df.loc[neighborIDs]
-        if len(neighbors) > 0:
-            for agg_name, agg_func in aggregators.items():
-                for field in fields2aggregate:
-                    if neighbors[field].values.dtype == float:
-                        if not np.all(np.isnan(neighbors[field].values)):
-                            df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
-                                agg_func(neighbors[field].values)
-                    else:
+        # if len(neighbors) > 0:
+        for agg_name, agg_func in aggregators.items():
+            for field in fields2aggregate:
+                if neighbors[field].values.dtype == float:
+                    if not np.all(np.isnan(neighbors[field].values)):
                         df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
                             agg_func(neighbors[field].values)
+                else:
+                    df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                        agg_func(neighbors[field].values)
 
     df_aggregated.index.name = 'TrackID'
 
