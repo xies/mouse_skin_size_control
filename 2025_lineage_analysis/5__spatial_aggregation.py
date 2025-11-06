@@ -29,9 +29,9 @@ from basicUtils import sort_by_timestamp
 dx = 0.25
 dz = 1
 
-# Filenames??
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# Filenames
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
@@ -361,7 +361,7 @@ all_df['Frac of neighbors are border','Meta'] = x.values
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
- #%% Lookbacks
+#%% Lookbacks
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}

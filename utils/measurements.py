@@ -66,12 +66,18 @@ def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
     D = pd.DataFrame(data=D,index=df.index,columns=df.index)
 
     distances = pd.DataFrame(index=adjDict.keys(),
-                             columns = [f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()])
+                             columns = [f'{agg_name} distance to neighbors'
+                                        for agg_name in aggregators.keys()])
 
     distances.index.name = 'TrackID'
     for cellID,neighborIDs in adjDict.items():
-        for agg_name, agg_func in aggregators.items():
-            distances.loc[cellID,f'{agg_name} distance to neighbors'] = agg_func( D.loc[cellID,neighborIDs].values )
+        if len(neighborIDs) > 0:
+            for agg_name, agg_func in aggregators.items():
+                # print(cellID)
+                # print(neighborIDs)
+                # print(D.loc[cellID,neighborIDs].values)
+                distances.loc[cellID,f'{agg_name} distance to neighbors'] = \
+                    agg_func( D.loc[cellID,neighborIDs].values )
 
     return distances.sort_index().reset_index()
 

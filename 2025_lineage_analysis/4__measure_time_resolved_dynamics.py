@@ -22,8 +22,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=[0,1]).reset_index()
 
