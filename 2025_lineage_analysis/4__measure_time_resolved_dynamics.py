@@ -22,8 +22,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=[0,1]).reset_index()
 
@@ -36,7 +36,7 @@ for t,this_frame in enumerate(df_by_frame):
         this_frame[f'{field} standard'] = \
             this_frame[field] / basals[field].dropna().mean()
     df_by_frame[t] = this_frame
-    
+
 all_df = pd.concat(df_by_frame,ignore_index=True).set_index(['Frame','TrackID'])
 
 #%% Manuallly annotate cell cycle transisions
@@ -107,7 +107,7 @@ if path.exists(filename):
     na_points = map_tzyx_to_labels(na_points, tracked_nuc)
     for _,row in na_points.iterrows():
         all_df.loc[row['label'],'Cell cycle phase'] = 'NA'
-    
+
 sg2_points = pd.read_csv(path.join(dirname,'Mastodon/SG2.csv'),index_col=0)
 sg2_points = sg2_points.rename(columns={'axis-0':'T','axis-1':'Z','axis-2':'Y','axis-3':'X'})
 sg2_points = map_tzyx_to_labels(sg2_points, tracked_nuc)
@@ -124,9 +124,9 @@ tracks = [x for _,x in all_df.reset_index().groupby('TrackID')]
 fields2estimate = ['Nuclear volume','Nuclear volume standard']
 
 for i,track in tqdm(enumerate(tracks)):
-    
+
     track = detect_missing_frame_and_fill(track)
-    
+
     # Birth lineage annotation
     track['Birth frame'] = False
     if len(track['Mother'].dropna()) > 0:
@@ -137,7 +137,7 @@ for i,track in tqdm(enumerate(tracks)):
     else:
         track['Age'] = np.nan
         track['Born'] = False
-    
+
     if len(track['Daughter a'].dropna()) > 0:
         track['Will divide'] = True
         track['Divide next frame'] = False
@@ -145,12 +145,12 @@ for i,track in tqdm(enumerate(tracks)):
     else:
         track['Will divide'] = False
         track['Divide next frame'] = False
-    
+
     track['Differentiated'] = (track['Cell type'] == 'Suprabasal') \
         | (track['Cell type'] == 'Right before cornified')
     track['Will differentiate'] = False
     track['Delaminate next frame'] = False
-    
+
     # FUCCI intensity
     # track['Cell cycle phase'] = 'NA'
     # track['Max FUCCI frame'] = np.nan
@@ -164,12 +164,12 @@ for i,track in tqdm(enumerate(tracks)):
     #         track.loc[prev_frames, 'Cell cycle phase'] = 'G1'
     #         after_frames = track['Frame'] > max_fucci_idx
     #         track.loc[after_frames, 'Cell cycle phase'] = 'SG2'
-    
+
     # Differentiation
     if np.any(track['Differentiated']) and np.any(track['Cell type'] == 'Basal'):
         track['Will differentiate'] = True
         track.loc[track[track['Cell type'] == 'Basal'].index[-1],'Delaminate next frame'] = True
-        
+
         diff_frame = np.where(track['Differentiated'])[0][0]
         diff_idx = track.iloc[diff_frame].name
         track['Time to differentiation'] = track['Time'] - track.iloc[diff_frame]['Time']
@@ -177,7 +177,7 @@ for i,track in tqdm(enumerate(tracks)):
         if (track['Cell type'] == 'Basal').sum() > 0:
             track.loc[ track['Cell type'] == 'Basal','Keep until first differentiation'] = True
             track.loc[diff_idx, 'Keep until first differentiation'] = True
-    
+
     try:
         track = get_interpolated_curve(track, field='Nuclear volume')
     except UserWarning:
@@ -185,20 +185,20 @@ for i,track in tqdm(enumerate(tracks)):
     track = get_exponential_growth_rate(track, field='Nuclear volume')
     Ig1 = track['Cell cycle phase'] == 'G1'
     track = get_exponential_growth_rate(track, field='Nuclear volume', filtered={'G1 only':Ig1})
-    
+
     track = get_interpolated_curve(track, field='Cell volume')
     track = get_exponential_growth_rate(track, field='Cell volume')
     track = get_exponential_growth_rate(track, field='Cell volume', filtered={'G1 only':Ig1})
-    
+
     track = get_interpolated_curve(track, field='Mean FUCCI intensity')
     track = get_interpolated_curve(track, field='Total H2B intensity')
-    
+
     track = get_interpolated_curve(track, field='Basal area')
     track = get_interpolated_curve(track, field='Apical area')
-    
-    track = get_interpolated_curve(track, field='Basal alignment')
-    track = get_interpolated_curve(track, field='Collagen intensity')
-    
+
+    track = get_interpolated_curve(track, field='Basal alignment to basal footprint')
+    track = get_interpolated_curve(track, field='Subbasal collagen intensity')
+
     tracks[i] = track
     # new_tracks.append(track)
 
@@ -227,7 +227,3 @@ new_cols['Metadata'] = metadata_index
 all_df.columns = pd.MultiIndex.from_frame(new_cols)
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
-
-
-
-

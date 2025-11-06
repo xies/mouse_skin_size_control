@@ -8,7 +8,7 @@ Created on Fri Apr 18 16:48:47 2025
 
 # Core libraries
 import numpy as np
-from skimage import io, util, morphology, exposure
+from skimage import io, util, morphology, exposure, measure
 from scipy.spatial import Voronoi, Delaunay
 import pandas as pd
 import matplotlib.pylab as plt
@@ -36,7 +36,7 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Ski?n/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
@@ -63,6 +63,7 @@ manual = manual.drop(columns=['ID','X','Y','Z','Border'])
 # Load segmentations
 tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
 tracked_cyto = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
+tracked_manual_cyto = io.imread(path.join(dirname,'Mastodon/tracked_manual_cyto.tif'))
 
 # Load channels
 h2b = io.imread(path.join(dirname,'Cropped_images/B.tif'))
@@ -80,7 +81,12 @@ for t in tqdm(range(15)):
     # --- 1. Voxel-based cell geometry measurements ---
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
+    df_manual = pd.DataFrame(measure.regionprops_table(tracked_manual_cyto[t,...],
+                                          properties=['label','area']))
+    df_manual = df_manual.rename(columns={'label':'TrackID',
+                                          'area':'Manual cell volume'})
     df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
+    df = pd.merge(left=df,right=df_manual,left_on='TrackID',right_on='TrackID',how='left')
     df['Frame'] = t
     df['Time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}

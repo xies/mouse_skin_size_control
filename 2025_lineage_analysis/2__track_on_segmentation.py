@@ -60,8 +60,12 @@ cyto_segs = np.stack( list(map(io.imread,filenames) ) )
 # filenames = natsorted(glob(path.join(dirname,'3d_cyto_seg_supra/3d_cyto_supra_raw/t*.tif')))
 # cyto_supra = np.stack( list(map(io.imread,filenames) ) )
 
+# Load basal manual segmentations
+manual_cyto = io.imread(path.join(dirname,'manual_basal_tracking/basal_tracks_cyto.tif'))
+
 #% Track Mastodon onto segmentation
 tracked_nuc = np.zeros_like(basal_segs)
+tracked_manual_cyto = np.zeros_like(manual_cyto)
 tracked_cyto = np.zeros_like(cyto_segs)
 
 for track in tqdm(tracks):
@@ -75,6 +79,7 @@ for track in tqdm(tracks):
         # print(f'{frame}, {spot.TrackID}')
         
         if spot['Cell type'] == 'Basal':
+            
             label = basal_segs[frame,Z,Y,X]
             if label > 0:
                 mask = basal_segs[frame,...] == label
@@ -97,6 +102,12 @@ for track in tqdm(tracks):
                 mask = cyto_segs[frame,...] == label
                 mask = filter_mask_by_largest_object(mask)
                 tracked_cyto[frame,mask] = spot['TrackID']
+                
+            label = manual_cyto[frame,Z,Y,X]
+            if label > 0:
+                mask = manual_cyto[frame,...] == label
+                tracked_manual_cyto[frame,mask] = spot['TrackID']
+                
         elif spot['Cell type'] == 'Suprabasal':
 
             label = suprabasal_segs[frame,Z,Y,X]
@@ -127,8 +138,11 @@ for track in tqdm(tracks):
 # Save compressed (1Gb->10Mb)
 tifffile.imwrite(path.join(dirname,'Mastodon/tracked_cyto.tif'),tracked_cyto
                  ,compression='zlib')
+tifffile.imwrite(path.join(dirname,'Mastodon/tracked_manual_cyto.tif'),tracked_manual_cyto
+                 ,compression='zlib')
 
-#% Put back in all the basal nuc segs that don't have tracks
+
+#%% Put back in all the basal nuc segs that don't have tracks
 
 # maxID = tracks[-1].TrackID.iloc[0]
 # for t in range(15):
