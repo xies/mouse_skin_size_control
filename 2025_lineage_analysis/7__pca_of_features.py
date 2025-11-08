@@ -126,7 +126,6 @@ prev4_div_frame.to_pickle(path.join(dataset_dir,'divisions_48h.pkl'))
 
 #%% PPCA different time points
 
-
 features2drop_from_pca = ['X','Y','Z','X-pixels','Y-pixels','X-cyto','Y-cyto','Z-cyto']
 def get_ppca_component_transform(dataset:pd.DataFrame,
                                  n_comp:int=100,

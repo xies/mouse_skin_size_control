@@ -30,8 +30,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
@@ -325,8 +325,8 @@ for t in tqdm(range(15)):
     df_agg = aggregate_over_adj(adj, aggregators, this_frame, fields2aggregate)
     df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
     # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
-    df_dist = get_aggregated_3D_distances(this_frame, adj, aggregators)
     
+    df_dist = get_aggregated_3D_distances(this_frame, adj, aggregators)
     # @todo: relative-to-mean
     df_agg['Frac of neighbors are border'] = aggregate_over_adj(adj,
                                                                {'Frac':frac_neighbors_are_border},
@@ -342,10 +342,12 @@ for t in tqdm(range(15)):
                                                                 all_df.xs(t,level='Frame'),
                                                                 ['Cell cycle phase']).drop(columns='TrackID')
    
-
     df_agg['Frame'] = t
-    df_agg = pd.concat((df_agg,df_relative,df_dist),axis=1)
+    df_agg = pd.merge(df_agg,df_dist,left_on='TrackID',right_on='TrackID')
+    # df_agg = pd.merge(df_agg,df_relative,left_on='TrackID',right_on='TrackID').copy()
+    df_agg = pd.concat((df_agg,df_relative),axis=1)
     aggregated_fields.append(df_agg)
+
 
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)
 x = aggregated_fields['Frac of neighbors are border']
