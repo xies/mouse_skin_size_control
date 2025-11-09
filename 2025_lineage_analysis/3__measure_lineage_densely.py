@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -189,7 +189,7 @@ for t in tqdm(range(15)):
     frame_basal_mask = io.imread(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'))
 
     # Merge with manual annotations
-    df = df.reset_index()
+    df = df.reset_index(drop=True)
     # df = df.set_index(['Frame','TrackID'])
 
     # Save the DF
