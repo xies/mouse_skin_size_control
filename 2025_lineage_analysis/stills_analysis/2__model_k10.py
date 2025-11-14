@@ -81,7 +81,6 @@ for i in tqdm(range(Niter)):
     forest_scores.loc[i,'R2_score'] = metrics.r2_score(y_test,y_pred)
     
 
-
 ax1 = plt.subplot(221)
 ax2 = plt.subplot(223)
 ax3 = plt.subplot(122)

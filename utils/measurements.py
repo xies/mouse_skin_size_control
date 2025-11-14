@@ -169,6 +169,15 @@ def scale_by_region(df):
 
     return pd.concat(scaled)
 
+def export_mesh(mesh,filename,values=None):
+    from trimesh import geometry
+    vertices = np.asarray(mesh.vertices[:,[2,1,0]])
+    faces = np.asarray(mesh.faces)
+    if values is None:
+        normals = geometry.mean_vertex_normals(len(mesh.vertices),mesh.faces,mesh.face_normals)
+        values = np.dot(normals,[1,-1,1])
+    np.savez(filename,
+              vertices = vertices,faces = faces,values = values)
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 

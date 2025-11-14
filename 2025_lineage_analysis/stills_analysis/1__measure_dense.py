@@ -35,7 +35,7 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R2'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R1'
 
 # Activate measurement suites
 ['cyto','intensity']
@@ -154,10 +154,12 @@ df['Gaussian curvature - cell coords'] = gaussian_curve_coords
 bm_height_image = io.imread(path.join(dirname,'Image flattening/height_image.tif'))
 bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
 closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
-mean_curve, gaussian_curve = get_tissue_curvatures(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
-
-df['Mean curvature'] = mean_curve
-df['Gaussian curvature'] = gaussian_curve
+for KAPPA in [2,5,10,15]:
+    mean_curve, gaussian_curve = \
+        get_tissue_curvatures(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
+    
+    df[f'Mean curvature {KAPPA}um'] = mean_curve
+    df[f'Gaussian curvature {KAPPA}um'] = gaussian_curve
 
 # --- 6. 3D shape decomposition ---
 
