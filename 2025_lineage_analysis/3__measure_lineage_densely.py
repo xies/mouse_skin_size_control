@@ -16,7 +16,7 @@ import seaborn as sb
 
 # Specific utils
 from imageUtils import draw_labels_on_image, colorize_segmentation, normalize_exposure_by_axis
-from trimesh import Trimesh
+from trimesh import Trimesh, geometry
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
 import pyvista as pv
@@ -44,7 +44,7 @@ dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 from measurements import measure_nuclear_geometry_from_regionprops, \
         measure_cyto_geometry_from_regionprops, measure_cyto_intensity, measure_flat_cyto_from_regionprops, \
         estimate_sh_coefficients, find_distance_to_closest_point, \
-        measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures
+        measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures, export_mesh
 
 SAVE = True
 VISUALIZE = False
@@ -158,12 +158,24 @@ for t in tqdm(range(15)):
     # ---- 5. Get 3D mesh from the BM image ---
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
     bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
+    
+    # Export mesh: vert, face, value (normals) for napari usage
+    export_mesh(bg_mesh,path.join(dirname,f'Image flattening/trimesh/t{t}.npz'))
+    # vertices = np.asarray(bg_mesh.vertices[:,[2,1,0]])
+    # faces = np.asarray(bg_mesh.faces)
+    # normals = geometry.mean_vertex_normals(len(bg_mesh.vertices),bg_mesh.faces,bg_mesh.face_normals)
+    # values = np.dot(normals,[1,-1,1])
+    # np.savez(path.join(dirname,f'Image flattening/trimesh/t{t}.npz'),
+    #           vertices = vertices,faces = faces,values = values)
+    
     closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
-    mean_curve, gaussian_curve = get_tissue_curvatures(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
-
-    df['Mean curvature'] = mean_curve
-    df['Gaussian curvature'] = gaussian_curve
-
+    for kappa in [2,5,10,15]:
+        mean_curve, gaussian_curve = get_tissue_curvatures(bg_mesh,
+                                                           kappa=kappa, query_pts = closest_mesh_to_cell)
+    
+        df[f'Mean curvature {kappa}um'] = mean_curve
+        df[f'Gaussian curvature {kappa}um'] = gaussian_curve
+    
 
     # --- 6. 3D shape decomposition ---
 
@@ -221,8 +233,54 @@ missing_cytos = non_border_basals.index[non_border_basals['Cell volume'].isnull(
 
 print(missing_cytos[:50])
 
-#%% Dimensionality reduce the SPH coefficients
+#%% Re-export all the BM mesh objects into individual a single unified TZYX mesh for display in napari
 
+mesh_tuples = [np.load(path.join(dirname,f'Image flattening/trimesh/t{t}.npz')) for t in range(15)]
+
+# Vertices -> append a T dimention
+vertices_raw = [m['vertices'] for m in mesh_tuples]
+num_vert_per_frame = [len(v) for v in vertices_raw]
+num_verts_so_far = np.cumsum(num_vert_per_frame)
+vertices = vertices_raw.copy()
+for t,v in enumerate(vertices_raw):
+    num_verts = len(v)
+    vertices[t] = np.hstack((np.ones((num_verts,1)) * t, v))
+vertices = np.vstack(vertices)
+
+# Faces: for every t > 0, calculate the cumulative # of vertices so far, and increase
+# vertex index by that amount
+faces_raw = [m['faces'] for m in mesh_tuples]
+faces = faces_raw.copy()
+for t,f in enumerate(faces_raw):
+    if t > 0:
+        faces[t] = f + num_verts_so_far[t-1]
+faces = np.vstack(faces)
+
+values_raw = [m['values'].T for m in mesh_tuples]
+values = np.hstack(values_raw)
+
+np.savez(path.join(dirname,'Image flattening/trimesh/bg_surface_timeseries.npz'),
+         vertices=vertices,faces=faces,values=values)
+
+#%% Export lineage-colorized tracks
+
+from imageUtils import colorize_segmentation
+import tifffile
+
+lineage_tree = {trackID:t.iloc[0]['LineageID'] for trackID,t in all_df.groupby('TrackID')}
+lineage_image = colorize_segmentation(tracked_cyto,lineage_tree)
+
+tifffile.imwrite(path.join(dirname,'Mastodon/lineageID_cyto.tif'),
+                 lineage_image, metadata={'axes': 'TZYX'}, compression ='zlib')
+
+lineage_tree = {trackID:t.iloc[0]['LineageID'] for trackID,t in all_df.groupby('TrackID')}
+lineage_image = colorize_segmentation(tracked_nuc,lineage_tree)
+
+tifffile.imwrite(path.join(dirname,'Mastodon/lineageID_nuc.tif'),
+                 lineage_image, metadata={'axes': 'TZYX'}, compression ='zlib')
+
+
+#%% Dimensionality reduce the SPH coefficients
 # from sklearn.decomposition import PCA
 # from sklearn.preprocessing import StandardScaler
 

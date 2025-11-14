@@ -18,11 +18,12 @@ import pickle as pkl
 from mamutUtils import load_mamut_xml_densely, construct_data_frame_dense
 
 #%% Export the coordinates of the completed cell cycles (as pickle)
+region = 'R2'
 
-dirname ='/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/'
+dirname = f'/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-{region}/'
 
 all_tracks = []
-_tracks, _spots = load_mamut_xml_densely(path.join(dirname,'Mastodon/R1-mamut.xml'))
+_tracks, _spots = load_mamut_xml_densely(path.join(dirname,f'Mastodon/{region}-mamut.xml'))
 tracks = construct_data_frame_dense(_tracks, _spots)
 
 all_tracks.append(tracks)
@@ -30,7 +31,7 @@ all_tracks.append(tracks)
 #%% Annotations
 
 # Merge with manual tags using Spot.csv files
-spot_table = pd.read_csv(path.join(dirname,'Mastodon/W-R1.h5-Spot-Spot.csv'),
+spot_table = pd.read_csv(path.join(dirname,f'Mastodon/{region}-spots-Spot.csv'),
                          header=[0,1,2],index_col=0)
 
 # Only select the labels that matter:

@@ -17,6 +17,7 @@ import sched, time
 dirnames = ['/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/',
     '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/']
 
+region = 'R1'
 
 @napari.Viewer.bind_key('c')
 def cycle_colormap(viewer):
@@ -104,28 +105,20 @@ def cycle_active_axis(viewer):
 @magicgui(dirname ={'choices':dirnames,
         'allow_multiple':False})
 def load_dataset(dirname = (dirnames[0])):
-
     names2remove = [l.name for l in viewer.layers]
     for l in names2remove:
         self._viewer.layers.remove(l)
 
-    # df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
-    # measurement_list = df.columns[(~df.columns.str.startswith('cyto_')) & (~df.columns.str.startswith('nuc_'))].tolist()
-    # Load the manual tracks
-    viewer.
-    all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
-    all_df = all_df[all_df['Cell type'] == 'Basal']
-    # Tracks axes are: ID,T,(Z),Y,X
-    tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
-
-    with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
-        tracks = pkl.load(file)
-    tracks = pd.concat(tracks,ignore_index=True).sort_values(['LineageID','Frame'])
-    # Sanitize dtype
-    tracks = tracks[['LineageID','Frame','Z','Y','X']].astype(float)
-    # The default output is in microns -> convert
-    tracks['Y'] = tracks['Y'] / dx
-    tracks['X'] = tracks['X'] / dx
+    # # Tracks axes are: ID,T,(Z),Y,X
+    # tracks = all_df[all_df['Cell type'] == 'Suprabasal'][['TrackID','Frame','Z','Y-pixels','X-pixels']]
+    # with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
+    #     tracks = pkl.load(file)
+    # tracks = pd.concat(tracks,ignore_index=True).sort_values(['LineageID','Frame'])
+    # # Sanitize dtype
+    # tracks = tracks[['LineageID','Frame','Z','Y','X']].astype(float)
+    # # The default output is in microns -> convert
+    # tracks['Y'] = tracks['Y'] / dx
+    # tracks['X'] = tracks['X'] / dx
 
     R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
     B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
@@ -136,23 +129,64 @@ def load_dataset(dirname = (dirnames[0])):
 
     filelist = natsorted(glob(path.join(dirname,'Image flattening/height_image/t*.tif')))
     basement_mem = np.stack([io.imread(f) for f in filelist])
+
+    # Add surface
+    data = np.load(path.join(dirname,f'Image flattening/trimesh/bg_surface_timeseries.npz'))
+    vertices = data['vertices']
+    faces = data['faces']
+    values = data['values']
+
     viewer.add_image(R,scale = scale, blending='additive', colormap='red',rendering='attenuated_mip')
     viewer.add_image(B,scale = scale, blending='additive', colormap='blue',rendering='attenuated_mip')
     viewer.add_image(G,scale = scale, blending='additive', colormap='gray',visible=True,rendering='attenuated_mip')
-    viewer.add_image(basement_mem,scale=[dz,dx,dx],blending='additive',colormap='gray',visible=True)
-    viewer.add_labels(connectivity,scale = scale)
-    viewer.add_labels(segmentation,scale = scale)
-    viewer.add_labels(nuc_segmentation,scale = scale)
+    viewer.add_surface((vertices,faces,values),colormap='orange',opacity=0.6)
+    viewer.add_image(basement_mem,scale=[dz,dx,dx],blending='additive',colormap='gray',visible=False)
+    viewer.add_labels(connectivity,scale = scale,visible=False,blending='additive')
+    viewer.add_labels(nuc_segmentation,scale = scale,name='nuclei',opacity=1,blending='additive')
+    viewer.add_labels(segmentation,scale = scale,name='cytoplasms',blending='additive')
 
 
+dirname = dirnames[1]
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
 
+lineageIDs = all_df['LineageID']
+
+@magicgui(lineage_to_show = {'choices':sorted(lineageIDs.tolist()) })
+def highlight_lineage(lineage_to_show=lineageIDs.tolist()[0]):
+
+    lineage = all_df[all_df['LineageID'] == lineage_to_show]
+
+    # Create masks
+    cyto = viewer.layers['cytoplasms'].data
+    nuc = viewer.layers['nuclei'].data
+    nuc_highlights = np.zeros_like(cyto)
+    cyto_highlights = np.zeros_like(cyto)
+
+    for _,row in lineage.iterrows():
+        t = row['Frame']
+        mask = (nuc[t,...] == row['TrackID'])
+        nuc_highlights[t,mask] = row['TrackID']
+        mask = (cyto[t,...] == row['TrackID'])
+        cyto_highlights[t,mask] = row['TrackID']
+
+    if 'highlighted_lineage_nuc' in viewer.layers:
+        viewer.layers.remove('highlighted_lineage_nuc')
+    if 'highlighted_lineage_cyto' in viewer.layers:
+        viewer.layers.remove('highlighted_lineage_cyto')
+    viewer.layers['cytoplasms'].visible = False
+    viewer.layers['nuclei'].visible = False
+
+    viewer.add_labels(cyto_highlights,name='highlighted_lineage_cyto',scale=scale,opacity=0.7,blending='additive')
+    viewer.add_labels(nuc_highlights,name='highlighted_lineage_nuc',scale=scale,opacity=1,blending='additive')
 
 dz = 1
 dx = .25
 scale = [dz,dx,dx]
 
 viewer = napari.Viewer()
+lineageIDs = all_df['LineageID']
 
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
 
-viewer.window.add_dock_widget(load_dataset, name="Load dataset")
+viewer.window.add_dock_widget(load_dataset, name="Load dataset",area='left')
+viewer.window.add_dock_widget(highlight_lineage, name="Show lineage",area='left')
