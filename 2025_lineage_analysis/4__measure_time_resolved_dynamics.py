@@ -22,8 +22,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=[0,1]).reset_index()
 
@@ -145,7 +145,7 @@ for i,track in tqdm(enumerate(tracks)):
     else:
         track['Will divide'] = False
         track['Divide next frame'] = False
-
+        
     track['Differentiated'] = (track['Cell type'] == 'Suprabasal') \
         | (track['Cell type'] == 'Right before cornified')
     track['Will differentiate'] = False
@@ -214,7 +214,7 @@ meta_cols = ['TrackID','LineageID','Left','Right','Division','Terminus',
              'Differentiated','Will differentiate','Border','Fate known',
              'Delaminate next frame','Keep until first differentiation',
              'Born','Birth frame','Cell cycle transition',
-             'Max FUCCI frame','Cell cycle phase','Reviewed']
+             'Max FUCCI frame','Cell cycle phase']
 
 Imeta = np.isin(all_df.columns,meta_cols)
 metadata_index = {True:'Meta',False:'Measurement'}

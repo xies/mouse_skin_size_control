@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -126,6 +126,8 @@ for t in tqdm(range(15)):
     # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     heightmap_shifted = heightmap + Z_SHIFT
+    df['BM height'] = heightmap_shifted[
+        np.round(df['Y']).astype(int),np.round(df['X']).astype(int)]
     df['Height to BM'] = heightmap_shifted[
         np.round(df['Y']).astype(int),np.round(df['X']).astype(int)] - df['Z']
 

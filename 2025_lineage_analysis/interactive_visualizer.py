@@ -123,12 +123,27 @@ def load_dataset(dirname = (dirnames[0])):
     R = io.imread(path.join(dirname,'Cropped_images/R.tif'))
     B = io.imread(path.join(dirname,'Cropped_images/B.tif'))
     G = io.imread(path.join(dirname,'Cropped_images/G.tif'))
+
     segmentation = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
     nuc_segmentation = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
+    lin_cyto = io.imread(path.join(dirname,'Mastodon/lineageID_cyto.tif'))
+    lin_nuc = io.imread(path.join(dirname,'Mastodon/lineageID_nuc.tif'))
     connectivity = io.imread(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connectivity_3d.tif'))
 
     filelist = natsorted(glob(path.join(dirname,'Image flattening/height_image/t*.tif')))
     basement_mem = np.stack([io.imread(f) for f in filelist])
+    # macrophages
+    macrophages = []
+    for t in range(15):
+        df_ = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
+        df_ = df_.rename(columns={'axis-0':'axis-1','axis-1':'axis-2','axis-2':'axis-3'})
+        df_['axis-0'] = t
+        macrophages.append(df_)
+    macrophages = pd.concat(macrophages,ignore_index=True).drop(columns='index')
+    macrophages = macrophages[['axis-0','axis-1','axis-2','axis-3']]
+    macrophages['axis-2'] *= 0.25
+    macrophages['axis-3'] *= 0.25
+    print(macrophages)
 
     # Add surface
     data = np.load(path.join(dirname,f'Image flattening/trimesh/bg_surface_timeseries.npz'))
@@ -136,17 +151,21 @@ def load_dataset(dirname = (dirnames[0])):
     faces = data['faces']
     values = data['values']
 
-    viewer.add_image(R,scale = scale, blending='additive', colormap='red',rendering='attenuated_mip')
+    viewer.add_image(R,scale = scale, blending='additive', colormap='red',rendering='attenuated_mip',visible=False)
     viewer.add_image(B,scale = scale, blending='additive', colormap='blue',rendering='attenuated_mip')
-    viewer.add_image(G,scale = scale, blending='additive', colormap='gray',visible=True,rendering='attenuated_mip')
-    viewer.add_surface((vertices,faces,values),colormap='orange',opacity=0.6)
+    viewer.add_image(G,scale = scale, blending='additive', colormap='gray',visible=True,rendering='attenuated_mip',attenuation=1)
+    viewer.add_surface((vertices,faces,values),scale=[1,1,1],colormap='orange',opacity=0.6)
     viewer.add_image(basement_mem,scale=[dz,dx,dx],blending='additive',colormap='gray',visible=False)
     viewer.add_labels(connectivity,scale = scale,visible=False,blending='additive')
     viewer.add_labels(nuc_segmentation,scale = scale,name='nuclei',opacity=1,blending='additive')
     viewer.add_labels(segmentation,scale = scale,name='cytoplasms',blending='additive')
+    viewer.add_labels(lin_nuc,scale = scale,name='lineage_nuc',opacity=1,blending='additive')
+    viewer.add_labels(lin_cyto,scale = scale,name='lineage_cyto',blending='additive')
+
+    viewer.add_points(macrophages,name='macrophages',face_color='red')
 
 
-dirname = dirnames[1]
+dirname = dirnames[0]
 all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
 
 lineageIDs = all_df['LineageID']
