@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -128,8 +128,8 @@ for t in tqdm(range(15)):
     heightmap_shifted = heightmap + Z_SHIFT
     df['BM height'] = heightmap_shifted[
         np.round(df['Y']).astype(int),np.round(df['X']).astype(int)]
-    df['Height to BM'] = heightmap_shifted[
-        np.round(df['Y']).astype(int),np.round(df['X']).astype(int)] - df['Z']
+    df['Height to BM'] = df['BM height'] - df['Z'].values
+    # stop
 
     #----- Find border cells -----
     # Generate a dense mesh based sole only 2D/3D nuclear locations
@@ -226,6 +226,37 @@ all_df['Reviewed'] = (all_df['Reviewed'].astype(float) == 1)
 all_df['Complete cycle'] = (all_df['Complete cycle'].astype(float) == 1)
 
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+
+#%% PCA diagonalize the shcoeffs, remove original features, and put the shcoeff_PCAs
+
+from sklearn import decomposition
+
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
+
+# Grab all nuc_coeffs
+nuc_coef_cols = [f for f in all_df.columns if 'nuc_shcoeff' in f and 'surface_area' not in f]
+pca = decomposition.PCA()
+nuc_PCA = pca.fit_transform(all_df[nuc_coef_cols])
+nuc_cutoff = 5 # components
+nuc_PCA = pd.DataFrame(nuc_PCA[:,:nuc_cutoff],
+                       index=all_df.index,
+                       columns = [f'nuc_shcoeff_PC{i}' for i in range(nuc_cutoff)])
+
+# Grab all cyto_coeffs
+cyto_coef_cols = [f for f in all_df.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
+Inonans = all_df[cyto_coef_cols].dropna(axis=0).index
+pca = decomposition.PCA()
+cyto_PCA = pca.fit_transform(all_df.loc[Inonans,cyto_coef_cols])
+cyto_cutoff = 8 # components
+cyto_PCA = pd.DataFrame(cyto_PCA[:,:cyto_cutoff],
+                       index=Inonans,
+                       columns = [f'cyto_shcoeff_PC{i}' for i in range(cyto_cutoff)])
+
+all_df_pc = all_df.drop(columns = nuc_coef_cols + cyto_coef_cols)
+all_df_pc = pd.merge(all_df_pc, nuc_PCA, right_index=True, left_index=True,how='left')
+all_df_pc = pd.merge(all_df_pc, cyto_PCA, right_index=True, left_index=True,how='left')
+
+all_df_pc.to_csv(path.join(dirname,'Mastodon/single_timepoints_pca.csv'))
 
 #%% Find missing cyto segs
 

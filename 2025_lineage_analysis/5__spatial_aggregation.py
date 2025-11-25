@@ -30,8 +30,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)
@@ -302,6 +302,8 @@ from measurements import aggregate_over_adj, get_aggregated_3D_distances,\
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
+adjacent_tracks = [np.load(path.join(dirname,f'Mastodon/basal_connectivity_3d/adjacenct_trackIDs_t{t}.npy'),
+                           allow_pickle=True).item() for t in range(15)]
 
 aggregators = {'Mean':np.nanmean,
                'Median':np.nanmedian,
@@ -364,6 +366,8 @@ all_df['Frac of neighbors are border','Meta'] = x.values
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
 #%% Lookbacks
+from warnings import simplefilter
+simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
@@ -380,8 +384,9 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
                                          for field in fields2lookback])
         for field in fields2lookback:
             v = track[field].values
+            
             if track.iloc[0]['Born','Meta']:            
-                # If the cell was born, then go and grab the mother cell's division frame for iloc[0]
+                # If the cell was newborn, then go and grab the mother cell's division frame for iloc[0]
                 motherID = int(track.iloc[0]['Mother'])
                 assert(not np.isnan(motherID))
                 mother_div_frame = int(track.reset_index().iloc[0]['Frame'] - 1)
@@ -390,15 +395,16 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
                     mother_value = tracks[motherID].loc[mother_div_frame,motherID][field].values
                 else:
                     mother_value = np.nan
-                v = np.insert(v,0,mother_value)
+                v = np.insert(v,0,mother_value/2)
                 
             else:
                 # Pad with nan otherwise
                 v = np.insert(v,0,np.nan)
                 
-            v = v[:len(v)-1]
+            # v = v[:len(v)-1]
+            dv = np.diff(v)
             
-            _track[f'{field} at {num_frames_lookback} frame prior'] = v
+            _track[f'Diff from {field} at {num_frames_lookback} frame prior'] = dv
         
         df_lookback.append(_track)
         
