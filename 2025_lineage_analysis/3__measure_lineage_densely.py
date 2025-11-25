@@ -227,36 +227,50 @@ all_df['Complete cycle'] = (all_df['Complete cycle'].astype(float) == 1)
 
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 
-#%% PCA diagonalize the shcoeffs, remove original features, and put the shcoeff_PCAs
+#%% PCA diagonalize the shcoeffs across both regions, remove original features, and put the shcoeff_PCAs
 
 from sklearn import decomposition
 
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=['Frame','TrackID'])
+dirnames = {'R1':'/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/',
+            'R2':'/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'}
+
+regions = {}
+for name,dirname in dirnames.items():
+    regions[name] = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+    regions[name]['Region'] = name
+
+df_concat = pd.concat(regions.values(),ignore_index=True)
 
 # Grab all nuc_coeffs
-nuc_coef_cols = [f for f in all_df.columns if 'nuc_shcoeff' in f and 'surface_area' not in f]
-pca = decomposition.PCA()
-nuc_PCA = pca.fit_transform(all_df[nuc_coef_cols])
-nuc_cutoff = 5 # components
-nuc_PCA = pd.DataFrame(nuc_PCA[:,:nuc_cutoff],
-                       index=all_df.index,
-                       columns = [f'nuc_shcoeff_PC{i}' for i in range(nuc_cutoff)])
-
+nuc_coef_cols = [f for f in df_concat.columns if 'nuc_shcoeff' in f and 'surface_area' not in f]
 # Grab all cyto_coeffs
-cyto_coef_cols = [f for f in all_df.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
-Inonans = all_df[cyto_coef_cols].dropna(axis=0).index
+cyto_coef_cols = [f for f in df_concat.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
+
+Inonans = df_concat[cyto_coef_cols].dropna(axis=0).index
 pca = decomposition.PCA()
-cyto_PCA = pca.fit_transform(all_df.loc[Inonans,cyto_coef_cols])
-cyto_cutoff = 8 # components
-cyto_PCA = pd.DataFrame(cyto_PCA[:,:cyto_cutoff],
-                       index=Inonans,
-                       columns = [f'cyto_shcoeff_PC{i}' for i in range(cyto_cutoff)])
+PCA = pca.fit_transform(df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols])
+component_cutoff = 10
 
-all_df_pc = all_df.drop(columns = nuc_coef_cols + cyto_coef_cols)
-all_df_pc = pd.merge(all_df_pc, nuc_PCA, right_index=True, left_index=True,how='left')
-all_df_pc = pd.merge(all_df_pc, cyto_PCA, right_index=True, left_index=True,how='left')
+# Put back the PCA coeffients region by region
+PCA = pd.DataFrame(PCA[:,:component_cutoff],
+                       columns = [f'nuc_shcoeff_PC{i}' for i in range(component_cutoff)])
+PCA[['Region','Frame','TrackID']] = df_concat.loc[Inonans][['Region','Frame','TrackID']].values
 
-all_df_pc.to_csv(path.join(dirname,'Mastodon/single_timepoints_pca.csv'))
+for name,region in regions.items():
+    # Prepare indexes
+    this_PCA = PCA[PCA['Region'] == name]
+    this_PCA = this_PCA.drop(columns='Region').set_index(['Frame','TrackID']).astype(float)
+    
+    # Merge
+    region = region.set_index(['Frame','TrackID'])
+    region_pc = pd.merge(region,this_PCA, right_index=True, left_index=True, how='left')
+    
+    # Drop old cofficients
+    region_pc = region_pc.drop(columns=nuc_coef_cols+cyto_coef_cols)
+    region_pc = region_pc.drop(columns='Region')
+    # Save
+    region_pc.to_csv(path.join(dirnames[name],'Mastodon/single_timepoints_pca.csv'))
+
 
 #%% Find missing cyto segs
 
