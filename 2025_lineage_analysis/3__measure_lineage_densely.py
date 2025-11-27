@@ -249,7 +249,7 @@ cyto_coef_cols = [f for f in df_concat.columns if 'cyto_shcoeff' in f and 'surfa
 Inonans = df_concat[cyto_coef_cols].dropna(axis=0).index
 pca = decomposition.PCA()
 PCA = pca.fit_transform(df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols])
-component_cutoff = 10
+component_cutoff = 9
 
 # Put back the PCA coeffients region by region
 PCA = pd.DataFrame(PCA[:,:component_cutoff],
