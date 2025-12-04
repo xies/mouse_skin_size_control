@@ -68,7 +68,7 @@ def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
     distances = pd.DataFrame(index=df.index,
                              columns = [f'{agg_name} distance to neighbors'
                                         for agg_name in aggregators.keys()])
-    
+
     distances.index.name = 'TrackID'
     for cellID,neighborIDs in adjDict.items():
         for agg_name, agg_func in aggregators.items():
@@ -654,6 +654,45 @@ def get_exponential_growth_rate(cf:pd.DataFrame,
                 cf.loc[I,new_field_name] = np.nan
 
     return cf
+
+
+#%% PCA diagonalize the shcoeffs across both regions, remove original features, and put the shcoeff_PCAs
+def diagonalize_shparams(regions:dict):
+    from sklearn import decomposition
+    old_index_names = [list(regions.values())[0].index.name]
+    df_concat = pd.concat([r.reset_index() for r in regions.values()],ignore_index=True)
+
+    # Grab all nuc_coeffs
+    nuc_coef_cols = [f for f in df_concat.columns if 'nuc_shcoeff' in f and 'surface_area' not in f]
+    # Grab all cyto_coeffs
+    cyto_coef_cols = [f for f in df_concat.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
+
+    Inonans = df_concat[cyto_coef_cols].dropna(axis=0).index
+    pca = decomposition.PCA()
+    PCA = pca.fit_transform(df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols])
+    component_cutoff = 9
+
+    # Put back the PCA coeffients region by region
+    PCA = pd.DataFrame(PCA[:,:component_cutoff],
+                           columns = [f'nuc_shcoeff_PC{i}' for i in range(component_cutoff)])
+    PCA[['Region']+old_index_names] = df_concat.loc[Inonans][['Region']+old_index_names].values
+
+    new_regions = {}
+    for name,region in regions.items():
+        # Prepare indexes
+        this_PCA = PCA[PCA['Region'] == name]
+        this_PCA = this_PCA.drop(columns='Region').set_index(old_index_names).astype(float)
+
+        # Merge
+        region_pc = pd.merge(region,this_PCA, right_index=True, left_index=True, how='left')
+
+        # Drop old cofficients
+        region_pc = region_pc.drop(columns=nuc_coef_cols+cyto_coef_cols)
+        region_pc = region_pc.drop(columns='Region')
+
+        new_regions[name] = region_pc
+        
+    return new_regions
 
 def get_prev_or_next_frame(df,frame_track_of_interest,direction='next',increment:int=1):
 
