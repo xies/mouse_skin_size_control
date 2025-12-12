@@ -305,42 +305,71 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
 
     return df
 
-def estimate_sh_coefficients(cyto_seg, lmax, spacing = [1,1,1]):
+def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1]):
+
+    '''
+    Decompose cell and nuclear segmentation into spherical harmonics components.
+    Will align everything to the principal directions of the cell shape first.
+    '''
+
+    from imageUtils import align_to_principal_axes
+    from scipy.ndimage import affine_transform
 
     ZZ,YY,XX = cyto_seg.shape
     dz,dx,_ = spacing
 
     slices = {p['label']: get_mask_slices(p, border=1, max_dims=(ZZ,YY,XX))
               for p in measure.regionprops(cyto_seg)}
+
+    # turn segmentation into individual masks, and then resize with the correct scaling factor
     cyto_masks = {label: (cyto_seg == label)[tuple(_s)] for label,_s in slices.items()}
     cyto_masks = {label: img_as_bool(
                 transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
                   for label, mask in cyto_masks.items()}
+    nuc_masks = {label: (nuc_seg == label)[tuple(_s)] for label,_s in slices.items()}
+    nuc_masks = {label: img_as_bool(
+                transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
+                  for label, mask in cyto_masks.items()}
+
 
     # @todo: currently, does not align 'z' axis because original AICS project was
     # for in vitro cells. Should extend codebase to align fully in 3d later
     # Currently, there is small amount of z-tilt, so probably OK to stay in lab frame
-    aligned_masks = {label: np.squeeze(shtools.align_image_2d(m)[0])
-                     for label,m in cyto_masks.items()}
+    # aligned_masks = {label: np.squeeze(shtools.align_image_2d(m)[0])
+    #                  for label,m in cyto_masks.items()}
+    aligned_cells = {}
+    aligned_nucs = {}
+    for label,cyto_mask in cyto_masks.items():
+        aligned_cells[label], rot_matrix, centroid = align_to_principal_axes(cyto_mask.astype(float),order=1)
+        aligned_nucs[label] = affine_transform(nuc_masks[label],rot_matrix,
+                                offset=-rot_matrix @ centroid + centroid,
+                                order=1,mode='constant',cval=0)
 
     # Parametrize with SH coefficients and record
-    sh_coefficients = []
-    for label,mask in aligned_masks.items():
-        (coeffs,_),_ = shparam.get_shcoeffs(image=mask, lmax=lmax)
+    cyto_sh_coefficients = []
+    for label,cyto_mask in aligned_cells.items():
+        (coeffs,_),_ = shparam.get_shcoeffs(image=cyto_mask, lmax=lmax)
         coeffs['TrackID'] = label
         M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
         mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
         coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
-        # coeffs['shcoeffs_volume'] = pv.wrap(mesh).volume # This is just L0M0
+        cyto_sh_coefficients.append(coeffs)
+    nuc_sh_coefficients = []
+    for label,cyto_mask in aligned_cells.items():
+        (coeffs,_),_ = shparam.get_shcoeffs(image=cyto_mask, lmax=lmax)
+        coeffs['TrackID'] = label
+        M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
+        mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
+        coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
+        nuc_sh_coefficients.append(coeffs)
 
-        # verts,faces,_,_ = measure.marching_cubes(mask)
-        # mesh_mc = Trimesh(verts,faces)
-        # coeffs['mc_surface_area'] = pv.wrap(mesh_mc).area
-        # coeffs['mc_volume'] = pv.wrap(mesh_mc).volume
+    cyto_sh_coefficients = pd.DataFrame(cyto_sh_coefficients).set_index('TrackID')
+    cyto_sh_coefficients.columns = 'cyto_' + cyto_sh_coefficients.columns
+    nuc_sh_coefficients = pd.DataFrame(nuc_sh_coefficients).set_index('TrackID')
+    nuc_sh_coefficients.columns = 'nuc_' + nuc_sh_coefficients.columns
+    print(cyto_sh_coefficients.columns)
+    sh_coefficients = pd.merge(cyto_sh_coefficients,nuc_sh_coefficients,left_on='TrackID',right_on='TrackID')
 
-        sh_coefficients.append(coeffs)
-
-    sh_coefficients = pd.DataFrame(sh_coefficients)
     # Drop all 0s (l>m)
     sh_coefficients = sh_coefficients.loc[:,~np.all(sh_coefficients==0, axis=0)]
 
@@ -691,7 +720,7 @@ def diagonalize_shparams(regions:dict):
         region_pc = region_pc.drop(columns='Region')
 
         new_regions[name] = region_pc
-        
+
     return new_regions
 
 def get_prev_or_next_frame(df,frame_track_of_interest,direction='next',increment:int=1):
@@ -762,62 +791,3 @@ def plot_track(cf,y=('Nuclear volume','Measurement'),
     plt.show()
     plt.title(f'Track {cf.iloc[0].TrackID}, Border: {np.any(cf.Border)}')
     plt.ylabel(f'{y}')
-
-
-
-#--- Bookkeepers ---
-from imageUtils import trim_multimasks_to_shared_bounding_box
-
-def extract_nuc_and_cell_mask_from_idx(idx : tuple,
-                                        tracked_nuc_by_region:dict,
-                                        tracked_cyto_by_region:dict,):
-    '''
-    Returns a tuple of nuc_mask,cyto_mask if given the measurement index of the cell.
-    Index should be in the format (frame,'Region_trackID'), where frame is int
-
-    '''
-    assert(len(idx)) == 2
-
-    frame = idx[0]
-    region,trackID = idx[1].split('_')
-    trackID = int(trackID)
-    nuc_mask = tracked_nuc_by_region[region][frame,...] == trackID
-    cyto_mask = tracked_cyto_by_region[region][frame,...] == trackID
-    nuc_mask,cyto_mask = trim_multimasks_to_shared_bounding_box((nuc_mask,cyto_mask))
-
-    return nuc_mask,cyto_mask
-
-def get_microenvironment_mask(trackID,
-                              adjdict: dict,
-                              cyto_seg: np.array):
-    adjacentIDs = adjdict[trackID]
-    mask = np.zeros_like(cyto_seg,dtype=bool)
-    for ID in adjacentIDs:
-        mask[cyto_seg == ID] = True
-
-    return mask
-
-def extract_nuc_and_cell_and_microenvironment_mask_from_idx(idx : tuple,
-                                        adjdict_by_region:dict,
-                                        tracked_nuc_by_region:dict,
-                                        tracked_cyto_by_region:dict,):
-    '''
-    Returns a tuple of nuc_mask,cyto_mask,microenvironment_mask
-    if given the measurement index of the cell.
-
-    Index should be in the format (frame,'Region_trackID'), where frame is int
-
-    '''
-
-    assert(len(idx)) == 2
-
-    frame = idx[0]
-    region,trackID = idx[1].split('_')
-    trackID = int(trackID)
-    nuc_mask = tracked_nuc_by_region[region][frame,...] == trackID
-    cyto_mask = tracked_cyto_by_region[region][frame,...] == trackID
-    microenvironment_mask = get_microenvironment_mask(trackID,adjdict_by_region[region][frame],
-                                                      tracked_cyto_by_region[region][frame,...])
-    nuc_mask,cyto_mask,microenvironment_mask = trim_multimasks_to_shared_bounding_box((nuc_mask,cyto_mask,microenvironment_mask))
-
-    return nuc_mask,cyto_mask,microenvironment_mask
