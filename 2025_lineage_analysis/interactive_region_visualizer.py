@@ -17,7 +17,7 @@ import sched, time
 dirnames = ['/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R1/',
     '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/W-R2/']
 
-region = 'R1'
+region = 'R2'
 
 @napari.Viewer.bind_key('c')
 def cycle_colormap(viewer):
@@ -198,6 +198,8 @@ def highlight_lineage(lineage_to_show=lineageIDs.tolist()[0]):
     viewer.add_labels(cyto_highlights,name='highlighted_lineage_cyto',scale=scale,opacity=0.7,blending='additive')
     viewer.add_labels(nuc_highlights,name='highlighted_lineage_nuc',scale=scale,opacity=1,blending='additive')
 
+
+
 dz = 1
 dx = .25
 scale = [dz,dx,dx]
@@ -206,6 +208,5 @@ viewer = napari.Viewer()
 lineageIDs = all_df['LineageID']
 
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
-
 viewer.window.add_dock_widget(load_dataset, name="Load dataset",area='left')
 viewer.window.add_dock_widget(highlight_lineage, name="Show lineage",area='left')
