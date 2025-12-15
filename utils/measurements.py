@@ -32,7 +32,6 @@ import matplotlib.pyplot as plt
 from collections.abc import Callable
 
 
-
 def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
                        df = pd.DataFrame, fields2aggregate=list[str]):
 
@@ -305,15 +304,17 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
 
     return df
 
-def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1]):
+def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1], return_aligned=False):
 
     '''
     Decompose cell and nuclear segmentation into spherical harmonics components.
     Will align everything to the principal directions of the cell shape first.
+
     '''
 
-    from imageUtils import align_to_principal_axes
+    from imageUtils import rotate_volume_by_angles
     from scipy.ndimage import affine_transform
+    from mathUtils import parse_3D_inertial_tensor
 
     ZZ,YY,XX = cyto_seg.shape
     dz,dx,_ = spacing
@@ -326,24 +327,39 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1]):
     cyto_masks = {label: img_as_bool(
                 transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
                   for label, mask in cyto_masks.items()}
+
+    slices = {p['label']: get_mask_slices(p, border=1, max_dims=(ZZ,YY,XX))
+              for p in measure.regionprops(nuc_seg)}
     nuc_masks = {label: (nuc_seg == label)[tuple(_s)] for label,_s in slices.items()}
     nuc_masks = {label: img_as_bool(
                 transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
-                  for label, mask in cyto_masks.items()}
+                  for label, mask in nuc_masks.items()}
 
-
-    # @todo: currently, does not align 'z' axis because original AICS project was
+    # Currently, does not align 'z' axis because original AICS project was
     # for in vitro cells. Should extend codebase to align fully in 3d later
-    # Currently, there is small amount of z-tilt, so probably OK to stay in lab frame
-    # aligned_masks = {label: np.squeeze(shtools.align_image_2d(m)[0])
-    #                  for label,m in cyto_masks.items()}
+    # Tried rotating in 3D, probably shouldn't since z axis is biologically meaningful
     aligned_cells = {}
     aligned_nucs = {}
-    for label,cyto_mask in cyto_masks.items():
-        aligned_cells[label], rot_matrix, centroid = align_to_principal_axes(cyto_mask.astype(float),order=1)
-        aligned_nucs[label] = affine_transform(nuc_masks[label],rot_matrix,
-                                offset=-rot_matrix @ centroid + centroid,
-                                order=1,mode='constant',cval=0)
+    for label,cyto in cyto_masks.items():
+        aligned,angle = shtools.align_image_2d(cyto)
+        aligned_cells[label] = np.squeeze(aligned)
+        if label in nuc_masks.keys():
+            aligned = shtools.apply_image_alignment_2d(nuc_masks[label],angle)
+            aligned_nucs[label] = np.squeeze(aligned)
+
+    # NB:
+    # aligned_cells = {}
+    # aligned_nucs = {}
+    # for label,cyto_mask in cyto_masks.items():
+    #     I = measure.regionprops(cyto_mask.astype(int))[0]['inertia_tensor']
+    #     _,phi,_,_,theta = parse_3D_inertial_tensor(I)
+    #     aligned_cells[label], _,_,_ = rotate_volume_by_angles(cyto_mask.astype(float),
+    #                                                           angle_x=-theta, angle_z=-phi,
+    #                                                           order=0, expand_canvas=True)
+    #     if label in nuc_masks.keys():
+    #         aligned_nucs[label], _,_,_ = rotate_volume_by_angles(nuc_masks[label].astype(float),
+    #                                                               angle_x=-theta, angle_z=-phi,
+    #                                                               order=0, expand_canvas=True)
 
     # Parametrize with SH coefficients and record
     cyto_sh_coefficients = []
@@ -354,9 +370,10 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1]):
         mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
         coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
         cyto_sh_coefficients.append(coeffs)
+
     nuc_sh_coefficients = []
-    for label,cyto_mask in aligned_cells.items():
-        (coeffs,_),_ = shparam.get_shcoeffs(image=cyto_mask, lmax=lmax)
+    for label,nuc_mask in aligned_nucs.items():
+        (coeffs,_),_ = shparam.get_shcoeffs(image=nuc_mask, lmax=lmax)
         coeffs['TrackID'] = label
         M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
         mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
@@ -367,11 +384,12 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1]):
     cyto_sh_coefficients.columns = 'cyto_' + cyto_sh_coefficients.columns
     nuc_sh_coefficients = pd.DataFrame(nuc_sh_coefficients).set_index('TrackID')
     nuc_sh_coefficients.columns = 'nuc_' + nuc_sh_coefficients.columns
-    print(cyto_sh_coefficients.columns)
     sh_coefficients = pd.merge(cyto_sh_coefficients,nuc_sh_coefficients,left_on='TrackID',right_on='TrackID')
 
     # Drop all 0s (l>m)
     sh_coefficients = sh_coefficients.loc[:,~np.all(sh_coefficients==0, axis=0)]
+    if return_aligned:
+        return (sh_coefficients,aligned_cells,aligned_nucs)
 
     return sh_coefficients
 

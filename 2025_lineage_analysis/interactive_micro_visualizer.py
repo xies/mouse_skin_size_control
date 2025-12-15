@@ -113,6 +113,10 @@ standard_size = (40,150,150)
 @magicgui(track_to_show = {'choices':natsorted(trackIDs.tolist()) })
 def load_track_mask(track_to_show=trackIDs.tolist()[0]):
 
+    names2remove = [l.name for l in viewer.layers]
+    for l in names2remove:
+        self._viewer.layers.remove(l)
+
     nuc_movie, cell_movie, micro_movie = get_nuc_and_cell_and_microenvironment_movie(track_to_show,all_df,
                                                     adjdict_by_region,
                                                     tracked_nuc_by_region,

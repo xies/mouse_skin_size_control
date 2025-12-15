@@ -182,8 +182,7 @@ for t in tqdm(range(15)):
     # --- 6. 3D shape decomposition ---
 
     # 2a: Estimate cell and nuclear mesh using spherical harmonics
-    sh_coefficients = estimate_sh_coefficients(c, n, LMAX, spacing = [dz,dx,dx])
-    sh_coefficients = sh_coefficients.set_index('TrackID')
+    sh_coefficients = estimate_sh_coefficients(cyto_seg, nuc_seg, LMAX, spacing = [dz,dx,dx],)
     # sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
     # sh_coefficients = estimate_sh_coefficients(nuc_seg, LMAX, spacing = [dz,dx,dx])
