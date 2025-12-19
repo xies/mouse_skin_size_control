@@ -200,7 +200,7 @@ def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_fact
 
     return mesh.copy()
 
-def get_tissue_curvatures(mesh,kappa:float=5,query_pts=None):
+def get_tissue_curvature_sparse(mesh,kappa:float=5,query_pts=None):
     if query_pts is None:
         query_pts = mesh.vertices
 
@@ -210,6 +210,49 @@ def get_tissue_curvatures(mesh,kappa:float=5,query_pts=None):
         mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
 
     return mean_curve, gaussian_curve
+
+def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25,.25]):
+    '''
+    Interpolates the mean curvature of a mesh surface from its sparsely sampled
+    micron grid into the corresponding pixel grid for use in overlay
+
+    INPUT:
+        mesh - Trimesh mesh object
+        image_shape - the [Z,Y,X] shape of the pixel grid
+        kappa - radius of curvature (default: 5)
+        spacing - [dz,dy,dx] micron to pixel conversion factor. Default: [1,.25,.25]
+    OUTPUT:
+        curvature_grid - interpolated mean curvatures
+        gaussian_curvature_grid - interpolated Gaussian curvatures
+
+    '''
+    assert(len(image_shape) == 3)
+
+    from scipy.interpolate import NearestNDInterpolator
+
+    curvature,gaussian_curvature = get_tissue_curvature_sparse(mesh,kappa=6)
+    Zz,YY,XX = image_shape
+    # Match the 'pixel grid' to the decimated 'microns grid' used by Trimesh
+    pixel_gridX = np.arange(XX)
+    # gridY,gridX = np.meshgrid()
+    pixel_gridX_crop = pixel_gridX
+    pixel_gridY_crop = pixel_gridX
+
+    micron_Xmin,micron_Xmax = mesh.vertices[:,0].min(),mesh.vertices[:,1].max()
+    micron_Ymin,micron_Ymax = mesh.vertices[:,1].min(),mesh.vertices[:,0].max()
+
+    Ngrid = XX
+    micron_gridX = np.linspace(0,micron_Xmax,Ngrid)
+    micron_gridY = np.linspace(0,micron_Ymax,Ngrid)
+    micron_gridXX,micron_gridYY = np.meshgrid( micron_gridX, micron_gridY)
+
+    interp = NearestNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), curvature)
+    curvature_grid = interp( micron_gridXX,micron_gridYY )
+
+    interp = NearestNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), gaussian_curvature)
+    gaussian_curvature_grid = interp( micron_gridXX,micron_gridYY )
+
+    return curvature_grid,gaussian_curvature_grid
 
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):
@@ -304,11 +347,12 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
 
     return df
 
-def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1], return_aligned=False):
+def estimate_sh_coefficients(cyto_seg, nuc_seg=None, lmax=5, spacing = [1,1,1], return_aligned=False):
 
     '''
     Decompose cell and nuclear segmentation into spherical harmonics components.
     Will align everything to the principal directions of the cell shape first.
+    Optionally takes in a nuclear segmentation and use the cell alignment to rotate it and decompose.
 
     '''
 
@@ -328,22 +372,25 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1], return_
                 transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
                   for label, mask in cyto_masks.items()}
 
-    slices = {p['label']: get_mask_slices(p, border=1, max_dims=(ZZ,YY,XX))
-              for p in measure.regionprops(nuc_seg)}
-    nuc_masks = {label: (nuc_seg == label)[tuple(_s)] for label,_s in slices.items()}
-    nuc_masks = {label: img_as_bool(
-                transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
-                  for label, mask in nuc_masks.items()}
+    nuc_masks = {}
+    if nuc_seg is not None:
+        slices = {p['label']: get_mask_slices(p, border=1, max_dims=(ZZ,YY,XX))
+                  for p in measure.regionprops(nuc_seg)}
+        nuc_masks = {label: (nuc_seg == label)[tuple(_s)] for label,_s in slices.items()}
+        nuc_masks = {label: img_as_bool(
+                    transform.resize(mask, mask.shape*np.array([dz/dx,1,1])))
+                      for label, mask in nuc_masks.items()}
+        aligned_nucs = {}
 
     # Currently, does not align 'z' axis because original AICS project was
     # for in vitro cells. Should extend codebase to align fully in 3d later
     # Tried rotating in 3D, probably shouldn't since z axis is biologically meaningful
     aligned_cells = {}
-    aligned_nucs = {}
+
     for label,cyto in cyto_masks.items():
         aligned,angle = shtools.align_image_2d(cyto)
         aligned_cells[label] = np.squeeze(aligned)
-        if label in nuc_masks.keys():
+        if label in nuc_masks.keys() and nuc_seg is not None:
             aligned = shtools.apply_image_alignment_2d(nuc_masks[label],angle)
             aligned_nucs[label] = np.squeeze(aligned)
 
@@ -370,21 +417,23 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg, lmax, spacing = [1,1,1], return_
         mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
         coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
         cyto_sh_coefficients.append(coeffs)
-
-    nuc_sh_coefficients = []
-    for label,nuc_mask in aligned_nucs.items():
-        (coeffs,_),_ = shparam.get_shcoeffs(image=nuc_mask, lmax=lmax)
-        coeffs['TrackID'] = label
-        M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
-        mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
-        coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
-        nuc_sh_coefficients.append(coeffs)
-
     cyto_sh_coefficients = pd.DataFrame(cyto_sh_coefficients).set_index('TrackID')
-    cyto_sh_coefficients.columns = 'cyto_' + cyto_sh_coefficients.columns
-    nuc_sh_coefficients = pd.DataFrame(nuc_sh_coefficients).set_index('TrackID')
-    nuc_sh_coefficients.columns = 'nuc_' + nuc_sh_coefficients.columns
-    sh_coefficients = pd.merge(cyto_sh_coefficients,nuc_sh_coefficients,left_on='TrackID',right_on='TrackID')
+    sh_coefficients = cyto_sh_coefficients
+
+    if nuc_seg is not None:
+        sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
+        nuc_sh_coefficients = []
+        for label,nuc_mask in aligned_nucs.items():
+            (coeffs,_),_ = shparam.get_shcoeffs(image=nuc_mask, lmax=lmax)
+            coeffs['TrackID'] = label
+            M = shtools.convert_coeffs_dict_to_matrix(coeffs,lmax=lmax)
+            mesh = shtools.get_even_reconstruction_from_coeffs(M)[0]
+            coeffs['shcoeffs_surface_area'] = pv.wrap(mesh).area
+            nuc_sh_coefficients.append(coeffs)
+
+        nuc_sh_coefficients = pd.DataFrame(nuc_sh_coefficients).set_index('TrackID')
+        nuc_sh_coefficients.columns = 'nuc_' + nuc_sh_coefficients.columns
+        sh_coefficients = pd.merge(cyto_sh_coefficients,nuc_sh_coefficients,left_on='TrackID',right_on='TrackID')
 
     # Drop all 0s (l>m)
     sh_coefficients = sh_coefficients.loc[:,~np.all(sh_coefficients==0, axis=0)]

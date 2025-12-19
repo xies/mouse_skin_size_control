@@ -25,7 +25,7 @@ def cycle_colormap(viewer):
     current_layer = viewer.layers.selection.active
     # if it's a labels layer, cycle the colormap
     if isinstance(current_layer,napari.layers.labels.labels.Labels):
-        if current_layer.show_selected_label:
+        if current_layer.show_selected_label:4
             REISOLATE=True
             current_layer.show_selected_label = False
         else:
