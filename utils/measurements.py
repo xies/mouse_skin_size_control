@@ -135,6 +135,7 @@ def reslice_by_heightmap(im,heightmap,top_border,bottom_border):
     Iz_top = heightmap + top_border
     Iz_bottom = heightmap + bottom_border
 
+    # @todo: use np.take_along_axis with broadcast + np.clip
     for x in range(XX):
         for y in range(YY):
 
@@ -168,15 +169,62 @@ def scale_by_region(df):
 
     return pd.concat(scaled)
 
-def export_mesh(mesh,filename,values=None):
-    from trimesh import geometry
-    vertices = np.asarray(mesh.vertices[:,[2,1,0]])
-    faces = np.asarray(mesh.faces)
-    if values is None:
-        normals = geometry.mean_vertex_normals(len(mesh.vertices),mesh.faces,mesh.face_normals)
-        values = np.dot(normals,[1,-1,1])
-    np.savez(filename,
-              vertices = vertices,faces = faces,values = values)
+def make_image_from_heightmap(heightmap,maxZ):
+    # Reconstruct flattened movie
+    heightmap[heightmap >=maxZ] = maxZ-1
+    YY,XX = heightmap.shape
+    # Iz[Iz >= ZZ] = ZZ-1
+    # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
+    height_image = np.zeros((maxZ,YY,XX),dtype=np.uint16)
+    for x in range(XX):
+        for y in range(XX):
+            height_image[heightmap[y,x],y,x] = 1
+    return height_image
+
+def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z_shift:int=15):
+    from scipy.ndimage import gaussian_filter
+    from scipy import interpolate
+    from imageUtils import get_z_gradient, find_z_of_maximal_gradient
+    '''
+    # see notebook: find_basement_membrane.ipynb
+
+    INPUT:
+        imstack: 3D stack
+        sigmas: [z,y,x] Gaussian blur kernel size
+        gradient_sign: +1 for 'collagen' and -1 for 'keratinocytes'
+        method: 'threshold' (where normalized graident > thresh) or 'maximum' (max of gradient)
+        threshold: default 0.2
+        z_shift: default +15, +z shifts the image basally
+    OUTPUT:
+        heigtmap - 2D array of the z-index of the basement membrane
+        height_image - 3D image of the BM
+    '''
+
+    assert(imstack.ndim == 3)
+    ZZ,YY,XX = imstack.shape
+
+    im_z_blur = gaussian_filter(imstack.astype(float),
+                            sigma=sigmas)
+    im_diff = get_z_gradient(im_z_blur,gradient_sign)
+    Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method='threshold',threshold=0.2)
+    height_image = make_image_from_heightmap(Iz,ZZ)
+
+    # Find the single connected region with the largest area, from which to
+    # reconstruct the basal surface/
+    L = measure.label(height_image,connectivity=2)
+    df = pd.DataFrame(measure.regionprops_table(L,properties=['label','area'])).sort_values('area')
+    surf_region = df.iloc[-1]['label']
+
+    # interpolate the 'missing' regions
+    Z,Y,X = np.where(L == surf_region)
+    grid_y,grid_x = np.meshgrid(range(YY),range(XX))
+    fixed_heightmap = np.round(
+        interpolate.griddata(np.array([Y,X]).T,Z,(grid_y,grid_x), method='linear')).astype(int).T
+
+    # Remake the height image
+    height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
+
+    return fixed_heightmap, height_image
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 
@@ -253,6 +301,16 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     gaussian_curvature_grid = interp( micron_gridXX,micron_gridYY )
 
     return curvature_grid,gaussian_curvature_grid
+
+def export_mesh(mesh,filename,values=None):
+    from trimesh import geometry
+    vertices = np.asarray(mesh.vertices[:,[2,1,0]])
+    faces = np.asarray(mesh.faces)
+    if values is None:
+        normals = geometry.mean_vertex_normals(len(mesh.vertices),mesh.faces,mesh.face_normals)
+        values = np.dot(normals,[1,-1,1])
+    np.savez(filename,
+              vertices = vertices,faces = faces,values = values)
 
 # convert trianglulation to adjacency matrix (for easy editing)
 def tri_to_adjmat(tri):

@@ -35,21 +35,21 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R1'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R2/Cropped'
 
 # Activate measurement suites
 ['cyto','intensity']
 
 
 # Load segmentations
-cyto_seg = io.imread(path.join(dirname,'Cropped/R_cp_cleaned_by_largest.tif'))
+cyto_seg = io.imread(path.join(dirname,'R_cp_cleaned_by_largest.tif'))
 
 # Load raw channels
-collagen = io.imread(path.join(dirname,'Cropped/B.tif'))
+collagen = io.imread(path.join(dirname,'B.tif'))
 collagen = normalize_exposure_by_axis(collagen,axis=0)
-k10 = io.imread(path.join(dirname,'Cropped/G.tif'))
+k10 = io.imread(path.join(dirname,'G.tif'))
 k10 = normalize_exposure_by_axis(k10,axis=0)
-membrane = io.imread(path.join(dirname,'Cropped/R.tif'))
+membrane = io.imread(path.join(dirname,'R.tif'))
 membrane = normalize_exposure_by_axis(membrane,axis=0)
 
 ZZ,YY,XX = cyto_seg.shape
@@ -62,7 +62,7 @@ k10_bg_sub[k10_bg_sub<0] = 0
 from measurements import measure_cyto_geometry_from_regionprops, measure_cyto_intensity, \
             measure_flat_cyto_from_regionprops, reslice_by_heightmap, \
             estimate_sh_coefficients, find_distance_to_closest_point, \
-            measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures
+            measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvature_sparse
 from imageUtils import colorize_segmentation, filter_seg_by_largest_object, adjdict_to_mat
 
 VISUALIZE = False
@@ -77,7 +77,7 @@ LMAX = 5 # Number of spherical harmonics components to calculate
 
 # --- 1. Filter seg by largest object ---
 cyto_seg = filter_seg_by_largest_object(cyto_seg)
-io.imsave(path.join(dirname,'Cropped/R_cp_cleaned_by_largest.tif'),cyto_seg)
+io.imsave(path.join(dirname,'R_cp_basal_by_largest.tif'),cyto_seg)
 
 # --- 2. Voxel-based cell geometry measurements ---
 df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
@@ -88,7 +88,7 @@ df = pd.merge(left=df_cyto,right=intensity_df,left_on='TrackID',right_on='TrackI
 
 # ----- 3. Generate flattened 3d cortical segmentation and measure geometry and collagen
 # from cell-centric coordinates ----
-heightmap = io.imread(path.join(dirname,'Image flattening/heightmap.tif'))
+heightmap = io.imread(path.join(dirname,'heightmap.tif'))
 
 flat_cyto = reslice_by_heightmap( cyto_seg, heightmap,
                             top_border=flat_cyto_top_margin, bottom_border=flat_cyto_bottom_margin)
@@ -97,8 +97,8 @@ flat_collagen = reslice_by_heightmap( collagen, heightmap,
                             top_border=flat_collagen_top_margin, bottom_border=flat_collagen_bottom_margin)
 flat_collagen = flat_collagen.mean(axis=0)
 
-io.imsave(path.join(dirname,'Image flattening/flat_cyto.tif'), flat_cyto.astype(np.uint16),check_contrast=False)
-io.imsave(path.join(dirname,'Image flattening/flat_collagen.tif'),
+io.imsave(path.join(dirname,'flat_cyto.tif'), flat_cyto.astype(np.uint16),check_contrast=False)
+io.imsave(path.join(dirname,'flat_collagen.tif'),
           util.img_as_uint(flat_collagen),check_contrast=False)
 
 # Calculate collagen structuring matrix
@@ -108,7 +108,7 @@ df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
     flat_cyto, flat_collagen, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx], slicees_to_average=6)
 df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
 
-io.imsave(path.join(dirname,'Image flattening/basal_masks.tif'),basal_masks_2save)
+io.imsave(path.join(dirname,'basal_masks.tif'),basal_masks_2save)
 
 # Book-keeping
 df['X-pixels'] = df['X'] / dx
@@ -151,12 +151,12 @@ df['Mean curvature - cell coords'] = mean_curve_coords
 df['Gaussian curvature - cell coords'] = gaussian_curve_coords
 
 # ---- 5. Get 3D mesh from the BM image ---
-bm_height_image = io.imread(path.join(dirname,'Image flattening/height_image.tif'))
+bm_height_image = io.imread(path.join(dirname,'height_image.tif'))
 bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
 closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
 for KAPPA in [2,5,10,15]:
     mean_curve, gaussian_curve = \
-        get_tissue_curvatures(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
+        get_tissue_curvature_sparse(bg_mesh,kappa=KAPPA, query_pts = closest_mesh_to_cell)
     
     df[f'Mean curvature {KAPPA}um'] = mean_curve
     df[f'Gaussian curvature {KAPPA}um'] = gaussian_curve
@@ -164,8 +164,7 @@ for KAPPA in [2,5,10,15]:
 # --- 6. 3D shape decomposition ---
 
 # 2a: Estimate cell and nuclear mesh using spherical harmonics
-sh_coefficients = estimate_sh_coefficients(cyto_seg, LMAX, spacing = [dz,dx,dx])
-sh_coefficients = sh_coefficients.set_index('TrackID')
+sh_coefficients = estimate_sh_coefficients(cyto_seg, nuc_seg=None, lmax=LMAX, spacing = [dz,dx,dx])
 sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
 df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
 
@@ -185,7 +184,7 @@ import tifffile
 from measurements import get_adjdict_from_2d_segmentation, aggregate_over_adj, \
     get_aggregated_3D_distances, frac_sphase
 
-basal_masks = io.imread(path.join(dirname,'Image flattening/basal_masks.tif'))
+basal_masks = io.imread(path.join(dirname,'basal_masks.tif'))
 
 adjDict = get_adjdict_from_2d_segmentation(basal_masks, touching_threshold=2)
 
@@ -196,7 +195,7 @@ if VISUALIZE:
     coords_3d = coords_3d.rename(columns={'label':'TrackID','centroid-0':'Z','centroid-1':'Y','centroid-2':'X',}).set_index('TrackID')
     A = adjdict_to_mat(adjDict)
     im = draw_adjmat_on_image_3d(A, coords_3d, im_shape = cyto_seg.shape, line_width=2, colorize=True)
-    tifffile.imwrite(path.join(dirname,f'Image flattening/basal_connectivity_3d.tif'),im,
+    tifffile.imwrite(path.join(dirname,f'basal_connectivity_3d.tif'),im,
                      compression='zlib')
 
 aggregators = {'Mean':np.nanmean,
@@ -228,4 +227,4 @@ df_agg = pd.merge(df_agg,df_relative,on='TrackID' )
 df_agg = pd.merge(df_agg,df_dist,on='TrackID').astype(float)
 df = pd.merge(df,df_agg,on='TrackID')
 
-df.to_pickle(path.join(dirname,'Cropped/data_frame_aggregated.pkl'))
+df.to_pickle(path.join(dirname,'data_frame_aggregated.pkl'))

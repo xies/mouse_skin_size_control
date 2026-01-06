@@ -25,7 +25,7 @@ def cycle_colormap(viewer):
     current_layer = viewer.layers.selection.active
     # if it's a labels layer, cycle the colormap
     if isinstance(current_layer,napari.layers.labels.labels.Labels):
-        if current_layer.show_selected_label:4
+        if current_layer.show_selected_label:
             REISOLATE=True
             current_layer.show_selected_label = False
         else:
@@ -166,7 +166,7 @@ def load_dataset(dirname = (dirnames[0])):
 
 
 dirname = dirnames[0]
-all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),index_col=0).reset_index()
+all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_pca.csv'),index_col=0).reset_index()
 
 lineageIDs = all_df['LineageID']
 
