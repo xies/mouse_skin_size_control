@@ -181,10 +181,7 @@ def make_image_from_heightmap(heightmap,maxZ):
             height_image[heightmap[y,x],y,x] = 1
     return height_image
 
-def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z_shift:int=15):
-    from scipy.ndimage import gaussian_filter
-    from scipy import interpolate
-    from imageUtils import get_z_gradient, find_z_of_maximal_gradient
+def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z_shift:int=15,return_gradient:bool=False):
     '''
     # see notebook: find_basement_membrane.ipynb
 
@@ -195,18 +192,22 @@ def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z
         method: 'threshold' (where normalized graident > thresh) or 'maximum' (max of gradient)
         threshold: default 0.2
         z_shift: default +15, +z shifts the image basally
+        return_gradient: Default False
     OUTPUT:
         heigtmap - 2D array of the z-index of the basement membrane
         height_image - 3D image of the BM
     '''
 
+    from scipy.ndimage import gaussian_filter
+    from scipy import interpolate
+    from imageUtils import get_z_gradient, find_z_of_maximal_gradient
     assert(imstack.ndim == 3)
     ZZ,YY,XX = imstack.shape
 
     im_z_blur = gaussian_filter(imstack.astype(float),
                             sigma=sigmas)
     im_diff = get_z_gradient(im_z_blur,gradient_sign)
-    Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method='threshold',threshold=0.2)
+    Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method=method,threshold=0.2)
     height_image = make_image_from_heightmap(Iz,ZZ)
 
     # Find the single connected region with the largest area, from which to
@@ -224,7 +225,10 @@ def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z
     # Remake the height image
     height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
 
-    return fixed_heightmap, height_image
+    if return_gradient:
+        return fixed_heightmap,height_image,im_diff
+    else:
+        return fixed_heightmap, height_image
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 
