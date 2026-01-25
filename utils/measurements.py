@@ -126,7 +126,31 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
 
     return A
 
-def reslice_by_heightmap(im,heightmap,top_border,bottom_border):
+def reslice_by_heightmap(im,heightmap,top_border:int,bottom_border:int):
+    '''
+
+    Parameters
+    ----------
+    im : np.array
+        3D image to reslice
+    height map : np.array
+        2D heightmap
+    top_border : int
+        how much 'higher' to slice
+    bottom_border : int
+        how much 'lower' to slice
+    touching_threshold : int, optional
+        Minimum number of overlap pixels. The default is 2.
+
+    Returns
+    -------
+    flat : np.array
+        Resliced image
+
+    '''
+
+    assert(im.ndim == 3)
+    assert(heightmap.ndim == 2)
 
     ZZ,YY,XX = im.shape
 
@@ -252,14 +276,30 @@ def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_fact
 
     return mesh.copy()
 
-def get_tissue_curvature_sparse(mesh,kappa:float=5,query_pts=None):
+def get_tissue_curvature_sparse(mesh,kappa:float=5,query_pts=None,averaging_radius=None):
+
     if query_pts is None:
         query_pts = mesh.vertices
 
-    mean_curve = discrete_mean_curvature_measure(
-        mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
-    gaussian_curve = discrete_gaussian_curvature_measure(
-        mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
+    if averaging_radius is not None:
+        # Find other points on mesh within the given radius from query_pts
+        verts = mesh.vertices
+        D = distance.cdist(query_pts,verts)
+        averaging_masks = [D[i,:] < averaging_radius for i in range(len(query_pts))]
+
+        mean_curve_vert = discrete_mean_curvature_measure(
+            mesh, verts, kappa)/sphere_ball_intersection(1, kappa)
+        gaussian_curve_vert = discrete_gaussian_curvature_measure(
+            mesh, verts, kappa)/sphere_ball_intersection(1, kappa)
+
+        mean_curve = np.array([mean_curve_vert[mask].mean() for mask in averaging_masks])
+        gaussian_curve = np.array([gaussian_curve_vert[mask].mean() for mask in averaging_masks])
+
+    else:
+        mean_curve = discrete_mean_curvature_measure(
+            mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
+        gaussian_curve = discrete_gaussian_curvature_measure(
+            mesh, query_pts, kappa)/sphere_ball_intersection(1, kappa)
 
     return mean_curve, gaussian_curve
 
@@ -283,7 +323,7 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     from scipy.interpolate import NearestNDInterpolator
 
     curvature,gaussian_curvature = get_tissue_curvature_sparse(mesh,kappa=6)
-    Zz,YY,XX = image_shape
+    ZZ,YY,XX = image_shape
     # Match the 'pixel grid' to the decimated 'microns grid' used by Trimesh
     pixel_gridX = np.arange(XX)
     # gridY,gridX = np.meshgrid()
@@ -403,6 +443,8 @@ def measure_cyto_intensity(cyto_dense_seg, intensity_image_dict:dict, spacing = 
         _df[f'Total {chan_name} intensity'] = _df['area'] * _df[f'Mean {chan_name} intensity']
         _df = _df.drop(labels=['area'], axis='columns')
         _df = _df.set_index('TrackID')
+        _df.columns = pd.MultiIndex.from_product([_df.columns,[f'Measurement {chan_name}']])
+
         df.append(_df)
 
     df = reduce(lambda x,y: pd.merge(x,y,on='TrackID'), df)
@@ -536,13 +578,21 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
 
     # Measurements from cortical segmentation
     dz,dx,dx = spacing
-
-    df = pd.DataFrame( measure.regionprops_table(flat_cyto,
-                                                properties=['label'],
-                                                spacing=[dz,dx,dx],
-                                                ))
-    df = df.rename(columns={'label':'TrackID'})
-    df = df.set_index('TrackID')
+    #
+    # df = pd.DataFrame( measure.regionprops_table(flat_cyto,
+    #                                             properties=['label'],
+    #                                             spacing=[dz,dx,dx],
+    #                                             ))
+    # df = df.rename(columns={'label':'TrackID'})
+    # df = df.set_index('TrackID')
+    collagen_image = exposure.equalize_hist(collagen_image)
+    col_names = pd.MultiIndex.from_tuples(
+          zip(['Apical area','Basal area','Basal orientation','Basal eccentricity','Middle area','Cell height', #6
+          'Collagen orientation','Collagen coherence','Collagen alignment to basal footprint','Collagen intensity'], #4
+          ['Measurement cell shape']*6 + ['Measurement collagen']*4))
+    df = pd.DataFrame(index=np.unique(flat_cyto)[1:],
+                      columns= col_names)
+    df.index.name = 'TrackID'
 
     _,YY,XX = flat_cyto.shape
 
@@ -572,7 +622,7 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
         basal_orientation = np.rad2deg(measure.regionprops(basal_mask.astype(int))[0]['orientation'])
         basal_eccentricity = measure.regionprops(basal_mask.astype(int))[0]['eccentricity']
 
-        df.at[i,'Apical area'] = apical_area * dx**2
+        df.at[i,('Apical area','Measurement cell shape')] = apical_area * dx**2
         df.at[i,'Basal area'] = basal_area * dx**2
         df.at[i,'Basal orientation'] = basal_orientation
         df.at[i,'Basal eccentricity'] = basal_eccentricity
@@ -604,12 +654,11 @@ def measure_flat_cyto_from_regionprops(flat_cyto, collagen_image, jacobian, spac
         #     (Jxx[basal_mask].sum() + Jyy[basal_mask].sum())
         df.at[i,'Collagen orientation'] = theta
         df.at[i,'Collagen coherence'] = mag_diff
-        df.at[i,'Basal alignment to basal footprint'] = np.abs(np.cos(theta - basal_orientation))
+        df.at[i,'Collagen alignment to basal footprint'] = np.abs(np.cos(theta - basal_orientation))
 
         # Also include collagen intensity
         # Normalize collagen
-        collagen_image = exposure.equalize_hist(collagen_image)
-        df.at[i,'Subbasal collagen intensity'] = np.mean(collagen_image[basal_mask])
+        df.at[i,'Collagen intensity'] = np.mean(collagen_image[basal_mask])
 
     return df,basal_masks_2save
 

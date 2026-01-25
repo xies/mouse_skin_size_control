@@ -30,7 +30,7 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'x
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
@@ -366,24 +366,25 @@ all_df['Frac of neighbors are border','Meta'] = x.values
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
 #%% Lookbacks
+
 from warnings import simplefilter
+from functools import reduce
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
 all_df_with_supra = all_df.copy()
 
-from functools import reduce
+def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_lookback:int=1):
 
-def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_lookback:str=1):
     df_lookback = []
 
     for _,track in tqdm(tracks.items()):
         _track = pd.DataFrame(index=track.index,
-                              columns = [f'{field} at {num_frames_lookback} frame prior' 
+                              columns = [f'Diff from {field} at {num_frames_lookback} frame prior' 
                                          for field in fields2lookback])
         for field in fields2lookback:
-            v = track[field].values
+            v = track[(field,'Measurement')].values
             
             if track.iloc[0]['Born','Meta']:            
                 # If the cell was newborn, then go and grab the mother cell's division frame for iloc[0]
@@ -412,7 +413,8 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
 
 # Grab all fields that has match
 measurement_fields = all_df.xs('Measurement',axis=1,level=1).columns
-fields2lookback = set(reduce(list.__add__, [measurement_fields[measurement_fields.str.contains(query)].tolist()
+fields2lookback = set(reduce(list.__add__,
+                             [measurement_fields[measurement_fields.str.contains(query)].tolist()
     for query in ['Nuclear volume','Height to BM','adjac','Cell volume','Num basal neighbors']] ))
 
 df_lookback = lookback(tracks,fields2lookback)

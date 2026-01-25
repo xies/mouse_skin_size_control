@@ -107,6 +107,28 @@ for col in df.columns:
     prev4_div_frame[col] = prev4_div_frame[col].astype(df[col].dtype)
 print(f'Number of 48h prior to divisions: {len(prev4_div_frame)}')
 
+prev5_div_frame = [get_prev_or_next_frame(all_df,f,direction='prev', increment=5) for _,f in divisions.iterrows()]
+prev5_div_frame = pd.concat(prev5_div_frame,axis=1).T
+prev5_div_frame = prev5_div_frame[~prev5_div_frame['Border','Meta'].astype(bool)]
+for col in df.columns:
+    prev5_div_frame[col] = prev5_div_frame[col].astype(df[col].dtype)
+print(f'Number of 52h prior to divisions: {len(prev5_div_frame)}')
+
+prev6_div_frame = [get_prev_or_next_frame(all_df,f,direction='prev', increment=6) for _,f in divisions.iterrows()]
+prev6_div_frame = pd.concat(prev6_div_frame,axis=1).T
+prev6_div_frame = prev6_div_frame[~prev6_div_frame['Border','Meta'].astype(bool)]
+for col in df.columns:
+    prev6_div_frame[col] = prev6_div_frame[col].astype(df[col].dtype)
+print(f'Number of 60h prior to divisions: {len(prev6_div_frame)}')
+
+prev7_div_frame = [get_prev_or_next_frame(all_df,f,direction='prev', increment=7) for _,f in divisions.iterrows()]
+prev7_div_frame = pd.concat(prev7_div_frame,axis=1).T
+prev7_div_frame = prev7_div_frame[~prev7_div_frame['Border','Meta'].astype(bool)]
+for col in df.columns:
+    prev7_div_frame[col] = prev7_div_frame[col].astype(df[col].dtype)
+print(f'Number of 60h prior to divisions: {len(prev7_div_frame)}')
+
+
 divisions = divisions.set_index(['Frame','TrackID'])
 prev_div_frame = prev_div_frame.reset_index().set_index(['Frame','TrackID'])
 
@@ -123,6 +145,9 @@ prev_div_frame.to_pickle(path.join(dataset_dir,'divisions_12h.pkl'))
 prev2_div_frame.to_pickle(path.join(dataset_dir,'divisions_24h.pkl'))
 prev3_div_frame.to_pickle(path.join(dataset_dir,'divisions_36h.pkl'))
 prev4_div_frame.to_pickle(path.join(dataset_dir,'divisions_48h.pkl'))
+prev5_div_frame.to_pickle(path.join(dataset_dir,'divisions_56h.pkl'))
+prev6_div_frame.to_pickle(path.join(dataset_dir,'divisions_60h.pkl'))
+prev7_div_frame.to_pickle(path.join(dataset_dir,'divisions_72h.pkl'))
 
 #%% PPCA different time points
 

@@ -36,15 +36,16 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
 from measurements import measure_nuclear_geometry_from_regionprops, \
         measure_cyto_geometry_from_regionprops, measure_cyto_intensity, measure_flat_cyto_from_regionprops, \
         estimate_sh_coefficients, find_distance_to_closest_point, \
-        measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvatures, export_mesh
+        measure_collagen_structure, get_mesh_from_bm_image, get_tissue_curvature_sparse, \
+            get_tissue_curvature_over_grid, export_mesh
 
 SAVE = True
 VISUALIZE = False
@@ -80,17 +81,24 @@ for t in tqdm(range(15)):
 
     # --- 1. Voxel-based cell geometry measurements ---
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
+    df_nuc.columns = pd.MultiIndex.from_product([df_nuc.columns, ['Measurement nuclear shape']])
+    
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
+    df_cyto.columns = pd.MultiIndex.from_product([df_cyto.columns, ['Measurement cell shape']])
+    
     df_manual = pd.DataFrame(measure.regionprops_table(tracked_manual_cyto[t,...],
                                           properties=['label','area']))
     df_manual = df_manual.rename(columns={'label':'TrackID',
-                                          'area':'Manual cell volume'})
+                                          'area':'Manual cell volume'}).set_index('TrackID')
+    df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Measurement cell shape']])
+    
     df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
     df = pd.merge(left=df,right=df_manual,left_on='TrackID',right_on='TrackID',how='left')
     df['Frame'] = t
-    df['Time'] = t * dt
+    df['Time','Measurement time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
     intensity_df = measure_cyto_intensity(cyto_seg,int_images)
+    
     df = pd.merge(left=df,right=intensity_df,left_on='TrackID',right_on='TrackID',how='left')
 
     # ----- 3. Use flattened 3d cortical segmentation and measure geometry and collagen
@@ -101,9 +109,10 @@ for t in tqdm(range(15)):
     # Calculate collagen structuring matrix
     collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_collagen/t{t}.tif'))
     (Jxx,Jxy,Jyy) = measure_collagen_structure(collagen_image,blur_sigma=3)
-
+    
     df_flat,basal_masks_2save = measure_flat_cyto_from_regionprops(
         flat_cyto, collagen_image, (Jxx, Jyy, Jxy), spacing = [dz,dx,dx])
+    
     df = pd.merge(df,df_flat,left_on='TrackID',right_on='TrackID',how='left')
 
     if not path.exists(path.join(dirname,'Image flattening/basal_masks')):
@@ -113,11 +122,12 @@ for t in tqdm(range(15)):
 
     # Book-keeping
     df = df.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
-    df['X-pixels'] = df['X'] / dx
-    df['Y-pixels'] = df['Y'] / dx
+    df['X-pixels','Measurement cell position'] = df['X'] / dx
+    df['Y-pixels','Measurement cell position'] = df['Y'] / dx
 
     # Derive NC ratio
-    df['NC ratio'] = df['Nuclear volume'] / df['Cell volume']
+    df['NC ratio','Measurement nuclear shape'] = \
+        df['Nuclear volume','Measurement nuclear shape'] / df['Cell volume','Measurement cell shape']
 
     dense_coords = np.array([df['Y-pixels'],df['X-pixels']]).T
     dense_coords_3d_um = np.array([df['Z'],df['Y'],df['X']]).T
@@ -160,24 +170,31 @@ for t in tqdm(range(15)):
     # ---- 5. Get 3D mesh from the BM image ---
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
     bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
-    
+
     # Export mesh: vert, face, value (normals) for napari usage
     export_mesh(bg_mesh,path.join(dirname,f'Image flattening/trimesh/t{t}.npz'))
-    # vertices = np.asarray(bg_mesh.vertices[:,[2,1,0]])
-    # faces = np.asarray(bg_mesh.faces)
-    # normals = geometry.mean_vertex_normals(len(bg_mesh.vertices),bg_mesh.faces,bg_mesh.face_normals)
-    # values = np.dot(normals,[1,-1,1])
-    # np.savez(path.join(dirname,f'Image flattening/trimesh/t{t}.npz'),
-    #           vertices = vertices,faces = faces,values = values)
-    
+
     closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
     for kappa in [2,5,10,15]:
-        mean_curve, gaussian_curve = get_tissue_curvatures(bg_mesh,
+        
+        # Numerically stable -> use single point for consistency
+        mean_curve, gaussian_curve = get_tissue_curvature_sparse(bg_mesh,
                                                            kappa=kappa, query_pts = closest_mesh_to_cell)
-    
+
         df[f'Mean curvature {kappa}um'] = mean_curve
+        # Numerically less stable -> average within 5 microns
+        mean_curve, gaussian_curve = get_tissue_curvature_sparse(bg_mesh, kappa=kappa,
+                                                                 query_pts = closest_mesh_to_cell,
+                                                           averaging_radius=5)
+        
         df[f'Gaussian curvature {kappa}um'] = gaussian_curve
-    
+        
+        mean_curve, gaussian_curve = get_tissue_curvature_over_grid(bg_mesh, kappa=kappa,
+                                                                 image_shape=nuc_seg.shape)
+        np.savez(path.join(dirname,f'Image flattening/trimesh/mean_curvature_t{t}'),mean_curvature=mean_curve)
+        np.savez(path.join(dirname,f'Image flattening/trimesh/gaussian_curvature_t{t}'),gaussian_curvature=gaussian_curve)
+        
+        
 
     # --- 6. 3D shape decomposition ---
 
@@ -227,7 +244,7 @@ all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 
 #%% PCA diagonalize the shcoeffs across both regions, remove original features, and put the shcoeff_PCAs
 
-from sklearn import decomposition
+from sklearn import decomposition, preprocessing
 
 dirnames = {'R1':'/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/',
             'R2':'/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'}
@@ -245,8 +262,12 @@ nuc_coef_cols = [f for f in df_concat.columns if 'nuc_shcoeff' in f and 'surface
 cyto_coef_cols = [f for f in df_concat.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
 
 Inonans = df_concat[cyto_coef_cols].dropna(axis=0).index
+X = df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols]
 pca = decomposition.PCA()
-PCA = pca.fit_transform(df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols])
+PCA = pca.fit_transform(X)
+components = pd.DataFrame(pca.components_,index=[f'PC{i}' for i in range(72)],columns=nuc_coef_cols+cyto_coef_cols)
+components.to_csv('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Lineage models/Dataset pickles/pca_components.csv')
+
 component_cutoff = 9
 
 # Put back the PCA coeffients region by region
@@ -258,11 +279,11 @@ for name,region in regions.items():
     # Prepare indexes
     this_PCA = PCA[PCA['Region'] == name]
     this_PCA = this_PCA.drop(columns='Region').set_index(['Frame','TrackID']).astype(float)
-    
+
     # Merge
     region = region.set_index(['Frame','TrackID'])
     region_pc = pd.merge(region,this_PCA, right_index=True, left_index=True, how='left')
-    
+
     # Drop old cofficients
     region_pc = region_pc.drop(columns=nuc_coef_cols+cyto_coef_cols)
     region_pc = region_pc.drop(columns='Region')
