@@ -25,37 +25,11 @@ dx = 0.25
 dz = 1
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 all_trackIDs = all_df.reset_index()
-
-def get_time_offset_data(cf:pd.DataFrame,subset_fields,offset_by=-1):
-    
-    if len(cf) <= abs(offset_by):
-        X = np.ones( (len(cf), len(subset_fields)) )*np.nan
-        offset_data = pd.DataFrame(X,
-                                   columns=[f'{field} offset {offset_by}' for field in subset_fields],
-                                   index=cf.index)
-    else:
-        
-        cf = cf.sort_values(by='Frame',ascending=True).set_index('Frame')
-        idx = cf.index -1
-        idx = idx[ np.isin(idx, cf.index)]
-        X = cf.loc[idx, subset_fields].values
-        if offset_by < 0:
-            X = np.vstack(( np.ones( (abs(offset_by), len(subset_fields)) )*np.nan, X ))
-        else:
-            X = np.vstack(( X, np.ones( (abs(offset_by), len(subset_fields)) )*np.nan ))
-        print(X.shape)
-        print(cf.index)
-        offset_data = pd.DataFrame(X,
-                                   columns=[f'{field} offset {offset_by}' for field in subset_fields],
-                                   index=cf.index)
-        
-    return offset_data
-
 
 adjacent_tracks = [np.load(path.join(dirname,f'Mastodon/basal_connectivity_3d/adjacenct_trackIDs_t{t}.npy'),
                    allow_pickle=True).item() for t in range(15)]
@@ -115,8 +89,8 @@ for trackID,cf in tqdm(tracks.items()):
     
     # Look at -1 time frame, look at neighbors
     cf = cf.set_index('Frame',drop=True)
-    cf['Num neighbor division 1 frame prior','Measurement'] = np.nan
-    cf['Num neighbor delamination 1 frame prior','Measurement'] = np.nan
+    cf['Num neighbor division 1 frame prior','Measurement topology'] = np.nan
+    cf['Num neighbor delamination 1 frame prior','Measurement topology'] = np.nan
 
     for t in cf.index:
         if t > 0 and (cf.loc[t]['Cell type','Meta'] == 'Basal') and not cf.loc[t]['Border','Meta']:
@@ -127,7 +101,7 @@ for trackID,cf in tqdm(tracks.items()):
                 print('---')
                 continue
             else:
-                trackID2look = int(cf.iloc[0]['Mother'].values[0])
+                trackID2look = int(cf.iloc[0]['Mother','Meta'])
                 
             if trackID2look == 461 and t == 6: #@todo: this needs fixing...
                 continue
@@ -138,9 +112,9 @@ for trackID,cf in tqdm(tracks.items()):
                 prev_neighbors = all_df.loc[list(zip([t-1]*len(prev_neighbors),prev_neighbors))]
                 num_prev_neighbor_divided = prev_neighbors['Divide next frame','Meta'].sum()
                 num_prev_neighbor_diff = prev_neighbors['Delaminate next frame','Meta'].sum()
-                cf.loc[t, ('Num neighbor division 1 frame prior','Measurement')] = \
+                cf.loc[t, ('Num neighbor division 1 frame prior','Measurement topology')] = \
                            num_prev_neighbor_divided
-                cf.loc[t, ('Num neighbor delamination 1 frame prior','Measurement')] = \
+                cf.loc[t, ('Num neighbor delamination 1 frame prior','Measurement topology')] = \
                     num_prev_neighbor_diff
                 # stop
                 
