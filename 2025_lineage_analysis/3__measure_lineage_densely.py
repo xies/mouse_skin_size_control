@@ -60,6 +60,9 @@ manual = pd.concat(tracks,ignore_index=True)
 manual['Frame'] = manual['Frame'].astype(float).astype(int)
 manual = manual.set_index(['Frame','TrackID'])
 manual = manual.drop(columns=['ID','X','Y','Z','Border'])
+manual.columns = pd.MultiIndex.from_product(
+    [manual.columns,['Meta']])
+
 
 # Load segmentations
 tracked_nuc = io.imread(path.join(dirname,'Mastodon/tracked_nuc.tif'))
@@ -81,7 +84,10 @@ for t in tqdm(range(15)):
 
     # --- 1. Voxel-based cell geometry measurements ---
     df_nuc = measure_nuclear_geometry_from_regionprops(nuc_seg,spacing = [dz,dx,dx])
+    df_pos = df_nuc[['Z','Y','X']]
+    df_nuc = df_nuc.drop(columns=['Y','X','Z','bbox-1','bbox-2','bbox-4','bbox-5'])
     df_nuc.columns = pd.MultiIndex.from_product([df_nuc.columns, ['Measurement nuclear shape']])
+    df_pos.columns = pd.MultiIndex.from_product([df_pos.columns, ['Measurement cell position']])
     
     df_cyto = measure_cyto_geometry_from_regionprops(cyto_seg,spacing = [dz,dx,dx])
     df_cyto.columns = pd.MultiIndex.from_product([df_cyto.columns, ['Measurement cell shape']])
@@ -93,7 +99,14 @@ for t in tqdm(range(15)):
     df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Measurement cell shape']])
     
     df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
+    df = pd.merge(left=df,right=df_pos,left_on='TrackID',right_on='TrackID',how='left')
     df = pd.merge(left=df,right=df_manual,left_on='TrackID',right_on='TrackID',how='left')
+    
+    # Calculate nuclear 'centered ness' and keep only nuclear centroids
+    D = np.sqrt(((df[['Z','Y','X']].values -  df[['Z-cyto','Y-cyto','X-cyto']].values)**2).sum(axis=1))
+    df['Nuclear centeredness','Measurement nuclear shape'] = D
+    df = df.drop(columns=['Z-cyto','Y-cyto','X-cyto'])
+    
     df['Frame'] = t
     df['Time','Measurement time'] = t * dt
     int_images = {'H2B':h2b[t,...],'FUCCI':fucci_g1[t,...]}
@@ -121,7 +134,6 @@ for t in tqdm(range(15)):
         io.imsave(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'),basal_masks_2save)
 
     # Book-keeping
-    df = df.drop(columns=['bbox-1','bbox-2','bbox-4','bbox-5'])
     df['X-pixels','Measurement cell position'] = df['X'] / dx
     df['Y-pixels','Measurement cell position'] = df['Y'] / dx
 
@@ -129,17 +141,16 @@ for t in tqdm(range(15)):
     df['NC ratio','Measurement nuclear shape'] = \
         df['Nuclear volume','Measurement nuclear shape'] / df['Cell volume','Measurement cell shape']
 
-    dense_coords = np.array([df['Y-pixels'],df['X-pixels']]).T
-    dense_coords_3d_um = np.array([df['Z'],df['Y'],df['X']]).T
+    dense_coords = np.array([df['Y-pixels'],df['X-pixels']]).T.squeeze()
+    dense_coords_3d_um = np.array([df['Z'],df['Y'],df['X']]).T.squeeze()
 
     #----- 4. Nuc-to-BM heights -----
     # Load heightmap and calculate adjusted height
     heightmap = io.imread(path.join(dirname,f'Image flattening/heightmaps/t{t}.tif'))
     heightmap_shifted = heightmap + Z_SHIFT
-    df['BM height'] = heightmap_shifted[
+    df['BM height','Measurement tissue geometry'] = heightmap_shifted[
         np.round(df['Y']).astype(int),np.round(df['X']).astype(int)]
-    df['Height to BM'] = df['BM height'] - df['Z'].values
-    # stop
+    df['Height to BM','Measurement tissue geometry'] = df['BM height'] - df['Z'].values
 
     #----- Find border cells -----
     # Generate a dense mesh based sole only 2D/3D nuclear locations
@@ -153,8 +164,8 @@ for t in tqdm(range(15)):
     regions_outside = np.hstack([regions_outside, np.where([-1 in r for r in vor.regions])])
     Iborder = np.in1d(vor.point_region, regions_outside)
     border_nuclei = df.loc[Iborder].index
-    df['Border'] = False
-    df.loc[ border_nuclei, 'Border'] = True
+    df['Border','Meta'] = False
+    df.loc[ border_nuclei,'Border'] = True
 
     #----- Cell coordinates mesh for geometry -----
     # Generate 3D mesh for curvature analysis -- no need to specify precise cell-cell junctions
@@ -164,9 +175,9 @@ for t in tqdm(range(15)):
         cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
     gaussian_curve_coords = -discrete_gaussian_curvature_measure(
         cell_coords_mesh, cell_coords_mesh.vertices, 5)/sphere_ball_intersection(1, 5)
-    df['Mean curvature - cell coords'] = mean_curve_coords
-    df['Gaussian curvature - cell coords'] = gaussian_curve_coords
-
+    df['Mean curvature - cell coords','Measurement tissue geometry'] = mean_curve_coords
+    df['Gaussian curvature - cell coords','Measurement tissue geometry'] = gaussian_curve_coords
+    
     # ---- 5. Get 3D mesh from the BM image ---
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
     bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
@@ -181,44 +192,46 @@ for t in tqdm(range(15)):
         mean_curve, gaussian_curve = get_tissue_curvature_sparse(bg_mesh,
                                                            kappa=kappa, query_pts = closest_mesh_to_cell)
 
-        df[f'Mean curvature {kappa}um'] = mean_curve
+        df[f'Mean curvature {kappa}um','Measurement tissue geometry'] = mean_curve
         # Numerically less stable -> average within 5 microns
         mean_curve, gaussian_curve = get_tissue_curvature_sparse(bg_mesh, kappa=kappa,
                                                                  query_pts = closest_mesh_to_cell,
                                                            averaging_radius=5)
         
-        df[f'Gaussian curvature {kappa}um'] = gaussian_curve
+        df[f'Gaussian curvature {kappa}um','Measurement tissue geometry'] = gaussian_curve
         
         mean_curve, gaussian_curve = get_tissue_curvature_over_grid(bg_mesh, kappa=kappa,
                                                                  image_shape=nuc_seg.shape)
         np.savez(path.join(dirname,f'Image flattening/trimesh/mean_curvature_t{t}'),mean_curvature=mean_curve)
         np.savez(path.join(dirname,f'Image flattening/trimesh/gaussian_curvature_t{t}'),gaussian_curvature=gaussian_curve)
         
-        
 
     # --- 6. 3D shape decomposition ---
-
+    
     # 2a: Estimate cell and nuclear mesh using spherical harmonics
     sh_coefficients = estimate_sh_coefficients(cyto_seg, lmax=LMAX, spacing = [dz,dx,dx],)
-    sh_coefficients.columns = 'cyto_' + sh_coefficients.columns
+    sh_coefficients.columns = pd.MultiIndex.from_product(
+        ['cyto_' + sh_coefficients.columns,['Measurement shcoeff']])
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
     sh_coefficients = estimate_sh_coefficients(nuc_seg, lmax=LMAX, spacing = [dz,dx,dx])
-    sh_coefficients.columns = 'nuc_' + sh_coefficients.columns
+    sh_coefficients.columns = pd.MultiIndex.from_product(
+        ['nuc_' + sh_coefficients.columns,['Measurement shcoeff']])
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
-
+    
     #----- Use macrophage annotations to find distance to them -----
     #NB: the macrophage coords are in um
     macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
     macrophage_xyz = macrophage_xyz.rename(columns={'axis-0':'Z','axis-1':'Y','axis-2':'X'})
     macrophage_xyz['X'] = macrophage_xyz['X'] * dx
     macrophage_xyz['Y'] = macrophage_xyz['Y'] * dx
-    df['Distance to closest macrophage'] = find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
+    df['Distance to closest macrophage','Measurement tissue geometry'] = \
+        find_distance_to_closest_point(pd.DataFrame(dense_coords_3d_um,columns=['Z','Y','X']), macrophage_xyz)
 
     # Load basal masks for current frame
     frame_basal_mask = io.imread(path.join(dirname,f'Image flattening/basal_masks/t{t}.tif'))
 
     # Merge with manual annotations
-    df = df.reset_index(drop=True)
+    df = df.reset_index()
     # df = df.set_index(['Frame','TrackID'])
 
     # Save the DF
@@ -234,11 +247,11 @@ all_df = all_df.set_index(['Frame','TrackID'])
 all_df = pd.merge(all_df,manual,left_on=['Frame','TrackID'],right_on=['Frame','TrackID'],how='left')
 
 # Sanitize field dtypes that are NaN from the merge with manual
-all_df['Cell type'] = all_df['Cell type'].astype(str)
-all_df['Terminus'] = (all_df['Terminus'].astype(float) == 1)
-all_df['Cutoff'] = (all_df['Cutoff'].astype(float) == 1)
-all_df['Reviewed'] = (all_df['Reviewed'].astype(float) == 1)
-all_df['Complete cycle'] = (all_df['Complete cycle'].astype(float) == 1)
+all_df['Cell type','Meta'] = all_df['Cell type'].astype(str)
+all_df['Terminus','Meta'] = (all_df['Terminus'].astype(float) == 1)
+all_df['Cutoff','Meta'] = (all_df['Cutoff'].astype(float) == 1)
+all_df['Reviewed','Meta'] = (all_df['Reviewed'].astype(float) == 1)
+all_df['Complete cycle','Meta'] = (all_df['Complete cycle'].astype(float) == 1)
 
 all_df.to_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
 
@@ -251,15 +264,18 @@ dirnames = {'R1':'/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/',
 
 regions = {}
 for name,dirname in dirnames.items():
-    regions[name] = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'))
+    regions[name] = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints.csv'),
+                                header=[0,1],index_col=[0,1]).reset_index()
     regions[name]['Region'] = name
 
 df_concat = pd.concat(regions.values(),ignore_index=True)
 
 # Grab all nuc_coeffs
-nuc_coef_cols = [f for f in df_concat.columns if 'nuc_shcoeff' in f and 'surface_area' not in f]
+nuc_coef_cols = [f for f in df_concat.droplevel(axis=1,level=1).columns 
+                 if 'nuc_shcoeff' in f and 'surface_area' not in f]
 # Grab all cyto_coeffs
-cyto_coef_cols = [f for f in df_concat.columns if 'cyto_shcoeff' in f and 'surface_area' not in f]
+cyto_coef_cols = [f for f in df_concat.droplevel(axis=1,level=1).columns
+                  if 'cyto_shcoeff' in f and 'surface_area' not in f]
 
 Inonans = df_concat[cyto_coef_cols].dropna(axis=0).index
 X = df_concat.loc[Inonans,nuc_coef_cols+cyto_coef_cols]
@@ -271,8 +287,9 @@ components.to_csv('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa 
 component_cutoff = 9
 
 # Put back the PCA coeffients region by region
-PCA = pd.DataFrame(PCA[:,:component_cutoff],
-                       columns = [f'nuc_shcoeff_PC{i}' for i in range(component_cutoff)])
+col_names = pd.MultiIndex.from_product(
+    [[f'shcoeff_PC{i}' for i in range(component_cutoff)],['Measurement shcoeff_PCA']])
+PCA = pd.DataFrame(PCA[:,:component_cutoff],columns = col_names)
 PCA[['Region','Frame','TrackID']] = df_concat.loc[Inonans][['Region','Frame','TrackID']].values
 
 for name,region in regions.items():

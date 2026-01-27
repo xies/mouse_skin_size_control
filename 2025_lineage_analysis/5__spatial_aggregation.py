@@ -30,7 +30,7 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'x
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
 dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
@@ -297,6 +297,9 @@ tifffile.imwrite(path.join(dirname,'Mastodon/basal_connectivity_3d/basal_connect
 
 #%% Aggregate over adjacency network
 
+import warnings
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
 from measurements import aggregate_over_adj, get_aggregated_3D_distances,\
     frac_neighbors_are_border, frac_sphase
 
@@ -312,11 +315,12 @@ aggregators = {'Mean':np.nanmean,
                'Std':np.nanstd}
 
 # Aggregate every non-metadata field
-fields2aggregate = all_df.xs('Measurement',axis=1,level=1).columns
+fields2aggregate = all_df.columns[all_df.columns.get_level_values(1).str.startswith('Measurement')]
 # Drop Age, XYZ
-fields2aggregate = fields2aggregate.drop(['X','Y','Z','Z-cyto','Y-cyto','X-cyto','Time',
-                                          'Age','X-pixels','Y-pixels'] +
-                                         [f for f in fields2aggregate if 'smoothed' in f])
+fields2drop = ['X','Y','Z','Time','Age','X-pixels','Y-pixels'] + \
+        [f for f in fields2aggregate if 'smoothed' in f[0]] + \
+        [f for f in fields2aggregate if 'Time' in f[0]]
+fields2aggregate = fields2aggregate.drop(fields2drop)
 
 aggregated_fields = []
 for t in tqdm(range(15)):
@@ -325,24 +329,28 @@ for t in tqdm(range(15)):
     A = adjdict_to_mat(adj)
     this_frame = all_df.xs(t,level='Frame')
     df_agg = aggregate_over_adj(adj, aggregators, this_frame, fields2aggregate)
-    df_agg['Num basal neighbors'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
+    df_agg['Num basal neighbors','Measurement topology'] = df_agg['TrackID'].map({k:len(v) for k,v in adj.items()})
     # @todo: one-off dist to neighbors df_agg['Mean distance to basal neighbors']
     
     df_dist = get_aggregated_3D_distances(this_frame, adj, aggregators)
     # @todo: relative-to-mean
-    df_agg['Frac of neighbors are border'] = aggregate_over_adj(adj,
+    df_agg['Frac of neighbors are border','Meta'] = aggregate_over_adj(adj,
                                                                {'Frac':frac_neighbors_are_border},
                                                                all_df.xs(t,level='Frame'),
-                                                               ['Border']).drop(columns='TrackID')
-    df_relative = pd.DataFrame(index=df_agg.index,
-                               columns=[f'Relative {field}' for field in fields2aggregate])
-    for field in fields2aggregate:
-        df_relative[f'Relative {field}'] = this_frame[field,'Measurement'].values / df_agg[f'Mean adjac {field}'].values
+                                                               [('Border','Meta')]).drop(columns='TrackID')
     
-    df_agg['Frac of neighbors in S phase'] = aggregate_over_adj(adj,
-                                                                {'Frac':frac_sphase},
-                                                                all_df.xs(t,level='Frame'),
-                                                                ['Cell cycle phase']).drop(columns='TrackID')
+    col_names = pd.MultiIndex.from_arrays([[f'Relative {field[0]}' for field in fields2aggregate],
+                                           [f'{field[1]} relative' for field in fields2aggregate]])
+    df_relative = pd.DataFrame(index=df_agg.index,columns=col_names)
+    
+    for field in fields2aggregate:
+        df_relative[f'Relative {field[0]}',f'{field[1]} relative'] = \
+            this_frame[field].values / df_agg[f'Mean adjac {field[0]}',f'{field[1]} adjac'].values
+    
+    df_agg['Frac of neighbors in S phase','Meta'] = aggregate_over_adj(adj,
+                                                    {'Frac':frac_sphase},
+                                                    all_df.xs(t,level='Frame'),
+                                                    [('Cell cycle phase','Meta')]).drop(columns='TrackID')
    
     df_agg['Frame'] = t
     df_agg = pd.merge(df_agg,df_dist,left_on='TrackID',right_on='TrackID')
@@ -350,26 +358,15 @@ for t in tqdm(range(15)):
     df_agg = pd.concat((df_agg,df_relative),axis=1)
     aggregated_fields.append(df_agg)
 
-
 aggregated_fields = pd.concat(aggregated_fields,ignore_index=True)
-x = aggregated_fields['Frac of neighbors are border']
-aggregated_fields = aggregated_fields.drop(columns=['Frac of neighbors are border'])
 aggregated_fields = aggregated_fields.set_index(['Frame','TrackID'])
-new_cols = pd.DataFrame()
-new_cols['Name'] = aggregated_fields.columns
-new_cols['Metadata'] = 'Measurement'
-aggregated_fields.columns = pd.MultiIndex.from_frame(new_cols)
-
-all_df = all_df.join(aggregated_fields)
-all_df['Frac of neighbors are border','Meta'] = x.values
+all_df = pd.merge(all_df,aggregated_fields,left_index=True,right_index=True)
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl'))
 
 #%% Lookbacks
 
-from warnings import simplefilter
 from functools import reduce
-simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated.pkl')).sort_index()
 tracks = {trackID:t for trackID,t in all_df.groupby('TrackID')}
@@ -380,23 +377,28 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
     df_lookback = []
 
     for _,track in tqdm(tracks.items()):
-        _track = pd.DataFrame(index=track.index,
-                              columns = [f'Diff from {field} at {num_frames_lookback} frame prior' 
-                                         for field in fields2lookback])
+        col_names = pd.MultiIndex.from_arrays([
+            [f'Diff from {field[0]} at {num_frames_lookback} frame prior' for field in fields2lookback],
+            [f'{field[1]} diff' for field in fields2lookback]])
+        _track = pd.DataFrame(index=track.index,columns=col_names)
         for field in fields2lookback:
-            v = track[(field,'Measurement')].values
+            v = track[field].values
             
             if track.iloc[0]['Born','Meta']:            
                 # If the cell was newborn, then go and grab the mother cell's division frame for iloc[0]
-                motherID = int(track.iloc[0]['Mother'])
+                motherID = int(track.iloc[0]['Mother','Meta'])
                 assert(not np.isnan(motherID))
                 mother_div_frame = int(track.reset_index().iloc[0]['Frame'] - 1)
                 # Check that this frame exists in mother dataframe
                 if mother_div_frame in tracks[motherID].index:
-                    mother_value = tracks[motherID].loc[mother_div_frame,motherID][field].values
+                    mother_value = tracks[motherID].loc[mother_div_frame,motherID][field]
                 else:
                     mother_value = np.nan
-                v = np.insert(v,0,mother_value/2)
+                if 'adjac' not in field[0]:
+                    if 'volume' in field[0] or 'area' in field[0]:
+                        # Half the 'intrinsic' volume measurements
+                        mother_value /= 2
+                v = np.insert(v,0,mother_value)
                 
             else:
                 # Pad with nan otherwise
@@ -405,28 +407,27 @@ def lookback(tracks: list[pd.DataFrame], fields2lookback:list[str], num_frames_l
             # v = v[:len(v)-1]
             dv = np.diff(v)
             
-            _track[f'Diff from {field} at {num_frames_lookback} frame prior'] = dv
+            _track[f'Diff from {field[0]} at {num_frames_lookback} frame prior',
+                   f'{field[1]} diff'] = dv
         
         df_lookback.append(_track)
         
     return pd.concat(df_lookback)
 
 # Grab all fields that has match
-measurement_fields = all_df.xs('Measurement',axis=1,level=1).columns
+measurement_fields = all_df.columns[all_df.columns.get_level_values(1).str.startswith('Measurement')]
 fields2lookback = set(reduce(list.__add__,
-                             [measurement_fields[measurement_fields.str.contains(query)].tolist()
-    for query in ['Nuclear volume','Height to BM','adjac','Cell volume','Num basal neighbors']] ))
+                             [measurement_fields[measurement_fields.get_level_values(0).str.contains(query)].tolist()
+    for query in ['Nuclear volume','Cell volume','adjac','area','Num basal neighbors']] ))
 
-df_lookback = lookback(tracks,fields2lookback)
+fields2lookback = [f for f in fields2lookback if ('rate' not in f[0])]
 
-new_cols = pd.DataFrame()
-new_cols['Name'] = df_lookback.columns
-new_cols['Metadata'] = 'Measurement'
-df_lookback.columns = pd.MultiIndex.from_frame(new_cols)
+df_lookback = lookback(tracks,list(fields2lookback))
 
-all_df = all_df.join(df_lookback,how='outer')
+all_df = pd.merge(all_df,df_lookback,left_index=True,right_index=True)
 
-all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
+all_df.to_pickle(path.join(dirname,
+                           'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 
 
 

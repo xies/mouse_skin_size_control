@@ -35,9 +35,10 @@ from collections.abc import Callable
 def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
                        df = pd.DataFrame, fields2aggregate=list[str]):
 
-    df_aggregated = pd.DataFrame(
-        columns = [f'{k} adjac {f}' for k in aggregators.keys() for f in fields2aggregate],
-        index=df.index, dtype=float)
+    col_names = pd.MultiIndex.from_arrays([
+        [f'{k} adjac {f[0]}' for k in aggregators.keys() for f in fields2aggregate],
+        [f'{f[1]} adjac' for k in aggregators.keys() for f in fields2aggregate] ])
+    df_aggregated = pd.DataFrame(columns = col_names,index=df.index, dtype=float)
 
     # for agg_name in aggregators.keys():
     #     for field in fields2aggregate:
@@ -50,10 +51,10 @@ def aggregate_over_adj(adj: dict, aggregators: dict[str,Callable],
             for field in fields2aggregate:
                 if neighbors[field].values.dtype == float:
                     if not np.all(np.isnan(neighbors[field].values)):
-                        df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                        df_aggregated.loc[centerID,(f'{agg_name} adjac {field[0]}',f'{field[1]} adjac')] = \
                             agg_func(neighbors[field].values)
                 else:
-                    df_aggregated.loc[centerID,f'{agg_name} adjac {field}'] = \
+                    df_aggregated.loc[centerID,(f'{agg_name} adjac {field[0]}',f'{field[1]} adjac')] = \
                         agg_func(neighbors[field].values)
 
     df_aggregated.index.name = 'TrackID'
@@ -64,14 +65,14 @@ def get_aggregated_3D_distances(df:pd.DataFrame,adjDict:dict,aggregators:dict):
     D = distance.squareform(distance.pdist(df[['Z','Y','X']]))
     D = pd.DataFrame(data=D,index=df.index,columns=df.index)
 
-    distances = pd.DataFrame(index=df.index,
-                             columns = [f'{agg_name} distance to neighbors'
-                                        for agg_name in aggregators.keys()])
+    col_names = pd.MultiIndex.from_product([[f'{agg_name} distance to neighbors' for agg_name in aggregators.keys()],
+        ['Measurement cell position']])
+    distances = pd.DataFrame(index=df.index,columns = col_names)
 
     distances.index.name = 'TrackID'
     for cellID,neighborIDs in adjDict.items():
         for agg_name, agg_func in aggregators.items():
-            distances.loc[cellID,f'{agg_name} distance to neighbors'] = \
+            distances.loc[cellID,(f'{agg_name} distance to neighbors','Measurement cell position')] = \
                 agg_func( D.loc[cellID,neighborIDs].values )
 
     return distances.sort_index().reset_index()
@@ -699,20 +700,20 @@ def detect_missing_frame_and_fill(cf):
     for col in bool_cols:
         fill[col] = False
 
-    fill['TrackID'] = cf.iloc[0]['TrackID']
+    fill['TrackID',''] = cf.iloc[0]['TrackID','']
     cf_filled = pd.concat((cf,fill))
     cf_filled = cf_filled.sort_index()
 
     return cf_filled.reset_index()
 
 
-def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
+def get_interpolated_curve(cf,field=('Cell volume','Measurement cell shape'),smoothing_factor=1e10):
 
     # cell_types = cf['Cell type'].unique()
 
     # for celltype in cell_types:
     # I = cf['Cell type'] == celltype
-    I = ~cf[field].isna() & ~cf['Border'].astype(bool) & ~(cf['Cell cycle phase'] == 'Mitosis')
+    I = ~cf[field].isna() & ~cf['Border','Meta'].astype(bool) & ~(cf['Cell cycle phase','Meta'] == 'Mitosis')
 
     this_type = cf.loc[I]
     if len(this_type) < 5:
@@ -726,8 +727,8 @@ def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
         yhat = spl(t)
         dydt = spl.derivative(nu=1)(t)
 
-    cf.loc[I,f'{field} smoothed'] = yhat
-    cf.loc[I,f'{field} smoothed growth rate'] = dydt
+    cf.loc[I,(f'{field[0]} smoothed',f'{field[1]} rate')] = yhat
+    cf.loc[I,(f'{field[0]} smoothed growth rate',f'{field[1]} rate')] = dydt
 
     return cf
 
@@ -797,8 +798,8 @@ def get_interpolated_curve(cf,field='Cell volume',smoothing_factor=1e10):
 
 exp_model = lambda x,p1,p2 : p1 * np.exp(p2 * x)
 def get_exponential_growth_rate(cf:pd.DataFrame,
-                                field:str = 'Cell volume',
-                                time_field:str='Time',
+                                field:str = ('Cell volume','Measurement cell shape'),
+                                time_field:str=('Time','Measurement time'),
                                 filtered:dict={}):
     '''
 
@@ -825,20 +826,21 @@ def get_exponential_growth_rate(cf:pd.DataFrame,
         Cell track with exponential growth rate populated.
 
     '''
-    cell_types = cf['Cell type'].astype(str).unique()
+    cell_types = cf['Cell type','Meta'].astype(str).unique()
+
     for celltype in cell_types:
-        I = cf['Cell type'] == celltype
-        I = I & ~cf[field].isna() & ~cf['Border'].astype(bool) \
-            & ~(cf['Cell cycle phase'] == 'Mitosis')
+        I = cf['Cell type','Meta'] == celltype
+        I = I & ~cf[field].isna() & ~cf['Border','Meta'].astype(bool) \
+            & ~(cf['Cell cycle phase','Meta'] == 'Mitosis')
 
         if len(filtered) > 0:
             assert(len(filtered) == 1)
             filter_name = list(filtered.keys())[0]
             Ifilter = filtered[filter_name]
             I = I & Ifilter
-            new_field_name = f'{field} {filter_name} exponential growth rate'
+            new_field_name = (f'{field[0]} {filter_name} exponential growth rate',f'{field[1]} rate')
         else:
-            new_field_name = f'{field} exponential growth rate'
+            new_field_name = (f'{field[0]} exponential growth rate',f'{field[1]} rate')
 
         # if np.any(cf['Cell cycle phase'] == 'Mitosis'):
         #     mitotic_idx = cf[cf['Cell cycle phase'] == 'Mitosis'].iloc[0].index
