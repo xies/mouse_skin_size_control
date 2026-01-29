@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -96,7 +96,7 @@ for t in tqdm(range(15)):
                                           properties=['label','area']))
     df_manual = df_manual.rename(columns={'label':'TrackID',
                                           'area':'Manual cell volume'}).set_index('TrackID')
-    df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Measurement cell shape']])
+    df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Meta ']])
     
     df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
     df = pd.merge(left=df,right=df_pos,left_on='TrackID',right_on='TrackID',how='left')
@@ -218,6 +218,7 @@ for t in tqdm(range(15)):
         ['nuc_' + sh_coefficients.columns,['Measurement shcoeff']])
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
     
+    
     #----- Use macrophage annotations to find distance to them -----
     #NB: the macrophage coords are in um
     macrophage_xyz = pd.read_csv(path.join(dirname,f'3d_cyto_seg/macrophages/t{t}.csv'))
@@ -310,11 +311,11 @@ for name,region in regions.items():
 
 #%% Find missing cyto segs
 
-non_border_basals = all_df[(all_df['Cell type'] =='Basal') & (~all_df['Border'])]
-non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
-missing_cytos = non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
+# non_border_basals = all_df[(all_df['Cell type','Meta'] =='Basal') & (~all_df['Border','Meta'])]
+# non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
+# missing_cytos = non_border_basals.index[non_border_basals['Cell volume'].isnull()].tolist()
 
-print(missing_cytos[:50])
+# print(missing_cytos[:50])
 
 #%% Re-export all the BM mesh objects into individual a single unified TZYX mesh for display in napari
 
