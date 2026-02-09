@@ -170,33 +170,33 @@ all_df = pd.read_csv(path.join(dirname,'Mastodon/single_timepoints_pca.csv'),ind
 
 lineageIDs = all_df['LineageID']
 
-@magicgui(lineage_to_show = {'choices':sorted(lineageIDs.tolist()) })
-def highlight_lineage(lineage_to_show=lineageIDs.tolist()[0]):
-
-    lineage = all_df[all_df['LineageID'] == lineage_to_show]
-
-    # Create masks
-    cyto = viewer.layers['cytoplasms'].data
-    nuc = viewer.layers['nuclei'].data
-    nuc_highlights = np.zeros_like(cyto)
-    cyto_highlights = np.zeros_like(cyto)
-
-    for _,row in lineage.iterrows():
-        t = row['Frame']
-        mask = (nuc[t,...] == row['TrackID'])
-        nuc_highlights[t,mask] = row['TrackID']
-        mask = (cyto[t,...] == row['TrackID'])
-        cyto_highlights[t,mask] = row['TrackID']
-
-    if 'highlighted_lineage_nuc' in viewer.layers:
-        viewer.layers.remove('highlighted_lineage_nuc')
-    if 'highlighted_lineage_cyto' in viewer.layers:
-        viewer.layers.remove('highlighted_lineage_cyto')
-    viewer.layers['cytoplasms'].visible = False
-    viewer.layers['nuclei'].visible = False
-
-    viewer.add_labels(cyto_highlights,name='highlighted_lineage_cyto',scale=scale,opacity=0.7,blending='additive')
-    viewer.add_labels(nuc_highlights,name='highlighted_lineage_nuc',scale=scale,opacity=1,blending='additive')
+# @magicgui(lineage_to_show = {'choices':sorted(lineageIDs.tolist()) })
+# def highlight_lineage(lineage_to_show=lineageIDs.tolist()[0]):
+#
+#     lineage = all_df[all_df['LineageID'] == lineage_to_show]
+#
+#     # Create masks
+#     cyto = viewer.layers['cytoplasms'].data
+#     nuc = viewer.layers['nuclei'].data
+#     nuc_highlights = np.zeros_like(cyto)
+#     cyto_highlights = np.zeros_like(cyto)
+#
+#     for _,row in lineage.iterrows():
+#         t = row['Frame']
+#         mask = (nuc[t,...] == row['TrackID'])
+#         nuc_highlights[t,mask] = row['TrackID']
+#         mask = (cyto[t,...] == row['TrackID'])
+#         cyto_highlights[t,mask] = row['TrackID']
+#
+#     if 'highlighted_lineage_nuc' in viewer.layers:
+#         viewer.layers.remove('highlighted_lineage_nuc')
+#     if 'highlighted_lineage_cyto' in viewer.layers:
+#         viewer.layers.remove('highlighted_lineage_cyto')
+#     viewer.layers['cytoplasms'].visible = False
+#     viewer.layers['nuclei'].visible = False
+#
+#     viewer.add_labels(cyto_highlights,name='highlighted_lineage_cyto',scale=scale,opacity=0.7,blending='additive')
+#     viewer.add_labels(nuc_highlights,name='highlighted_lineage_nuc',scale=scale,opacity=1,blending='additive')
 
 
 
@@ -209,4 +209,4 @@ lineageIDs = all_df['LineageID']
 
 # viewer.add_tracks(tracks.values,scale = [1,dx,dx])
 viewer.window.add_dock_widget(load_dataset, name="Load dataset",area='left')
-viewer.window.add_dock_widget(highlight_lineage, name="Show lineage",area='left')
+# viewer.window.add_dock_widget(highlight_lineage, name="Show lineage",area='left')

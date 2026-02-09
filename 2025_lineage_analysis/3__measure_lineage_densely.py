@@ -15,7 +15,7 @@ import matplotlib.pylab as plt
 import seaborn as sb
 
 # Specific utils
-from imageUtils import draw_labels_on_image, colorize_segmentation, normalize_exposure_by_axis
+from imageUtils import draw_labels_on_image, normalize_exposure_by_axis
 from trimesh import Trimesh, geometry
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -348,17 +348,27 @@ np.savez(path.join(dirname,'Image flattening/trimesh/bg_surface_timeseries.npz')
 
 #%% Export lineage-colorized tracks
 
-from imageUtils import colorize_segmentation
+from imageUtils import colorize_segmentation_3d
 import tifffile
 
+encoding={'Basal':1,'Suprabasal':2}
+
+cell_type_image = np.zeros_like(tracked_nuc)
+for t,this_frame in all_df.groupby('Frame'):
+    cell_type = {trackID: encoding[t.iloc[0]['Cell type','Meta']]
+                 for trackID,t in this_frame.groupby('TrackID')}
+    cell_type_image[t,...] = colorize_segmentation_3d(tracked_nuc[t,...],cell_type) 
+tifffile.imwrite(path.join(dirname,'colorized/cell_type_nuc.tif'),
+                 cell_type_image, metadata={'axes': 'TZYX'}, compression ='zlib')
+
 lineage_tree = {trackID:t.iloc[0]['LineageID'] for trackID,t in all_df.groupby('TrackID')}
-lineage_image = colorize_segmentation(tracked_cyto,lineage_tree)
+lineage_image = colorize_segmentation_3d(tracked_cyto,lineage_tree)
 
 tifffile.imwrite(path.join(dirname,'Mastodon/lineageID_cyto.tif'),
                  lineage_image, metadata={'axes': 'TZYX'}, compression ='zlib')
 
 lineage_tree = {trackID:t.iloc[0]['LineageID'] for trackID,t in all_df.groupby('TrackID')}
-lineage_image = colorize_segmentation(tracked_nuc,lineage_tree)
+lineage_image = colorize_segmentation_3d(tracked_nuc,lineage_tree)
 
 tifffile.imwrite(path.join(dirname,'Mastodon/lineageID_nuc.tif'),
                  lineage_image, metadata={'axes': 'TZYX'}, compression ='zlib')

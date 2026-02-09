@@ -7,12 +7,13 @@ Created on Thu Aug 11 13:59:29 2022
 """
 
 from glob import glob
+from natsort import natsorted
 import pandas as pd
 from re import findall
 from os import path
 import matplotlib.pyplot as plt
 import numpy as np
-
+from skimage import io
 
 from tqdm import tqdm
 
@@ -27,6 +28,83 @@ def return_prefix(filename):
     assert(len(day) == 1)
 
     return int(day[0])
+
+def align_timecourse_by_curvature(region_dir,
+                                  channel_names,
+                                  spacing,
+                                  decimation_factor=30,
+                                  substr='*. Day*',
+                                  overwrite=False):
+
+    from measurements import get_tissue_curvature_over_grid, get_mesh_from_bm_image
+    from pystackreg import StackReg
+    from skimage import transform, util
+
+    day_directories = natsorted(glob(path.join(region_dir,substr)))
+    TT = len(day_directories)
+
+    Xtrim = slice(200,800)
+    Ytrim = slice(200,800)
+
+    # Calculate mesh + curvature
+    images = {}
+    curvature = np.zeros((TT,1024,1024))
+    mean_heightmap = np.zeros(TT)
+    for t,day in enumerate(day_directories):
+        images[t] = {channel: io.imread(path.join(day,f'{channel}_reg.tif')) for channel in channel_names}
+        heightmap = io.imread(path.join(day,'heightmap.tif'))
+        mean_heightmap[t] = heightmap[Ytrim,Xtrim].mean().astype(int)
+        if path.exists(path.join(day,'mean_curvature.npz')):
+            mean_curvature = np.load(path.join(day,'mean_curvature.npz'))['mean_curvature']
+        else:
+            height_image = io.imread(path.join(day,'height_image.tif'))
+            mesh = get_mesh_from_bm_image(height_image, spacing=spacing, decimation_factor=decimation_factor)
+            curvature[t,...],_ = get_tissue_curvature_over_grid(mesh,
+                                                         image_shape=height_image.shape)
+            np.savez(path.join(day,'mean_curvature.npz'),mean_curvature=curvature[t,...])
+
+    # Stackreg
+    # @todo: Handle circular premutations for non-zero start?
+
+    if path.exists(path.join(region_dir,'Tmats.npz')) and not overwrite:
+        Tmats = np.load(path.join(region_dir,'Tmats.npz'))['Tmats']
+    else:
+        transformed_curvatures = np.zeros_like(curvature)
+        transformed_curvatures[0,...] = curvature[0,...]
+        Tmats = np.zeros((TT,3,3))
+        Tmats[0,...] = np.eye(3)
+        for t,day in enumerate(range(TT-1)):
+            target = transformed_curvatures[t,Ytrim,Xtrim]
+            moving = curvature[t+1][Ytrim,Xtrim]
+
+            sr = StackReg(StackReg.RIGID_BODY)
+            T = sr.register(target,moving)
+            T = transform.EuclideanTransform(T)
+            Tmats[t+1,...] = T
+            # print(np.rad2deg(T.rotation))
+            transformed_curvatures[t+1,...] = transform.warp(curvature[t+1],T)
+
+        np.savez(path.join(region_dir,'Tmats.npz'),Tmats = Tmats)
+
+    # Transform other channels
+    transformed_channels = {}
+    for channel in tqdm(channel_names):
+        shape = images[0][channel].shape
+        this_channel_transformed = []
+        for t in range(TT):
+            this_channel_this_day = images[t][channel]
+            this_channel_this_day_transformed = np.zeros_like(this_channel_this_day)
+            print(this_channel_this_day.shape)
+            for z,im in enumerate(this_channel_this_day):
+                this_channel_this_day_transformed[z,...] = transform.warp(im.astype(float),Tmats[t])
+            this_channel_transformed.append(this_channel_this_day_transformed)
+
+        this_channel_transformed = z_align_ragged_timecourse(this_channel_transformed,mean_heightmap)
+        this_channel_transformed = util.img_as_uint(this_channel_transformed / this_channel_transformed.max())
+        io.imsave(path.join(region_dir,f'{channel}_align.tif'),this_channel_transformed)
+        transformed_channels[channel] = this_channel_transformed
+
+    return transformed_channels,Tmats
 
 def parse_aligned_timecourse_directory(dirname,folder_str='*. */',SPECIAL=[]):
     # Given a directory (of Prairie Instruments time course)
