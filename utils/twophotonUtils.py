@@ -32,9 +32,10 @@ def return_prefix(filename):
 def align_timecourse_by_curvature(region_dir,
                                   channel_names,
                                   spacing,
-                                  decimation_factor=30,
-                                  substr='*. Day*',
-                                  overwrite=False):
+                                  reference_t:int = 0,
+                                  decimation_factor:int=30,
+                                  substr:str='*. Day*',
+                                  overwrite:bool=False):
 
     from measurements import get_tissue_curvature_over_grid, get_mesh_from_bm_image
     from pystackreg import StackReg
@@ -49,13 +50,14 @@ def align_timecourse_by_curvature(region_dir,
     # Calculate mesh + curvature
     images = {}
     curvature = np.zeros((TT,1024,1024))
-    mean_heightmap = np.zeros(TT)
+    heightmaps = {}
     for t,day in enumerate(day_directories):
         images[t] = {channel: io.imread(path.join(day,f'{channel}_reg.tif')) for channel in channel_names}
         heightmap = io.imread(path.join(day,'heightmap.tif'))
-        mean_heightmap[t] = heightmap[Ytrim,Xtrim].mean().astype(int)
-        if path.exists(path.join(day,'mean_curvature.npz')):
-            mean_curvature = np.load(path.join(day,'mean_curvature.npz'))['mean_curvature']
+        heightmaps[t] = heightmap
+        if path.exists(path.join(day,'mean_curvature.npz')) and not overwrite:
+            curvature[t,...] = np.load(path.join(day,'mean_curvature.npz'))['mean_curvature']
+
         else:
             height_image = io.imread(path.join(day,'height_image.tif'))
             mesh = get_mesh_from_bm_image(height_image, spacing=spacing, decimation_factor=decimation_factor)
@@ -64,37 +66,47 @@ def align_timecourse_by_curvature(region_dir,
             np.savez(path.join(day,'mean_curvature.npz'),mean_curvature=curvature[t,...])
 
     # Stackreg
-    # @todo: Handle circular premutations for non-zero start?
-
+    # Reg to a fixed frame (not rolling)
     if path.exists(path.join(region_dir,'Tmats.npz')) and not overwrite:
         Tmats = np.load(path.join(region_dir,'Tmats.npz'))['Tmats']
     else:
         transformed_curvatures = np.zeros_like(curvature)
         transformed_curvatures[0,...] = curvature[0,...]
         Tmats = np.zeros((TT,3,3))
-        Tmats[0,...] = np.eye(3)
-        for t,day in enumerate(range(TT-1)):
-            target = transformed_curvatures[t,Ytrim,Xtrim]
-            moving = curvature[t+1][Ytrim,Xtrim]
+        Tmats[reference_t,...] = np.eye(3)
+
+        target = transformed_curvatures[reference_t,Ytrim,Xtrim]
+
+        for t,day in enumerate(set(np.arange(TT)) - set([reference_t]) ):
+
+            moving = curvature[t][Ytrim,Xtrim]
 
             sr = StackReg(StackReg.RIGID_BODY)
             T = sr.register(target,moving)
             T = transform.EuclideanTransform(T)
             Tmats[t+1,...] = T
-            # print(np.rad2deg(T.rotation))
-            transformed_curvatures[t+1,...] = transform.warp(curvature[t+1],T)
+            print(T)
+            transformed_curvatures[t,...] = transform.warp(curvature[t],T)
 
         np.savez(path.join(region_dir,'Tmats.npz'),Tmats = Tmats)
+
+
+    # Transform heightmap to get the z-alignment
+    mean_heightmap = \
+        [transform.warp(heightmaps[t],Tmats[t])[slice(400,500),slice(400,500)].mean().astype(int)
+            for t in range(TT)]
+    print(mean_heightmap)
 
     # Transform other channels
     transformed_channels = {}
     for channel in tqdm(channel_names):
+
         shape = images[0][channel].shape
         this_channel_transformed = []
         for t in range(TT):
             this_channel_this_day = images[t][channel]
             this_channel_this_day_transformed = np.zeros_like(this_channel_this_day)
-            print(this_channel_this_day.shape)
+            print(f'{t}')
             for z,im in enumerate(this_channel_this_day):
                 this_channel_this_day_transformed[z,...] = transform.warp(im.astype(float),Tmats[t])
             this_channel_transformed.append(this_channel_this_day_transformed)
@@ -103,6 +115,7 @@ def align_timecourse_by_curvature(region_dir,
         this_channel_transformed = util.img_as_uint(this_channel_transformed / this_channel_transformed.max())
         io.imsave(path.join(region_dir,f'{channel}_align.tif'),this_channel_transformed)
         transformed_channels[channel] = this_channel_transformed
+        print('Done')
 
     return transformed_channels,Tmats
 
