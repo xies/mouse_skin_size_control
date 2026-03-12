@@ -220,6 +220,26 @@ all_df['Fate known','Meta'] = \
 
 all_df.to_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics.pkl'))
 
+
+#%% Visusalize on 4D seg:
+    
+from imageUtils import colorize_segmentation_3d
+    
+colorized = np.zeros_like(tracked_nuc)
+for t in range(15):
+    measurement = all_df.loc[t,:]['Delaminate next frame','Meta']
+    colorized[t,...] = colorize_segmentation_3d(tracked_nuc[t,...],
+                          measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/delaminate_next_frame.tif',colorized)
+
+colorized = np.zeros_like(tracked_nuc,dtype=float)
+for t in range(15):
+    measurement = all_df.loc[t,:]['Mean curvature 5um','Measurement tissue geometry']
+    colorized[t,...] = colorize_segmentation_3d(tracked_nuc[t,...],
+                          measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/mean_curvature.tif',colorized)
+
+
 #%% Separate meta and measurement fields and save
 
 # meta_cols = ['TrackID','LineageID','Left','Right','Division','Terminus',

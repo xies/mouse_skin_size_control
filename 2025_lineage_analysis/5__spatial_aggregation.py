@@ -30,8 +30,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 with open(path.join(dirname,'Mastodon/dense_tracks.pkl'),'rb') as file:
     tracks = pkl.load(file)

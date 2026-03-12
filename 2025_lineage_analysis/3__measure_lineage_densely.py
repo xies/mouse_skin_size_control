@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -70,6 +70,7 @@ tracked_cyto = io.imread(path.join(dirname,'Mastodon/tracked_cyto.tif'))
 tracked_manual_cyto = io.imread(path.join(dirname,'Mastodon/tracked_manual_cyto.tif'))
 
 # Load channels
+# k14 = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 h2b = io.imread(path.join(dirname,'Cropped_images/B.tif'))
 h2b = normalize_exposure_by_axis(h2b,axis=0)
 fucci_g1 = io.imread(path.join(dirname,'Cropped_images/R.tif'))
@@ -118,7 +119,7 @@ for t in tqdm(range(15)):
     # from cell-centric coordinates ----
     f = path.join(dirname,f'Image flattening/flat_tracked_cyto/t{t}.tif')
     flat_cyto = io.imread(f)
-
+    
     # Calculate collagen structuring matrix
     collagen_image = io.imread(path.join(dirname,f'Image flattening/flat_collagen/t{t}.tif'))
     (Jxx,Jxy,Jyy) = measure_collagen_structure(collagen_image,blur_sigma=3)
@@ -181,9 +182,11 @@ for t in tqdm(range(15)):
     # ---- 5. Get 3D mesh from the BM image ---
     bm_height_image = io.imread(path.join(dirname,f'Image flattening/height_image/t{t}.tif'))
     bg_mesh = get_mesh_from_bm_image(bm_height_image,spacing=[dz,dx,dx],decimation_factor=30)
-
+    
     # Export mesh: vert, face, value (normals) for napari usage
-    export_mesh(bg_mesh,path.join(dirname,f'Image flattening/trimesh/t{t}.npz'))
+    mesh_curvature = get_tissue_curvature_sparse(bg_mesh,kappa=5)
+    export_mesh(bg_mesh,path.join(dirname,f'Image flattening/trimesh/t{t}.npz'),
+                values = mesh_curvature[0])
 
     closest_mesh_to_cell,_,_ = bg_mesh.nearest.on_surface(dense_coords_3d_um[:,::-1])
     for kappa in [2,5,10,15]:
@@ -202,8 +205,8 @@ for t in tqdm(range(15)):
         
         mean_curve, gaussian_curve = get_tissue_curvature_over_grid(bg_mesh, kappa=kappa,
                                                                  image_shape=nuc_seg.shape)
-        np.savez(path.join(dirname,f'Image flattening/trimesh/mean_curvature_t{t}'),mean_curvature=mean_curve)
-        np.savez(path.join(dirname,f'Image flattening/trimesh/gaussian_curvature_t{t}'),gaussian_curvature=gaussian_curve)
+        np.savez(path.join(dirname,f'Image flattening/trimesh/mean_curvature_t{t}_kappa{kappa}'),mean_curvature=mean_curve)
+        np.savez(path.join(dirname,f'Image flattening/trimesh/gaussian_curvature_t{t}_kappa{kappa}'),gaussian_curvature=gaussian_curve)
         
 
     # --- 6. 3D shape decomposition ---
@@ -340,8 +343,12 @@ for t,f in enumerate(faces_raw):
         faces[t] = f + num_verts_so_far[t-1]
 faces = np.vstack(faces)
 
-values_raw = [m['values'].T for m in mesh_tuples]
-values = np.hstack(values_raw)
+# values_raw = [m['values'].T for m in mesh_tuples]
+# values = np.hstack(values_raw)
+
+
+
+
 
 np.savez(path.join(dirname,'Image flattening/trimesh/bg_surface_timeseries.npz'),
          vertices=vertices,faces=faces,values=values)
@@ -412,16 +419,17 @@ tifffile.imwrite(path.join(dirname,'Mastodon/lineageID_nuc.tif'),
 # pl.save_graphic(path.join(dirname,f'shape_mode_analysis/nuc_modes/comp_{comp}.pdf'))
 
 
-#%% Colorize cell with measurement for visualization
+# %% Colorize cell with measurement for visualization
 
-# t = 0
+from imageUtils import colorize_segmentation_3d
 
-# measurement = all_df.loc[t,:]['Mean curvature - cell coords']
-# measurement /= np.max([measurement.max(),np.abs(measurement.min())])
-# colorized = colorize_segmentation(tracked_nuc[t,...],
-#                       measurement.to_dict(),dtype=float)
-# io.imsave('/Users/xies/Desktop/cell_coords.tif',
-#           util.img_as_int(exposure.rescale_intensity(colorized,in_range=(-1,1)) ) )
+t = 0
+
+measurement = all_df.loc[t,:]['Mean curvature 5um','Measurement tissue geometry']
+measurement /= np.max([measurement.max(),np.abs(measurement.min())])
+colorized = colorize_segmentation_3d(tracked_nuc[t,...],
+                      measurement.to_dict(),dtype=float)
+io.imsave('/Users/xies/Desktop/curvature_t0.tif',colorized)
 
 
 # measurement = all_df.loc[t,:]['Mean curvature']

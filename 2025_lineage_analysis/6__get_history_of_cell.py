@@ -14,7 +14,7 @@ import matplotlib.pylab as plt
 
 # Specific utils
 from imageUtils import draw_labels_on_image, draw_adjmat_on_image, \
-    most_likely_label, colorize_segmentation
+    most_likely_label
 from mathUtils import get_neighbor_idx, argsort_counter_clockwise
 
 # General utils
@@ -25,8 +25,8 @@ dx = 0.25
 dz = 1
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 all_df = pd.read_pickle(path.join(dirname,'Mastodon/single_timepoints_dynamics_aggregated_lookback.pkl'))
 all_trackIDs = all_df.reset_index()
