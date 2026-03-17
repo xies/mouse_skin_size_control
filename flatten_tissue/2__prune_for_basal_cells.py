@@ -24,12 +24,13 @@ from SelectFromCollection import SelectFromCollection
 
 '''
 
-dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
+# dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/NMS/Ablation time courses/M1 M2 K14 Rbfl DOB 06-01-2023/01-13-2024 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
 # dirname = '/Volumes/T7/01-13-2023 Ablation K14Cre H2B FUCCI/Black right clipped DOB 06-30-2023/R1'
+dirname = '/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Two photon/Shared/K10 paw/K10-R4/Cropped'
  
 #%%
 
-T = 7
+T = 1
 
 # predictions = io.imread(path.join(dirname,'im_seq_decon/t2_decon_masks.tif'))
 # heightmaps = io.imread(path.join(dirname,'im_seq_decon/t2_height_map.tif'))
@@ -41,8 +42,10 @@ FLAT_DIR = 'Image flattening/heightmaps'
 _tmp = []
 for t in tqdm(range(T)):
     
-    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
-    heightmaps = io.imread(path.join(dirname,f'{FLAT_DIR}/t{t}.tif'))
+    # predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
+    # heightmaps = io.imread(path.join(dirname,f'{FLAT_DIR}/t{t}.tif'))
+    predictions = io.imread(path.join(dirname,'R_cp_masks_cleaned.tif'))
+    heightmaps = io.imread(path.join(dirname,'heightmap.tif'))
     
     table = pd.DataFrame(measure.regionprops_table(predictions,properties={'label','area','centroid','bbox'}))
     
@@ -91,7 +94,7 @@ OUT_SUBDIR = 'cellpose_clean'
 
 for t in tqdm(range(T)):
     
-    predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
+    # predictions = io.imread(path.join(dirname,f'{SEG_DIR}/t{t}_3d_nuc/t{t}_masks.tif'))
     
     this_cellIDs = df_[df_['Time'] == t]['label']
     

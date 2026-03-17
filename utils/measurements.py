@@ -202,39 +202,13 @@ def make_image_from_heightmap(heightmap,maxZ):
     # NB: tried using np.take and np.choose, doesn't work bc of size limit. DO NOT use np.take
     height_image = np.zeros((maxZ,YY,XX),dtype=np.uint16)
     for x in range(XX):
-        for y in range(XX):
+        for y in range(YY):
             height_image[heightmap[y,x],y,x] = 1
     return height_image
 
-def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z_shift:int=15,return_gradient:bool=False):
-    '''
-    # see notebook: find_basement_membrane.ipynb
-
-    INPUT:
-        imstack: 3D stack
-        sigmas: [z,y,x] Gaussian blur kernel size
-        gradient_sign: +1 for 'collagen' and -1 for 'keratinocytes'
-        method: 'threshold' (where normalized graident > thresh) or 'maximum' (max of gradient)
-        threshold: default 0.2
-        z_shift: default +15, +z shifts the image basally
-        return_gradient: Default False
-    OUTPUT:
-        heigtmap - 2D array of the z-index of the basement membrane
-        height_image - 3D image of the BM
-    '''
-
-    from scipy.ndimage import gaussian_filter
+def fix_holes_in_height_image(height_image,image_shape):
     from scipy import interpolate
-    from imageUtils import get_z_gradient, find_z_of_maximal_gradient
-    assert(imstack.ndim == 3)
-    ZZ,YY,XX = imstack.shape
-
-    im_z_blur = gaussian_filter(imstack.astype(float),
-                            sigma=sigmas)
-    im_diff = get_z_gradient(im_z_blur,gradient_sign)
-    Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method=method,threshold=0.2)
-    height_image = make_image_from_heightmap(Iz,ZZ)
-
+    ZZ,YY,XX = image_shape
     # Find the single connected region with the largest area, from which to
     # reconstruct the basal surface/
     L = measure.label(height_image,connectivity=2)
@@ -249,6 +223,47 @@ def get_bm_image(imstack,sigmas,gradient_sign,method='threshold',threshold=0.2,z
 
     # Remake the height image
     height_image = make_image_from_heightmap(fixed_heightmap,ZZ)
+
+    return fixed_heightmap,height_image
+
+def get_bm_image(imstack,sigmas,gradient_sign,
+                 method='threshold',threshold=0.2,z_shift:int=15,second_diff=False,return_gradient:bool=False):
+    '''
+    # see notebook: find_basement_membrane.ipynb
+
+    INPUT:
+        imstack: 3D stack
+        sigmas: [z,y,x] Gaussian blur kernel size
+        gradient_sign: +1 for 'collagen' and -1 for 'keratinocytes'
+        method: 'threshold' (where normalized graident > thresh), 'maximum' (max of gradient)
+        threshold: default 0.2
+        z_shift: default +15, +z shifts the image basally
+        return_gradient: Default False
+    OUTPUT:
+        heigtmap - 2D array of the z-index of the basement membrane
+        height_image - 3D image of the BM
+    '''
+
+    from scipy.ndimage import gaussian_filter
+    from imageUtils import get_z_gradient, find_z_of_maximal_gradient
+    assert(imstack.ndim == 3)
+    ZZ,YY,XX = imstack.shape
+
+    im_z_blur = gaussian_filter(imstack.astype(float),
+                            sigma=sigmas)
+    im_diff = get_z_gradient(im_z_blur,gradient_sign)
+
+    if second_diff:
+        im_diff = np.diff(im_diff,axis=0)
+
+    Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method=method,threshold=threshold)
+    
+    if second_diff:
+        Iz += 5
+
+    height_image = make_image_from_heightmap(Iz,ZZ)
+    fixed_heightmap,height_image = fix_holes_in_height_image(height_image,image_shape=imstack.shape)
+
 
     if return_gradient:
         return fixed_heightmap,height_image,im_diff
@@ -327,16 +342,16 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     ZZ,YY,XX = image_shape
     # Match the 'pixel grid' to the decimated 'microns grid' used by Trimesh
     pixel_gridX = np.arange(XX)
+    pixel_gridY = np.arange(YY)
     # gridY,gridX = np.meshgrid()
     pixel_gridX_crop = pixel_gridX
-    pixel_gridY_crop = pixel_gridX
+    pixel_gridY_crop = pixel_gridY
 
     micron_Xmin,micron_Xmax = mesh.vertices[:,0].min(),mesh.vertices[:,1].max()
     micron_Ymin,micron_Ymax = mesh.vertices[:,1].min(),mesh.vertices[:,0].max()
 
-    Ngrid = XX
-    micron_gridX = np.linspace(0,micron_Xmax,Ngrid)
-    micron_gridY = np.linspace(0,micron_Ymax,Ngrid)
+    micron_gridX = np.linspace(0,micron_Xmax,XX)
+    micron_gridY = np.linspace(0,micron_Ymax,YY)
     micron_gridXX,micron_gridYY = np.meshgrid( micron_gridX, micron_gridY)
 
     interp = NearestNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), curvature)
