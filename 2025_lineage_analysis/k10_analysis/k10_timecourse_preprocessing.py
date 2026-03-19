@@ -47,8 +47,8 @@ for t,B in tqdm(enumerate(ragged_B)):
                                            return_gradient=True)
     heightmaps.append(heightmap)
     height_images.append(height_image)
-    io.imsave(path.join(dirname,f'Raw images/heightmaps/t{t}.tif'),heightmap)
-    io.imsave(path.join(dirname,f'Raw images/height_images/t{t}.tif'),height_image)
+    # io.imsave(path.join(dirname,f'Raw images/heightmaps/t{t}.tif'),heightmap)
+    # io.imsave(path.join(dirname,f'Raw images/height_images/t{t}.tif'),height_image)
     # io.imsave(path.join(dirname,f't{t}_blur.tif'),blur)
 
 #%%
