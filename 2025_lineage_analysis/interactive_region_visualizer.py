@@ -150,11 +150,14 @@ def load_dataset(dirname = (dirnames[0])):
     faces = data['faces']
     values = data['values']
 
+    mean_curve = np.array([io.imread(path.join(dirname,f'Image flattening/trimesh/t{t}_mean_curvature.tif')) for t in range(15)])
+
     viewer.add_image(R,scale = scale, blending='additive', colormap='red',rendering='attenuated_mip',visible=False)
     viewer.add_image(B,scale = scale, blending='additive', colormap='blue',rendering='attenuated_mip')
     viewer.add_image(G,scale = scale, blending='additive', colormap='gray',visible=True,rendering='attenuated_mip',attenuation=1)
     viewer.add_surface((vertices,faces,values),scale=[1,1,1],colormap='vanimo',opacity=0.6)
     viewer.layers['Surface'].contrast_limits = [-.5,.5]
+
     viewer.add_image(basement_mem,scale=[dz,dx,dx],blending='additive',colormap='gray',visible=False)
     viewer.add_labels(connectivity,scale = scale,visible=False,blending='additive')
     viewer.add_labels(nuc_segmentation,scale = scale,name='nuclei',opacity=1,blending='additive')

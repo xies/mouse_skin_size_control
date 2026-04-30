@@ -36,7 +36,7 @@ from measurements import get_bm_image
 
 dz = 0.5; dx= 0.3
 sigmas = [5/dz,5/dx,5/dx]
-
+cb
 heightmaps = []
 height_images = []
 

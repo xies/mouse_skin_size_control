@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -97,7 +97,7 @@ for t in tqdm(range(15)):
                                           properties=['label','area']))
     df_manual = df_manual.rename(columns={'label':'TrackID',
                                           'area':'Manual cell volume'}).set_index('TrackID')
-    df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Meta ']])
+    df_manual.columns = pd.MultiIndex.from_product([df_manual.columns, ['Meta']])
     
     df = pd.merge(left=df_nuc,right=df_cyto,left_on='TrackID',right_on='TrackID',how='left')
     df = pd.merge(left=df,right=df_pos,left_on='TrackID',right_on='TrackID',how='left')
@@ -212,14 +212,23 @@ for t in tqdm(range(15)):
     # --- 6. 3D shape decomposition ---
     
     # 2a: Estimate cell and nuclear mesh using spherical harmonics
+    # Cyto
     sh_coefficients = estimate_sh_coefficients(cyto_seg, lmax=LMAX, spacing = [dz,dx,dx],)
+    cytoSA = sh_coefficients['shcoeffs_surface_area']
+    sh_coefficients = sh_coefficients.drop(columns='shcoeffs_surface_area')
     sh_coefficients.columns = pd.MultiIndex.from_product(
         ['cyto_' + sh_coefficients.columns,['Measurement shcoeff']])
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
+    df[('Cell surface area','Measurement cell geometry')] = cytoSA
+    
+    # Nuc
     sh_coefficients = estimate_sh_coefficients(nuc_seg, lmax=LMAX, spacing = [dz,dx,dx])
+    nucSA = sh_coefficients['shcoeffs_surface_area']
+    sh_coefficients = sh_coefficients.drop(columns='shcoeffs_surface_area')
     sh_coefficients.columns = pd.MultiIndex.from_product(
         ['nuc_' + sh_coefficients.columns,['Measurement shcoeff']])
     df = pd.merge(df,sh_coefficients,left_on='TrackID',right_on='TrackID',how='left')
+    df[('Nuclear surface area','Measurement nuclear geometry')] = cytoSA
     
     
     #----- Use macrophage annotations to find distance to them -----
@@ -308,6 +317,7 @@ for name,region in regions.items():
     # Drop old cofficients
     region_pc = region_pc.drop(columns=nuc_coef_cols+cyto_coef_cols)
     region_pc = region_pc.drop(columns='Region')
+    
     # Save
     region_pc.to_csv(path.join(dirnames[name],'Mastodon/single_timepoints_pca.csv'))
 

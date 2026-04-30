@@ -257,7 +257,7 @@ def get_bm_image(imstack,sigmas,gradient_sign,
         im_diff = np.diff(im_diff,axis=0)
 
     Iz = find_z_of_maximal_gradient(im_diff/im_diff.max(),z_shift,method=method,threshold=threshold)
-    
+
     if second_diff:
         Iz += 5
 
@@ -417,7 +417,7 @@ def measure_nuclear_geometry_from_regionprops(nuc_labels, spacing = [1,1,1]):
                             })
 
     df = df.set_index('TrackID')
-    df['Nuclear height'] = df['Nuclear bbox top'] - df['Nuclear bbox bottom']
+    df['Nuclear height'] = df['Nuclear bbox bottom'] - df['Nuclear bbox top']
     df = df.drop(columns=['Nuclear bbox top','Nuclear bbox bottom'])
 
     return df

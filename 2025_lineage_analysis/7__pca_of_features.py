@@ -54,10 +54,15 @@ for trackID,track in all_tracks.items():
                    ('G1 duration','Measurement time')] = (track['Cell cycle phase','Meta'] == 'G1').sum()*12
         if track.iloc[0]['Complete cycle','Meta']:
             all_df.loc[zip(track['Frame'].values,track['TrackID'].values),
-                       ('SG2 duration time','Measurement')] = (track['Cell cycle phase','Meta'] == 'SG2').sum()*12
+                       ('SG2 duration','Measurement time')] = (track['Cell cycle phase','Meta'] == 'SG2').sum()*12
         # track['G1 duration'] = (track['Cell cycle phase','Meta'] == 'G1').sum()*12
         # track['SG2 duration'] = (track['Cell cycle phase','Meta'] == 'SG2').sum()*12
-        
+    if track.iloc[0]['Will divide','Meta']:
+        div_frame = track[track['Divide next frame','Meta']]
+        all_df.loc[zip(track['Frame'].values,track['TrackID'].values),
+                       ('Time to division','Measurement time')] = \
+            track['Time'].values - div_frame['Time'].values
+
 
 #%% Isolate time points of interest. Don't need to know the fate for now for the PCA part.
 
@@ -77,6 +82,8 @@ divisions = basals[basals[('Divide next frame','Meta')]].copy()
 divisions = divisions[~divisions['Border','Meta'].astype(bool)]
 divisions = divisions.reset_index()
 print(f'Number of non-border mother divisions (daughter fate known or unkonwn): {len(divisions)}')
+
+# div_12 = basals[basals['Time to division','Measurement time'] == -12]
 
 prev_div_frame = [get_prev_or_next_frame(basals,f,direction='prev') for _,f in divisions.iterrows()]
 prev_div_frame = pd.concat(prev_div_frame,axis=1,ignore_index=False).T
@@ -127,6 +134,7 @@ prev7_div_frame = prev7_div_frame[~prev7_div_frame['Border','Meta'].astype(bool)
 for col in df.columns:
     prev7_div_frame[col] = prev7_div_frame[col].astype(df[col].dtype)
 print(f'Number of 84h prior to divisions: {len(prev7_div_frame)}')
+
 
 
 divisions = divisions.set_index(['Frame','TrackID'])
