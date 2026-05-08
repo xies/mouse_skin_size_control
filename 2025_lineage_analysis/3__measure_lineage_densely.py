@@ -36,8 +36,8 @@ KAPPA = 5 # microns
 footprint = morphology.cube(3)
 
 # Filenames
-dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
-# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
+# dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R1/'
+dirname = '/Users/xies/OneDrive - Stanford/Skin/Mesa et al/W-R2/'
 
 #%%
 
@@ -296,6 +296,7 @@ pca = decomposition.PCA()
 PCA = pca.fit_transform(X)
 components = pd.DataFrame(pca.components_,index=[f'PC{i}' for i in range(72)],columns=nuc_coef_cols+cyto_coef_cols)
 components.to_csv('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Lineage models/Dataset pickles/pca_components.csv')
+pd.DataFrame(pca.explained_variance_,columns=['Variance']).to_csv('/Users/xies/Library/CloudStorage/OneDrive-Stanford/Skin/Mesa et al/Lineage models/Dataset pickles/pca_explained_variance.csv')
 
 component_cutoff = 9
 

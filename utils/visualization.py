@@ -5,6 +5,69 @@ from os import path
 
 #--- Bookkeepers ---
 from imageUtils import trim_multimasks_to_shared_bounding_box
+from aicsshparam import shtools
+import pyvista as pv
+
+def reconstruct_mesh(coeffs,lmax=5):
+    '''
+    Input: coeffs in dict format as output by aicspharam
+    '''
+    coeffs = coeffs.to_dict()
+    coeffs = {'_'.join(k.split('_')[1:3]):v for k,v in coeffs.items()}
+    # Convert to matrix
+    mat = np.zeros((2, lmax + 1, lmax + 1), dtype=np.float32)
+    for L in range(lmax):
+        for M in range(L + 1):
+            for cid, C in enumerate(["C", "S"]):
+                key = f"shcoeffs_L{L}M{M}{C}"
+                if key in coeffs.keys():
+                    mat[cid, L, M] = coeffs[key]
+                else:
+                    mat[cid,L,M] = 0
+    mesh = shtools.get_even_reconstruction_from_coeffs(mat)
+    return mesh
+
+
+def plot_cells_side_by_side(cells,num_cols=None):
+    '''
+    Plots a list of cells (cell['cyto'] and cell['nuc'] are mesh objects) using pyvista
+    num_grid controls the number of cells on one row
+    '''
+    num_cells = len(cells)
+    if num_cols is None:
+        num_cols = num_cells
+    num_rows = num_cells // num_cols
+
+    pl = pv.Plotter(shape=(num_rows,num_cols))
+    for i in range(num_cells):
+        if i >= num_cells:
+            continue
+        pl.subplot( i // num_cols ,i % num_cols)
+        if 'nuc' in cells[i]:
+            pl.add_mesh(pv.wrap(cells[i]['nuc']),color='r', opacity=0.5)
+        pl.add_mesh(pv.wrap(cells[i]['cyto']),color='y', opacity=0.4)
+        pl.add_axes()
+    pl.link_views()
+    pl.view_isometric()
+    pv.Line((800, 400, 0), (800, 400, 20))
+    pl.show()
+
+def reconstruct_mesh_from_averaged_coeffs(index,coeffs,cyto_col,nuc_col):
+    '''
+
+    '''
+    mean_coeffs = coeffs.loc[index].mean()
+    mean_cyto = mean_coeffs[cyto_col]
+    mean_nuc = mean_coeffs[nuc_col]
+    print(type(mean_coeffs))
+    avg_cell = {'cyto':reconstruct_mesh(mean_cyto)[0],
+                'nuc':reconstruct_mesh(mean_nuc)[0],
+               }
+    return avg_cell
+
+def get_sorted_cell_indexes(df,feature):
+    return df.droplevel(axis=1,level=1).dropna(subset=feature).sort_values(feature).index
+
 
 def extract_nuc_and_cell_mask_from_idx(idx : tuple,
                                         tracked_nuc_by_region:dict,
