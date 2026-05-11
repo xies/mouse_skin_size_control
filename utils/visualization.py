@@ -44,8 +44,8 @@ def plot_cells_side_by_side(cells,num_cols=None):
             continue
         pl.subplot( i // num_cols ,i % num_cols)
         if 'nuc' in cells[i]:
-            pl.add_mesh(pv.wrap(cells[i]['nuc']),color='r', opacity=0.5)
-        pl.add_mesh(pv.wrap(cells[i]['cyto']),color='y', opacity=0.4)
+            pl.add_mesh(pv.wrap(cells[i]['nuc']),color='#3ec9e8', opacity=0.5)
+        pl.add_mesh(pv.wrap(cells[i]['cyto']),color='#ce205a', opacity=0.4)
         pl.add_axes()
     pl.link_views()
     pl.view_isometric()
