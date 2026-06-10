@@ -27,6 +27,20 @@ def reconstruct_mesh(coeffs,lmax=5):
     mesh = shtools.get_even_reconstruction_from_coeffs(mat)
     return mesh
 
+def export_mesh_screenshot(mesh,filename):
+    '''
+    Export
+    '''
+    pl = pv.Plotter()
+    if 'nuc' in mesh:
+        pl.add_mesh(pv.wrap(mesh['nuc']).flip_z(inplace=False),color='#B2BEB5', opacity=0.5)
+    pl.add_mesh(pv.wrap(mesh['cyto']).flip_z(inplace=False),color='#36454F', opacity=0.4)
+
+    pl.camera.zoom(0.5)
+    pv.Line((800, 400, 0), (800, 400, 20))
+    pl.view_yz()
+    pl.screenshot(filename,window_size=(240,240))
+
 
 def plot_cells_side_by_side(cells,num_cols=None):
     '''
@@ -44,13 +58,61 @@ def plot_cells_side_by_side(cells,num_cols=None):
             continue
         pl.subplot( i // num_cols ,i % num_cols)
         if 'nuc' in cells[i]:
-            pl.add_mesh(pv.wrap(cells[i]['nuc']),color='#3ec9e8', opacity=0.5)
-        pl.add_mesh(pv.wrap(cells[i]['cyto']),color='#ce205a', opacity=0.4)
+            pl.add_mesh(pv.wrap(cells[i]['nuc']).flip_z(inplace=False),color='#B2BEB5', opacity=0.5)
+        pl.add_mesh(pv.wrap(cells[i]['cyto']).flip_z(inplace=False),color='#36454F', opacity=0.4)
         pl.add_axes()
     pl.link_views()
     pl.view_isometric()
     pv.Line((800, 400, 0), (800, 400, 20))
+    pl.hide_axes()
     pl.show()
+
+def plot_trajectory(cells:list, x:str,y:str,color:str,color_specs:dict,kwgs:dict={}):
+    '''
+    Quiver plot the trajectories of cells by 2 given fields
+    INPUT: cells - list of dataframes grouped by individual cells
+    '''
+    import matplotlib.pyplot as plt
+
+    for cell in cells:
+        assert(len(cell) > 1)
+        # Line plot until the last point
+
+        X = cell[x].values; Y = cell[y].values
+        C = color_specs[cell.iloc[0][color]]
+
+        plt.plot(X[0:-1],Y[:-1],color=C,alpha=0.1,linewidth=3)
+        plt.quiver(X[-2],Y[-2],
+                   X[-1]-X[-2],Y[-1]-Y[-2],
+                   color=C,alpha=0.1)
+
+    plt.show()
+
+def plot_trajectory_as_streamlines(df,x,y,x_bin_edges,y_bin_edges,Nx=20,Ny=20):
+    from scipy import stats
+    from measurements import get_prev_or_next_frame_dict_retrieve
+
+    X = np.linspace(x_bin_edges[0],x_bin_edges[1],Nx)
+    Y = np.linspace(y_bin_edges[0],y_bin_edges[1],Ny)
+    XX,YY = np.meshgrid(X,Y)
+
+    res = stats.binned_statistic_2d(np.squeeze(df[x].values),
+                                    np.squeeze(df[y].values),
+                              values=None,bins=[X,Y],statistic='count',expand_binnumbers=True)
+    which_bin = res.binnumber
+
+    UU = np.zeros(XX.shape)
+    VV = np.zeros(YY.shape)
+    for i,x in enumerate(X):
+        for j,y in enumerate(Y):
+            Ithis_bin = np.where( (which_bin[0,:] == j) & (which_bin[1,:] == i))[0]
+            if len(Ithis_bin) > 2:
+                cell_frame_in_this_bin = df.iloc[Ithis_bin]
+                next_frame = get_prev_or_next_frame_dict_retrieve(df,cell_frame_in_this_bin)
+                dK,dL = np.squeeze((next_frame - cell_frame_in_this_bin).median().values)
+                UU[i,j] = dK; VV[i,j] = dL
+
+    return XX,YY,UU,VV
 
 def reconstruct_mesh_from_averaged_coeffs(index,coeffs,cyto_col,nuc_col):
     '''

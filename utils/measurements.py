@@ -127,56 +127,6 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
 
     return A
 
-def reslice_by_heightmap(im,heightmap,top_border:int,bottom_border:int):
-    '''
-
-    Parameters
-    ----------
-    im : np.array
-        3D image to reslice
-    height map : np.array
-        2D heightmap
-    top_border : int
-        how much 'higher' to slice
-    bottom_border : int
-        how much 'lower' to slice
-    touching_threshold : int, optional
-        Minimum number of overlap pixels. The default is 2.
-
-    Returns
-    -------
-    flat : np.array
-        Resliced image
-
-    '''
-
-    assert(im.ndim == 3)
-    assert(heightmap.ndim == 2)
-
-    ZZ,YY,XX = im.shape
-
-    flat = np.zeros((-top_border + bottom_border,XX,XX),dtype=im.dtype)
-
-    Iz_top = heightmap + top_border
-    Iz_bottom = heightmap + bottom_border
-
-    # @todo: use np.take_along_axis with broadcast + np.clip
-    for x in range(XX):
-        for y in range(YY):
-
-            flat_indices = np.arange(0,-top_border+bottom_border)
-
-            z_coords = np.arange(Iz_top[y,x],Iz_bottom[y,x])
-            # sanitize for out-of-bounds
-            z_coords[z_coords < 0] = 0
-            z_coords[z_coords >= ZZ] = ZZ-1
-            I = (z_coords > 0) & (z_coords < ZZ)
-
-            flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
-            flat[flat_indices[I],y,x] = im[z_coords[I],y,x]
-
-    return flat
-
 # Suppress batch effects
 def scale_by_region(df):
 
@@ -269,6 +219,52 @@ def get_bm_image(imstack,sigmas,gradient_sign,
         return fixed_heightmap,height_image,im_diff
     else:
         return fixed_heightmap, height_image
+def find_subgraphs_of_connected_local_maxima(im,return_full_graph=False):
+
+    import networkx as nx
+    from tqdm import tqdm
+    from scipy import signal
+
+    minima_at_pixel = {(x,y) : signal.argrelmax(im[:,x,y])[0] for x in range(512) for y in range(512)}
+
+    vertices = [list(zip([x]*len(m),[y]*len(m),m)) for (x,y),m in minima_at_pixel.items()]
+    vertices = [x for xs in vertices for x in xs] # Flatten out list of lists
+
+    G = nx.Graph()
+    G.add_nodes_from(vertices)
+
+    # Graph is this: (x,y, minima_z)
+    # For each vertex, add an edge to the 'neighboring'  xy,minima pixels if the z-value is within +-1 of current z
+    for i in tqdm(range(512)):
+        for j in range(512):
+            for k in range(len(minima_at_pixel[i,j])):
+                current_vert = minima_at_pixel[i,j][k]
+                neighbors = [(i+di,j+dj) for di in [-1,0,1] for dj in [-1,0,1]
+                             if i+di >=0 and i+di < 512 and j+dj >=0 and j+dj < 512]
+                for neigh in neighbors:
+                    delta = [current_vert - minima_at_pixel[neigh[0],neigh[1]]]
+                    I = np.abs(delta) <= 1
+                    if I.sum() > 0:
+                        for hit in I:
+                            # print((neigh[0], neigh[1],minima_at_pixel[neigh[0],neigh[1]][hit][0]))
+                            G.add_edge((i,j,current_vert),
+                                       (neigh[0], neigh[1],minima_at_pixel[neigh[0],neigh[1]][hit][0]))
+    S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
+    if return_full_graph:
+        return S,G
+    else:
+        return S
+
+def reconstruct_surface_from_subgraph(G,im_shape):
+    from scipy import sparse
+    surface2reconstruct = np.array(list(G.nodes))
+    surf = sparse.coo_array((surface2reconstruct[:,2],(surface2reconstruct[:,0],surface2reconstruct[:,1])),
+                        shape=[im_shape[1],im_shape[2]]).todense()
+
+    height_image = make_image_from_heightmap(surf,im_shape[0])
+    Iz_fixed,height_image_fixed = fix_holes_in_height_image(height_image,im_shape)
+
+    return Iz_fixed, height_image_fixed
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 
@@ -938,6 +934,19 @@ def get_prev_or_next_frame(df,frame_track_of_interest,direction='next',increment
         return retrieved_frame
     else:
         return None
+
+def get_prev_or_next_frame_dict_retrieve(df,df_subset,increment:int=1):
+    '''
+    Retrieve the corresponding 'next' or 'prev' frame, given the (Frame,TrackID) multiindexed df
+    '''
+    full_dict = df.to_dict('index')
+    nan_placeholders = {col:np.nan for col in df.columns}
+    next_frames = [
+        full_dict[(t+increment, trackID)] if (t+increment,trackID) in full_dict
+        else nan_placeholders
+        for (t,trackID) in df_subset.index
+        ]
+    return pd.DataFrame(next_frames,df_subset.index)
 
 def map_tzyx_to_labels(coords, tracks:np.array ):
 
