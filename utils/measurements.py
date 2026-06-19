@@ -363,8 +363,10 @@ def export_mesh(mesh,filename,values=None):
     vertices = np.asarray(mesh.vertices[:,[2,1,0]])
     faces = np.asarray(mesh.faces)
     if values is None:
-        normals = geometry.mean_vertex_normals(len(mesh.vertices),mesh.faces,mesh.face_normals)
-        values = np.dot(normals,[1,-1,1])
+        # normals = geometry.mean_vertex_normals(len(mesh.vertices),mesh.faces,mesh.face_normals)
+        # values = np.dot(normals,[1,-1,1])
+        values = get_tissue_curvature_sparse(mesh)[0]
+        print(values)
     np.savez(filename,
               vertices = vertices,faces = faces,values = values)
 
