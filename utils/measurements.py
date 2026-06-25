@@ -334,7 +334,7 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
 
     from scipy.interpolate import NearestNDInterpolator
 
-    curvature,gaussian_curvature = get_tissue_curvature_sparse(mesh,kappa=6)
+    curvature,gaussian_curvature = get_tissue_curvature_sparse(mesh,kappa=kappa)
     ZZ,YY,XX = image_shape
     # Match the 'pixel grid' to the decimated 'microns grid' used by Trimesh
     pixel_gridX = np.arange(XX)
