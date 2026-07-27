@@ -147,21 +147,55 @@ def decompose_affine_3d(matrix: np.ndarray) -> dict:
     }
 
 
-def decompose_layer_transform(layer) -> dict:
+def _full_affine_matrix(layer) -> np.ndarray:
     """
-    Given a napari Image (or any) layer, extract and decompose its affine
-    transform relative to the world coordinate system.
+    Return the full ndim+1 square data->world affine matrix for a layer,
+    composed from public API properties only.
 
-    napari layers expose:
-        layer.affine          -> napari.utils.transforms.Affine
-        layer.affine.affine_matrix -> ndarray, shape (ndim+1, ndim+1)
+    napari's transform chain has two stages relevant to us:
 
-    The matrix maps DATA coordinates -> WORLD coordinates.
-    To get the transform of a moving layer relative to a fixed reference:
-        T_relative = inv(T_reference) @ T_moving
+      data2physical : encodes layer.scale and layer.translate
+                      M_d2p = diag([*scale, 1]),  translation in last col
+      physical2world: encodes layer.affine (GUI transform mode updates this)
+                      M_affine = layer.affine.affine_matrix
+
+    Full matrix:  M_full = M_affine @ M_d2p
+
+    Why not use layer._transforms.simplified?
+      That internal chain also includes a tile2data stage for multiscale
+      layers (and other internals), which adds extra dimensions and is a
+      private API.  Building from public properties is safer and clearer.
+
+    Why not use layer.affine.affine_matrix alone?
+      GUI transform mode (double-click drag) updates layer.affine ONLY.
+      layer.scale and layer.translate remain unchanged (napari issue #6446).
+      Reading layer.affine alone therefore misses any pre-existing voxel
+      spacing or translate, corrupting the z-shift for anisotropic data.
     """
     ndim = layer.ndim
-    matrix = np.array(layer.affine.affine_matrix)
+    n = ndim + 1
+
+    # physical->world: the user-set affine (updated by GUI transform mode)
+    M_affine = np.array(layer.affine.affine_matrix)  # (n x n)
+
+    # data->physical: voxel scale and translate (set by layer.scale / .translate)
+    M_d2p = np.eye(n)
+    M_d2p[:ndim, :ndim] = np.diag(np.asarray(layer.scale))
+    M_d2p[:ndim,  ndim] = np.asarray(layer.translate)
+
+    return M_affine @ M_d2p
+
+
+def decompose_layer_transform(layer) -> dict:
+    """
+    Given a napari Image (or any) layer, extract and decompose its full
+    data->world transform using public API properties only.
+
+    See _full_affine_matrix() for why we compose from layer.affine,
+    layer.scale, and layer.translate rather than reading a single property.
+    """
+    ndim = layer.ndim
+    matrix = _full_affine_matrix(layer)
 
     if ndim == 2:
         return decompose_affine_2d(matrix)
@@ -173,11 +207,16 @@ def decompose_layer_transform(layer) -> dict:
 
 def relative_transform(ref_layer, mov_layer) -> np.ndarray:
     """
-    Compute the affine matrix that maps moving -> reference coordinates.
-    T_rel = inv(T_ref) @ T_mov
+    Compute the affine matrix that maps moving data coords -> reference data coords.
+    T_rel = inv(T_ref_full) @ T_mov_full
+
+    Uses _full_affine_matrix() for both layers so that layer.scale and
+    layer.translate are included alongside the GUI-set layer.affine.
+    A pure z-translation set via layer.translate is therefore correctly
+    captured and will be reproduced by _apply_transform_and_crop().
     """
-    T_ref = np.array(ref_layer.affine.affine_matrix)
-    T_mov = np.array(mov_layer.affine.affine_matrix)
+    T_ref = _full_affine_matrix(ref_layer)
+    T_mov = _full_affine_matrix(mov_layer)
     return np.linalg.inv(T_ref) @ T_mov
 
 
@@ -233,22 +272,38 @@ def make_widget():
             # Keep previous selection if still present, else fall back to first
             ref_combo.value = previous if previous in names else names[0]
 
+    def _connect_layer_name_event(layer):
+        """Connect _refresh_layers to a single layer's name-change event."""
+        try:
+            layer.events.name.connect(_refresh_layers)
+        except AttributeError:
+            pass
+
+    def _disconnect_layer_name_event(layer):
+        try:
+            layer.events.name.disconnect(_refresh_layers)
+        except Exception:
+            pass
+
+    def _on_layer_inserted(event):
+        _connect_layer_name_event(event.value)
+        _refresh_layers()
+
+    def _on_layer_removed(event):
+        _disconnect_layer_name_event(event.value)
+        _refresh_layers()
+
     def _connect_viewer_events():
         """Hook into napari's layer-list signals once the viewer is available."""
         viewer = current_viewer()
         if viewer is None:
             return
-        # These signals fire whenever layers are inserted, removed, or renamed
-        viewer.layers.events.inserted.connect(_refresh_layers)
-        viewer.layers.events.removed.connect(_refresh_layers)
+        viewer.layers.events.inserted.connect(_on_layer_inserted)
+        viewer.layers.events.removed.connect(_on_layer_removed)
         viewer.layers.events.reordered.connect(_refresh_layers)
-        # Layer renaming emits a 'name' event on the layer itself;
-        # we connect to the LayerList's per-layer 'changed' signal which
-        # covers renames in napari >= 0.4.18
-        try:
-            viewer.layers.events.changed.connect(_refresh_layers)
-        except AttributeError:
-            pass  # older napari: rename updates handled by inserted/removed
+        # Connect name events for layers already present
+        for layer in viewer.layers:
+            _connect_layer_name_event(layer)
         _refresh_layers()  # populate immediately
 
     # ---- Extract callback --------------------------------------------------
@@ -510,17 +565,26 @@ def _apply_transform_and_crop(
     z_pad: int = 0,
 ) -> np.ndarray:
     """
-    Warp *data* with *affine* (4×4, ZYX) and crop/pad to the output shape.
+    Warp *data* with *affine* (4×4, ZYX, data→reference) and crop to output shape.
 
-    Uses scipy.ndimage.affine_transform, which maps OUTPUT coordinates back
-    to INPUT coordinates via the *inverse* of the affine.  The output array
-    is sized to (ref_shape[0] + 2*z_pad, ref_shape[1], ref_shape[2]) so that
-    z_pad slices of border are added symmetrically above and below the
-    reference z-extent, preventing moving volumes from being clipped in z.
+    scipy.ndimage.affine_transform pulls from INPUT space at each OUTPUT voxel,
+    so it needs the *inverse* mapping: output_coord -> input_coord.
 
-    The affine offset is adjusted so that z=0 in output space corresponds to
-    z=-z_pad in reference space (i.e. the padding sits *outside* the reference
-    FOV, not inside it).
+    The correct decomposition of the inverse is:
+
+        p_in = A_inv @ p_ref
+             = R_inv @ S_inv @ (p_ref - t)        (TRS convention)
+
+    so:
+        matrix = R_inv @ S_inv  =  inv(R @ S)
+        offset = -matrix @ t
+
+    We derive matrix and offset this way rather than inverting the full 4×4,
+    which would silently fold the translation into the linear part when
+    scale ≠ 1, corrupting the z (and y/x) shift.
+
+    Z-padding shifts the output origin by z_pad slices:
+        offset_padded = offset + matrix @ [z_pad, 0, 0]
 
     Parameters
     ----------
@@ -538,21 +602,25 @@ def _apply_transform_and_crop(
 
     out_shape = (ref_shape[0] + 2 * z_pad, ref_shape[1], ref_shape[2])
 
-    # affine_transform expects the *inverse* mapping (output → data coords)
-    inv = np.linalg.inv(affine)
-    matrix = inv[:3, :3]   # linear part
-    offset = inv[:3,  3]   # translation part
+    # Decompose the forward affine into linear (A) and translation (t) parts.
+    A = affine[:3, :3]   # R @ S  (rotation composed with scale)
+    t = affine[:3,  3]   # translation vector  [tz, ty, tx]
 
-    # Shift the output origin by -z_pad slices so the padded region maps
-    # to the correct position in data space.
-    # New offset = original_offset + matrix @ [z_pad, 0, 0]
-    pad_shift = matrix @ np.array([z_pad, 0.0, 0.0])
-    offset_padded = offset + pad_shift
+    # Inverse linear part: maps reference coords back to data coords
+    A_inv = np.linalg.inv(A)
+
+    # Correct offset:  maps reference origin (0,0,0) back to data space
+    offset = -A_inv @ t
+
+    # Account for z-padding: output voxel [0,y,x] corresponds to reference
+    # voxel [-z_pad, y, x], so we shift the origin by z_pad in output space.
+    if z_pad:
+        offset = offset + A_inv @ np.array([z_pad, 0.0, 0.0])
 
     warped = affine_transform(
         data,
-        matrix=matrix,
-        offset=offset_padded,
+        matrix=A_inv,
+        offset=offset,
         output_shape=out_shape,
         order=order,
         mode="constant",
@@ -610,17 +678,35 @@ def make_apply_widget():
         if names:
             ref_combo.value = prev if prev in names else names[0]
 
+    def _connect_layer_name_event(layer):
+        try:
+            layer.events.name.connect(_refresh_layers)
+        except AttributeError:
+            pass
+
+    def _disconnect_layer_name_event(layer):
+        try:
+            layer.events.name.disconnect(_refresh_layers)
+        except Exception:
+            pass
+
+    def _on_layer_inserted(event):
+        _connect_layer_name_event(event.value)
+        _refresh_layers()
+
+    def _on_layer_removed(event):
+        _disconnect_layer_name_event(event.value)
+        _refresh_layers()
+
     def _connect_viewer_events():
         viewer = current_viewer()
         if viewer is None:
             return
-        viewer.layers.events.inserted.connect(_refresh_layers)
-        viewer.layers.events.removed.connect(_refresh_layers)
+        viewer.layers.events.inserted.connect(_on_layer_inserted)
+        viewer.layers.events.removed.connect(_on_layer_removed)
         viewer.layers.events.reordered.connect(_refresh_layers)
-        try:
-            viewer.layers.events.changed.connect(_refresh_layers)
-        except AttributeError:
-            pass
+        for layer in viewer.layers:
+            _connect_layer_name_event(layer)
         _refresh_layers()
 
     # ── CSV browse ───────────────────────────────────────────────────────────
@@ -730,11 +816,9 @@ def make_apply_widget():
                 affine = _build_affine_from_csv_row_3d(row)
             else:
                 # Absolute: reconstruct world affines and relativise
-                T_ref_world = np.array(ref_layer.affine.affine_matrix)
-                mov_affine  = _build_affine_from_csv_row_3d(row)
-                # The absolute CSV row stores world-space params for the
-                # moving layer; reconstruct relative from world matrices
-                T_mov_world = np.array(image_layers[layer_name].affine.affine_matrix)
+                # Use full data->world (includes scale) for both layers
+                T_ref_world = np.array(ref_layer._transforms.simplified.affine_matrix)
+                T_mov_world = np.array(image_layers[layer_name]._transforms.simplified.affine_matrix)
                 affine = np.linalg.inv(T_ref_world) @ T_mov_world
 
             status_label.value = f"Warping '{layer_name}'…"
@@ -805,13 +889,370 @@ def napari_experimental_provide_dock_widget_apply():
     """Plugin hook for Widget 2 (Apply & Stack)."""
     return make_apply_widget, {"name": "Apply & Build 4D Stack"}
 
+
+# ---------------------------------------------------------------------------
+# Widget 3: Scale editor for the selected layer
+# ---------------------------------------------------------------------------
+
+def make_scale_widget():
+    """
+    Napari dock widget — Widget 3: Layer Scale Editor.
+
+    Shows one FloatSpinBox per dimension for the currently selected layer,
+    labelled with the viewer's axis labels (e.g. z, y, x).  Editing a value
+    and pressing Enter (or clicking away) applies it immediately to the layer
+    via layer.scale, which updates the world-space extent and rerenders.
+
+    The widget refreshes its fields whenever the layer selection changes or
+    a layer is added/removed, and reloads current values whenever the active
+    layer's scale is changed externally (e.g. from the console).
+    """
+    from magicgui.widgets import Container, FloatSpinBox, Label, ComboBox
+    from napari import current_viewer
+    from napari.layers import Layer
+
+    status_label  = Label(value="Select a layer to edit its scale.")
+    fields_container = Container(widgets=[], labels=True)
+
+    # Internal state: which layer we're currently watching
+    _state = {"layer": None, "spinboxes": [], "blocking": False}
+
+    def _make_spinboxes(ndim: int, axis_labels: tuple, current_scale: tuple):
+        """Rebuild the per-axis FloatSpinBox widgets for an ndim layer."""
+        spinboxes = []
+        for i in range(ndim):
+            label = axis_labels[i] if i < len(axis_labels) else f"axis-{i}"
+            sb = FloatSpinBox(
+                label=label,
+                value=float(current_scale[i]),
+                min=1e-6,
+                max=1e6,
+                step=0.1,
+            )
+            spinboxes.append(sb)
+        return spinboxes
+
+    def _rebuild_fields(layer):
+        """Tear down old spinboxes and build fresh ones for *layer*."""
+        viewer = current_viewer()
+
+        # Disconnect old scale-change listener if any
+        old = _state["layer"]
+        if old is not None:
+            try:
+                old.events.scale.disconnect(_on_layer_scale_changed)
+            except Exception:
+                pass
+
+        _state["layer"] = layer
+        _state["spinboxes"] = []
+
+        # Clear the fields container
+        while len(fields_container) > 0:
+            fields_container.pop(-1)
+
+        if layer is None:
+            status_label.value = "Select a layer to edit its scale."
+            return
+
+        ndim = layer.ndim
+        # Axis labels come from the viewer dims (may be shorter than ndim for
+        # layers with more dims than currently displayed — pad with indices)
+        raw_labels = list(viewer.dims.axis_labels) if viewer else []
+        # Align to the last ndim labels (napari broadcasts from trailing dims)
+        if len(raw_labels) >= ndim:
+            axis_labels = raw_labels[-ndim:]
+        else:
+            axis_labels = [f"axis-{i}" for i in range(ndim - len(raw_labels))] + raw_labels
+
+        spinboxes = _make_spinboxes(ndim, axis_labels, layer.scale)
+        _state["spinboxes"] = spinboxes
+
+        for sb in spinboxes:
+            fields_container.append(sb)
+            sb.changed.connect(_on_spinbox_changed)
+
+        # Watch for external scale changes (e.g. from console)
+        layer.events.scale.connect(_on_layer_scale_changed)
+        status_label.value = f"Editing: {layer.name}"
+
+    def _on_spinbox_changed(value):
+        """User edited a spinbox — push the new scale tuple to the layer."""
+        if _state["blocking"]:
+            return
+        layer = _state["layer"]
+        if layer is None:
+            return
+        new_scale = tuple(float(sb.value) for sb in _state["spinboxes"])
+        _state["blocking"] = True
+        try:
+            layer.scale = new_scale
+        finally:
+            _state["blocking"] = False
+
+    def _on_layer_scale_changed(event=None):
+        """Layer scale changed externally — sync spinboxes without re-triggering."""
+        if _state["blocking"]:
+            return
+        layer = _state["layer"]
+        if layer is None:
+            return
+        _state["blocking"] = True
+        try:
+            for sb, val in zip(_state["spinboxes"], layer.scale):
+                sb.value = float(val)
+        finally:
+            _state["blocking"] = False
+
+    def _on_selection_changed(event=None):
+        """Viewer layer selection changed — switch to the newly active layer."""
+        viewer = current_viewer()
+        if viewer is None:
+            return
+        active = viewer.layers.selection.active
+        _rebuild_fields(active)
+
+    def _connect_viewer_events():
+        viewer = current_viewer()
+        if viewer is None:
+            return
+        viewer.layers.selection.events.active.connect(_on_selection_changed)
+        viewer.layers.events.inserted.connect(_on_selection_changed)
+        viewer.layers.events.removed.connect(_on_selection_changed)
+        # Populate immediately with whatever is already selected
+        _on_selection_changed()
+
+    container = Container(
+        widgets=[status_label, fields_container],
+        labels=False,
+    )
+
+    import qtpy.QtCore as QtCore
+    QtCore.QTimer.singleShot(200, _connect_viewer_events)
+
+    return container
+
+
+def napari_experimental_provide_dock_widget_scale():
+    """Plugin hook for Widget 3 (Scale Editor)."""
+    return make_scale_widget, {"name": "Layer Scale Editor"}
+
+
+
+# ---------------------------------------------------------------------------
+# Widget 4: Merge two registration CSV files by image name
+# ---------------------------------------------------------------------------
+
+def make_merge_csv_widget():
+    """
+    Napari dock widget — Widget 4: Merge Registration CSVs.
+
+    Use case
+    --------
+    You have aligned the same set of images in two separate sessions (e.g.
+    first aligning XY, then fine-tuning Z), each producing a CSV.  This
+    widget merges them into a single CSV, combining the transform parameters
+    per image by composing the two affine matrices:
+
+        M_combined = M_b @ M_a   (apply A first, then B on top)
+
+    The image name ("layer" column) is used as the join key.  Rows present
+    in only one file are passed through unchanged.  The merged result is
+    decomposed back into translation / rotation / scale columns so it is
+    directly usable by Widget 2.
+
+    Merge modes
+    -----------
+    compose : M_combined = M_b @ M_a  — stack both transforms (default)
+    prefer_a: keep CSV A row, ignore CSV B for that image
+    prefer_b: keep CSV B row, ignore CSV A for that image
+    """
+    import csv
+    from magicgui.widgets import Container, PushButton, ComboBox, Label
+    from qtpy.QtWidgets import QFileDialog
+
+    # ── Sub-widgets ──────────────────────────────────────────────────────────
+    label_a    = Label(value="CSV A: not loaded")
+    browse_a   = PushButton(text="Browse CSV A…")
+    label_b    = Label(value="CSV B: not loaded")
+    browse_b   = PushButton(text="Browse CSV B…")
+    mode_combo = ComboBox(
+        label="Merge mode",
+        choices=["compose", "prefer_a", "prefer_b"],
+        value="compose",
+    )
+    merge_btn  = PushButton(text="Merge & Save CSV…")
+    status     = Label(value="")
+
+    _state = {"rows_a": None, "rows_b": None}
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+    def _load_csv(path: str):
+        with open(path, newline="") as f:
+            rows = list(csv.DictReader(f))
+        if not rows:
+            raise ValueError("CSV is empty")
+        required = {
+            "layer",
+            "translation_z_vox", "translation_y_vox", "translation_x_vox",
+            "rotation_euler_x_deg", "rotation_euler_y_deg", "rotation_euler_z_deg",
+            "scale_z", "scale_y", "scale_x",
+        }
+        missing = required - set(rows[0].keys())
+        if missing:
+            raise ValueError(f"Missing columns: {missing}")
+        return rows
+
+    def _row_to_matrix(row: dict) -> np.ndarray:
+        """Reconstruct the 4×4 affine from a CSV row (same as Widget 2)."""
+        return _build_affine_from_csv_row_3d(row)
+
+    def _matrix_to_row(name: str, M: np.ndarray, note: str = "") -> dict:
+        """Decompose a 4×4 affine back to CSV columns."""
+        params = decompose_affine_3d(M)
+        tz, ty, tx       = params["translation_zyx"]
+        rx, ry, rz       = params["rotation_euler_xyz_deg"]
+        sz, sy, sx       = params["scale_zyx"]
+        return {
+            "layer":                name,
+            "note":                 note,
+            "translation_z_vox":   tz,
+            "translation_y_vox":   ty,
+            "translation_x_vox":   tx,
+            "rotation_euler_x_deg": rx,
+            "rotation_euler_y_deg": ry,
+            "rotation_euler_z_deg": rz,
+            "scale_z":             sz,
+            "scale_y":             sy,
+            "scale_x":             sx,
+        }
+
+    def _write_csv(rows: list, path: str):
+        import csv as _csv
+        fieldnames = [
+            "layer", "note",
+            "translation_z_vox", "translation_y_vox", "translation_x_vox",
+            "rotation_euler_x_deg", "rotation_euler_y_deg", "rotation_euler_z_deg",
+            "scale_z", "scale_y", "scale_x",
+        ]
+        with open(path, "w", newline="") as f:
+            writer = _csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+
+    # ── Browse callbacks ─────────────────────────────────────────────────────
+    def _on_browse_a():
+        path, _ = QFileDialog.getOpenFileName(
+            None, "Open CSV A", "", "CSV files (*.csv);;All files (*)"
+        )
+        if not path:
+            return
+        try:
+            _state["rows_a"] = _load_csv(path)
+            label_a.value = f"CSV A: {Path(path).name}  ({len(_state['rows_a'])} rows)"
+            status.value = ""
+        except Exception as e:
+            status.value = f"⚠ CSV A: {e}"
+
+    def _on_browse_b():
+        path, _ = QFileDialog.getOpenFileName(
+            None, "Open CSV B", "", "CSV files (*.csv);;All files (*)"
+        )
+        if not path:
+            return
+        try:
+            _state["rows_b"] = _load_csv(path)
+            label_b.value = f"CSV B: {Path(path).name}  ({len(_state['rows_b'])} rows)"
+            status.value = ""
+        except Exception as e:
+            status.value = f"⚠ CSV B: {e}"
+
+    # ── Merge callback ───────────────────────────────────────────────────────
+    def _on_merge():
+        if not _state["rows_a"] or not _state["rows_b"]:
+            status.value = "⚠ Load both CSV files first."
+            return
+
+        path, _ = QFileDialog.getSaveFileName(
+            None, "Save merged CSV", "merged_registration.csv",
+            "CSV files (*.csv);;All files (*)"
+        )
+        if not path:
+            return
+
+        mode = mode_combo.value
+
+        # Index both CSVs by layer name
+        dict_a = {r["layer"]: r for r in _state["rows_a"]}
+        dict_b = {r["layer"]: r for r in _state["rows_b"]}
+        all_names = list(dict_a.keys())  # preserve A's ordering
+        for name in dict_b:             # append B-only entries at the end
+            if name not in dict_a:
+                all_names.append(name)
+
+        merged_rows = []
+        report = []
+
+        for name in all_names:
+            in_a = name in dict_a
+            in_b = name in dict_b
+
+            if in_a and in_b:
+                if mode == "compose":
+                    # Stack: apply A first, B on top → M = M_b @ M_a
+                    M_a = _row_to_matrix(dict_a[name])
+                    M_b = _row_to_matrix(dict_b[name])
+                    M_c = M_b @ M_a
+                    note = "composed: B @ A"
+                    row  = _matrix_to_row(name, M_c, note)
+                elif mode == "prefer_a":
+                    row  = dict(dict_a[name])
+                    row["note"] = "prefer_a"
+                else:  # prefer_b
+                    row  = dict(dict_b[name])
+                    row["note"] = "prefer_b"
+                report.append(f"  {name}: {'composed' if mode == 'compose' else mode}")
+
+            elif in_a:
+                row = dict(dict_a[name])
+                report.append(f"  {name}: A only (pass-through)")
+            else:
+                row = dict(dict_b[name])
+                report.append(f"  {name}: B only (pass-through)")
+
+            merged_rows.append(row)
+
+        _write_csv(merged_rows, path)
+
+        n = len(merged_rows)
+        status.value = f"✓ Saved {n} rows → {Path(path).name}"
+        print("\n" + "="*60)
+        print(f"Merged CSV ({mode} mode) → {path}")
+        print("\n".join(report))
+        print("="*60)
+
+    # ── Wire up ──────────────────────────────────────────────────────────────
+    browse_a.changed.connect(_on_browse_a)
+    browse_b.changed.connect(_on_browse_b)
+    merge_btn.changed.connect(_on_merge)
+
+    return Container(
+        widgets=[browse_a, label_a, browse_b, label_b, mode_combo, merge_btn, status],
+        labels=False,
+    )
+
+
+def napari_experimental_provide_dock_widget_merge():
+    """Plugin hook for Widget 4 (Merge CSVs)."""
+    return make_merge_csv_widget, {"name": "Merge Registration CSVs"}
+
 if __name__ == "__main__":
     import napari
     import numpy as np
 
     viewer = napari.Viewer()
 
-    # --- Demo: add two synthetic 3D volumes ---
+    # # --- Demo: add two synthetic 3D volumes ---
     # rng = np.random.default_rng(42)
     # ref_vol  = rng.random((30, 128, 128)).astype(np.float32)
     # mov_vol  = rng.random((30, 128, 128)).astype(np.float32)
@@ -834,5 +1275,17 @@ if __name__ == "__main__":
 
     w2, m2 = napari_experimental_provide_dock_widget_apply()
     viewer.window.add_dock_widget(w2(), name=m2["name"])
+
+    w3, m3 = napari_experimental_provide_dock_widget_scale()
+    viewer.window.add_dock_widget(w3(), name=m3["name"])
+
+    w4, m4 = napari_experimental_provide_dock_widget_merge()
+    viewer.window.add_dock_widget(w4(), name=m4["name"])
+
+    # Open the built-in IPython console so the user can inspect layers,
+    # transforms, and the output stack directly.  napari pre-injects `viewer`
+    # into the console namespace, so viewer.layers, np, etc. work immediately.
+    # _show_key_bindings_dialog -> show() is the public way to reveal it.
+    viewer.window.qt_viewer.console.show()
 
     napari.run()

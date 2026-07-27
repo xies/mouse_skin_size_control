@@ -219,52 +219,169 @@ def get_bm_image(imstack,sigmas,gradient_sign,
         return fixed_heightmap,height_image,im_diff
     else:
         return fixed_heightmap, height_image
-def find_subgraphs_of_connected_local_maxima(im,return_full_graph=False):
-
+def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False,
+                                              prominence=None):
     import networkx as nx
-    from tqdm import tqdm
+    import numpy as np
     from scipy import signal
 
-    minima_at_pixel = {(x,y) : signal.argrelmax(im[:,x,y])[0] for x in range(512) for y in range(512)}
+    nz, nx_dim, ny_dim = im.shape
 
-    vertices = [list(zip([x]*len(m),[y]*len(m),m)) for (x,y),m in minima_at_pixel.items()]
-    vertices = [x for xs in vertices for x in xs] # Flatten out list of lists
+    # --- 1. Build boolean maxima volume M[z, x, y] ---
+    M = np.zeros_like(im, dtype=bool)
+    for x in range(nx_dim):
+        for y in range(ny_dim):
+            if prominence is None:
+                peaks = signal.argrelmax(im[:, x, y])[0]
+            else:
+                peaks, _ = signal.find_peaks(im[:, x, y], prominence=prominence)
+            M[peaks, x, y] = True
+
+    # Node coordinates (z, x, y) of every maximum
+    zz, xx, yy = np.nonzero(M)
+    vertices = list(zip(xx.tolist(), yy.tolist(), zz.tolist()))  # (x, y, z)
 
     G = nx.Graph()
     G.add_nodes_from(vertices)
 
-    # Graph is this: (x,y, minima_z)
-    # For each vertex, add an edge to the 'neighboring'  xy,minima pixels if the z-value is within +-1 of current z
-    for i in tqdm(range(512)):
-        for j in range(512):
-            for k in range(len(minima_at_pixel[i,j])):
-                current_vert = minima_at_pixel[i,j][k]
-                neighbors = [(i+di,j+dj) for di in [-1,0,1] for dj in [-1,0,1]
-                             if i+di >=0 and i+di < 512 and j+dj >=0 and j+dj < 512]
-                for neigh in neighbors:
-                    delta = [current_vert - minima_at_pixel[neigh[0],neigh[1]]]
-                    I = np.abs(delta) <= 1
-                    if I.sum() > 0:
-                        for hit in I:
-                            # print((neigh[0], neigh[1],minima_at_pixel[neigh[0],neigh[1]][hit][0]))
-                            G.add_edge((i,j,current_vert),
-                                       (neigh[0], neigh[1],minima_at_pixel[neigh[0],neigh[1]][hit][0]))
+    # --- 2. Vectorized edge building, one (dx, dy) offset at a time ---
+    # For each offset, a maximum at (z, x, y) connects to a neighbor maximum
+    # at (z', x+dx, y+dy) if |z - z'| <= 1.
+    # We slide M in z by -1, 0, +1 to capture the |Δz| <= 1 tolerance.
+    offsets = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+               if (dx, dy) != (0, 0)]
+
+    def shift_xy(vol, dx, dy):
+        """Shift volume in x,y; out-of-bounds filled with False."""
+        out = np.zeros_like(vol)
+        # source and destination slices for x
+        sx_src = slice(max(0, -dx), nx_dim - max(0, dx))
+        sx_dst = slice(max(0, dx),  nx_dim - max(0, -dx))
+        sy_src = slice(max(0, -dy), ny_dim - max(0, dy))
+        sy_dst = slice(max(0, dy),  ny_dim - max(0, -dy))
+        out[:, sx_dst, sy_dst] = vol[:, sx_src, sy_src]
+        return out
+
+    def shift_z(vol, dz):
+        out = np.zeros_like(vol)
+        if dz == 0:
+            return vol
+        if dz > 0:
+            out[dz:, :, :] = vol[:-dz, :, :]
+        else:
+            out[:dz, :, :] = vol[-dz:, :, :]
+        return out
+
+    for (dx, dy) in offsets:
+        # For each neighbor, allow its maximum to be at z-1, z, or z+1
+        for dz in (-1, 0, 1):
+            # neighbor maxima brought into current pixel's frame
+            neigh = shift_xy(shift_z(M, dz), dx, dy)
+            # A connection exists where BOTH current pixel and (shifted neighbor)
+            # have a maximum -> these are (z, x, y) of the CURRENT node.
+            match = M & neigh
+            cz, cx, cy = np.nonzero(match)
+            if cz.size == 0:
+                continue
+            # current node = (cx, cy, cz)
+            # neighbor node = (cx+dx, cy+dy, cz+dz)  [since neigh was shifted by +dz]
+            nz_z = cz + dz
+            nx_x = cx + dx
+            ny_y = cy + dy
+            edges = zip(
+                zip(cx.tolist(), cy.tolist(), cz.tolist()),
+                zip(nx_x.tolist(), ny_y.tolist(), nz_z.tolist())
+            )
+            G.add_edges_from(edges)
+
     S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
-    if return_full_graph:
-        return S,G
-    else:
-        return S
+    return (S, G) if return_full_graph else S
 
-def reconstruct_surface_from_subgraph(G,im_shape):
-    from scipy import sparse
-    surface2reconstruct = np.array(list(G.nodes))
-    surf = sparse.coo_array((surface2reconstruct[:,2],(surface2reconstruct[:,0],surface2reconstruct[:,1])),
-                        shape=[im_shape[1],im_shape[2]]).todense()
+# def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False):
+#     import networkx as nx
+#     import numpy as np
+#     from tqdm import tqdm
+#     from scipy import signal
+#
+#     nx_dim, ny_dim = im.shape[1], im.shape[2]
+#
+#     maxima_at_pixel = {
+#         (x, y): signal.argrelmax(im[:, x, y])[0]
+#         for x in range(nx_dim) for y in range(ny_dim)
+#     }
+#
+#     vertices = [(x, y, z)
+#                 for (x, y), zs in maxima_at_pixel.items()
+#                 for z in zs]
+#
+#     G = nx.Graph()
+#     G.add_nodes_from(vertices)
+#
+#     for i in tqdm(range(nx_dim)):
+#         for j in range(ny_dim):
+#             for current_z in maxima_at_pixel[i, j]:
+#                 neighbors = [(i+di, j+dj)
+#                              for di in (-1, 0, 1) for dj in (-1, 0, 1)
+#                              if (di, dj) != (0, 0)
+#                              and 0 <= i+di < nx_dim
+#                              and 0 <= j+dj < ny_dim]
+#                 for (ni, nj) in neighbors:
+#                     neigh_z = maxima_at_pixel[ni, nj]
+#                     if len(neigh_z) == 0:
+#                         continue
+#                     # indices of neighbor maxima within +-1 in z
+#                     hits = np.flatnonzero(np.abs(neigh_z - current_z) <= 1)
+#                     for h in hits:
+#                         G.add_edge((i, j, current_z),
+#                                    (ni, nj, int(neigh_z[h])))
+#
+#     S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
+#     return (S, G) if return_full_graph else S
 
-    height_image = make_image_from_heightmap(surf,im_shape[0])
-    Iz_fixed,height_image_fixed = fix_holes_in_height_image(height_image,im_shape)
+def reconstruct_bm_from_subgraph(G, im, smooth_size=25, n_iter=3, threshold=0.2):
+    import numpy as np
+    from scipy.ndimage import median_filter
 
-    return Iz_fixed, height_image_fixed
+    im_shape = im.shape
+    nodes = np.array(list(G.nodes), dtype=np.int64)
+    x, y, z = nodes[:, 0], nodes[:, 1], nodes[:, 2]
+    inten   = im[z, x, y].astype(np.float64)
+    flat    = x * im_shape[2] + y
+
+    # --- initial guess: shallowest sufficiently-bright peak per pixel ---
+    pix_max = np.zeros(im_shape[1] * im_shape[2]); np.maximum.at(pix_max, flat, inten)
+    ok = inten >= threshold * pix_max[flat]
+    xi, yi, zi, fi = x[ok], y[ok], z[ok], flat[ok]
+    order = np.lexsort((zi, fi))
+    xi, yi, zi, fi = xi[order], yi[order], zi[order], fi[order]
+    first = np.empty(fi.shape, bool); first[0] = True; first[1:] = fi[1:] != fi[:-1]
+    surf = np.zeros(im_shape[1:], dtype=float)
+    surf[xi[first], yi[first]] = zi[first]
+
+    # --- iteratively refine: snap each pixel to the maximum nearest the smooth prior ---
+    for _ in range(n_iter):
+        z_prior = median_filter(surf, size=smooth_size)
+        cost = np.abs(z - z_prior[x, y])          # distance to smooth BM
+        # optionally add a mild intensity reward: cost -= 0.001 * inten
+        order = np.lexsort((cost, flat))          # per pixel, smallest cost first
+        xs, ys, zs, fs = x[order], y[order], z[order], flat[order]
+        keep = np.empty(fs.shape, bool); keep[0] = True; keep[1:] = fs[1:] != fs[:-1]
+        surf = np.zeros(im_shape[1:], dtype=float)
+        surf[xs[keep], ys[keep]] = zs[keep]
+
+    height_image = make_image_from_heightmap(surf.astype(np.int64), im_shape[0])
+    return fix_holes_in_height_image(height_image, im_shape)
+
+# def reconstruct_surface_from_subgraph(G,im_shape):
+#     from scipy import sparse
+#     surface2reconstruct = np.array(list(G.nodes))
+#     surf = sparse.coo_array((surface2reconstruct[:,2],(surface2reconstruct[:,0],surface2reconstruct[:,1])),
+#                         shape=[im_shape[1],im_shape[2]]).todense()
+#
+#     height_image = make_image_from_heightmap(surf,im_shape[0])
+#     Iz_fixed,height_image_fixed = fix_holes_in_height_image(height_image,im_shape)
+#
+#     return Iz_fixed, height_image_fixed
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 
