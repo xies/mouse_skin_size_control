@@ -214,129 +214,129 @@ def get_bm_image(imstack,sigmas,gradient_sign,
     height_image = make_image_from_heightmap(Iz,ZZ)
     fixed_heightmap,height_image = fix_holes_in_height_image(height_image,image_shape=imstack.shape)
 
-
     if return_gradient:
         return fixed_heightmap,height_image,im_diff
     else:
         return fixed_heightmap, height_image
-def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False,
-                                              prominence=None):
-    import networkx as nx
-    import numpy as np
-    from scipy import signal
 
-    nz, nx_dim, ny_dim = im.shape
-
-    # --- 1. Build boolean maxima volume M[z, x, y] ---
-    M = np.zeros_like(im, dtype=bool)
-    for x in range(nx_dim):
-        for y in range(ny_dim):
-            if prominence is None:
-                peaks = signal.argrelmax(im[:, x, y])[0]
-            else:
-                peaks, _ = signal.find_peaks(im[:, x, y], prominence=prominence)
-            M[peaks, x, y] = True
-
-    # Node coordinates (z, x, y) of every maximum
-    zz, xx, yy = np.nonzero(M)
-    vertices = list(zip(xx.tolist(), yy.tolist(), zz.tolist()))  # (x, y, z)
-
-    G = nx.Graph()
-    G.add_nodes_from(vertices)
-
-    # --- 2. Vectorized edge building, one (dx, dy) offset at a time ---
-    # For each offset, a maximum at (z, x, y) connects to a neighbor maximum
-    # at (z', x+dx, y+dy) if |z - z'| <= 1.
-    # We slide M in z by -1, 0, +1 to capture the |Δz| <= 1 tolerance.
-    offsets = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
-               if (dx, dy) != (0, 0)]
-
-    def shift_xy(vol, dx, dy):
-        """Shift volume in x,y; out-of-bounds filled with False."""
-        out = np.zeros_like(vol)
-        # source and destination slices for x
-        sx_src = slice(max(0, -dx), nx_dim - max(0, dx))
-        sx_dst = slice(max(0, dx),  nx_dim - max(0, -dx))
-        sy_src = slice(max(0, -dy), ny_dim - max(0, dy))
-        sy_dst = slice(max(0, dy),  ny_dim - max(0, -dy))
-        out[:, sx_dst, sy_dst] = vol[:, sx_src, sy_src]
-        return out
-
-    def shift_z(vol, dz):
-        out = np.zeros_like(vol)
-        if dz == 0:
-            return vol
-        if dz > 0:
-            out[dz:, :, :] = vol[:-dz, :, :]
-        else:
-            out[:dz, :, :] = vol[-dz:, :, :]
-        return out
-
-    for (dx, dy) in offsets:
-        # For each neighbor, allow its maximum to be at z-1, z, or z+1
-        for dz in (-1, 0, 1):
-            # neighbor maxima brought into current pixel's frame
-            neigh = shift_xy(shift_z(M, dz), dx, dy)
-            # A connection exists where BOTH current pixel and (shifted neighbor)
-            # have a maximum -> these are (z, x, y) of the CURRENT node.
-            match = M & neigh
-            cz, cx, cy = np.nonzero(match)
-            if cz.size == 0:
-                continue
-            # current node = (cx, cy, cz)
-            # neighbor node = (cx+dx, cy+dy, cz+dz)  [since neigh was shifted by +dz]
-            nz_z = cz + dz
-            nx_x = cx + dx
-            ny_y = cy + dy
-            edges = zip(
-                zip(cx.tolist(), cy.tolist(), cz.tolist()),
-                zip(nx_x.tolist(), ny_y.tolist(), nz_z.tolist())
-            )
-            G.add_edges_from(edges)
-
-    S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
-    return (S, G) if return_full_graph else S
-
-# def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False):
+# def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False,
+#                                               prominence=None):
 #     import networkx as nx
 #     import numpy as np
-#     from tqdm import tqdm
 #     from scipy import signal
 #
-#     nx_dim, ny_dim = im.shape[1], im.shape[2]
+#     nz, nx_dim, ny_dim = im.shape
 #
-#     maxima_at_pixel = {
-#         (x, y): signal.argrelmax(im[:, x, y])[0]
-#         for x in range(nx_dim) for y in range(ny_dim)
-#     }
+#     # --- 1. Build boolean maxima volume M[z, x, y] ---
+#     M = np.zeros_like(im, dtype=bool)
+#     for x in range(nx_dim):
+#         for y in range(ny_dim):
+#             if prominence is None:
+#                 peaks = signal.argrelmax(im[:, x, y])[0]
+#             else:
+#                 peaks, _ = signal.find_peaks(im[:, x, y], prominence=prominence)
+#             M[peaks, x, y] = True
 #
-#     vertices = [(x, y, z)
-#                 for (x, y), zs in maxima_at_pixel.items()
-#                 for z in zs]
+#     # Node coordinates (z, x, y) of every maximum
+#     zz, xx, yy = np.nonzero(M)
+#     vertices = list(zip(xx.tolist(), yy.tolist(), zz.tolist()))  # (x, y, z)
 #
 #     G = nx.Graph()
 #     G.add_nodes_from(vertices)
 #
-#     for i in tqdm(range(nx_dim)):
-#         for j in range(ny_dim):
-#             for current_z in maxima_at_pixel[i, j]:
-#                 neighbors = [(i+di, j+dj)
-#                              for di in (-1, 0, 1) for dj in (-1, 0, 1)
-#                              if (di, dj) != (0, 0)
-#                              and 0 <= i+di < nx_dim
-#                              and 0 <= j+dj < ny_dim]
-#                 for (ni, nj) in neighbors:
-#                     neigh_z = maxima_at_pixel[ni, nj]
-#                     if len(neigh_z) == 0:
-#                         continue
-#                     # indices of neighbor maxima within +-1 in z
-#                     hits = np.flatnonzero(np.abs(neigh_z - current_z) <= 1)
-#                     for h in hits:
-#                         G.add_edge((i, j, current_z),
-#                                    (ni, nj, int(neigh_z[h])))
+#     # --- 2. Vectorized edge building, one (dx, dy) offset at a time ---
+#     # For each offset, a maximum at (z, x, y) connects to a neighbor maximum
+#     # at (z', x+dx, y+dy) if |z - z'| <= 1.
+#     # We slide M in z by -1, 0, +1 to capture the |Δz| <= 1 tolerance.
+#     offsets = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+#                if (dx, dy) != (0, 0)]
+#
+#     def shift_xy(vol, dx, dy):
+#         """Shift volume in x,y; out-of-bounds filled with False."""
+#         out = np.zeros_like(vol)
+#         # source and destination slices for x
+#         sx_src = slice(max(0, -dx), nx_dim - max(0, dx))
+#         sx_dst = slice(max(0, dx),  nx_dim - max(0, -dx))
+#         sy_src = slice(max(0, -dy), ny_dim - max(0, dy))
+#         sy_dst = slice(max(0, dy),  ny_dim - max(0, -dy))
+#         out[:, sx_dst, sy_dst] = vol[:, sx_src, sy_src]
+#         return out
+#
+#     def shift_z(vol, dz):
+#         out = np.zeros_like(vol)
+#         if dz == 0:
+#             return vol
+#         if dz > 0:
+#             out[dz:, :, :] = vol[:-dz, :, :]
+#         else:
+#             out[:dz, :, :] = vol[-dz:, :, :]
+#         return out
+#
+#     for (dx, dy) in offsets:
+#         # For each neighbor, allow its maximum to be at z-1, z, or z+1
+#         for dz in (-1, 0, 1):
+#             # neighbor maxima brought into current pixel's frame
+#             neigh = shift_xy(shift_z(M, dz), dx, dy)
+#             # A connection exists where BOTH current pixel and (shifted neighbor)
+#             # have a maximum -> these are (z, x, y) of the CURRENT node.
+#             match = M & neigh
+#             cz, cx, cy = np.nonzero(match)
+#             if cz.size == 0:
+#                 continue
+#             # current node = (cx, cy, cz)
+#             # neighbor node = (cx+dx, cy+dy, cz+dz)  [since neigh was shifted by +dz]
+#             nz_z = cz + dz
+#             nx_x = cx + dx
+#             ny_y = cy + dy
+#             edges = zip(
+#                 zip(cx.tolist(), cy.tolist(), cz.tolist()),
+#                 zip(nx_x.tolist(), ny_y.tolist(), nz_z.tolist())
+#             )
+#             G.add_edges_from(edges)
 #
 #     S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
 #     return (S, G) if return_full_graph else S
+
+def find_subgraphs_of_connected_local_maxima(im, return_full_graph=False):
+    import networkx as nx
+    import numpy as np
+    from tqdm import tqdm
+    from scipy import signal
+
+    nx_dim, ny_dim = im.shape[1], im.shape[2]
+
+    maxima_at_pixel = {
+        (x, y): signal.argrelmax(im[:, x, y])[0]
+        for x in range(nx_dim) for y in range(ny_dim)
+    }
+
+    vertices = [(x, y, z)
+                for (x, y), zs in maxima_at_pixel.items()
+                for z in zs]
+
+    G = nx.Graph()
+    G.add_nodes_from(vertices)
+
+    for i in tqdm(range(nx_dim)):
+        for j in range(ny_dim):
+            for current_z in maxima_at_pixel[i, j]:
+                neighbors = [(i+di, j+dj)
+                             for di in (-1, 0, 1) for dj in (-1, 0, 1)
+                             if (di, dj) != (0, 0)
+                             and 0 <= i+di < nx_dim
+                             and 0 <= j+dj < ny_dim]
+                for (ni, nj) in neighbors:
+                    neigh_z = maxima_at_pixel[ni, nj]
+                    if len(neigh_z) == 0:
+                        continue
+                    # indices of neighbor maxima within +-1 in z
+                    hits = np.flatnonzero(np.abs(neigh_z - current_z) <= 1)
+                    for h in hits:
+                        G.add_edge((i, j, current_z),
+                                   (ni, nj, int(neigh_z[h])))
+
+    S = [G.subgraph(c).copy() for c in nx.connected_components(G)]
+    return (S, G) if return_full_graph else S
 
 def reconstruct_bm_from_subgraph(G, im, smooth_size=25, n_iter=3, threshold=0.2):
     import numpy as np
@@ -344,7 +344,8 @@ def reconstruct_bm_from_subgraph(G, im, smooth_size=25, n_iter=3, threshold=0.2)
 
     im_shape = im.shape
     nodes = np.array(list(G.nodes), dtype=np.int64)
-    x, y, z = nodes[:, 0], nodes[:, 1], nodes[:, 2]
+    x, y, z = nodes[:, 0]-1, nodes[:, 1]-1, nodes[:, 2]-1
+    # print(x.max())
     inten   = im[z, x, y].astype(np.float64)
     flat    = x * im_shape[2] + y
 
@@ -372,16 +373,16 @@ def reconstruct_bm_from_subgraph(G, im, smooth_size=25, n_iter=3, threshold=0.2)
     height_image = make_image_from_heightmap(surf.astype(np.int64), im_shape[0])
     return fix_holes_in_height_image(height_image, im_shape)
 
-# def reconstruct_surface_from_subgraph(G,im_shape):
-#     from scipy import sparse
-#     surface2reconstruct = np.array(list(G.nodes))
-#     surf = sparse.coo_array((surface2reconstruct[:,2],(surface2reconstruct[:,0],surface2reconstruct[:,1])),
-#                         shape=[im_shape[1],im_shape[2]]).todense()
-#
-#     height_image = make_image_from_heightmap(surf,im_shape[0])
-#     Iz_fixed,height_image_fixed = fix_holes_in_height_image(height_image,im_shape)
-#
-#     return Iz_fixed, height_image_fixed
+def reconstruct_surface_from_subgraph(G,im_shape):
+    from scipy import sparse
+    surface2reconstruct = np.array(list(G.nodes))
+    surf = sparse.coo_array((surface2reconstruct[:,2],(surface2reconstruct[:,0],surface2reconstruct[:,1])),
+                        shape=[im_shape[1],im_shape[2]]).todense()
+
+    height_image = make_image_from_heightmap(surf,im_shape[0])
+    Iz_fixed,height_image_fixed = fix_holes_in_height_image(height_image,im_shape)
+
+    return Iz_fixed, height_image_fixed
 
 def get_mesh_from_bm_image(bm_height_image, spacing=[1,.25,.25], decimation_factor=30):
 
@@ -440,7 +441,7 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     INPUT:
         mesh - Trimesh mesh object
         image_shape - the [Z,Y,X] shape of the pixel grid
-        kappa - radius of curvature (default: 5)
+        kappa - radius of averaging (default: 5)
         spacing - [dz,dy,dx] micron to pixel conversion factor. Default: [1,.25,.25]
     OUTPUT:
         curvature_grid - interpolated mean curvatures
@@ -449,7 +450,7 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     '''
     assert(len(image_shape) == 3)
 
-    from scipy.interpolate import NearestNDInterpolator
+    from scipy.interpolate import LinearNDInterpolator
 
     curvature,gaussian_curvature = get_tissue_curvature_sparse(mesh,kappa=kappa)
     ZZ,YY,XX = image_shape
@@ -467,10 +468,10 @@ def get_tissue_curvature_over_grid(mesh,image_shape,kappa:float=5,spacing=[1,.25
     micron_gridY = np.linspace(0,micron_Ymax,YY)
     micron_gridXX,micron_gridYY = np.meshgrid( micron_gridX, micron_gridY)
 
-    interp = NearestNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), curvature)
+    interp = LinearNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), curvature)
     curvature_grid = interp( micron_gridXX,micron_gridYY )
 
-    interp = NearestNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), gaussian_curvature)
+    interp = LinearNDInterpolator(list(zip(mesh.vertices[:,1], mesh.vertices[:,0])), gaussian_curvature)
     gaussian_curvature_grid = interp( micron_gridXX,micron_gridYY )
 
     return curvature_grid,gaussian_curvature_grid
