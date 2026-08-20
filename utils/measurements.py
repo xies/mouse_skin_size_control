@@ -15,7 +15,6 @@ from mathUtils import get_neighbor_idx, parse_3D_inertial_tensor, argsort_counte
 from imageUtils import get_mask_slices
 # 3D mesh stuff
 from scipy.spatial import Voronoi, Delaunay, distance
-from aicsshparam import shtools, shparam
 from trimesh import Trimesh, smoothing
 from trimesh.curvature import discrete_gaussian_curvature_measure, \
     discrete_mean_curvature_measure, sphere_ball_intersection
@@ -25,7 +24,6 @@ from os import path, makedirs
 # from toeplitzDifference import backward_difference, forward_difference, central_difference
 from scipy.interpolate import make_smoothing_spline
 from scipy.optimize import curve_fit
-from sklearn import preprocessing
 
 import matplotlib.pyplot as plt
 
@@ -129,6 +127,7 @@ def get_adjdict_from_2d_segmentation(seg2d:np.array, touching_threshold:int = 2)
 
 # Suppress batch effects
 def scale_by_region(df):
+    from sklearn import preprocessing
 
     scaled = []
     for region,_df in df.groupby('Region'):
@@ -591,7 +590,7 @@ def estimate_sh_coefficients(cyto_seg, nuc_seg=None, lmax=5, spacing = [1,1,1], 
     Optionally takes in a nuclear segmentation and use the cell alignment to rotate it and decompose.
 
     '''
-
+    from aicsshparam import shtools, shparam
     from imageUtils import rotate_volume_by_angles
     from scipy.ndimage import affine_transform
     from mathUtils import parse_3D_inertial_tensor

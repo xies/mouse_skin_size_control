@@ -8,12 +8,13 @@ from imageUtils import trim_multimasks_to_shared_bounding_box
 from aicsshparam import shtools
 import pyvista as pv
 
-def reconstruct_mesh(coeffs,lmax=5):
+def reconstruct_mesh(coeffs,lmax=5,prefix=True):
     '''
     Input: coeffs in dict format as output by aicspharam
     '''
     coeffs = coeffs.to_dict()
-    coeffs = {'_'.join(k.split('_')[1:3]):v for k,v in coeffs.items()}
+    if prefix:
+        coeffs = {'_'.join(k.split('_')[1:3]):v for k,v in coeffs.items()}
     # Convert to matrix
     mat = np.zeros((2, lmax + 1, lmax + 1), dtype=np.float32)
     for L in range(lmax):
