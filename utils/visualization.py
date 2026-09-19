@@ -104,16 +104,18 @@ def plot_trajectory_as_streamlines(df,x,y,x_bin_edges,y_bin_edges,Nx=20,Ny=20):
 
     UU = np.zeros(XX.shape)
     VV = np.zeros(YY.shape)
+    NN = np.zeros(XX.shape)
     for i,x in enumerate(X):
         for j,y in enumerate(Y):
             Ithis_bin = np.where( (which_bin[0,:] == j) & (which_bin[1,:] == i))[0]
-            if len(Ithis_bin) > 2:
+            if len(Ithis_bin) > 1:
                 cell_frame_in_this_bin = df.iloc[Ithis_bin]
                 next_frame = get_prev_or_next_frame_dict_retrieve(df,cell_frame_in_this_bin)
                 dK,dL = np.squeeze((next_frame - cell_frame_in_this_bin).median().values)
                 UU[i,j] = dK; VV[i,j] = dL
+                NN[i,j] = len(cell_frame_in_this_bin)
 
-    return XX,YY,UU,VV
+    return XX,YY,UU,VV,NN
 
 def reconstruct_mesh_from_averaged_coeffs(index,coeffs,cyto_col,nuc_col):
     '''
