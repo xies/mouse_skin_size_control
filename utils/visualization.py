@@ -5,10 +5,10 @@ from os import path
 
 #--- Bookkeepers ---
 from imageUtils import trim_multimasks_to_shared_bounding_box
-from aicsshparam import shtools
 import pyvista as pv
 
 def reconstruct_mesh(coeffs,lmax=5,prefix=True):
+    from aicsshparam import shtools
     '''
     Input: coeffs in dict format as output by aicspharam
     '''
@@ -66,7 +66,9 @@ def plot_cells_side_by_side(cells,num_cols=None):
     pl.view_isometric()
     pv.Line((800, 400, 0), (800, 400, 20))
     pl.hide_axes()
+    pl.zoom_camera(0.7)
     pl.show()
+    return pl
 
 def plot_trajectory(cells:list, x:str,y:str,color:str,color_specs:dict,kwgs:dict={}):
     '''
